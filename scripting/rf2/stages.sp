@@ -3,9 +3,6 @@
 #endif
 #define _RF2_maps_included
 
-#define PLAYER_SPAWNPOINT "rf2_player_spawn"
-#define BLOCK_SURVIVOR_SPAWN "_noreds"
-
 int g_iCurrentStage = 0;
 int g_iMaxStages = 0;
 
@@ -30,8 +27,8 @@ stock void LoadMapSettings(const char[] mapName)
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
 	if (!FileExists(config))
 	{
-		ThrowError("File %s does not exist", config);
 		RF2_PrintToChatAll("Config file %s does not exist, please correct this", config);
+		ThrowError("File %s does not exist", config);
 	}
 	
 	char mapString[PLATFORM_MAX_PATH];
@@ -86,7 +83,7 @@ stock void LoadMapSettings(const char[] mapName)
 		if (StageKv > MAX_STAGES)
 		{
 			StageKv = 1;
-			LogError("Could not locate map settings for map %s, using defaults.", mapName);
+			LogError("Could not locate map settings for map %s, using defaults!", mapName);
 		
 			g_szStageBGM = "vo/null.wav";
 			g_szBossBGM = "vo/null.wav";
@@ -106,6 +103,39 @@ stock void LoadMapSettings(const char[] mapName)
 	}
 }
 
+stock int GetMaxStages()
+{
+	char config[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
+	if (!FileExists(config))
+	{
+		RF2_PrintToChatAll("Config file %s does not exist, please correct this", config);
+		ThrowError("File %s does not exist", config);
+	}
+	
+	Handle mapKey = CreateKeyValues("stages");
+	FileToKeyValues(mapKey, config);
+	
+	char stage[16];
+	int stageCount = 0;
+	
+	for (int i = 0; i <= MAX_STAGES; i++)
+	{
+		KvRewind(mapKey);
+		FormatEx(stage, sizeof(stage), "stage%i", i+1);
+		if (KvJumpToKey(mapKey, stage))
+		{
+			stageCount++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	delete mapKey;
+	return stageCount;
+}
+
 stock void LoadPacks(char[] packs, bool bosses = false)
 {
 	char packArray[32][64];
@@ -116,8 +146,8 @@ stock void LoadPacks(char[] packs, bool bosses = false)
 		
 	if (!FileExists(config))
 	{
-		ThrowError("File %s does not exist", config);
 		RF2_PrintToChatAll("Config file %s does not exist, please correct this", config);
+		ThrowError("File %s does not exist", config);
 	}
 	
 	Handle packKey = CreateKeyValues("packs");
@@ -162,8 +192,8 @@ stock void SetNextStage(int stage)
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
 	if (!FileExists(config))
 	{
-		ThrowError("File %s does not exist", config);
 		RF2_PrintToChatAll("Config file %s does not exist, please correct this", config);
+		ThrowError("File %s does not exist", config);
 	}
 	
 	char section[16];
@@ -210,8 +240,8 @@ stock bool RF2_IsMapValid(char[] mapName)
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
 	if (!FileExists(config))
 	{
-		ThrowError("File %s does not exist", config);
 		RF2_PrintToChatAll("Config file %s does not exist, please correct this", config);
+		ThrowError("File %s does not exist", config);
 	}
 	
 	Handle mapKey = CreateKeyValues("stages");
@@ -277,8 +307,8 @@ stock void StopMusicTrack(int client)
 {
 	if (g_hMusicLoopTimer[client] != null)
 		delete g_hMusicLoopTimer[client];
-
-	if (IsValidClient(client))
+	
+	if (!IsFakeClient(client))
 		StopSound(client, SNDCHAN_AUTO, g_szClientBGM[client]);
 }
 

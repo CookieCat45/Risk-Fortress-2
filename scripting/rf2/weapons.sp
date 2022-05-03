@@ -17,8 +17,8 @@ stock void LoadWeapons()
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, WeaponConfig);
 	if (!FileExists(config))
 	{
-		ThrowError("File %s does not exist", config);
 		RF2_PrintToChatAll("Config file %s does not exist, please correct this", config);
+		ThrowError("File %s does not exist", config);
 	}
 	
 	Handle weaponKey = CreateKeyValues("weapons");
@@ -44,7 +44,7 @@ stock void LoadWeapons()
 	}
 	
 	g_iWeaponCount = count;
-	PrintToServer("Weapons loaded: %i", count);
+	PrintToServer("[RF2] Weapons loaded: %i", count);
 	delete weaponKey;
 }
 
@@ -171,7 +171,7 @@ stock void CreateWeapon(int client, char[] classname, int index, char[] attribut
 	}
 }
 
-stock int CreateWearable(int client, char[] classname, int index, char[] attributes = "", bool visible = true)
+stock int CreateWearable(int client, const char[] classname, int index, char[] attributes, bool visible = true, int quality=0, int level=0)
 {
 	int wearable = CreateEntityByName(classname);
 	if (wearable == INVALID_ENT_REFERENCE)
@@ -183,8 +183,8 @@ stock int CreateWearable(int client, char[] classname, int index, char[] attribu
 	SetEntProp(wearable, Prop_Send, "m_iItemDefinitionIndex", index);
 	SetEntProp(wearable, Prop_Send, "m_bInitialized", 1);
 	
-	SetEntProp(wearable, Prop_Send, "m_iEntityQuality", 6);
-	SetEntProp(wearable, Prop_Send, "m_iEntityLevel", 69);
+	SetEntProp(wearable, Prop_Send, "m_iEntityQuality", quality);
+	SetEntProp(wearable, Prop_Send, "m_iEntityLevel", level);
 	
 	if (attributes[0] != '\0')
 	{
@@ -213,8 +213,34 @@ stock int CreateWearable(int client, char[] classname, int index, char[] attribu
 	return wearable;
 }
 
+stock void TF2_RemoveAllWearables(int client)
+{
+	char classname[64];
+	int entCount = GetEntityCount();
+	for (int i = MaxClients+1; i <= entCount; i++)
+	{
+		if (!IsValidEntity(i))
+			continue;
+			
+		GetEntityClassname(i, classname, sizeof(classname));
+		if (StrContains(classname, "tf_wearable") != -1 || strcmp(classname, "tf_powerup_bottle") == 0)
+		{
+			if (GetEntPropEnt(i, Prop_Send, "m_hOwnerEntity") == client)
+				TF2_RemoveWearable(client, i);
+		}
+	}
+}
+
 stock void TF2_EquipWearable(int client, int entity)
 {
 	if (g_hSDKEquipWearable)
 		SDKCall(g_hSDKEquipWearable, client, entity);
+}
+
+stock int GetWeaponClipSize(int entity)
+{
+	if (g_hSDKGetMaxClip1)
+		return SDKCall(g_hSDKGetMaxClip1, entity);
+		
+	return -1;
 }

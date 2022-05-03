@@ -21,15 +21,12 @@ void LoadNatives()
 	
 	CreateNative("RF2_GetBaseMaxHealth", Native_GetBaseMaxHealth);
 	CreateNative("RF2_GetCalculatedMaxHealth", Native_GetCalculatedMaxHealth);
+	CreateNative("RF2_GetBaseSpeed", Native_GetBaseSpeed);
+	CreateNative("RF2_GetCalculatedSpeed", Native_GetCalculatedSpeed);
 	
-	CreateNative("RF2_GetDamageStat", Native_GetDamageStat);
-	
-	CreateNative("RF2_GetBaseSpeedStat", Native_GetBaseSpeedStat);
-	CreateNative("RF2_GetCalculatedSpeedStat", Native_GetCalculatedSpeedStat);
-	
-	CreateNative("RF2_GetStageNum", Native_GetStageNum);
-	CreateNative("RF2_SetStageNum", Native_SetStageNum);
 	CreateNative("RF2_GetMaxStages", Native_GetMaxStages);
+	CreateNative("RF2_GetCurrentStage", Native_GetCurrentStage);
+	CreateNative("RF2_GetTeleporterEntity", Native_GetTeleporterEntity);
 }
 
 void LoadForwards()
@@ -39,17 +36,17 @@ void LoadForwards()
 	f_GracePeriodEnded = CreateGlobalForward("RF2_OnGracePeriodEnd", ET_Ignore);
 }
 
-public int Native_IsRF2Enabled(Handle plugin, int numParams)
+public any Native_IsRF2Enabled(Handle plugin, int numParams)
 {
 	return g_bPluginEnabled;
 }
 
-public int Native_CanBeStunned(Handle plugin, int numParams)
+public any Native_CanBeStunned(Handle plugin, int numParams)
 {
 	return g_bStunnable[GetNativeCell(1)];
 }
 
-public int Native_IsPlayerBoss(Handle plugin, int numParams)
+public any Native_IsPlayerBoss(Handle plugin, int numParams)
 {
 	if (GetNativeCell(2) == true)
 		return g_bIsTeleporterBoss[GetNativeCell(1)];
@@ -57,9 +54,13 @@ public int Native_IsPlayerBoss(Handle plugin, int numParams)
 	return g_bIsBoss[GetNativeCell(1)];
 }
 
-public int Native_GetPlayerItemAmount(Handle plugin, int numParams)
+public any Native_GetPlayerItemAmount(Handle plugin, int numParams)
 {
-	return -1;
+	RF2ItemType itemIdx = GetNativeCell(2);
+	if (itemIdx <= Item_Null || itemIdx >= Item_MaxValid)
+		return -1;
+	
+	return g_iPlayerItem[GetNativeCell(1)][itemIdx];
 }
 
 public any Native_GetSurvivorCount(Handle plugin, int numParams)
@@ -97,7 +98,11 @@ public any Native_IsTeleporterEvent(Handle plugin, int numParams)
 	return g_bTeleporterEvent;
 }
 
-// Player stats natives
+public any Native_GetSurvivorIndex(Handle plugin, int numParams)
+{
+	return g_iPlayerSurvivorIndex[GetNativeCell(1)];
+}
+
 public any Native_GetSurvivorLevel(Handle plugin, int numParams)
 {
 	return g_iPlayerLevel[GetNativeCell(1)];
@@ -113,60 +118,27 @@ public any Native_GetCalculatedMaxHealth(Handle plugin, int numParams)
 	return g_iPlayerCalculatedMaxHealth[GetNativeCell(1)];
 }
 
-public any Native_GetDamageStat(Handle plugin, int numParams)
-{
-	return g_flPlayerBaseDamage[GetNativeCell(1)];
-}
-
-public any Native_GetBaseSpeedStat(Handle plugin, int numParams)
+public any Native_GetBaseSpeed(Handle plugin, int numParams)
 {
 	return g_flPlayerMaxSpeed[GetNativeCell(1)];
 }
 
-public any Native_GetCalculatedSpeedStat(Handle plugin, int numParams)
+public any Native_GetCalculatedSpeed(Handle plugin, int numParams)
 {
 	return g_flPlayerCalculatedMaxSpeed[GetNativeCell(1)];
 }
 
-public any Native_GetStageNum(Handle plugin, int numParams)
+public any Native_GetMaxStages(Handle plugin, int numParams)
+{
+	return g_iMaxStages;
+}
+
+public any Native_GetCurrentStage(Handle plugin, int numParams)
 {
 	return g_iCurrentStage;
 }
 
-public any Native_SetStageNum(Handle plugin, int numParams)
+public any Native_GetTeleporterEntity(Handle plugin, int numParams)
 {
-	g_iCurrentStage = GetNativeCell(1);
-}
-
-public any Native_GetMaxStages(Handle plugin, int numParams)
-{
-	char config[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
-	if (!FileExists(config))
-	{
-		ThrowError("File %s does not exist", config);
-		RF2_PrintToChatAll("Config file %s does not exist, please correct this", config);
-	}
-	
-	Handle mapKey = CreateKeyValues("stages");
-	FileToKeyValues(mapKey, config);
-	
-	char stage[16];
-	int stageCount = 0;
-	
-	for (int i = 0; i <= MAX_STAGES; i++)
-	{
-		KvRewind(mapKey);
-		FormatEx(stage, sizeof(stage), "stage%i", i+1);
-		if (KvJumpToKey(mapKey, stage))
-		{
-			stageCount++;
-		}
-		else
-		{
-			break;
-		}
-	}
-	delete mapKey;
-	return stageCount-1;
+	return g_iTeleporter;
 }

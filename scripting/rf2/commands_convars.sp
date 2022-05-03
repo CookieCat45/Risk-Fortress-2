@@ -7,9 +7,9 @@ bool g_bForceNextMap;
 char g_szForcedMap[256];
 char g_szMapForcer[128];
 
-void LoadCommandsAndCvars()
+stock void LoadCommandsAndCvars()
 {
-	RegAdminCmd("rf2_reload", Command_ReloadRF2, ADMFLAG_RCON, "Reloads the plugin. This will restart the round as well.");
+	RegAdminCmd("rf2_reload", Command_ReloadRF2, ADMFLAG_RCON, "Reloads the plugin. This will restart the round as well. Pass 1 to fully restart the game.");
 	RegAdminCmd("rf2_reloaditems", Command_ReloadItems, ADMFLAG_RCON, "Reloads RF2's item config.");
 	RegAdminCmd("rf2_setnextmap", Command_ForceMap, ADMFLAG_RCON, "Forces the next map to the map specified. /rf2_setnextmap <map name>");
 	
@@ -17,27 +17,39 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_giveitem", Command_GiveItem, ADMFLAG_RCON, "Give items to a player. /rf2_giveitem <player> <item index> <amount>\nNegative amounts will remove items from a player.");
 	RegAdminCmd("rf2_forcewin", Command_ForceWin, ADMFLAG_RCON, "Forces a team to win. /rf2_forcewin red|blue");
 	
-	RegAdminCmd("rf2_skipwait", Command_SkipWait, ADMFLAG_SLAY, "Skips the Waiting For Players sequence.\nUse only if you are certain all players are fully loaded in.");
+	RegAdminCmd("rf2_skipwait", Command_SkipWait, ADMFLAG_SLAY, "Skips the Waiting For Players sequence. Use only if you are certain all players are fully loaded in.");
 	RegAdminCmd("rf2_skipgrace", Command_SkipGracePeriod, ADMFLAG_RCON, "Skip the grace period at the start of a round");
 	RegAdminCmd("rf2_skipgraceperiod", Command_SkipGracePeriod, ADMFLAG_RCON, "Skip the grace period at the start of a round");
 	
 	RegAdminCmd("rf2_addpoints", Command_AddPoints, ADMFLAG_SLAY, "Add queue points to a player. /rf2_addpoints <player> <amount>");
 	RegAdminCmd("rf2_givecash", Command_GiveCash, ADMFLAG_RCON, "Give cash to a RED player. /rf2_givecash <player> <amount>");
+	RegAdminCmd("rf2_givexp", Command_GiveXP, ADMFLAG_RCON, "Give XP to a RED player. /rf2_givexp <player> <amount>");
 	
-	cv_AlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "Always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY|FCVAR_REPLICATED);
-	cv_DebugNoMapChange = CreateConVar("rf2_skip_map_change", "0", "Prevents the map from changing on round end.", FCVAR_NOTIFY|FCVAR_REPLICATED);
-	cv_DebugShowDifficultyCoeff = CreateConVar("rf2_show_difficulty_coeff", "0", "Shows the value of the difficulty coefficient.", FCVAR_NOTIFY|FCVAR_REPLICATED);
-	cv_DebugDontEndGame = CreateConVar("rf2_dont_end_game_on_death", "0", "Don't end the game if all of the survivors die.", FCVAR_NOTIFY|FCVAR_REPLICATED);
-	cv_EnableAFKManager = CreateConVar("rf2_use_afk_manager", "1", "Use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY|FCVAR_REPLICATED);
-	cv_AFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "120.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY|FCVAR_REPLICATED);
-	cv_BotsCanBeSurvivor = CreateConVar("rf2_bots_join_survivors", "0", "Whether or not bots are allowed to become survivors. Not recommended, generally only for testing purposes.", FCVAR_NOTIFY|FCVAR_REPLICATED);
+	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY);
+	g_cvDebugNoMapChange = CreateConVar("rf2_skip_map_change", "0", "If nonzero, prevents the map from changing on round end.", FCVAR_NOTIFY);
+	g_cvDebugShowDifficultyCoeff = CreateConVar("rf2_show_difficulty_coeff", "0", "If nonzero, shows the value of the difficulty coefficient.", FCVAR_NOTIFY);
+	g_cvDebugDontEndGame = CreateConVar("rf2_dont_end_game_on_death", "0", "If nonzero, don't end the game if all of the survivors die.", FCVAR_NOTIFY);
+	g_cvEnableAFKManager = CreateConVar("rf2_use_afk_manager", "1", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY);
+	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "120.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
+	g_cvBotsCanBeSurvivor = CreateConVar("rf2_bots_join_survivors", "0", "If nonzero, bots are allowed to become survivors. Not recommended, generally only for testing purposes.", FCVAR_NOTIFY);
+	g_cvSubDifficultyIncrement = CreateConVar("rf2_sub_difficulty_increment", "50.0", "When the difficulty coefficient reaches a multiple of this value, the sub difficulty increases.", FCVAR_NOTIFY);
+	g_cvDifficultyScaleMultiplier = CreateConVar("rf2_difficulty_scale_multiplier", "1.0", "ConVar that affects difficulty scaling.", FCVAR_NOTIFY);
+	g_cvShowObjectSpawns = CreateConVar("rf2_show_object_spawns", "0", "If nonzero, when an object spawns, its name and location will be printed to the console.", FCVAR_NOTIFY);
+	g_cvForceSeed = CreateConVar("rf2_force_seed", "-1", "If positive, forces the seed value of the next run to the value specified. Resets to -1 afterwards.", FCVAR_NOTIFY);
+	g_cvShowSeedInConsole = CreateConVar("rf2_show_seed_in_console", "1", "If nonzero, shows the current seed number in every player's console when a game begins.\nThe seed value will be logged by RF2 regardless of this setting.", FCVAR_NOTIFY);
 	
-	HookConVarChange(cv_EnableAFKManager, ConVarHook_EnableAFKManager);
+	HookConVarChange(g_cvEnableAFKManager, ConVarHook_EnableAFKManager);
+	HookConVarChange(g_cvSubDifficultyIncrement, ConVarHook_SubDifficultyIncrement);
+	HookConVarChange(g_cvForceSeed, ConVarHook_ForceSeed);
 }
 
 public Action Command_ReloadRF2(int client, int args)
 {
-	RestartGame(true);
+	char arg1[8];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	bool fullRestart = view_as<bool>(StringToInt(arg1));
+	
+	RestartGame(fullRestart, true);
 }
 
 public Action Command_ReloadItems(int client, int args)
@@ -91,7 +103,7 @@ public Action Command_GiveItem(int client, int args)
 	char name[MAX_NAME_LENGTH];
 	
 	GetItemName(item, name, sizeof(name));
-	GetItemQualityColourTag(item, colour, sizeof(colour));
+	GetQualityColorTag(g_ItemQuality[item], colour, sizeof(colour));
 	
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
 	if (matches < 1)
@@ -164,7 +176,59 @@ public Action Command_GiveCash(int client, int args)
 			}
 				
 			g_flPlayerCash[clients[i]] += amount;
-			RF2_PrintToChatAll("{yellow}%N{default} gave {lime}$%.0f{default} to %N", client, amount, clients[i]);
+			RF2_PrintToChatAll("{yellow}%N{default} gave {lime}$%.0f{default} to {yellow}%N", client, amount, clients[i]);
+		}
+	}
+	return Plugin_Handled;
+}
+
+public Action Command_GiveXP(int client, int args)
+{
+	if (args != 2)
+	{
+		RF2_ReplyToCommand(client, "Usage: /rf2_givexp <player> <amount>");
+		return Plugin_Handled;
+	}
+	
+	char arg1[128], arg2[32];
+	
+	GetCmdArg(1, arg1, sizeof(arg1)); // player(s)
+	GetCmdArg(2, arg2, sizeof(arg2));
+	
+	float amount = StringToFloat(arg2);
+	if (amount <= 0)
+	{
+		RF2_ReplyToCommand(client, "Please specify an amount above 0.");
+		return Plugin_Handled;
+	}
+	
+	char clientName[MAX_TARGET_LENGTH];
+	int clients[MAXTF2PLAYERS];
+	bool multiLanguage;
+	
+	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
+	if (matches < 1)
+	{
+		ReplyToTargetError(client, matches);
+		return Plugin_Handled;
+	}
+	else if (matches >= 1)
+	{
+		for (int i = 0; i < matches; i++)
+		{
+			if (g_iPlayerSurvivorIndex[clients[i]] < 0)
+			{
+				RF2_ReplyToCommand(client, "%N is not a Survivor.", clients[i]);
+				continue;
+			}
+			if (!IsPlayerAlive(clients[i]))
+			{
+				RF2_ReplyToCommand(client, "%N is dead.", clients[i]);
+				continue;
+			}
+			
+			UpdatePlayerXP(clients[i], amount);
+			RF2_PrintToChatAll("{yellow}%N{default} gave {cyan}%.0f{default} XP to {yellow}%N", client, amount, clients[i]);
 		}
 	}
 	return Plugin_Handled;
@@ -331,6 +395,26 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 		{
 			g_flAFKTime[i] = 0.0;
 			g_bIsAFK[i] = false;
+		}
+	}
+}
+
+public void ConVarHook_SubDifficultyIncrement(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	g_flSubDifficultyIncrement = StringToFloat(newValue);
+}
+
+public void ConVarHook_ForceSeed(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	int seed = StringToInt(newValue);
+	
+	if (seed != -1)
+	{
+		if (seed > 2147483647 || seed < 0)
+		{
+			PrintToConsoleAll("[RF2] rf2_force_seed was set to an invalid value (%i). Reverting to -1.", seed);
+			PrintToServer("[RF2] rf2_force_seed was set to an invalid value (%i). Reverting to -1.", seed);
+			SetConVarInt(g_cvForceSeed, -1, true, false);
 		}
 	}
 }

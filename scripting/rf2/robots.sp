@@ -3,8 +3,6 @@
 #endif
 #define _RF2_robots_included
 
-#include <PathFollower_Nav>
-
 float g_flCashValue[2048];
 int g_iRobotAmount; // This is the amount of robots currently loaded
 
@@ -23,6 +21,7 @@ float g_flRobotModelScale[MAX_ROBOT_TYPES];
 bool g_bRobotIsGiant[MAX_ROBOT_TYPES];
 
 int g_iBotDifficulty[MAX_ROBOT_TYPES]; // TFBot skill level
+float g_flBotMinReloadTime[MAX_ROBOT_TYPES]; // If we're a TFBot and our clip hits 0, reload for at least this amount of time
 
 float g_flRobotXPAward[MAX_ROBOT_TYPES];
 float g_flRobotCashAward[MAX_ROBOT_TYPES];
@@ -34,6 +33,14 @@ int g_iRobotWeaponIndex[MAX_ROBOT_TYPES][TF_WEAPON_SLOTS];
 bool g_bRobotWeaponVisible[MAX_ROBOT_TYPES][TF_WEAPON_SLOTS];
 int g_iRobotWeaponAmount[MAX_ROBOT_TYPES];
 bool g_bRobotWeaponExists[MAX_ROBOT_TYPES][TF_WEAPON_SLOTS];
+
+// Wearables
+char g_szRobotWearableName[MAX_ROBOT_TYPES][MAX_ROBOT_WEARABLES][128];
+char g_szRobotWearableAttributes[MAX_ROBOT_TYPES][MAX_ROBOT_WEARABLES][MAX_ATTRIBUTE_STRING_LENGTH];
+int g_iRobotWearableIndex[MAX_ROBOT_TYPES][MAX_ROBOT_WEARABLES];
+bool g_bRobotWearableVisible[MAX_ROBOT_TYPES][MAX_ROBOT_WEARABLES];
+int g_iRobotWearableAmount[MAX_ROBOT_TYPES];
+bool g_bRobotWearableExists[MAX_ROBOT_TYPES][MAX_ROBOT_WEARABLES];
 
 stock void LoadRobots(char[] names)
 {
@@ -49,8 +56,8 @@ stock void LoadRobots(char[] names)
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, RobotConfig);
 	if (!FileExists(config))
 	{
-		ThrowError("File %s does not exist", config);
 		RF2_PrintToChatAll("Config file %s does not exist, please correct this", config);
+		ThrowError("File %s does not exist", config);
 	}
 	
 	int robotAmount;
@@ -99,6 +106,7 @@ stock void LoadRobots(char[] names)
 		g_flRobotBaseSpeed[robot] = KvGetFloat(robotKey, "speed", 300.0);
 		
 		g_iBotDifficulty[robot] = KvGetNum(robotKey, "tf_bot_difficulty", TFBotDifficulty_Hard);
+		g_flBotMinReloadTime[robot] = KvGetFloat(robotKey, "tf_bot_min_reload_time", 0.75);
 		
 		// XP and cash awards on death
 		g_flRobotXPAward[robot] = KvGetFloat(robotKey, "xp_award", 15.0);
@@ -107,7 +115,7 @@ stock void LoadRobots(char[] names)
 		// weapons
 		for (int wep = 0; wep < TF_WEAPON_SLOTS; wep++)
 		{
-			FormatEx(sectionName, sizeof(sectionName), "weapon%i", wep);
+			FormatEx(sectionName, sizeof(sectionName), "weapon%i", wep+1);
 			if (!KvJumpToKey(robotKey, sectionName))
 				continue;
 			
@@ -117,6 +125,23 @@ stock void LoadRobots(char[] names)
 			g_bRobotWeaponVisible[robot][wep] = view_as<bool>(KvGetNum(robotKey, "visible", 1));
 			g_iRobotWeaponAmount[robot]++;
 			g_bRobotWeaponExists[robot][wep] = true;
+			
+			KvGoBack(robotKey);
+		}
+		
+		// wearables
+		for (int wearable = 0; wearable < MAX_ROBOT_WEARABLES; wearable++)
+		{
+			FormatEx(sectionName, sizeof(sectionName), "wearable%i", wearable+1);
+			if (!KvJumpToKey(robotKey, sectionName))
+				continue;
+			
+			KvGetString(robotKey, "classname", g_szRobotWearableName[robot][wearable], PLATFORM_MAX_PATH, "tf_wearable");
+			KvGetString(robotKey, "attributes", g_szRobotWearableAttributes[robot][wearable], MAX_ATTRIBUTE_STRING_LENGTH, "");
+			g_iRobotWearableIndex[robot][wearable] = KvGetNum(robotKey, "index", 5000);
+			g_bRobotWearableVisible[robot][wearable] = view_as<bool>(KvGetNum(robotKey, "visible", 1));
+			g_iRobotWearableAmount[robot]++;
+			g_bRobotWearableExists[robot][wearable] = true;
 			
 			KvGoBack(robotKey);
 		}
@@ -145,7 +170,7 @@ stock void LoadRobots(char[] names)
 	ReplaceString(message, sizeof(message), " ; ", "");
 	ReplaceString(message, sizeof(message), " ", "\n");
 	
-	PrintToServer("\nLoaded robots:\n%s\n", message);
+	PrintToServer("\n[RF2] Loaded robots:\n%s\n", message);
 }
 
 // Returns the index of a currently-loaded robot at random, optionally can retrieve the config name
@@ -174,7 +199,7 @@ stock void SpawnRobot(int client, int type, bool force=false)
 	int playerCount;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsValidClient(i, true))
+		if (IsClientInGame(i) && IsPlayerAlive(i))
 		{
 			if (GetClientTeam(i) == TEAM_SURVIVOR)
 			{
@@ -190,7 +215,15 @@ stock void SpawnRobot(int client, int type, bool force=false)
 	int randomSurvivor = GetArrayCell(survivorArray, GetRandomInt(0, playerCount-1));
 	float pos[3];
 	if (IsValidClient(randomSurvivor))
+	{
 		GetClientAbsOrigin(randomSurvivor, pos);
+	}
+	else
+	{
+		pos[0] = GetRandomFloat(-3000.0, 3000.0);
+		pos[1] = GetRandomFloat(-3000.0, 3000.0);
+		pos[2] = GetRandomFloat(-1500.0, 1500.0);
+	}
 		
 	delete survivorArray;
 	
@@ -200,38 +233,25 @@ stock void SpawnRobot(int client, int type, bool force=false)
 	ScaleVector(maxs, g_flRobotModelScale[type]);
 	
 	float spawnPos[3];
-	NavArea area = GetSpawnPointFromNav(pos);
-	if (area)
-	{
-		area.GetRandomPoint(spawnPos);
-		spawnPos[2] += 30.0 * g_flRobotModelScale[type];
-		if (spawnPos[2] > 60.0)
-			spawnPos[2] = 60.0;
-		
-		Handle trace = TR_TraceHullFilterEx(spawnPos, spawnPos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_SpawnCheck, client);
-		if (TR_DidHit(trace)) // we'll get stuck if we spawn here, try again
-		{
-			TrySpawnAgain(client, type);
-			delete trace;
-			return;
-		}
-		delete trace;
-		
-		TeleportEntity(client, spawnPos, NULL_VECTOR, NULL_VECTOR);
-	}
-	else
+	NavArea area = GetSpawnPointFromNav(pos, MIN_SPAWN_DIST, MAX_SPAWN_DIST, mins, maxs);
+	if (!area)
 	{
 		char mapName[256];
 		GetCurrentMap(mapName, sizeof(mapName));
-		LogError("NavArea was somehow NULL on map %s. This shouldn't happen! Did you forget to generate the NavMesh?", mapName);
+		LogError("NavArea was somehow NULL on map %s. This should never happen! Did you forget to generate the NavMesh?", mapName);
 		
-		TrySpawnAgain(client, type);
+		TrySpawnAgain(client, type); // try again in 0.1s. if the spawn somehow keeps failing, this error will be spammed, so we'll know something is up
 		return;
+	}
+	else
+	{
+		area.GetCenter(spawnPos);
 	}
 	
 	g_iPlayerRobotType[client] = type;
 	g_iPlayerBaseHealth[client] = g_iRobotBaseHp[type];
 	g_flPlayerMaxSpeed[client] = g_flRobotBaseSpeed[type];
+	
 	if (g_bRobotIsGiant[type])
 		g_bIsGiant[client] = true;
 		
@@ -266,8 +286,19 @@ stock void SpawnRobot(int client, int type, bool force=false)
 		}
 	}
 	
+	for (int i = 0; i < MAX_ROBOT_WEARABLES; i++)
+	{
+		if (g_bRobotWearableExists[type][i])
+		{
+			CreateWearable(client, 
+			g_szRobotWearableName[type][i], 
+			g_iRobotWearableIndex[type][i], 
+			g_szRobotWearableAttributes[type][i], 
+			g_bRobotWearableVisible[type][i]);
+		}
+	}
+	
 	g_iPlayerStatWearable[client] = CreateWearable(client, "tf_wearable", ATTRIBUTE_WEARABLE_INDEX, BASE_PLAYER_ATTRIBUTES, false);
-	//CalculatePlayerMaxHealth(client, true, true);
 }
 
 stock void TrySpawnAgain(int client, int type, float time=0.1)
@@ -396,10 +427,10 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsValidClient(i, true))
+		if (!IsClientInGame(i) || !IsPlayerAlive(i))
 			continue;
 		
-		// Scouts pick up cash in a radius automatically, like in MvM
+		// Scouts pick up cash in a radius automatically, like in MvM, though he does not heal from it.
 		if (GetClientTeam(i) == TEAM_SURVIVOR && TF2_GetPlayerClass(i) == TFClass_Scout)
 		{
 			GetClientAbsOrigin(i, scoutOrigin);
@@ -437,20 +468,18 @@ public Action Timer_CashTouchGround(Handle timer, int entity)
 
 stock Action PickupCash(int client, int entity)
 {
-	// If client is 0 or below, cash is most likely being collected automatically.
-	if (client <= 0 || GetClientTeam(client) == TEAM_SURVIVOR)
+	// If client is 0 or below, the cash is most likely being collected automatically.
+	if (client < 1 || GetClientTeam(client) == TEAM_SURVIVOR)
 	{
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsValidClient(i, true))
+			if (!IsClientInGame(i) || !IsPlayerAlive(i))
 				continue;
 				
 			if (GetClientTeam(i) == TEAM_SURVIVOR)
 				g_flPlayerCash[i] += g_flCashValue[entity];
 		}
 		
-		// Scouts heal the currency pack's value on collection, like in MvM.
-		// The heal is capped at twice the Scout's max health.
 		if (client > 0)
 		{
 			SetVariantString("randomnum:25");
@@ -462,18 +491,6 @@ stock Action PickupCash(int client, int entity)
 			SetVariantString("TLK_MVM_MONEY_PICKUP");
 			AcceptEntityInput(client, "SpeakResponseConcept");
 			AcceptEntityInput(client, "ClearContext");
-			
-			if (TF2_GetPlayerClass(client) == TFClass_Scout)
-			{
-				int maxHealth = g_iPlayerCalculatedMaxHealth[client];
-				int health = GetEntProp(client, Prop_Data, "m_iHealth");
-				health += RoundFloat(g_flCashValue[entity]);
-				
-				if (health > maxHealth * 2)
-					health = maxHealth * 2;
-					
-				SetEntityHealth(client, health);
-			}
 		}
 		
 		if (IsValidEntity(entity))

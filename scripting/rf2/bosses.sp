@@ -6,47 +6,55 @@
 int g_iBossAmount;
 
 // General boss data
-char g_szLoadedBosses[MAX_BOSSES][MAX_CONFIG_NAME_LENGTH];
-char g_szAllLoadedBosses[MAX_BOSSES * MAX_CONFIG_NAME_LENGTH] = "; "; // One string containing all the config names
+char g_szLoadedBosses[MAX_BOSS_TYPES][MAX_CONFIG_NAME_LENGTH];
+char g_szAllLoadedBosses[MAX_BOSS_TYPES * MAX_CONFIG_NAME_LENGTH] = "; "; // One string containing all the config names
 
-char g_szBossName[MAX_BOSSES][64];
-char g_szBossDesc[MAX_BOSSES][PLATFORM_MAX_PATH];
-char g_szBossModel[MAX_BOSSES][PLATFORM_MAX_PATH];
+char g_szBossName[MAX_BOSS_TYPES][64];
+char g_szBossDesc[MAX_BOSS_TYPES][PLATFORM_MAX_PATH];
+char g_szBossModel[MAX_BOSS_TYPES][PLATFORM_MAX_PATH];
 
-int g_iBossTfClass[MAX_BOSSES];
-int g_iBossBaseHp[MAX_BOSSES];
-float g_flBossBaseSpeed[MAX_BOSSES];
-float g_flBossModelScale[MAX_BOSSES];
-bool g_bBossIsGiant[MAX_BOSSES];
+int g_iBossTfClass[MAX_BOSS_TYPES];
+int g_iBossBaseHp[MAX_BOSS_TYPES];
+float g_flBossBaseSpeed[MAX_BOSS_TYPES];
+float g_flBossModelScale[MAX_BOSS_TYPES];
+bool g_bBossIsGiant[MAX_BOSS_TYPES];
 
-int g_iBossBotDifficulty[MAX_BOSSES];
+int g_iBossBotDifficulty[MAX_BOSS_TYPES];
 
-float g_flBossXPAward[MAX_BOSSES];
-float g_flBossCashAward[MAX_BOSSES];
+float g_flBossXPAward[MAX_BOSS_TYPES];
+float g_flBossCashAward[MAX_BOSS_TYPES];
 
-char g_szBossConditions[MAX_BOSSES][256];
+char g_szBossConditions[MAX_BOSS_TYPES][256];
 
-// Boss weapon data
-char g_szBossWeaponName[MAX_BOSSES][TF_WEAPON_SLOTS][128];
-char g_szBossWeaponAttributes[MAX_BOSSES][TF_WEAPON_SLOTS][MAX_ATTRIBUTE_STRING_LENGTH];
-int g_iBossWeaponIndex[MAX_BOSSES][TF_WEAPON_SLOTS];
-bool g_bBossWeaponVisible[MAX_BOSSES][TF_WEAPON_SLOTS];
-int g_iBossWeaponAmount[MAX_BOSSES];
-bool g_bBossWeaponExists[MAX_BOSSES][TF_WEAPON_SLOTS];
+// Weapons
+char g_szBossWeaponName[MAX_BOSS_TYPES][TF_WEAPON_SLOTS][128];
+char g_szBossWeaponAttributes[MAX_BOSS_TYPES][TF_WEAPON_SLOTS][MAX_ATTRIBUTE_STRING_LENGTH];
+int g_iBossWeaponIndex[MAX_BOSS_TYPES][TF_WEAPON_SLOTS];
+bool g_bBossWeaponVisible[MAX_BOSS_TYPES][TF_WEAPON_SLOTS];
+int g_iBossWeaponAmount[MAX_BOSS_TYPES];
+bool g_bBossWeaponExists[MAX_BOSS_TYPES][TF_WEAPON_SLOTS];
+
+// Wearables
+char g_szBossWearableName[MAX_BOSS_TYPES][MAX_BOSS_WEARABLES][128];
+char g_szBossWearableAttributes[MAX_BOSS_TYPES][MAX_BOSS_WEARABLES][MAX_ATTRIBUTE_STRING_LENGTH];
+int g_iBossWearableIndex[MAX_BOSS_TYPES][MAX_BOSS_WEARABLES];
+bool g_bBossWearableVisible[MAX_BOSS_TYPES][MAX_BOSS_WEARABLES];
+int g_iBossWearableAmount[MAX_BOSS_TYPES];
+bool g_bBossWearableExists[MAX_BOSS_TYPES][MAX_BOSS_WEARABLES];
 
 // Minions (TODO)
-char g_szBossMinions[MAX_BOSSES][PLATFORM_MAX_PATH];
-float g_flBossMinionSpawnInterval[MAX_BOSSES];
-bool g_bBossMinionInstantSpawn[MAX_BOSSES] = {true, ...};
-int g_iBossMinionSpawnCount[MAX_BOSSES];
+char g_szBossMinions[MAX_BOSS_TYPES][PLATFORM_MAX_PATH];
+float g_flBossMinionSpawnInterval[MAX_BOSS_TYPES];
+bool g_bBossMinionInstantSpawn[MAX_BOSS_TYPES] = {true, ...};
+int g_iBossMinionSpawnCount[MAX_BOSS_TYPES];
 
 stock void LoadBosses(char[] names)
 {
-	if (g_iBossAmount >= MAX_BOSSES)
+	if (g_iBossAmount >= MAX_BOSS_TYPES)
 	{
 		char mapName[128];
 		GetCurrentMap(mapName, sizeof(mapName));
-		LogError("Max boss limit of %i reached on map %s", MAX_BOSSES, mapName);
+		LogError("Max boss limit of %i reached on map %s", MAX_BOSS_TYPES, mapName);
 		return;
 	}
 	
@@ -54,8 +62,8 @@ stock void LoadBosses(char[] names)
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, BossConfig);
 	if (!FileExists(config))
 	{
-		ThrowError("File %s does not exist", config);
 		RF2_PrintToChatAll("Config file %s does not exist, please correct this", config);
+		ThrowError("File %s does not exist", config);
 	}
 	
 	int bossAmount;
@@ -63,9 +71,9 @@ stock void LoadBosses(char[] names)
 	Handle bossKey = CreateKeyValues("bosses");
 	FileToKeyValues(bossKey, config);
 	
-	char bossArray[MAX_BOSSES][MAX_CONFIG_NAME_LENGTH];
+	char bossArray[MAX_BOSS_TYPES][MAX_CONFIG_NAME_LENGTH];
 	char buffer[MAX_CONFIG_NAME_LENGTH];
-	int count = ExplodeString(names, " ; ", bossArray, MAX_BOSSES, MAX_CONFIG_NAME_LENGTH);
+	int count = ExplodeString(names, " ; ", bossArray, MAX_BOSS_TYPES, MAX_CONFIG_NAME_LENGTH);
 	
 	for (int boss = g_iBossAmount; boss < count+g_iBossAmount; boss++)
 	{
@@ -135,12 +143,30 @@ stock void LoadBosses(char[] names)
 			
 			KvGoBack(bossKey);
 		}
+		
+		// wearables
+		for (int wearable = 0; wearable < MAX_BOSS_WEARABLES; wearable++)
+		{
+			FormatEx(sectionName, sizeof(sectionName), "wearable%i", wearable+1);
+			if (!KvJumpToKey(bossKey, sectionName))
+				continue;
+			
+			KvGetString(bossKey, "classname", g_szBossWearableName[boss][wearable], PLATFORM_MAX_PATH, "tf_wearable");
+			KvGetString(bossKey, "attributes", g_szBossWearableAttributes[boss][wearable], MAX_ATTRIBUTE_STRING_LENGTH, "");
+			g_iBossWearableIndex[boss][wearable] = KvGetNum(bossKey, "index", 5000);
+			g_bBossWearableVisible[boss][wearable] = view_as<bool>(KvGetNum(bossKey, "visible", 1));
+			g_iBossWearableAmount[boss]++;
+			g_bBossWearableExists[boss][wearable] = true;
+			
+			KvGoBack(bossKey);
+		}
+		
 		bossAmount++;
-		if (bossAmount >= MAX_BOSSES)
+		if (bossAmount >= MAX_BOSS_TYPES)
 		{
 			char mapName[128];
 			GetCurrentMap(mapName, sizeof(mapName));
-			LogError("Max boss limit of %i reached on map %s", MAX_BOSSES, mapName);
+			LogError("Max boss limit of %i reached on map %s", MAX_BOSS_TYPES, mapName);
 			break;
 		}
 		
@@ -158,7 +184,7 @@ stock void LoadBosses(char[] names)
 	ReplaceString(message, sizeof(message), " ; ", "");
 	ReplaceString(message, sizeof(message), " ", "\n");
 	
-	PrintToServer("Loaded bosses:\n%s\n", message);
+	PrintToServer("[RF2] Loaded bosses:\n%s\n", message);
 }
 
 stock int GetRandomBoss(bool getName = false, char[] name="", int size=0)
@@ -179,7 +205,7 @@ stock void SummonTeleporterBosses(int entity)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsValidClient(i) || GetClientTeam(i) != TEAM_ROBOT)
+		if (!IsClientInGame(i) || GetClientTeam(i) != TEAM_ROBOT)
 			continue;
 		
 		if (!IsPlayerAlive(i)) // Dead robots have the biggest priority, obviously.
@@ -212,10 +238,13 @@ stock void SummonTeleporterBosses(int entity)
 	SortIntegers(bossPoints, sizeof(bossPoints), Sort_Descending);
 	int highestPoints = bossPoints[0];
 	int count;
-	int bossCount = 1 + (g_iSurvivorCount-1 / 4) + (g_iSubDifficulty / 2);
+	int bossCount = 1;// + (g_iSurvivorCount-1 / 4) + (g_iSubDifficulty-1 / 2);
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
+		if (!IsClientInGame(i) || g_bIsTeleporterBoss[i])
+			continue;
+		
 		if (playerPoints[i] == highestPoints)
 		{
 			SpawnBoss(i, GetRandomBoss(), false, entity);
@@ -226,14 +255,26 @@ stock void SummonTeleporterBosses(int entity)
 				break;
 				
 			highestPoints = bossPoints[count];
-			i = 1; // reset our loop
+			i = 0; // reset our loop
 		}
 	}
 	EmitSoundToAll(SOUND_BOSS_SPAWN);
 }
 
-stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity)
+stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity, bool force=true)
 {
+	if (IsPlayerAlive(client))
+	{
+		if (force)
+		{
+			ForcePlayerSuicide(client);
+		}
+		else
+		{
+			return;
+		}
+	}
+	
 	ChangeClientTeam(client, TEAM_ROBOT);
 	
 	if (IsFakeClient(client))
@@ -246,7 +287,7 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity)
 		int playerCount;
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (IsValidClient(i, true))
+			if (IsClientInGame(i) && IsPlayerAlive(i))
 			{
 				if (GetClientTeam(i) == TEAM_SURVIVOR)
 				{
@@ -255,6 +296,7 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity)
 				}
 			}
 		}
+		
 		ResizeArray(survivorArray, playerCount);
 		if (GetArraySize(survivorArray) <= 0)
 			ResizeArray(survivorArray, 1);
@@ -262,7 +304,15 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity)
 		int randomSurvivor = GetArrayCell(survivorArray, GetRandomInt(0, playerCount-1));
 		entity = randomSurvivor;
 		if (IsValidClient(randomSurvivor))
+		{
 			GetClientAbsOrigin(randomSurvivor, pos);
+		}
+		else
+		{
+			pos[0] = GetRandomFloat(-3000.0, 3000.0);
+			pos[1] = GetRandomFloat(-3000.0, 3000.0);
+			pos[2] = GetRandomFloat(-1500.0, 1500.0);
+		}
 			
 		delete survivorArray;
 	}
@@ -278,29 +328,8 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity)
 	ScaleVector(maxs, g_flBossModelScale[type]);
 	
 	float spawnPos[3];
-	NavArea area = GetSpawnPointFromNav(pos, MIN_SPAWN_DIST, MIN_SPAWN_DIST*1.5, NULL_VECTOR, true, 1.25);
-	if (area)
-	{
-		area.GetCenter(spawnPos);
-		spawnPos[2] += 30.0 * g_flBossModelScale[type];
-		if (spawnPos[2] > 60.0)
-			spawnPos[2] = 60.0;
-		
-		TR_TraceHullFilter(spawnPos, spawnPos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_SpawnCheck, client);
-		if (TR_DidHit()) // we'll get stuck if we spawn here, try again the next frame.
-		{
-			DataPack pack = CreateDataPack();
-			
-			pack.WriteCell(client);
-			pack.WriteCell(type);
-			pack.WriteCell(randomSpawn);
-			pack.WriteCell(entity);
-			
-			RequestFrame(RF_TrySpawnAgainBoss, pack);
-			return;
-		}
-	}
-	else
+	NavArea area = GetSpawnPointFromNav(pos, MIN_SPAWN_DIST, MAX_SPAWN_DIST, mins, maxs);
+	if (!area)
 	{
 		char mapName[256];
 		GetCurrentMap(mapName, sizeof(mapName));
@@ -315,10 +344,15 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity)
 		RequestFrame(RF_TrySpawnAgainBoss, pack);
 		return;
 	}
+	else
+	{
+		area.GetCenter(spawnPos);
+	}
 	
 	g_iPlayerBossType[client] = type;
 	g_iPlayerBaseHealth[client] = g_iBossBaseHp[type];
 	g_flPlayerMaxSpeed[client] = g_flBossBaseSpeed[type];
+	
 	if (g_bBossIsGiant[type])
 		g_bIsGiant[client] = true;
 		
@@ -353,8 +387,19 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity)
 		}
 	}
 	
+	for (int i = 0; i < MAX_BOSS_WEARABLES; i++)
+	{
+		if (g_bBossWearableExists[type][i])
+		{
+			CreateWearable(client, 
+			g_szBossWearableName[type][i], 
+			g_iBossWearableIndex[type][i], 
+			g_szBossWearableAttributes[type][i], 
+			g_bBossWearableVisible[type][i]);
+		}
+	}
+	
 	g_iPlayerStatWearable[client] = CreateWearable(client, "tf_wearable", ATTRIBUTE_WEARABLE_INDEX, BASE_PLAYER_ATTRIBUTES, false);
-	//CalculatePlayerMaxHealth(client, true, true);
 	
 	if (g_szBossConditions[type][0] != '\0')
 	{

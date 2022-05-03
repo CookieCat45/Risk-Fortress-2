@@ -3,30 +3,16 @@
 #endif
 #define _RF2_objects_included
 
-#define OBJ_TELEPORTER "rf2_object_teleporter"
-#define MAX_TELEPORTERS 16
-#define TELEPORTER_RADIUS 1500.0
-
-#define OBJ_ALTAR "rf2_object_altar"
-#define MAX_ALTARS 8
-
-#define MAX_OBJECTS 128
-#define BASE_OBJECT_COUNT 10
-
-#define OBJ_CRATE "rf2_object_crate"
-#define OBJ_CRATE_LARGE "rf2_object_crate_large"
-#define CRATE_BASE_COST 50.0
-#define CRATE_LARGE_BASE_COST 150.0
-
-int g_iObjectState[2048] = {Obj_None, ...};
+RF2ObjectState g_ObjectState[2048] = {Obj_None, ...};
 float g_flObjectCost[2048];
+int g_iObjectItem[2048];
 
 float g_flTeleporterRadius;
 float g_flTeleporterCharge;
 float g_flTeleporterOrigin[3];
 
-int g_iTeleporter;
-int g_iTeleporterActivator;
+int g_iTeleporter = -1;
+int g_iTeleporterActivator = -1;
 bool g_bTeleporterEvent;
 bool g_bTeleporterEventCompleted;
 
@@ -35,23 +21,25 @@ char g_szTeleporterHud[MAXTF2PLAYERS][64];
 stock int SpawnObjects()
 {
 	DespawnObjects();
+	SetRandomSeed(g_iSeed);
+	
 	char mapName[PLATFORM_MAX_PATH];
 	GetCurrentMap(mapName, sizeof(mapName));
 	
 	int teleporter[MAX_TELEPORTERS], teleporterCount;
 	bool teleporterError;
 	
-	int survivors = RF2_GetSurvivorCount();
+	int survivors = g_iSurvivorCount;
 	
 	// Find our teleporter spawnpoints
 	char targetName[128];
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "prop_dynamic")) != -1)
 	{
-		if (g_iObjectState[entity] == Obj_None)
+		if (g_ObjectState[entity] == Obj_None)
 		{
 			GetEntPropString(entity, Prop_Data, "m_iName", targetName, sizeof(targetName));
-			if (strcmp(targetName, OBJ_TELEPORTER) == 0) // is this a teleporter spawnpoint? if so, add it to our array
+			if (strcmp(targetName, OBJECT_TELEPORTER) == 0) // is this a teleporter spawnpoint? if so, add it to our array
 			{
 				if (teleporterCount > MAX_TELEPORTERS)
 				{
@@ -69,7 +57,7 @@ stock int SpawnObjects()
 		}
 	}
 	
-	// now spawn the teleporter at a random location
+	// now "spawn" the teleporter at a random location
 	int randomTele = GetRandomInt(0, teleporterCount-1);
 	SpawnTeleporter(teleporter[randomTele]);
 	
@@ -78,49 +66,33 @@ stock int SpawnObjects()
 	if (spawnCount > MAX_OBJECTS)
 		spawnCount = MAX_OBJECTS;
 		
-	int crateCount = RoundToFloor(IntToFloat(spawnCount) * 0.6); // 60% of all objects will be crates.
+	int crateCount = RoundToFloor(IntToFloat(spawnCount) * GetRandomFloat(0.6, 0.7)); // 60% to 70% of all objects will be crates
 	//int miscCount = spawnCount - crateCount;
 	
 	int spawns;
-	float pos[3];
 	float spawnPos[3];
-	float angles[3];
-	float direction[3];
-	float randomDist;
 	NavArea area;
 	
 	while (spawns < spawnCount)
 	{
-		pos[2] = GetRandomFloat(-800.0, 800.0); // always 0 0 0 with random elevation
-		angles[1] = GetRandomFloat(-180.0, 180.0);
-		GetAngleVectors(angles, direction, NULL_VECTOR, NULL_VECTOR);
-		NormalizeVector(direction, direction);
-		
-		randomDist = GetRandomFloat(0.0, 8000.0);
-		pos[0] += direction[0] * randomDist;
-		pos[1] += direction[1] * randomDist;
-		pos[2] += direction[2] * randomDist;
-		
-		area = TheNavMesh.GetNearestNavArea_Vec(pos, true, 999999999.0, false, false);
+		area = GetSpawnPointFromNav(NULL_VECTOR, GetRandomFloat(10.0, 2500.0), GetRandomFloat(0.0, 999999.0));	
 		area.GetRandomPoint(spawnPos);
 		
 		if (crateCount > 0)
 		{
-			CreateObject(spawnPos, OBJ_CRATE, MODEL_CRATE, 0.5, true, 2);
-			PrintToServer("Crate spawned at %.0f %.0f %.0f", spawnPos[0], spawnPos[1], spawnPos[2]);
+			CreateObject(spawnPos, OBJECT_CRATE, MODEL_CRATE, true, SOLID_BBOX);
 			crateCount--;
 		}
 		
-		CopyVectors(NULL_VECTOR, pos);
 		spawns++;
 	}
 	
-	// delete unused spawnpoints to save on edicts
+	// delete unused spawnpoints
 	entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "prop_dynamic")) != -1)
 	{
 		GetEntPropString(entity, Prop_Data, "m_iName", targetName, sizeof(targetName));
-		if (g_iObjectState[entity] != Obj_Active && strcmp(targetName, OBJ_TELEPORTER) == 0)
+		if (g_ObjectState[entity] != Obj_Active && strcmp(targetName, OBJECT_TELEPORTER) == 0)
 			RemoveEntity(entity);
 	}
 	
@@ -139,7 +111,7 @@ stock void DespawnObjects(bool logSpawns = false)
 		GetEntPropString(entity, Prop_Data, "m_iName", targetName, sizeof(targetName));
 		if (StrContains(targetName, "rf2_object") != -1)
 		{
-			if (strcmp(targetName, OBJ_TELEPORTER) == 0) // teleporters are handled differently
+			if (strcmp(targetName, OBJECT_TELEPORTER) == 0) // teleporters are handled differently
 			{
 				SetEntityModel(entity, MODEL_INVISIBLE);
 				AcceptEntityInput(entity, "DisableCollision");
@@ -149,7 +121,7 @@ stock void DespawnObjects(bool logSpawns = false)
 			{
 				RemoveEntity(entity);	
 			}
-			g_iObjectState[entity] = Obj_None;
+			g_ObjectState[entity] = Obj_None;
 		}
 	}
 	
@@ -160,7 +132,7 @@ stock void DespawnObjects(bool logSpawns = false)
 		GetEntPropString(entity, Prop_Data, "m_iName", targetName, sizeof(targetName));
 		if (StrContains(targetName, "rf2_object") != -1)
 		{
-			RemoveEntity(entity);	
+			RemoveEntity(entity);
 		}
 	}
 	
@@ -168,7 +140,7 @@ stock void DespawnObjects(bool logSpawns = false)
 		LogMessage("Teleporter spawnpoints: %i", teleporterSpawns);
 }
 
-stock int CreateObject(float pos[3], const char[] name, const char[] model, float scale=1.0, bool collision=true, int solidType=4)
+stock int CreateObject(float pos[3], const char[] name, const char[] model, bool collision=true, int solidType=SOLID_BBOX)
 {
 	int entity = CreateEntityByName("prop_dynamic");
 	DispatchKeyValue(entity, "model", model);
@@ -176,14 +148,18 @@ stock int CreateObject(float pos[3], const char[] name, const char[] model, floa
 	TeleportEntity(entity, pos, NULL_VECTOR, NULL_VECTOR);
 	DispatchSpawn(entity);
 	
-	SetEntPropFloat(entity, Prop_Send, "m_flModelScale", scale);
+	float costMultiplier = 1.0 + (g_flDifficultyCoeff / g_flSubDifficultyIncrement);
+	costMultiplier += FloatFraction(Pow(1.2, IntToFloat(g_iStagesCompleted)));
 	
-	if (strcmp(name, OBJ_CRATE) == 0)
+	if (costMultiplier < 1.0)
+		costMultiplier = 1.0;
+	
+	if (strcmp(name, OBJECT_CRATE) == 0)
 	{
-		SDKHook(entity, SDKHook_OnTakeDamage, Hook_OnCrateHit);
-		float exponent = (g_flDifficultyCoeff / (750.0 + (g_flDifficultyCoeff / g_flSubDifficultyIncrement * 15.0))) + 1.0;
-		g_flObjectCost[entity] = Pow(CRATE_BASE_COST, exponent);
+		g_flObjectCost[entity] = CRATE_BASE_COST * costMultiplier;
+		g_iObjectItem[entity] = GetRandomItem(79.0, 20.0, 1.0);
 		
+		SDKHook(entity, SDKHook_OnTakeDamage, Hook_OnCrateHit);
 		SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
 		CreateTimer(0.5, Timer_ObjectGlow, entity, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
@@ -198,24 +174,46 @@ stock int CreateObject(float pos[3], const char[] name, const char[] model, floa
 		AcceptEntityInput(entity, "DisableCollision");
 	}
 	
-	g_iObjectState[entity] = Obj_Active;
+	if (GetConVarBool(g_cvShowObjectSpawns))
+	{
+		PrintToServer("[RF2] %s spawned at %.0f %.0f %.0f, cost %.0f", name, pos[0], pos[1], pos[2], g_flObjectCost[entity]);
+		PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f, cost %.0f", name, pos[0], pos[1], pos[2], g_flObjectCost[entity]);
+	}
+	
+	g_ObjectState[entity] = Obj_Active;
 	return entity;
 }
 
 stock void SpawnTeleporter(int entity)
 {
+	if (g_iTeleporter != -1)
+	{
+		LogError("Attempted to spawn a Teleporter entity, but one already exists. Only one should exist at a time.");
+		return;
+	}
+	
+	g_iTeleporter = entity;
 	SetEntityModel(entity, MODEL_TELEPORTER);
-	SetEntPropString(entity, Prop_Data, "m_iName", OBJ_TELEPORTER);
+	SetEntPropString(entity, Prop_Data, "m_iName", OBJECT_TELEPORTER);
 	AcceptEntityInput(entity, "EnableCollision");
-	g_iObjectState[entity] = Obj_Active;
+	
+	if (GetConVarBool(g_cvShowObjectSpawns))
+	{
+		float pos[3];
+		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
+		
+		PrintToServer("[RF2] %s spawned at %.0f %.0f %.0f", OBJECT_TELEPORTER, pos[0], pos[1], pos[2]);
+		PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f", OBJECT_TELEPORTER, pos[0], pos[1], pos[2]);
+	}
+	g_ObjectState[entity] = Obj_Active;
 }
 
 public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
 {
-	if (g_iObjectState[entity] != Obj_Active)
+	if (g_ObjectState[entity] != Obj_Active)
 		return;
 	
-	if (IsValidClient(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR)
+	if (IsValidClient(attacker) && g_iPlayerSurvivorIndex[attacker] > -1)
 	{
 		// Melee damage only
 		if (damagetype & DMG_CLUB || damagetype & DMG_SLASH)
@@ -227,7 +225,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 			else
 			{
 				EmitSoundToClient(attacker, NOPE);
-				PrintCenterText(attacker, "You can't afford to open this! (Cost: $%.0f)", g_flObjectCost[entity]);
+				PrintCenterText(attacker, "You can't afford to open this! (Cost: $%.0f, you have: $%.0f)", g_flObjectCost[entity], g_flPlayerCash[attacker]);
 				return;
 			}
 			
@@ -235,17 +233,17 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 			GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", origin);
 			origin[2] += 40.0;
 			
-			int item = GetRandomItem(80.0, 20.0, 0.0);
+			int item = g_iObjectItem[entity];
 			float removeTime;
 			
-			switch (g_iItemQuality[item])
+			switch (g_ItemQuality[item])
 			{
 				case Quality_Normal, Quality_Genuine:
 				{
 					EmitSoundToAll(SOUND_DROP_DEFAULT, entity);
 					TE_SetupParticle(PARTICLE_NORMAL_CRATE_OPEN, origin);
 					
-					g_iObjectState[entity] = Obj_None;
+					g_ObjectState[entity] = Obj_None;
 					removeTime = 0.0;
 				}
 				case Quality_Unusual:
@@ -260,7 +258,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 					EmitSoundToAll(SOUND_DROP_UNUSUAL, soundEntity);
 					TE_SetupParticle(PARTICLE_UNUSUAL_CRATE_OPEN, origin);
 					
-					g_iObjectState[entity] = Obj_None;
+					g_ObjectState[entity] = Obj_None;
 					removeTime = 2.9;
 					
 					CreateTimer(4.0, Timer_UltraRareResponse, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
@@ -340,7 +338,7 @@ stock bool ObjectInteract(int client)
 	
 	TR_TraceRayFilter(eyePos, endPos, MASK_SOLID, RayType_EndPoint, TraceDontHitSelf, client);
 	int obj = GetNearestEntity(endPos, "prop_dynamic");
-	if (IsValidEntity(obj) && g_iObjectState[obj] == Obj_Active)
+	if (IsValidEntity(obj) && g_ObjectState[obj] == Obj_Active)
 	{
 		float objPos[3];
 		GetEntPropVector(obj, Prop_Data, "m_vecAbsOrigin", objPos);
@@ -358,12 +356,12 @@ stock bool ObjectInteract(int client)
 
 stock bool ActivateObject(int client, int obj, const char[] targetName)
 {
-	if (strcmp(targetName, OBJ_CRATE) == 0) // Display the cost for this crate, but don't try to open it
+	if (strcmp(targetName, OBJECT_CRATE) == 0) // Display the cost for this crate, but don't try to open it
 	{
 		PrintCenterText(client, "This crate costs $%.0f to open.", g_flObjectCost[obj]);
 		return true;
 	}
-	else if (strcmp(targetName, OBJ_TELEPORTER) == 0)
+	else if (strcmp(targetName, OBJECT_TELEPORTER) == 0)
 	{
 		Action retVal = Plugin_Continue;
 		
@@ -381,8 +379,6 @@ stock bool ActivateObject(int client, int obj, const char[] targetName)
 		else
 		{
 			StartTeleporterVote(client);
-			g_iTeleporter = obj;
-			g_iTeleporterActivator = client;
 			return true;
 		}
 	}
@@ -397,15 +393,16 @@ stock void StartTeleporterVote(int client, bool nextStageVote=false)
 		return;
 	}
 		
+	g_iTeleporterActivator = client;
 	int clients[MAX_SURVIVORS];
 	int clientCount;
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsValidClient(i, true))
+		if (!IsClientInGame(i) || !IsPlayerAlive(i))
 			continue;
 			
-		if (GetClientTeam(i) == TEAM_SURVIVOR)
+		if (g_iPlayerSurvivorIndex[i] >= 0)
 		{
 			clients[clientCount] = i;
 			clientCount++;
@@ -437,7 +434,13 @@ public int Menu_TeleporterVote(Menu menu, MenuAction action, int param1, int par
 	if (action == MenuAction_VoteEnd)
 	{
 		if (param1 == 0)
+		{
 			PrepareTeleporterEvent();
+		}
+		else
+		{
+			g_iTeleporterActivator = -1;
+		}
 	}
 	else if (action == MenuAction_End)
 	{
@@ -494,11 +497,10 @@ stock void PrepareTeleporterEvent()
 		
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		StopMusicTrack(i);
-		
-		if (!IsValidClient(i))
+		if (!IsClientInGame(i))
 			continue;
-	
+		
+		StopMusicTrack(i);
 		SetVariantString("TeleporterFog");
 		AcceptEntityInput(i, "SetFogController");
 	}
@@ -537,19 +539,19 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 	// calculate alive survivors first
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsValidClient(i, true))
+		if (!IsClientInGame(i) || !IsPlayerAlive(i))
 			continue;
 		
-		if (GetClientTeam(i) == TEAM_SURVIVOR)
+		if (g_iPlayerSurvivorIndex[i] >= 0)
 			aliveSurvivors++;
-		else if (g_bIsTeleporterBoss[i] && GetClientTeam(i) == TEAM_ROBOT)
+		else if (g_bIsTeleporterBoss[i])
 			aliveBosses++;
 	}
 	
 	// now let's see how many of them are actually in the radius, so we can add charge based on that
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsValidClient(i, true) || GetClientTeam(i) != TEAM_SURVIVOR)
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || g_iPlayerSurvivorIndex[i] < 0)
 			continue;
 		
 		GetClientAbsOrigin(i, origin);
@@ -587,11 +589,11 @@ stock void EndTeleporterEvent(int teleporter)
 	g_bTeleporterEvent = false;
 	g_bTeleporterEventCompleted = true;
 	
-	bool aliveRobots;
+	//bool aliveRobots;
 	for (int i = 1; i < MAXTF2PLAYERS; i++)
 	{
 		FormatEx(g_szTeleporterHud[i], 64, "");
-		/*if (IsValidClient(i, true) && GetClientTeam(i) == TEAM_ROBOT)
+		/*if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ROBOT)
 		{
 			TF2_StunPlayer(i, 20.0, _, TF_STUNFLAG_BONKSTUCK);
 			aliveRobots = true;
@@ -599,8 +601,8 @@ stock void EndTeleporterEvent(int teleporter)
 		*/
 	}
 	
-	if (aliveRobots)
-		EmitSoundToAll(SOUND_ROBOT_STUN);
+	//if (aliveRobots)
+	//	EmitSoundToAll(SOUND_ROBOT_STUN);
 
 	RF2_PrintToChatAll("{lime}Teleporter event completed! Interact with the teleporter to progress to the next stage.");
 }
