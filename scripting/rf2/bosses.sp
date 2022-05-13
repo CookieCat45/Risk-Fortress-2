@@ -3,7 +3,7 @@
 #endif
 #define _RF2_bosses_included
 
-int g_iBossAmount;
+int g_iBossAmount; // This is the amount of bosses currently loaded
 
 // General boss data
 char g_szLoadedBosses[MAX_BOSS_TYPES][MAX_CONFIG_NAME_LENGTH];
@@ -32,7 +32,6 @@ char g_szBossWeaponAttributes[MAX_BOSS_TYPES][TF_WEAPON_SLOTS][MAX_ATTRIBUTE_STR
 int g_iBossWeaponIndex[MAX_BOSS_TYPES][TF_WEAPON_SLOTS];
 bool g_bBossWeaponVisible[MAX_BOSS_TYPES][TF_WEAPON_SLOTS];
 int g_iBossWeaponAmount[MAX_BOSS_TYPES];
-bool g_bBossWeaponExists[MAX_BOSS_TYPES][TF_WEAPON_SLOTS];
 
 // Wearables
 char g_szBossWearableName[MAX_BOSS_TYPES][MAX_BOSS_WEARABLES][128];
@@ -40,7 +39,6 @@ char g_szBossWearableAttributes[MAX_BOSS_TYPES][MAX_BOSS_WEARABLES][MAX_ATTRIBUT
 int g_iBossWearableIndex[MAX_BOSS_TYPES][MAX_BOSS_WEARABLES];
 bool g_bBossWearableVisible[MAX_BOSS_TYPES][MAX_BOSS_WEARABLES];
 int g_iBossWearableAmount[MAX_BOSS_TYPES];
-bool g_bBossWearableExists[MAX_BOSS_TYPES][MAX_BOSS_WEARABLES];
 
 // Minions (TODO)
 char g_szBossMinions[MAX_BOSS_TYPES][PLATFORM_MAX_PATH];
@@ -48,7 +46,7 @@ float g_flBossMinionSpawnInterval[MAX_BOSS_TYPES];
 bool g_bBossMinionInstantSpawn[MAX_BOSS_TYPES] = {true, ...};
 int g_iBossMinionSpawnCount[MAX_BOSS_TYPES];
 
-stock void LoadBosses(char[] names)
+void LoadBosses(char[] names)
 {
 	if (g_iBossAmount >= MAX_BOSS_TYPES)
 	{
@@ -127,36 +125,36 @@ stock void LoadBosses(char[] names)
 		g_flBossCashAward[boss] = KvGetFloat(bossKey, "cash_award", 500.0);
 		KvGetString(bossKey, "spawn_conditions", g_szBossConditions[boss], 256, "");
 		
+		g_iBossWeaponAmount[boss] = 0;
 		// weapons
 		for (int wep = 0; wep < TF_WEAPON_SLOTS; wep++)
 		{
 			FormatEx(sectionName, sizeof(sectionName), "weapon%i", wep);
 			if (!KvJumpToKey(bossKey, sectionName))
-				continue;
+				break;
 			
 			KvGetString(bossKey, "classname", g_szBossWeaponName[boss][wep], PLATFORM_MAX_PATH, "null");
 			KvGetString(bossKey, "attributes", g_szBossWeaponAttributes[boss][wep], MAX_ATTRIBUTE_STRING_LENGTH, "");
 			g_iBossWeaponIndex[boss][wep] = KvGetNum(bossKey, "index", 5);
 			g_bBossWeaponVisible[boss][wep] = view_as<bool>(KvGetNum(bossKey, "visible", 1));
 			g_iBossWeaponAmount[boss]++;
-			g_bBossWeaponExists[boss][wep] = true;
 			
 			KvGoBack(bossKey);
 		}
 		
+		g_iBossWearableAmount[boss] = 0;
 		// wearables
 		for (int wearable = 0; wearable < MAX_BOSS_WEARABLES; wearable++)
 		{
 			FormatEx(sectionName, sizeof(sectionName), "wearable%i", wearable+1);
 			if (!KvJumpToKey(bossKey, sectionName))
-				continue;
+				break;
 			
 			KvGetString(bossKey, "classname", g_szBossWearableName[boss][wearable], PLATFORM_MAX_PATH, "tf_wearable");
 			KvGetString(bossKey, "attributes", g_szBossWearableAttributes[boss][wearable], MAX_ATTRIBUTE_STRING_LENGTH, "");
 			g_iBossWearableIndex[boss][wearable] = KvGetNum(bossKey, "index", 5000);
 			g_bBossWearableVisible[boss][wearable] = view_as<bool>(KvGetNum(bossKey, "visible", 1));
 			g_iBossWearableAmount[boss]++;
-			g_bBossWearableExists[boss][wearable] = true;
 			
 			KvGoBack(bossKey);
 		}
@@ -187,7 +185,7 @@ stock void LoadBosses(char[] names)
 	PrintToServer("[RF2] Loaded bosses:\n%s\n", message);
 }
 
-stock int GetRandomBoss(bool getName = false, char[] name="", int size=0)
+int GetRandomBoss(bool getName = false, char[] name="", int size=0)
 {
 	int random = GetRandomInt(0, g_iBossAmount-1);
 	
@@ -197,17 +195,22 @@ stock int GetRandomBoss(bool getName = false, char[] name="", int size=0)
 	return random;
 }
 
-stock void SummonTeleporterBosses(int entity)
+void SummonTeleporterBosses(int entity)
 {
 	// First, we need to find the best candidates for bosses.
 	int playerPoints[MAXTF2PLAYERS];
 	int bossPoints[MAXTF2PLAYERS];
+	bool valid[MAXTF2PLAYERS];
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || GetClientTeam(i) != TEAM_ROBOT)
+		{
+			bossPoints[i] = -9999999999;
 			continue;
+		}
 		
+		valid[i] = true;
 		if (!IsPlayerAlive(i)) // Dead robots have the biggest priority, obviously.
 			bossPoints[i] += 9999;	
 		
@@ -238,17 +241,26 @@ stock void SummonTeleporterBosses(int entity)
 	SortIntegers(bossPoints, sizeof(bossPoints), Sort_Descending);
 	int highestPoints = bossPoints[0];
 	int count;
-	int bossCount = 1;// + (g_iSurvivorCount-1 / 4) + (g_iSubDifficulty-1 / 2);
+	int bossCount = 1 + (GetPlayersOnTeam(TEAM_SURVIVOR, true)-1) + (g_iSubDifficulty-1 / 2);
+	if (bossCount < 1)
+		bossCount = 1;
 	
+	float time;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || g_bIsTeleporterBoss[i])
+		if (!valid[i] || g_bIsTeleporterBoss[i])
 			continue;
 		
 		if (playerPoints[i] == highestPoints)
 		{
-			SpawnBoss(i, GetRandomBoss(), false, entity);
-			g_bIsTeleporterBoss[i] = true;
+			// don't spawn all the bosses at once, as it will cause client crashes if there are too many
+			DataPack pack;
+			CreateDataTimer(time, Timer_SpawnTeleporterBoss, pack, TIMER_FLAG_NO_MAPCHANGE);
+			pack.WriteCell(i);
+			pack.WriteCell(GetRandomBoss());
+			pack.WriteCell(entity);
+			time += 0.5;
+			valid[i] = false;
 			
 			count++;
 			if (count >= bossCount)
@@ -258,16 +270,28 @@ stock void SummonTeleporterBosses(int entity)
 			i = 0; // reset our loop
 		}
 	}
+	
 	EmitSoundToAll(SOUND_BOSS_SPAWN);
 }
 
-stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity, bool force=true)
+public Action Timer_SpawnTeleporterBoss(Handle time, DataPack pack)
+{
+	pack.Reset();
+	int client = pack.ReadCell();
+	int type = pack.ReadCell();
+	int spawnEntity = pack.ReadCell();
+	
+	g_bIsTeleporterBoss[client] = true;
+	SpawnBoss(client, type, spawnEntity, true);
+}
+
+void SpawnBoss(int client, int type, int spawnEntity=-1, bool force=true)
 {
 	if (IsPlayerAlive(client))
 	{
 		if (force)
 		{
-			ForcePlayerSuicide(client);
+			ChangeClientTeam(client, 0);
 		}
 		else
 		{
@@ -281,28 +305,9 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity,
 		SetEntProp(client, Prop_Send, "m_nBotSkill", g_iBossBotDifficulty[type]);
 	
 	float pos[3];
-	if (randomSpawn)
+	if (!IsValidEntity(spawnEntity))
 	{
-		Handle survivorArray = CreateArray(1, MAXTF2PLAYERS);
-		int playerCount;
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (IsClientInGame(i) && IsPlayerAlive(i))
-			{
-				if (GetClientTeam(i) == TEAM_SURVIVOR)
-				{
-					SetArrayCell(survivorArray, playerCount, i);
-					playerCount++;
-				}
-			}
-		}
-		
-		ResizeArray(survivorArray, playerCount);
-		if (GetArraySize(survivorArray) <= 0)
-			ResizeArray(survivorArray, 1);
-		
-		int randomSurvivor = GetArrayCell(survivorArray, GetRandomInt(0, playerCount-1));
-		entity = randomSurvivor;
+		int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
 		if (IsValidClient(randomSurvivor))
 		{
 			GetClientAbsOrigin(randomSurvivor, pos);
@@ -313,12 +318,10 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity,
 			pos[1] = GetRandomFloat(-3000.0, 3000.0);
 			pos[2] = GetRandomFloat(-1500.0, 1500.0);
 		}
-			
-		delete survivorArray;
 	}
 	else
 	{
-		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
+		GetEntPropVector(spawnEntity, Prop_Data, "m_vecAbsOrigin", pos);
 	}
 	
 	float mins[3] = PLAYER_MINS;
@@ -326,27 +329,24 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity,
 	
 	ScaleVector(mins, g_flBossModelScale[type]);
 	ScaleVector(maxs, g_flBossModelScale[type]);
+	float zOffset = 15.0 * g_flBossModelScale[type];
 	
 	float spawnPos[3];
-	NavArea area = GetSpawnPointFromNav(pos, MIN_SPAWN_DIST, MAX_SPAWN_DIST, mins, maxs);
+	CNavArea area = GetSpawnPointFromNav(pos, spawnPos, MIN_SPAWN_DIST, MAX_SPAWN_DIST, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
 	if (!area)
 	{
 		char mapName[256];
 		GetCurrentMap(mapName, sizeof(mapName));
-		LogError("NavArea was somehow NULL on map %s. This shouldn't happen! Did you forget to generate the NavMesh?", mapName);
+		LogError("[NAV] NavArea was somehow NULL on map \"%s\".", mapName);
 		
 		DataPack pack = CreateDataPack();
 		pack.WriteCell(client);
 		pack.WriteCell(type);
-		pack.WriteCell(randomSpawn);
-		pack.WriteCell(entity);
+		pack.WriteCell(spawnEntity);
+		pack.WriteCell(force);
+		RequestFrame(RF_TrySpawnAgainBoss, pack); // try again on every frame instead of on a timer, as boss spawns are much more important
 		
-		RequestFrame(RF_TrySpawnAgainBoss, pack);
 		return;
-	}
-	else
-	{
-		area.GetCenter(spawnPos);
 	}
 	
 	g_iPlayerBossType[client] = type;
@@ -373,33 +373,27 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity,
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMins", mins);
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMaxs", maxs);
 	
+	SetEntProp(client, Prop_Data, "m_bloodColor", -1);
+	
 	TF2_RemoveAllWearables(client);
 	TF2_RemoveAllWeapons(client);
-	for (int i = 0; i < TF_WEAPON_SLOTS; i++)
+	for (int i = 0; i < g_iBossWeaponAmount[type]; i++)
 	{
-		if (g_bBossWeaponExists[type][i])
-		{
-			CreateWeapon(client, 
-			g_szBossWeaponName[type][i], 
-			g_iBossWeaponIndex[type][i], 
-			g_szBossWeaponAttributes[type][i], 
-			g_bBossWeaponVisible[type][i]);
-		}
+		CreateWeapon(client, 
+		g_szBossWeaponName[type][i], 
+		g_iBossWeaponIndex[type][i], 
+		g_szBossWeaponAttributes[type][i], 
+		g_bBossWeaponVisible[type][i]);
 	}
 	
-	for (int i = 0; i < MAX_BOSS_WEARABLES; i++)
+	for (int i = 0; i < g_iBossWearableAmount[type]; i++)
 	{
-		if (g_bBossWearableExists[type][i])
-		{
-			CreateWearable(client, 
-			g_szBossWearableName[type][i], 
-			g_iBossWearableIndex[type][i], 
-			g_szBossWearableAttributes[type][i], 
-			g_bBossWearableVisible[type][i]);
-		}
+		CreateWearable(client, 
+		g_szBossWearableName[type][i], 
+		g_iBossWearableIndex[type][i], 
+		g_szBossWearableAttributes[type][i], 
+		g_bBossWearableVisible[type][i]);
 	}
-	
-	g_iPlayerStatWearable[client] = CreateWearable(client, "tf_wearable", ATTRIBUTE_WEARABLE_INDEX, BASE_PLAYER_ATTRIBUTES, false);
 	
 	if (g_szBossConditions[type][0] != '\0')
 	{
@@ -423,19 +417,15 @@ stock void SpawnBoss(int client, int type, bool randomSpawn = false, int entity,
 	
 	g_bIsBoss[client] = true;
 	
-	SetEntProp(client, Prop_Send, "m_bGlowEnabled", 1);
-	if (randomSpawn)
+	if (!g_bIsTeleporterBoss[client])
+	{
 		EmitSoundToAll(SOUND_BOSS_SPAWN);
-}
-
-stock void TrySpawnAgainBoss(int client, int type, bool randomSpawn, int entity, float time=1.0)
-{
-	DataPack pack;
-	CreateDataTimer(time, Timer_TrySpawnAgainBoss, pack, TIMER_FLAG_NO_MAPCHANGE);
-	pack.WriteCell(client);
-	pack.WriteCell(type);
-	pack.WriteCell(randomSpawn);
-	pack.WriteCell(entity);
+	}
+	else
+	{
+		SetEntProp(client, Prop_Send, "m_bGlowEnabled", 1);
+	}
+	g_iPlayerStatWearable[client] = CreateWearable(client, "tf_wearable", ATTRIBUTE_WEARABLE_INDEX, BASE_PLAYER_ATTRIBUTES, false);
 }
 
 public void RF_TrySpawnAgainBoss(DataPack pack)
@@ -447,24 +437,9 @@ public void RF_TrySpawnAgainBoss(DataPack pack)
 		return;
 	
 	int type = pack.ReadCell();
-	bool randomSpawn = view_as<bool>(pack.ReadCell());
-	int entity = pack.ReadCell();
+	int spawnEntity = pack.ReadCell();
+	bool force = view_as<bool>(pack.ReadCell());
+	
 	delete pack;
-	
-	SpawnBoss(client, type, randomSpawn, entity);
-}
-
-public Action Timer_TrySpawnAgainBoss(Handle timer, DataPack pack)
-{
-	pack.Reset();
-	
-	int client = pack.ReadCell();
-	if (!IsClientInGame(client))
-		return;
-	
-	int type = pack.ReadCell();
-	bool randomSpawn = view_as<bool>(pack.ReadCell());
-	int entity = pack.ReadCell();
-	
-	SpawnBoss(client, type, randomSpawn, entity);
+	SpawnBoss(client, type, spawnEntity, force);
 }

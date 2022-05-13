@@ -7,7 +7,7 @@ bool g_bForceNextMap;
 char g_szForcedMap[256];
 char g_szMapForcer[128];
 
-stock void LoadCommandsAndCvars()
+void LoadCommandsAndCvars()
 {
 	RegAdminCmd("rf2_reload", Command_ReloadRF2, ADMFLAG_RCON, "Reloads the plugin. This will restart the round as well. Pass 1 to fully restart the game.");
 	RegAdminCmd("rf2_reloaditems", Command_ReloadItems, ADMFLAG_RCON, "Reloads RF2's item config.");
@@ -25,31 +25,39 @@ stock void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_givecash", Command_GiveCash, ADMFLAG_RCON, "Give cash to a RED player. /rf2_givecash <player> <amount>");
 	RegAdminCmd("rf2_givexp", Command_GiveXP, ADMFLAG_RCON, "Give XP to a RED player. /rf2_givexp <player> <amount>");
 	
-	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY);
-	g_cvDebugNoMapChange = CreateConVar("rf2_skip_map_change", "0", "If nonzero, prevents the map from changing on round end.", FCVAR_NOTIFY);
-	g_cvDebugShowDifficultyCoeff = CreateConVar("rf2_show_difficulty_coeff", "0", "If nonzero, shows the value of the difficulty coefficient.", FCVAR_NOTIFY);
-	g_cvDebugDontEndGame = CreateConVar("rf2_dont_end_game_on_death", "0", "If nonzero, don't end the game if all of the survivors die.", FCVAR_NOTIFY);
-	g_cvEnableAFKManager = CreateConVar("rf2_use_afk_manager", "1", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY);
+	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal RF2 settings.");
+	
+	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvNoMapChange = CreateConVar("rf2_skip_map_change", "0", "If nonzero, prevents the map from changing on round end.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvShowDifficultyCoeff = CreateConVar("rf2_show_difficulty_coeff", "0", "If nonzero, shows the value of the difficulty coefficient.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvDontEndGame = CreateConVar("rf2_dont_end_game_on_survivor_death", "0", "If nonzero, don't end the game if all of the survivors die.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvEnableAFKManager = CreateConVar("rf2_use_afk_manager", "1", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "120.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
-	g_cvBotsCanBeSurvivor = CreateConVar("rf2_bots_join_survivors", "0", "If nonzero, bots are allowed to become survivors. Not recommended, generally only for testing purposes.", FCVAR_NOTIFY);
+	g_cvBotsCanBeSurvivor = CreateConVar("rf2_bots_join_survivors", "0", "If nonzero, bots are allowed to become survivors. Not recommended, generally only for testing purposes.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvSubDifficultyIncrement = CreateConVar("rf2_sub_difficulty_increment", "50.0", "When the difficulty coefficient reaches a multiple of this value, the sub difficulty increases.", FCVAR_NOTIFY);
 	g_cvDifficultyScaleMultiplier = CreateConVar("rf2_difficulty_scale_multiplier", "1.0", "ConVar that affects difficulty scaling.", FCVAR_NOTIFY);
-	g_cvShowObjectSpawns = CreateConVar("rf2_show_object_spawns", "0", "If nonzero, when an object spawns, its name and location will be printed to the console.", FCVAR_NOTIFY);
-	g_cvForceSeed = CreateConVar("rf2_force_seed", "-1", "If positive, forces the seed value of the next run to the value specified. Resets to -1 afterwards.", FCVAR_NOTIFY);
-	g_cvShowSeedInConsole = CreateConVar("rf2_show_seed_in_console", "1", "If nonzero, shows the current seed number in every player's console when a game begins.\nThe seed value will be logged by RF2 regardless of this setting.", FCVAR_NOTIFY);
+	g_cvShowObjectSpawns = CreateConVar("rf2_show_object_spawns", "0", "If nonzero, when an object spawns, its name and location will be printed to the console.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvForceSeed = CreateConVar("rf2_force_seed", "-1", "If positive, forces the seed value of the next run to the value specified. Resets to -1 afterwards.", FCVAR_NOTIFY, true, -1.0, true, 2147483647.0);
+	g_cvShowSeedInConsole = CreateConVar("rf2_show_seed_in_console", "1", "If nonzero, shows the current seed number in every player's console when a game begins.\nThe seed value will be logged by RF2 regardless of this setting.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	
 	HookConVarChange(g_cvEnableAFKManager, ConVarHook_EnableAFKManager);
 	HookConVarChange(g_cvSubDifficultyIncrement, ConVarHook_SubDifficultyIncrement);
-	HookConVarChange(g_cvForceSeed, ConVarHook_ForceSeed);
 }
 
 public Action Command_ReloadRF2(int client, int args)
 {
+	if (!g_bPluginEnabled)
+	{
+		RF2_ReplyToCommand(client, "RF2 is currently disabled.");
+		return Plugin_Handled;
+	}
+	
 	char arg1[8];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	bool fullRestart = view_as<bool>(StringToInt(arg1));
 	
 	RestartGame(fullRestart, true);
+	return Plugin_Handled;
 }
 
 public Action Command_ReloadItems(int client, int args)
@@ -67,7 +75,14 @@ public Action Command_ReloadItems(int client, int args)
 
 public Action Command_EntityCount(int client, int args)
 {
-	int count = GetEntityCount();
+	int count;
+	
+	for (int i = 0; i <= MAX_EDICTS; i++)
+	{
+		if (IsValidEntity(i))
+			count++;
+	}
+	
 	RF2_ReplyToCommand(client, "Entity Count: {lime}%i", count);
 }
 
@@ -103,7 +118,7 @@ public Action Command_GiveItem(int client, int args)
 	char name[MAX_NAME_LENGTH];
 	
 	GetItemName(item, name, sizeof(name));
-	GetQualityColorTag(g_ItemQuality[item], colour, sizeof(colour));
+	GetQualityColorTag(g_eItemQuality[item], colour, sizeof(colour));
 	
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
 	if (matches < 1)
@@ -137,6 +152,12 @@ public Action Command_GiveItem(int client, int args)
 
 public Action Command_GiveCash(int client, int args)
 {
+	if (!g_bPluginEnabled)
+	{
+		RF2_ReplyToCommand(client, "RF2 is currently disabled.");
+		return Plugin_Handled;
+	}
+	
 	if (args != 2)
 	{
 		RF2_ReplyToCommand(client, "Usage: /rf2_givecash <player> <amount>");
@@ -184,6 +205,12 @@ public Action Command_GiveCash(int client, int args)
 
 public Action Command_GiveXP(int client, int args)
 {
+	if (!g_bPluginEnabled)
+	{
+		RF2_ReplyToCommand(client, "RF2 is currently disabled.");
+		return Plugin_Handled;
+	}
+	
 	if (args != 2)
 	{
 		RF2_ReplyToCommand(client, "Usage: /rf2_givexp <player> <amount>");
@@ -320,7 +347,7 @@ public Action Command_SkipWait(int client, int args)
 	if (g_bWaitingForPlayers)
 		InsertServerCommand("mp_restartgame_immediate 1");
 	else
-		RF2_ReplyToCommand(client, "This command can only be used during the Waiting For Players sequence.");
+		RF2_ReplyToCommand(client, "The Waiting For Players sequence is not active.");
 		
 	return Plugin_Handled;
 }
@@ -380,10 +407,110 @@ public Action Command_AddPoints(int client, int args)
 		for (int i = 0; i < matches; i++)
 		{
 			g_iSurvivorPoints[clients[i]] += amount;
+			if (g_iSurvivorPoints[clients[i]] < 0)
+				g_iSurvivorPoints[clients[i]] = 0;
+				
 			RF2_PrintToChatAll("{yellow}%N{default} gave {lime}%i{default} queue points to {yellow}%N{default}.", client, amount, clients[i]);
 		}
 	}
 	return Plugin_Handled;
+}
+
+public Action Command_ClientSettings(int client, int args)
+{
+	if (!g_bPluginEnabled)
+	{
+		RF2_ReplyToCommand(client, "RF2 is currently disabled.");
+		return Plugin_Handled;
+	}
+	
+	if (client == 0)
+	{
+		ReplyToCommand(client, "This command can only be used in-game.");
+		return Plugin_Handled;
+	}
+	
+	ShowClientSettingsMenu(client);
+	return Plugin_Handled;
+}
+
+void ShowClientSettingsMenu(int client)
+{
+	Handle menu = CreateMenu(Menu_ClientSettings);
+	char buffer[128];
+	SetMenuTitle(menu, "Risk Fortress 2 Settings");
+	
+	FormatEx(buffer, sizeof(buffer), "Toggle becoming a Survivor (%s)", g_bBecomeSurvivor[client] ? "ON" : "OFF");
+	AddMenuItem(menu, "survivor_pref", buffer);
+	
+	FormatEx(buffer, sizeof(buffer), "Toggle becoming a Teleporter boss (%s)", g_bBecomeBoss[client] ? "ON" : "OFF");
+	AddMenuItem(menu, "boss_pref", buffer);
+	
+	FormatEx(buffer, sizeof(buffer), "Toggle music (%s)", g_bMusicEnabled[client] ? "ON" : "OFF");
+	AddMenuItem(menu, "music_pref", buffer);
+	
+	DisplayMenu(menu, client, MENU_TIME_FOREVER);
+}
+
+public int Menu_ClientSettings(Menu menu, MenuAction action, int param1, int param2)
+{
+	if (action == MenuAction_Select)
+	{
+		char info[64];
+		GetMenuItem(menu, param2, info, sizeof(info));
+		
+		if (strcmp(info, "survivor_pref") == 0)
+		{
+			if (g_bBecomeSurvivor[param1])
+			{
+				g_bBecomeSurvivor[param1] = false;
+				SetClientCookie(param1, g_coBecomeSurvivor, "0");
+			}
+			else
+			{
+				g_bBecomeSurvivor[param1] = true;
+				SetClientCookie(param1, g_coBecomeSurvivor, "1");
+			}
+		}
+		else if (strcmp(info, "boss_pref") == 0)
+		{
+			if (g_bBecomeBoss[param1])
+			{
+				g_bBecomeBoss[param1] = false;
+				SetClientCookie(param1, g_coBecomeBoss, "0");
+			}
+			else
+			{
+				g_bBecomeBoss[param1] = true;
+				SetClientCookie(param1, g_coBecomeBoss, "1");
+			}
+		}
+		else if (strcmp(info, "music_pref") == 0)
+		{
+			if (g_bMusicEnabled[param1])
+			{
+				g_bMusicEnabled[param1] = false;
+				SetClientCookie(param1, g_coMusicEnabled, "0");
+				StopMusicTrack(param1);
+			}
+			else
+			{
+				g_bMusicEnabled[param1] = true;
+				SetClientCookie(param1, g_coMusicEnabled, "1");
+				
+				if (g_bRoundActive)
+				{
+					PlayMusicTrack(param1, g_bTeleporterEvent);
+				}
+			}
+		}
+		
+		ShowClientSettingsMenu(param1);
+	}
+	if (action == MenuAction_End)
+	{
+		delete menu;
+	}
 }
 
 public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, const char[] newValue)
@@ -402,19 +529,4 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 public void ConVarHook_SubDifficultyIncrement(ConVar convar, const char[] oldValue, const char[] newValue)
 {
 	g_flSubDifficultyIncrement = StringToFloat(newValue);
-}
-
-public void ConVarHook_ForceSeed(ConVar convar, const char[] oldValue, const char[] newValue)
-{
-	int seed = StringToInt(newValue);
-	
-	if (seed != -1)
-	{
-		if (seed > 2147483647 || seed < 0)
-		{
-			PrintToConsoleAll("[RF2] rf2_force_seed was set to an invalid value (%i). Reverting to -1.", seed);
-			PrintToServer("[RF2] rf2_force_seed was set to an invalid value (%i). Reverting to -1.", seed);
-			SetConVarInt(g_cvForceSeed, -1, true, false);
-		}
-	}
 }

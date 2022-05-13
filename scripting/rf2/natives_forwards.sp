@@ -90,7 +90,7 @@ public any Native_GetSubDifficulty(Handle plugin, int numParams)
 
 public any Native_GetInitialDifficulty(Handle plugin, int numParams)
 {
-	return g_iDifficultyLevel;
+	return g_difficultyLevel;
 }
 
 public any Native_IsTeleporterEvent(Handle plugin, int numParams)

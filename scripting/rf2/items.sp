@@ -3,22 +3,17 @@
 #endif
 #define _RF2_items_included
 
-#pragma semicolon 1
-#pragma newdecls required
-
-#define OBJECT_ITEM "rf2_object_item"
-#define DEBUGEMPTY "debug/debugempty.vmt"
-
 int g_iItemCount;
 
 int g_iPlayerItem[MAXTF2PLAYERS][MAX_ITEMS];
-int g_iEntityItemIndex[2048];
+int g_iEntityItemIndex[MAX_EDICTS];
 
 int g_iItemSchemaIndex[MAX_ITEMS] = {-1, ...};
-RF2ItemQuality g_ItemQuality[MAX_ITEMS] = {Quality_None, ...};
+RF2ItemQuality g_eItemQuality[MAX_ITEMS] = {Quality_None, ...};
 
 char g_szItemName[MAX_ITEMS][32];
 char g_szItemDesc[MAX_ITEMS][PLATFORM_MAX_PATH];
+float g_flItemModifier[MAX_ITEMS];
 
 char g_szItemEquipRegion[MAX_ITEMS][PLATFORM_MAX_PATH];
 char g_szItemSprite[MAX_ITEMS][PLATFORM_MAX_PATH];
@@ -28,7 +23,7 @@ bool g_bItemUnused[MAX_ITEMS];
 
 bool g_bStunCooldown[MAXTF2PLAYERS] = { false, ... };
 
-stock void LoadItems()
+void LoadItems()
 {
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, ItemConfig);
@@ -45,13 +40,9 @@ stock void LoadItems()
 		{
 			KvGetString(itemConfig, "name", nameBuffer, sizeof(nameBuffer), "Unnamed Item");
 			
-			// This is the actual item index.
-			// I made it like this so if you change the order of the items in the config, it won't break everything,
-			// as each item will need its own special functionality which depends on the item's index.
-			// Changing an item's index after creation is generally not a good idea, so try not to do that.
-			RF2ItemType item = view_as<RF2ItemType>(KvGetNum(itemConfig, "item_index", view_as<int>(Item_Null)));
+			// This value will correspond to the item's index in the plugin so it knows what the item does.
+			int item = KvGetNum(itemConfig, "item_index", view_as<int>(Item_Null));
 			
-			// Use this key to mark an item as unused, meaning it can't appear in game.
 			g_bItemUnused[item] = view_as<bool>(KvGetNum(itemConfig, "unused", 0));
 			
 			FormatEx(g_szItemName[item], PLATFORM_MAX_PATH, "%s", nameBuffer);
@@ -65,10 +56,13 @@ stock void LoadItems()
 				item, nameBuffer, g_szItemSprite[item]);
 			}
 			
+			// The effect of this value depends on the item
+			g_flItemModifier[item] = KvGetFloat(itemConfig, "item_modifier", 1.0);
+			
 			g_iItemSchemaIndex[item] = KvGetNum(itemConfig, "schema_index", 5000);
 			g_flItemSpriteScale[item] = KvGetFloat(itemConfig, "sprite_scale", 0.5);
 			
-			g_ItemQuality[item] = view_as<RF2ItemQuality>(KvGetNum(itemConfig, "quality", view_as<int>(Quality_Normal)));
+			g_eItemQuality[item] = view_as<RF2ItemQuality>(KvGetNum(itemConfig, "quality", view_as<int>(Quality_Normal)));
 			g_iItemCount++;
 		}
 		else
@@ -81,7 +75,7 @@ stock void LoadItems()
 	delete itemConfig;
 }
 
-stock bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
+bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
 {
 	if (strcmp(buffer1, "none") == 0 || strcmp(buffer2, "none") == 0)
 	{
@@ -101,7 +95,7 @@ stock bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
 	return false;
 }
 
-stock int GetRandomItem(float normalChance=79.0, float genuineChance=20.0, float unusualChance=1.0, float collectorsChance=0.0, float hauntedChance=0.0, float strangeChance=0.0)
+int GetRandomItem(float normalChance=79.0, float genuineChance=20.0, float unusualChance=1.0, float collectorsChance=0.0, float hauntedChance=0.0, float strangeChance=0.0)
 {
 	RF2ItemQuality quality;
 	float random = GetRandomFloat(0.0, normalChance+genuineChance+unusualChance+collectorsChance+hauntedChance+strangeChance);
@@ -127,7 +121,7 @@ stock int GetRandomItem(float normalChance=79.0, float genuineChance=20.0, float
 		if (g_bItemUnused[i])
 			continue;
 		
-		if (g_ItemQuality[i] == quality)
+		if (g_eItemQuality[i] == quality)
 		{
 			SetArrayCell(itemArray, count, i);
 			count++;
@@ -151,7 +145,7 @@ stock int GetRandomItem(float normalChance=79.0, float genuineChance=20.0, float
 	return item;
 }
 
-stock int SpawnItem(int item, float pos[3])
+int SpawnItem(int item, float pos[3])
 {
 	int sprite = CreateEntityByName("env_sprite");
 	g_iEntityItemIndex[sprite] = item;
@@ -169,7 +163,7 @@ stock int SpawnItem(int item, float pos[3])
 	return sprite;
 }
 
-stock bool PickupItem(int client)
+bool PickupItem(int client)
 {
 	float eyePos[3], endPos[3], eyeAng[3], direction[3];
 	GetClientEyePosition(client, eyePos);
@@ -199,7 +193,7 @@ stock bool PickupItem(int client)
 			RemoveEntity(itemSprite);
 			
 		char qualityTag[32];
-		GetQualityColorTag(g_ItemQuality[item], qualityTag, sizeof(qualityTag));
+		GetQualityColorTag(g_eItemQuality[item], qualityTag, sizeof(qualityTag));
 		RF2_PrintToChatAll("{yellow}%N{default} picked up %s%s {lightgray}[%i]", client, qualityTag, g_szItemName[item], g_iPlayerItem[client][item]);
 		
 		RF2_PrintToChat(client, "%s%s{default}: %s", qualityTag, g_szItemName[item], g_szItemDesc[item]);
@@ -211,7 +205,7 @@ stock bool PickupItem(int client)
 	return false;
 }
 
-stock void EquipItemAsWearable(int client, int item)
+void EquipItemAsWearable(int client, int item)
 {
 	int entity = MaxClients+1;
 	int index;
@@ -232,7 +226,7 @@ stock void EquipItemAsWearable(int client, int item)
 			{
 				if (CheckEquipRegionConflict(g_szItemEquipRegion[item], g_szItemEquipRegion[i]))
 				{
-					if (g_ItemQuality[item] < g_ItemQuality[i])
+					if (g_eItemQuality[item] < g_eItemQuality[i])
 					{
 						valid = false;
 						continue;
@@ -252,27 +246,17 @@ stock void EquipItemAsWearable(int client, int item)
 	
 	if (valid)
 	{
-		int actualQuality;
-		switch(g_ItemQuality[item])
-		{
-			// hardcoded to actual TF2 values, probably should make an enum for this
-			case Quality_Normal: actualQuality = 0;
-			case Quality_Genuine: actualQuality = 1;
-			case Quality_Unusual: actualQuality = 5;
-			case Quality_Haunted: actualQuality = 13;
-			case Quality_Collectors: actualQuality = 14;
-			case Quality_Strange: actualQuality = 11;
-		}
-		
-		CreateWearable(client, "tf_wearable", g_iItemSchemaIndex[item], "", true, actualQuality, item);
+		int actualQuality = GetActualItemQuality(g_eItemQuality[item]);
+		CreateWearable(client, "tf_wearable", g_iItemSchemaIndex[item], "", true, actualQuality, GetRandomInt(1, 9999));
 	}
 }
 
-stock void UpdatePlayerItem(int client, int item)
+void UpdatePlayerItem(int client, int item)
 {
-	float itemMult = IntToFloat(g_iPlayerItem[client][item]);
+	float itemMult = flt(g_iPlayerItem[client][item]);
 	switch (item)
 	{
+		/*
 		case Item_MaimLicense:
 		{
 			int weapon;
@@ -286,23 +270,24 @@ stock void UpdatePlayerItem(int client, int item)
 				}
 			}
 		}
+		*/
 		case Item_EyeCatcher:
 		{
 			int weapon = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
 			if (IsValidEntity(weapon))
 			{
-				float amount = 1.0 + (0.15 * itemMult);
+				float amount = 1.0 + (g_flItemModifier[Item_EyeCatcher] * itemMult);
 				TF2Attrib_SetByDefIndex(weapon, 476, amount);
 			}
 		}
 		case Item_PrideScarf:
 		{
-			CalculatePlayerMaxHealth(client, true);
+			CalculatePlayerMaxHealth(client);
 		}
 		case Item_RoundedRifleman:
 		{
 			int weapon;
-			float amount = 1.0 / (1.0 + (0.08 * itemMult));
+			float amount = 1.0 / (1.0 + (g_flItemModifier[Item_RoundedRifleman] * itemMult));
 			for (int i = 0; i <= 1; i++)
 			{
 				weapon = GetPlayerWeaponSlot(client, i);
@@ -319,7 +304,8 @@ stock void UpdatePlayerItem(int client, int item)
 	}
 }
 
-stock void ItemDeathEffects(int attacker, int victim)
+/*
+void ItemDeathEffects(int attacker, int victim)
 {
 	if (g_iPlayerItem[attacker][Item_PartyHat] > 0)
 	{
@@ -328,7 +314,7 @@ stock void ItemDeathEffects(int attacker, int victim)
 		
 		int explosion = CreateEntityByName("env_explosion");
 		float damage = 80.0;
-		damage *= 1.0 + (IntToFloat(g_iPlayerItem[attacker][Item_PartyHat]-1) * 0.2);
+		damage *= 1.0 + (flt(g_iPlayerItem[attacker][Item_PartyHat]-1) * 0.2);
 		
 		char buffer[16];
 		FloatToString(damage, buffer, sizeof(buffer));
@@ -354,8 +340,9 @@ stock void ItemDeathEffects(int attacker, int victim)
 		}
 	}
 }
+*/
 
-stock int GetQualityColorTag(RF2ItemQuality quality, char[] buffer, int size)
+int GetQualityColorTag(RF2ItemQuality quality, char[] buffer, int size)
 {
 	int cells;
 	switch (quality)
@@ -370,7 +357,7 @@ stock int GetQualityColorTag(RF2ItemQuality quality, char[] buffer, int size)
 	return cells;
 }
 
-stock int GetQualityName(RF2ItemQuality quality, char[] buffer, int size)
+int GetQualityName(RF2ItemQuality quality, char[] buffer, int size)
 {
 	int cells;
 	switch (quality)
@@ -385,7 +372,21 @@ stock int GetQualityName(RF2ItemQuality quality, char[] buffer, int size)
 	return cells;
 }
 
-stock int GetItemName(int item, char[] buffer, int size)
+int GetActualItemQuality(RF2ItemQuality quality)
+{
+	switch (quality)
+	{
+		case Quality_Normal: return TF2Quality_Normal;
+		case Quality_Genuine: return TF2Quality_Genuine;
+		case Quality_Unusual: return TF2Quality_Unusual;
+		case Quality_Haunted: return TF2Quality_Haunted;
+		case Quality_Collectors: return TF2Quality_Collectors;
+		case Quality_Strange: return TF2Quality_Strange;
+	}
+	return TF2Quality_Normal;
+}
+
+int GetItemName(int item, char[] buffer, int size)
 {
 	int cells = FormatEx(buffer, size, "%s", g_szItemName[item]);
 	return cells;

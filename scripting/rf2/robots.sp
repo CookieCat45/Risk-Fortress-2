@@ -3,8 +3,8 @@
 #endif
 #define _RF2_robots_included
 
-float g_flCashValue[2048];
-int g_iRobotAmount; // This is the amount of robots currently loaded
+float g_flCashValue[MAX_EDICTS];
+int g_iRobotAmount; // This is the amount of bots currently loaded
 
 // General robot data
 char g_szLoadedRobots[MAX_ROBOT_TYPES][MAX_CONFIG_NAME_LENGTH];
@@ -20,11 +20,12 @@ float g_flRobotBaseSpeed[MAX_ROBOT_TYPES];
 float g_flRobotModelScale[MAX_ROBOT_TYPES];
 bool g_bRobotIsGiant[MAX_ROBOT_TYPES];
 
-int g_iBotDifficulty[MAX_ROBOT_TYPES]; // TFBot skill level
-float g_flBotMinReloadTime[MAX_ROBOT_TYPES]; // If we're a TFBot and our clip hits 0, reload for at least this amount of time
-
 float g_flRobotXPAward[MAX_ROBOT_TYPES];
 float g_flRobotCashAward[MAX_ROBOT_TYPES];
+
+// TFBot
+int g_iTFBotDifficulty[MAX_ROBOT_TYPES];
+float g_flTFBotMinReloadTime[MAX_ROBOT_TYPES];
 
 // Robot weapon data
 char g_szRobotWeaponName[MAX_ROBOT_TYPES][TF_WEAPON_SLOTS][128];
@@ -32,7 +33,6 @@ char g_szRobotWeaponAttributes[MAX_ROBOT_TYPES][TF_WEAPON_SLOTS][MAX_ATTRIBUTE_S
 int g_iRobotWeaponIndex[MAX_ROBOT_TYPES][TF_WEAPON_SLOTS];
 bool g_bRobotWeaponVisible[MAX_ROBOT_TYPES][TF_WEAPON_SLOTS];
 int g_iRobotWeaponAmount[MAX_ROBOT_TYPES];
-bool g_bRobotWeaponExists[MAX_ROBOT_TYPES][TF_WEAPON_SLOTS];
 
 // Wearables
 char g_szRobotWearableName[MAX_ROBOT_TYPES][MAX_ROBOT_WEARABLES][128];
@@ -40,9 +40,8 @@ char g_szRobotWearableAttributes[MAX_ROBOT_TYPES][MAX_ROBOT_WEARABLES][MAX_ATTRI
 int g_iRobotWearableIndex[MAX_ROBOT_TYPES][MAX_ROBOT_WEARABLES];
 bool g_bRobotWearableVisible[MAX_ROBOT_TYPES][MAX_ROBOT_WEARABLES];
 int g_iRobotWearableAmount[MAX_ROBOT_TYPES];
-bool g_bRobotWearableExists[MAX_ROBOT_TYPES][MAX_ROBOT_WEARABLES];
 
-stock void LoadRobots(char[] names)
+void LoadRobots(char[] names)
 {
 	if (g_iRobotAmount >= MAX_ROBOT_TYPES)
 	{
@@ -105,30 +104,31 @@ stock void LoadRobots(char[] names)
 		g_iRobotBaseHp[robot] = KvGetNum(robotKey, "health", 150);
 		g_flRobotBaseSpeed[robot] = KvGetFloat(robotKey, "speed", 300.0);
 		
-		g_iBotDifficulty[robot] = KvGetNum(robotKey, "tf_bot_difficulty", TFBotDifficulty_Hard);
-		g_flBotMinReloadTime[robot] = KvGetFloat(robotKey, "tf_bot_min_reload_time", 0.75);
+		g_iTFBotDifficulty[robot] = KvGetNum(robotKey, "tf_bot_difficulty", TFBotDifficulty_Hard);
+		g_flTFBotMinReloadTime[robot] = KvGetFloat(robotKey, "tf_bot_min_reload_time", 0.75);
 		
 		// XP and cash awards on death
 		g_flRobotXPAward[robot] = KvGetFloat(robotKey, "xp_award", 15.0);
 		g_flRobotCashAward[robot] = KvGetFloat(robotKey, "cash_award", 20.0);
 		
+		g_iRobotWeaponAmount[robot] = 0;
 		// weapons
 		for (int wep = 0; wep < TF_WEAPON_SLOTS; wep++)
 		{
 			FormatEx(sectionName, sizeof(sectionName), "weapon%i", wep+1);
 			if (!KvJumpToKey(robotKey, sectionName))
-				continue;
+				break;
 			
 			KvGetString(robotKey, "classname", g_szRobotWeaponName[robot][wep], PLATFORM_MAX_PATH, "null");
 			KvGetString(robotKey, "attributes", g_szRobotWeaponAttributes[robot][wep], MAX_ATTRIBUTE_STRING_LENGTH, "");
 			g_iRobotWeaponIndex[robot][wep] = KvGetNum(robotKey, "index", 5);
 			g_bRobotWeaponVisible[robot][wep] = view_as<bool>(KvGetNum(robotKey, "visible", 1));
 			g_iRobotWeaponAmount[robot]++;
-			g_bRobotWeaponExists[robot][wep] = true;
 			
 			KvGoBack(robotKey);
 		}
 		
+		g_iRobotWearableAmount[robot] = 0;
 		// wearables
 		for (int wearable = 0; wearable < MAX_ROBOT_WEARABLES; wearable++)
 		{
@@ -141,7 +141,6 @@ stock void LoadRobots(char[] names)
 			g_iRobotWearableIndex[robot][wearable] = KvGetNum(robotKey, "index", 5000);
 			g_bRobotWearableVisible[robot][wearable] = view_as<bool>(KvGetNum(robotKey, "visible", 1));
 			g_iRobotWearableAmount[robot]++;
-			g_bRobotWearableExists[robot][wearable] = true;
 			
 			KvGoBack(robotKey);
 		}
@@ -174,7 +173,7 @@ stock void LoadRobots(char[] names)
 }
 
 // Returns the index of a currently-loaded robot at random, optionally can retrieve the config name
-stock int GetRandomRobot(bool getName = false, char[] name="", int size=0)
+int GetRandomRobot(bool getName = false, char[] name="", int size=0)
 {
 	int random = GetRandomInt(0, g_iRobotAmount-1);
 	
@@ -184,68 +183,66 @@ stock int GetRandomRobot(bool getName = false, char[] name="", int size=0)
 	return random;
 }
 
-stock void SpawnRobot(int client, int type, bool force=false)
+void SpawnRobot(int client, int type, int spawnEntity=-1, bool force=false)
 {
-	if (!force && IsPlayerAlive(client))
-		return;
+	if (IsPlayerAlive(client))
+	{
+		if (force)
+		{
+			ChangeClientTeam(client, 0);
+		}
+		else
+		{
+			return;
+		}
+	}
 	
 	ChangeClientTeam(client, TEAM_ROBOT);
 	
 	if (IsFakeClient(client))
-		SetEntProp(client, Prop_Send, "m_nBotSkill", g_iBotDifficulty[type]);
+		SetEntProp(client, Prop_Send, "m_nBotSkill", g_iTFBotDifficulty[type]);
 	
-	// First, find a random target to spawn ourselves in relation to.
-	Handle survivorArray = CreateArray(1, MAXTF2PLAYERS);
-	int playerCount;
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (IsClientInGame(i) && IsPlayerAlive(i))
-		{
-			if (GetClientTeam(i) == TEAM_SURVIVOR)
-			{
-				SetArrayCell(survivorArray, playerCount, i);
-				playerCount++;
-			}
-		}
-	}
-	ResizeArray(survivorArray, playerCount);
-	if (GetArraySize(survivorArray) <= 0)
-		ResizeArray(survivorArray, 1);
-	
-	int randomSurvivor = GetArrayCell(survivorArray, GetRandomInt(0, playerCount-1));
 	float pos[3];
-	if (IsValidClient(randomSurvivor))
+	if (!IsValidEntity(spawnEntity))
 	{
-		GetClientAbsOrigin(randomSurvivor, pos);
+		int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
+		if (IsValidClient(randomSurvivor))
+		{
+			GetClientAbsOrigin(randomSurvivor, pos);
+		}
+		else
+		{
+			pos[0] = GetRandomFloat(-3000.0, 3000.0);
+			pos[1] = GetRandomFloat(-3000.0, 3000.0);
+			pos[2] = GetRandomFloat(-1500.0, 1500.0);
+		}
 	}
 	else
 	{
-		pos[0] = GetRandomFloat(-3000.0, 3000.0);
-		pos[1] = GetRandomFloat(-3000.0, 3000.0);
-		pos[2] = GetRandomFloat(-1500.0, 1500.0);
+		GetEntPropVector(spawnEntity, Prop_Data, "m_vecAbsOrigin", pos);
 	}
-		
-	delete survivorArray;
 	
 	float mins[3] = PLAYER_MINS;
 	float maxs[3] = PLAYER_MAXS;
 	ScaleVector(mins, g_flRobotModelScale[type]);
 	ScaleVector(maxs, g_flRobotModelScale[type]);
+	float zOffset = 15.0 * g_flRobotModelScale[type];
 	
 	float spawnPos[3];
-	NavArea area = GetSpawnPointFromNav(pos, MIN_SPAWN_DIST, MAX_SPAWN_DIST, mins, maxs);
-	if (!area)
+	CNavArea area = GetSpawnPointFromNav(pos, spawnPos, MIN_SPAWN_DIST, MAX_SPAWN_DIST, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
+	if (area == NULL_AREA)
 	{
 		char mapName[256];
 		GetCurrentMap(mapName, sizeof(mapName));
-		LogError("NavArea was somehow NULL on map %s. This should never happen! Did you forget to generate the NavMesh?", mapName);
+		LogError("[NAV] NavArea was somehow NULL_AREA on map %s.", mapName);
 		
-		TrySpawnAgain(client, type); // try again in 0.1s. if the spawn somehow keeps failing, this error will be spammed, so we'll know something is up
+		DataPack pack;
+		CreateDataTimer(0.1, Timer_TrySpawnAgain, pack, TIMER_FLAG_NO_MAPCHANGE);
+		pack.WriteCell(client);
+		pack.WriteCell(type);
+		pack.WriteCell(spawnEntity);
+		pack.WriteCell(force);
 		return;
-	}
-	else
-	{
-		area.GetCenter(spawnPos);
 	}
 	
 	g_iPlayerRobotType[client] = type;
@@ -274,39 +271,25 @@ stock void SpawnRobot(int client, int type, bool force=false)
 	
 	TF2_RemoveAllWearables(client);
 	TF2_RemoveAllWeapons(client);
-	for (int i = 0; i < TF_WEAPON_SLOTS; i++)
+	for (int i = 0; i < g_iRobotWeaponAmount[type]; i++)
 	{
-		if (g_bRobotWeaponExists[type][i])
-		{
-			CreateWeapon(client, 
-			g_szRobotWeaponName[type][i], 
-			g_iRobotWeaponIndex[type][i], 
-			g_szRobotWeaponAttributes[type][i], 
-			g_bRobotWeaponVisible[type][i]);
-		}
+		CreateWeapon(client, 
+		g_szRobotWeaponName[type][i], 
+		g_iRobotWeaponIndex[type][i], 
+		g_szRobotWeaponAttributes[type][i], 
+		g_bRobotWeaponVisible[type][i]);
 	}
 	
-	for (int i = 0; i < MAX_ROBOT_WEARABLES; i++)
+	for (int i = 0; i < g_iRobotWearableAmount[type]; i++)
 	{
-		if (g_bRobotWearableExists[type][i])
-		{
-			CreateWearable(client, 
-			g_szRobotWearableName[type][i], 
-			g_iRobotWearableIndex[type][i], 
-			g_szRobotWearableAttributes[type][i], 
-			g_bRobotWearableVisible[type][i]);
-		}
+		CreateWearable(client, 
+		g_szRobotWearableName[type][i], 
+		g_iRobotWearableIndex[type][i], 
+		g_szRobotWearableAttributes[type][i], 
+		g_bRobotWearableVisible[type][i]);
 	}
 	
 	g_iPlayerStatWearable[client] = CreateWearable(client, "tf_wearable", ATTRIBUTE_WEARABLE_INDEX, BASE_PLAYER_ATTRIBUTES, false);
-}
-
-stock void TrySpawnAgain(int client, int type, float time=0.1)
-{
-	DataPack pack;
-	CreateDataTimer(time, Timer_TrySpawnAgain, pack, TIMER_FLAG_NO_MAPCHANGE);
-	pack.WriteCell(client);
-	pack.WriteCell(type);
 }
 
 public Action Timer_TrySpawnAgain(Handle timer, DataPack pack)
@@ -317,7 +300,10 @@ public Action Timer_TrySpawnAgain(Handle timer, DataPack pack)
 		return;
 		
 	int type = pack.ReadCell();
-	SpawnRobot(client, type);
+	int spawnEntity = pack.ReadCell();
+	bool force = view_as<bool>(pack.ReadCell());
+	
+	SpawnRobot(client, type, spawnEntity, force);
 }
 
 public Action RoboSoundHook(int clients[MAXTF2PLAYERS], int& numClients, char sample[PLATFORM_MAX_PATH], int& entity, int& channel, float& volume, int& level, int& pitch, int& flags)
@@ -335,7 +321,7 @@ public Action RoboSoundHook(int clients[MAXTF2PLAYERS], int& numClients, char sa
 			//	TauntLine = true;
 			
 			bool NoGiantLines; // Some classes don't have these.
-			if (class == TFClass_Sniper || class == TFClass_Spy || class == TFClass_Medic || class == TFClass_Engineer)
+			if (class == TFClass_Sniper || class == TFClass_Medic || class == TFClass_Engineer)
 			{
 				NoGiantLines = true;
 				pitch = SNDPITCH_LOW; // We can lower the pitch of the sound instead.
@@ -363,7 +349,7 @@ public Action RoboSoundHook(int clients[MAXTF2PLAYERS], int& numClients, char sa
 			PrecacheSound(sample);
 			return Plugin_Changed;
 		}
-		else if (StrContains(sample, "player/footsteps/") != -1 && !g_bIsGiant[entity])
+		else if (StrContains(sample, "player/footsteps/") != -1 && !TF2_IsPlayerInCondition(entity, TFCond_Disguised) && !g_bIsGiant[entity])
 		{
 			int random = GetRandomInt(1, 18);
 			if (random > 9)
@@ -384,36 +370,24 @@ public Action RoboSoundHook(int clients[MAXTF2PLAYERS], int& numClients, char sa
 *	Cash stuff
 *
 */
-stock void SpawnCashDrop(int spawnAmount = 1, float cashValue, float origin[3])
+void SpawnCashDrop(float cashValue, float pos[3], int size=1)
 {
-	cashValue /= spawnAmount;
-
-	int entity;
-	float angles[3];
-	angles[0] = -60.0;
-	float velocity[3];
-	float launchAngle = GetRandomFloat(-180.0, 180.0);
-	origin[2] += 15.0; // spawn ourselves upwards a bit to reduce the chance of getting stuck on displacements
-	
-	for (int i = 1; i <= spawnAmount; i++)
+	char classname[128];
+	switch (size)
 	{
-		entity = CreateEntityByName("item_currencypack_custom");
-		g_flCashValue[entity] = cashValue;
-		
-		angles[1] = launchAngle;
-		GetAngleVectors(angles, velocity, NULL_VECTOR, NULL_VECTOR);
-		NormalizeVector(velocity, velocity);
-		SetEntityGravity(entity, 45.0); // yes, really, otherwise they float like balloons.
-		ScaleVector(velocity, 3000.0);
-		
-		SetEntityMoveType(entity, MOVETYPE_FLYGRAVITY);
-		TeleportEntity(entity, origin, NULL_VECTOR, velocity);
-		DispatchSpawn(entity);
-		CreateTimer(0.2, Timer_CashMagnet, entity, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		CreateTimer(0.2, Timer_CashTouchGround, entity, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		
-		CreateTimer(40.0, Timer_DeleteEntity, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+		case 1: classname = "item_currencypack_small";
+		case 2: classname = "item_currencypack_medium";
+		case 3: classname = "item_currencypack_large";
+		default: classname = "item_currencypack_small";
 	}
+	
+	int entity = CreateEntityByName(classname);
+	g_flCashValue[entity] = cashValue;
+	
+	TeleportEntity(entity, pos, NULL_VECTOR, NULL_VECTOR);
+	DispatchSpawn(entity);
+	CreateTimer(0.25, Timer_CashMagnet, entity, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(CASH_BURN_TIME, Timer_DeleteEntity, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Action Timer_CashMagnet(Handle timer, int entity)
@@ -430,7 +404,7 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 		if (!IsClientInGame(i) || !IsPlayerAlive(i))
 			continue;
 		
-		// Scouts pick up cash in a radius automatically, like in MvM, though he does not heal from it.
+		// Scouts pick up cash in a radius automatically, like in MvM, though he does not heal from it. (That may be put on an item later.)
 		if (GetClientTeam(i) == TEAM_SURVIVOR && TF2_GetPlayerClass(i) == TFClass_Scout)
 		{
 			GetClientAbsOrigin(i, scoutOrigin);
@@ -444,29 +418,23 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 	return Plugin_Continue;
 }
 
-public Action Timer_CashTouchGround(Handle timer, int entity)
+public Action Hook_CashTouch(int entity, int other)
 {
-	if (!IsValidEntity(entity))
-		return Plugin_Stop;
-	
-	float origin[3];
-	float endPos[3];
-	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", origin);
-	CopyVectors(origin, endPos);
-	endPos[2] -= 15.0;
-	
-	Handle trace = TR_TraceRayEx(origin, endPos, MASK_PLAYERSOLID, RayType_EndPoint);
-	if (TR_DidHit(trace))
+	if (IsValidClient(other))
 	{
-		SetEntityMoveType(entity, MOVETYPE_NONE);
-		return Plugin_Stop;
+		Action action = PickupCash(other, entity);
+		return action;
 	}
-	delete trace;
 	
+	char classname[32];
+	GetEntityClassname(other, classname, sizeof(classname));
+	if (strcmp(classname, "trigger_hurt") == 0)
+		PickupCash(0, entity);
+		
 	return Plugin_Continue;
 }
 
-stock Action PickupCash(int client, int entity)
+Action PickupCash(int client, int entity)
 {
 	// If client is 0 or below, the cash is most likely being collected automatically.
 	if (client < 1 || GetClientTeam(client) == TEAM_SURVIVOR)

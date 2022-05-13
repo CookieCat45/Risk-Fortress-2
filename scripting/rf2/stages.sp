@@ -3,6 +3,9 @@
 #endif
 #define _RF2_maps_included
 
+#define DEFAULT_PACK "default"
+#define DEFAULT_BOSS_PACK "default_boss"
+
 int g_iCurrentStage = 0;
 int g_iMaxStages = 0;
 
@@ -19,9 +22,9 @@ float g_flBossBGMDuration;
 
 float g_flGracePeriodTime = 15.0;
 
-Handle g_hMusicLoopTimer[MAXTF2PLAYERS] = {null, ...};
+Handle g_hMusicLoopTimer[MAXTF2PLAYERS];
 
-stock void LoadMapSettings(const char[] mapName)
+void LoadMapSettings(const char[] mapName)
 {
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
@@ -39,8 +42,8 @@ stock void LoadMapSettings(const char[] mapName)
 	Handle mapKey = CreateKeyValues("stages");
 	FileToKeyValues(mapKey, config);
 	
-	static int StageKv = 1;
-	FormatEx(section, sizeof(section), "stage%i", StageKv);
+	static int stageKv = 1;
+	FormatEx(section, sizeof(section), "stage%i", stageKv);
 	KvJumpToKey(mapKey, section);
 	
 	for (int map = 0; map <= MAX_STAGE_MAPS; map++)
@@ -52,7 +55,7 @@ stock void LoadMapSettings(const char[] mapName)
 			if (StrContains(mapName, mapString) != -1)
 			{
 				found = true;
-				StageKv = 1;
+				stageKv = 1;
 				
 				KvGetString(mapKey, "theme", g_szStageBGM, sizeof(g_szStageBGM), "vo/null.wav");
 				g_flStageBGMDuration = KvGetFloat(mapKey, "theme_duration");
@@ -63,10 +66,10 @@ stock void LoadMapSettings(const char[] mapName)
 				PrecacheSound(g_szStageBGM);
 				PrecacheSound(g_szBossBGM);
 				
-				KvGetString(mapKey, "robot_packs", g_szRobotPacks, sizeof(g_szRobotPacks), "default");
+				KvGetString(mapKey, "robot_packs", g_szRobotPacks, sizeof(g_szRobotPacks), DEFAULT_PACK);
 				LoadPacks(g_szRobotPacks);
 				
-				KvGetString(mapKey, "boss_packs", g_szBossPacks, sizeof(g_szBossPacks), "default_boss");
+				KvGetString(mapKey, "boss_packs", g_szBossPacks, sizeof(g_szBossPacks), DEFAULT_BOSS_PACK);
 				LoadPacks(g_szBossPacks, true);
 				
 				g_flGracePeriodTime = KvGetFloat(mapKey, "grace_period_time", 15.0);
@@ -80,16 +83,16 @@ stock void LoadMapSettings(const char[] mapName)
 	
 	if (!found)
 	{
-		if (StageKv > MAX_STAGES)
+		if (stageKv > MAX_STAGES)
 		{
-			StageKv = 1;
+			stageKv = 1;
 			LogError("Could not locate map settings for map %s, using defaults!", mapName);
 		
 			g_szStageBGM = "vo/null.wav";
 			g_szBossBGM = "vo/null.wav";
 			
-			g_szRobotPacks = "default";
-			g_szBossPacks = "default_boss";
+			g_szRobotPacks = DEFAULT_PACK;
+			g_szBossPacks = DEFAULT_BOSS_PACK;
 			LoadPacks(g_szRobotPacks);
 			LoadPacks(g_szBossPacks, true);
 			
@@ -98,12 +101,12 @@ stock void LoadMapSettings(const char[] mapName)
 			return;
 		}
 		
-		StageKv++;
+		stageKv++;
 		LoadMapSettings(mapName); return;
 	}
 }
 
-stock int GetMaxStages()
+int GetMaxStages()
 {
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
@@ -136,7 +139,7 @@ stock int GetMaxStages()
 	return stageCount;
 }
 
-stock void LoadPacks(char[] packs, bool bosses = false)
+void LoadPacks(char[] packs, bool bosses = false)
 {
 	char packArray[32][64];
 	int count = ExplodeString(packs, " ; ", packArray, 32, 64);
@@ -186,7 +189,7 @@ stock void LoadPacks(char[] packs, bool bosses = false)
 	delete packKey;
 }
 
-stock void SetNextStage(int stage)
+void SetNextStage(int stage)
 {
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
@@ -228,10 +231,11 @@ stock void SetNextStage(int stage)
 	KvGetString(mapKey, "name", mapName, sizeof(mapName));
 	
 	delete mapKey;
+	g_bMapChanging = true;
 	ForceChangeLevel(mapName, "RF2 automatic map change");
 }
 
-stock bool RF2_IsMapValid(char[] mapName)
+bool RF2_IsMapValid(char[] mapName)
 {
 	if (!IsMapValid(mapName))
 		return false;
@@ -278,11 +282,32 @@ stock bool RF2_IsMapValid(char[] mapName)
 	return false;
 }
 
-stock void PlayMusicTrack(int client, bool bossTheme=false)
+public Action Timer_PlayMusic(Handle timer)
 {
-	if (!IsValidClient(client) || IsFakeClient(client))
-		return;
-	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || IsFakeClient(i) || !g_bMusicEnabled[i])
+			continue;
+			
+		PlayMusicTrack(i);
+	}
+}
+
+public Action Timer_LoopMusic(Handle timer, int client)
+{	
+	if ((client = GetClientOfUserId(client)) != 0)
+	{
+		EmitSoundToClient(client, g_szClientBGM[client]);
+		g_hMusicLoopTimer[client] = CreateTimer(g_flBGMDuration[client], Timer_LoopMusic, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	}
+	else
+	{
+		g_hMusicLoopTimer[client] = null;
+	}
+}
+
+void PlayMusicTrack(int client, bool bossTheme=false)
+{
 	if (!bossTheme)
 	{
 		FormatEx(g_szClientBGM[client], PLATFORM_MAX_PATH, g_szStageBGM);
@@ -295,38 +320,23 @@ stock void PlayMusicTrack(int client, bool bossTheme=false)
 	}
 	
 	if (g_hMusicLoopTimer[client] != null)
+	{
 		delete g_hMusicLoopTimer[client];
-		
-	g_hMusicLoopTimer[client] = null;
-	g_hMusicLoopTimer[client] = CreateTimer(g_flBGMDuration[client], Timer_LoopMusic, client, TIMER_FLAG_NO_MAPCHANGE);
+		g_hMusicLoopTimer[client] = null;
+	}
 	
+	g_hMusicLoopTimer[client] = CreateTimer(g_flBGMDuration[client], Timer_LoopMusic, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	EmitSoundToClient(client, g_szClientBGM[client]);
 }
 
-stock void StopMusicTrack(int client)
+void StopMusicTrack(int client)
 {
 	if (g_hMusicLoopTimer[client] != null)
+	{
 		delete g_hMusicLoopTimer[client];
+		g_hMusicLoopTimer[client] = null;
+	}
 	
 	if (!IsFakeClient(client))
 		StopSound(client, SNDCHAN_AUTO, g_szClientBGM[client]);
-}
-
-public Action Timer_PlayMusic(Handle timer)
-{
-	for (int i = 1; i <= MaxClients; i++)
-		PlayMusicTrack(i);
-}
-
-public Action Timer_LoopMusic(Handle timer, int client)
-{	
-	if (IsValidClient(client))
-	{
-		EmitSoundToClient(client, g_szClientBGM[client]);
-		g_hMusicLoopTimer[client] = CreateTimer(g_flBGMDuration[client], Timer_LoopMusic, client, TIMER_FLAG_NO_MAPCHANGE);
-	}
-	else
-	{
-		g_hMusicLoopTimer[client] = null;
-	}
 }

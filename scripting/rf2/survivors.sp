@@ -3,11 +3,7 @@
 #endif
 #define _RF2_survivors_included
 
-#pragma semicolon 1
-#pragma newdecls required
-
 int g_iSurvivorCount = 1; // number of survivors to spawn this round
-int g_iSurvivorPoints[MAXTF2PLAYERS] = { 0, ... }; // survivor queue points
 bool g_bSurvivorIndexUsed[MAX_SURVIVORS];
 
 int g_iSurvivorBaseHealth[TF_CLASSES];
@@ -19,7 +15,7 @@ int g_iSavedLevel[MAX_SURVIVORS] = {1, ...};
 float g_flSavedXP[MAX_SURVIVORS];
 float g_flSavedNextLevelXP[MAX_SURVIVORS] = {BASE_XP_REQUIREMENT, ...};
 
-stock void LoadSurvivorStats()
+void LoadSurvivorStats()
 {
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, SurvivorConfig);
@@ -53,15 +49,16 @@ stock void LoadSurvivorStats()
 	delete survivorKey;
 }
 
-stock bool SetSurvivors()
+bool SetSurvivors()
 {
-	int points[MAXTF2PLAYERS] = {-1, ...};
+	int points[MAXTF2PLAYERS] = {-2147483648, ...};
 	bool valid[MAXTF2PLAYERS];
+	bool removePoints[MAXTF2PLAYERS] = {true, ...};
 	bool allowBots = GetConVarBool(g_cvBotsCanBeSurvivor);
 		
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 	{
-		if (!IsClientInGame(i))
+		if (!IsClientInGame(i) || TF2_GetClientTeam(i) == TFTeam_Spectator)
 			continue;
 			
 		if (IsFakeClient(i))
@@ -72,24 +69,35 @@ stock bool SetSurvivors()
 				ChangeClientTeam(i, TEAM_ROBOT);
 				continue;
 			}
-			else
+			else 
 			{
 				SetEntProp(i, Prop_Send, "m_nBotSkill", TFBotDifficulty_Expert);
+				
 			}
 		}
 		
 		points[i] = g_iSurvivorPoints[i];
 		valid[i] = true;
 		
+		if (IsFakeClient(i))
+		{
+			points[i] -= 9999;
+		}
+		else if (!g_bBecomeSurvivor[i])
+		{
+			points[i] -= 999999;
+			removePoints[i] = false;
+		}
+		
 		if (GetClientTeam(i) != TEAM_ROBOT)
 		{
-			// setting team to 0 first moves them over to BLU team quietly
 			ChangeClientTeam(i, 0);
 			ChangeClientTeam(i, TEAM_ROBOT);
 		}
 	}
 	
 	SortIntegers(points, sizeof(points), Sort_Descending); // sort all the points so we can find out who has the highest
+	int highestPoints = points[0];
 	int count;
 	bool selected[MAXTF2PLAYERS];
 	
@@ -117,8 +125,8 @@ stock bool SetSurvivors()
 		
 		if (count >= MAX_SURVIVORS) // we hit survivor cap, so break the loop
 			break;
-			
-		if (points[count] == RF2_GetSurvivorPoints(i)) // if client owns these points, they are a survivor since it's the highest
+		
+		if (highestPoints == g_iSurvivorPoints[i]) // if client owns these points, they are a survivor since it's the highest
 		{
 			selected[i] = true;
 			
@@ -151,10 +159,11 @@ stock bool SetSurvivors()
 				indexTaken[count] = true;
 			}
 			
-			CreateSurvivor(i, g_iPlayerSurvivorIndex[i]);
-			g_bSurvivorIndexUsed[g_iPlayerSurvivorIndex[i]] = true;
+			CreateSurvivor(i, g_iPlayerSurvivorIndex[i], removePoints[i]);
 			
+			g_bSurvivorIndexUsed[g_iPlayerSurvivorIndex[i]] = true;
 			count++;
+			highestPoints = points[count];
 			i = 0; // loop through players again
 		}
 	}
@@ -166,12 +175,13 @@ stock bool SetSurvivors()
 		return false;
 }
 
-stock void CreateSurvivor(int client, int index, bool resetPoints=true, bool respawn=true)
+void CreateSurvivor(int client, int index, bool resetPoints=true, bool respawn=true)
 {
 	if (resetPoints)
 		g_iSurvivorPoints[client] = 0;
 	
 	TFClassType class = TF2_GetPlayerClass(client);
+	g_iPlayerSurvivorIndex[client] = index; // just in case
 	g_iPlayerBaseHealth[client] = g_iSurvivorBaseHealth[class];
 	g_flPlayerMaxSpeed[client] = g_flSurvivorMaxSpeed[class];
 	
@@ -190,7 +200,7 @@ stock void CreateSurvivor(int client, int index, bool resetPoints=true, bool res
 	LoadSurvivorInventory(client, index);
 }
 
-stock void LoadSurvivorInventory(int client, int index)
+void LoadSurvivorInventory(int client, int index)
 {
 	for (int i = 0; i < MAX_ITEMS; i++)
 	{
@@ -207,7 +217,7 @@ stock void LoadSurvivorInventory(int client, int index)
 	g_flPlayerNextLevelXP[client] = g_flSavedNextLevelXP[index];
 }
 
-stock void SaveSurvivorInventory(int client, int index)
+void SaveSurvivorInventory(int client, int index)
 {
 	for (int i = 0; i < MAX_ITEMS; i++)
 	{
@@ -222,7 +232,8 @@ stock void SaveSurvivorInventory(int client, int index)
 		PrintToServer("[RF2] Saved Survivor inventory of client %i, index %i", client, index);
 }
 
-stock bool IsSurvivorIndexValid(int index)
+/*
+bool IsSurvivorIndexValid(int index)
 {
 	for (int i = 1; i < MAXTF2PLAYERS; i++)
 	{
@@ -231,8 +242,9 @@ stock bool IsSurvivorIndexValid(int index)
 	}
 	return false;
 }
+*/
 
-stock void UpdatePlayerXP(int client, float xpAmount=0.0)
+void UpdatePlayerXP(int client, float xpAmount=0.0)
 {
 	g_flPlayerXP[client] += xpAmount;
 		
@@ -260,15 +272,15 @@ stock void UpdatePlayerXP(int client, float xpAmount=0.0)
 	}
 }
 
-stock void UpdatePlayerLevel(int client)
+void UpdatePlayerLevel(int client)
 {
 	int oldLevel = g_iPlayerLevel[client];
 	g_iPlayerLevel[client]++;
-	CalculatePlayerMaxHealth(client, true);
+	CalculatePlayerMaxHealth(client);
 	RF2_PrintToChat(client, "Your Level: {lime}%i -> %i", oldLevel, g_iPlayerLevel[client]);
 	
-	//int maxHealth = CalculatePlayerMaxHealth(client, true);
-	//float value = IntToFloat(maxHealth);
+	//int maxHealth = CalculatePlayerMaxHealth(client);
+	//float value = flt(maxHealth);
 	//int health = GetEntProp(client, Prop_Data, "m_iHealth");
 	//SetEntityHealth(client, health + maxHealth / 4);
 }

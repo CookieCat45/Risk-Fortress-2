@@ -5,13 +5,13 @@
 
 int g_iWeaponCount;
 
-int g_iWeaponIndex[MAX_WEAPON_INDEXES] = {-1, ...};
-char g_szWeaponDisplayName[MAX_WEAPON_INDEXES][64];
-char g_szWeaponClassname[MAX_WEAPON_INDEXES][64];
-char g_szWeaponAttributes[MAX_WEAPON_INDEXES][MAX_ATTRIBUTE_STRING_LENGTH];
-int g_iWeaponIndexReplacement[MAX_WEAPON_INDEXES] = {-1, ...};
+int g_iWeaponIndex[MAX_WEAPONS] = {-1, ...};
+char g_szWeaponDisplayName[MAX_WEAPONS][64];
+char g_szWeaponClassname[MAX_WEAPONS][64];
+char g_szWeaponAttributes[MAX_WEAPONS][MAX_ATTRIBUTE_STRING_LENGTH];
+int g_iWeaponIndexReplacement[MAX_WEAPONS] = {-1, ...};
 
-stock void LoadWeapons()
+void LoadWeapons()
 {
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, WeaponConfig);
@@ -27,7 +27,7 @@ stock void LoadWeapons()
 	bool firstKey = true;
 	int count;
 	
-	for (int i = 0; i < MAX_WEAPON_INDEXES; i++)
+	for (int i = 0; i < MAX_WEAPONS; i++)
 	{
 		if (firstKey ? KvGotoFirstSubKey(weaponKey) : KvGotoNextKey(weaponKey))
 		{
@@ -117,7 +117,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 	return Plugin_Continue;
 }
 
-stock void CreateWeapon(int client, char[] classname, int index, char[] attributes = "", bool visible = true, bool wearable = false)
+void CreateWeapon(int client, char[] classname, int index, char[] attributes = "", bool visible = true, bool wearable = false)
 {
 	Handle weapon = TF2Items_CreateItem(OVERRIDE_ALL|FORCE_GENERATION);
 	TF2Items_SetClassname(weapon, classname);
@@ -171,7 +171,7 @@ stock void CreateWeapon(int client, char[] classname, int index, char[] attribut
 	}
 }
 
-stock int CreateWearable(int client, const char[] classname, int index, char[] attributes, bool visible = true, int quality=0, int level=0)
+int CreateWearable(int client, const char[] classname, int index, char[] attributes, bool visible = true, int quality=0, int level=0)
 {
 	int wearable = CreateEntityByName(classname);
 	if (wearable == INVALID_ENT_REFERENCE)
@@ -213,7 +213,7 @@ stock int CreateWearable(int client, const char[] classname, int index, char[] a
 	return wearable;
 }
 
-stock void TF2_RemoveAllWearables(int client)
+void TF2_RemoveAllWearables(int client)
 {
 	char classname[64];
 	int entCount = GetEntityCount();
@@ -231,16 +231,18 @@ stock void TF2_RemoveAllWearables(int client)
 	}
 }
 
-stock void TF2_EquipWearable(int client, int entity)
+void TF2_EquipWearable(int client, int entity)
 {
 	if (g_hSDKEquipWearable)
 		SDKCall(g_hSDKEquipWearable, client, entity);
 }
 
-stock int GetWeaponClipSize(int entity)
+/*
+int GetWeaponClipSize(int entity)
 {
 	if (g_hSDKGetMaxClip1)
 		return SDKCall(g_hSDKGetMaxClip1, entity);
 		
 	return -1;
 }
+*/
