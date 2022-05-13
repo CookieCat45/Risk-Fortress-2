@@ -29,7 +29,6 @@ Maps:
 - Edit some existing maps so giants can fit through some areas without having to crouch
 
 Objects:
-- Adjust object spawning to be more random
 - "Change" the model of normal Crates
 - Implement Large Crates
 - Implement Strange Crates
