@@ -3,69 +3,10 @@
 #endif
 #define _RF2_included
 
-#define MAXTF2PLAYERS 36
-#define MAX_EDICTS 2048
-#define TF_CLASSES 9+1
-#define WAIT_TIME 80 // Waiting For Players time
-#define SPEED_LIMIT 1000.0
-
-// Configs
-#define ConfigPath "configs/rf2"
-#define ItemConfig "items.cfg"
-#define SurvivorConfig "survivors.cfg"
-#define WeaponConfig "weapons.cfg"
-#define RobotConfig "robots.cfg"
-#define PackConfig "packs.cfg"
-#define MapConfig "maps.cfg"
-#define BossConfig "bosses.cfg"
-
-// Models/Sprites
-#define ERROR "models/error.mdl"
-#define MODEL_INVISIBLE "models/empty.mdl"
-#define MODEL_TELEPORTER "models/rf2_models/objects/teleporter.mdl"
-#define MODEL_TELEPORTER_RADIUS "models/rf2_models/objects/teleporter_radius.mdl"
-#define MODEL_CRATE "models/props_urban/urban_crate002.mdl"
-
-#define DEBUGEMPTY "debug/debugempty.vmt"
-
-// Sounds
-#define SOUND_ITEM_PICKUP "ui/item_default_pickup.wav"
-#define SOUND_GAME_OVER "music/mvm_lost_wave.wav"
-#define SOUND_MONEY_PICKUP "mvm/mvm_money_pickup.wav"
-
-#define SOUND_DROP_DEFAULT "ui/itemcrate_smash_rare.wav"
-#define SOUND_DROP_UNUSUAL "ui/itemcrate_smash_ultrarare_fireworks.wav"
-#define NOPE "vo/engineer_no01.mp3"
-
-#define SOUND_PARTY1 "misc/happy_birthday_tf_04.wav"
-#define SOUND_PARTY2 "misc/happy_birthday_tf_11.wav"
-#define SOUND_PARTY3 "misc/happy_birthday_tf_13.wav"
-#define SOUND_PARTY4 "misc/happy_birthday_tf_14.wav"
-#define SOUND_PARTY5 "misc/happy_birthday_tf_15.wav"
-
-#define SOUND_BOSS_SPAWN "mvm/mvm_tank_start.wav"
-#define SOUND_SENTRYBUSTER_BOOM "mvm/sentrybuster/mvm_sentrybuster_explode.wav"
-#define SOUND_ROBOT_STUN "mvm/mvm_robo_stun.wav"
-
-#define SOUND_BELL "misc/halloween/strongman_bell_01.wav"
-
-// Particles
-#define PARTICLE_NORMAL_CRATE_OPEN "mvm_loot_explosion"
-#define PARTICLE_UNUSUAL_CRATE_OPEN "mvm_pow_gold_seq"
-
-#define PARTICLE_CONFETTI "bday_confetti"
-
-// General -------------------------------------------------------------------------------------------------------------------------------------
-#define WORLD_CENTER "rf2_world_center" // An info_target used to determine where the "center" of the world is, according to the map designer
-#define MAX_CONFIG_NAME_LENGTH 64
-#define MAX_ATTRIBUTE_STRING_LENGTH 512
+#pragma semicolon 1
+#pragma newdecls required
 
 // Objects -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_OBJECTS 150
-#define MAX_TELEPORTERS 16
-#define MAX_ALTARS 8
-#define BASE_OBJECT_COUNT 10
-
 #define OBJECT_TELEPORTER "rf2_object_teleporter"
 #define TELEPORTER_RADIUS 1500.0
 
@@ -74,123 +15,55 @@
 #define OBJECT_CRATE "rf2_object_crate"
 #define OBJECT_CRATE_LARGE "rf2_object_crate_large"
 #define OBJECT_CRATE_STRANGE "rf2_object_crate_strange"
-#define CRATE_BASE_COST 50.0
-#define CRATE_LARGE_BASE_COST 150.0
-#define CRATE_STRANGE_BASE_COST 75.0
+#define OBJECT_CRATE_HAUNTED "rf2_object_crate_haunted"
 
 #define OBJECT_ITEM "rf2_object_item"
+#define OBJECT_HAUNTED_KEY "rf2_object_haunted_key"
 
-enum RF2ObjectState
+enum
 {
 	ObjectState_Inactive,
 	ObjectState_Active,
 };
 
-enum
-{
-	SOLID_NONE,
-	SOLID_BSP,
-	SOLID_BBOX,
-	SOLID_OBB,
-	SOLID_OBB_YAW,
-	SOLID_TEST,
-	SOLID_VPHYSICS,
-};
-
 // Players -------------------------------------------------------------------------------------------------------------------------------------
-#define PLAYER_MINS {-24.0, -24.0, 0.0}
-#define PLAYER_MAXS {24.0, 24.0, 82.0}
 #define TEAM_SURVIVOR view_as<int>(TFTeam_Red)
-#define TEAM_ROBOT view_as<int>(TFTeam_Blue)
+#define TEAM_ENEMY view_as<int>(TFTeam_Blue)
 #define MAX_SURVIVORS 6
 
-#define LEVEL_HEALTH_INCREASE 0.15
-#define LEVEL_DAMAGE_INCREASE 0.1
-
-#define BASE_XP_REQUIREMENT 150.0
-#define XP_REQUIREMENT_SCALE 1.5
-
-// "mod see enemy health", "maxammo primary increased", "maxammo secondary increased", "metal regen"
-#define BASE_PLAYER_ATTRIBUTES "269 = 1 ; 76 = 10.0 ; 78 = 10.0 ; 113 = 25"
-#define ATTRIBUTE_WEARABLE_INDEX 5000 // Scrap Metal
-
-// Robots -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_ROBOT_TYPES 128
-#define MIN_SPAWN_DIST 650.0
-#define MAX_SPAWN_DIST 1650.0
-#define MIN_RESPAWN_WAVE_TIME 6.0
-#define MAX_SPAWN_WAVE_COUNT 8
-#define MAX_ROBOT_WEARABLES 6
-#define CASH_BURN_TIME 30.0
-
-// Bosses -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_BOSS_TYPES 32
-#define BOSS_BASE_BACKSTAB_DAMAGE 750.0
-#define MAX_BOSS_WEARABLES 8
-
-// TFBots -------------------------------------------------------------------------------------------------------------------------------------
-#define AUTO_PATH_TARGET_TIME 25.0
-#define PATH_COOLDOWN 1.0
-
-enum
-{
-	TFBotDifficulty_Easy,
-	TFBotDifficulty_Normal,
-	TFBotDifficulty_Hard,
-	TFBotDifficulty_Expert,
-};
-
-// Weapons -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_WEAPONS 256
-
-// Weapon slots, according to source code
-#define TF_WEAPON_SLOTS 8
-enum
-{
-	WeaponSlot_Primary,
-	WeaponSlot_Secondary,
-	WeaponSlot_Melee,
-	WeaponSlot_Utility, // Used for the PASS Time JACK
-	WeaponSlot_Builder,
-	WeaponSlot_PDA,
-	WeaponSlot_PDA2,
-	WeaponSlot_Action = 9, // Action item, e.g. Spellbook Magazine or Grappling Hook (The rest of the slots are for wearables and taunts)
-	
-	WeaponSlot_DisguiseKit = WeaponSlot_PDA,
-	WeaponSlot_InvisWatch = WeaponSlot_PDA2,
-};
-
-// Ammo types, according to source code
-enum
-{
-	TFAmmoType_Primary = 1,
-	TFAmmoType_Secondary,
-	TFAmmoType_Metal,
-	TFAmmoType_Jarate,
-	TFAmmoType_MadMilk,
-	//TFAmmoType_Grenades3,	- Unused
-};
-
 // Items -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_ITEMS 32
-enum RF2ItemType
+#define MAX_ITEMS 64
+enum
 {
 	Item_Null = 0,
 	Item_TombReaders = 1,
-	Item_FedFedora = 2,
-	Item_PrideScarf = 3,
-	Item_EyeCatcher = 4,
-	Item_MaimLicense = 5,
-	Item_RobinWalkers = 6,
-	Item_RoundedRifleman = 7,
-	Item_PartyHat = 8,
-	Item_Executioner = 9,
-	Equipment_Stahlhelm = 10,
-	Item_Archimedes = 11,
+	Item_PrideScarf = 2,
+	Item_EyeCatcher = 3,
+	Item_MaimLicense = 4,
+	Item_RobinWalkers = 5,
+	Item_RoundedRifleman = 6,
+	Item_Archimedes = 7,
+	Item_PointAndShoot = 8,
+	Item_PocketMedic = 9,
+	Item_BanditsBoots = 10,
+	Item_BoomBoxers = 11,
+	Item_ClassCrown = 12,
+	Item_ProofOfPurchase = 13,
+	Item_Dangeresque = 14,
+	Item_LuckyShot = 15,
+	ItemStrange_VirtualViewfinder = 16,
+	ItemStrange_RoBro = 17,
+	ItemStrange_SpellbookMagazine = 18,
+	Item_HorsemannHead = 19,
+	Item_Monoculus = 20,
+	Item_SaxtonHat = 21,
+	Item_ScrapMetal = 22,
+	Item_ReclaimedMetal = 23,
+	Item_RefinedMetal = 24,
 	Item_MaxValid,
 };
 
-enum RF2ItemQuality
+enum
 {
 	Quality_None = -1,
 	Quality_Normal,
@@ -201,7 +74,7 @@ enum RF2ItemQuality
 	Quality_Strange,
 };
 
-// Actual TF2 item quality IDs.
+// Actual TF2 item quality IDs
 enum
 {
 	TF2Quality_Normal,
@@ -223,18 +96,20 @@ enum
 };
 
 // Difficulty -------------------------------------------------------------------------------------------------------------------------------------
-#define	DifficultyFactor_Drizzle 0.7
-#define	DifficultyFactor_Rainstorm 1.0
-#define	DifficultyFactor_Monsoon 1.5
-#define DifficultyFactor_Diluvian 2.0
-
 enum
 {
-	DIFFICULTY_DRIZZLE,
-	DIFFICULTY_RAINSTORM,
-	DIFFICULTY_MONSOON,
-	DIFFICULTY_DILUVIAN,
+	DIFFICULTY_SCRAP,
+	DIFFICULTY_IRON,
+	DIFFICULTY_STEEL,
+	DIFFICULTY_TITANIUM,
+	DIFFICULTY_AUSTRALIUM,
 };
+
+#define	DifficultyFactor_Scrap 0.75
+#define	DifficultyFactor_Iron 1.0
+#define	DifficultyFactor_Steel 1.5
+#define DifficultyFactor_Titanium 2.0
+#define DifficultyFactor_Australium 3.0
 
 enum
 {
@@ -248,10 +123,6 @@ enum
 	SubDifficulty_ComingForYou,
 	SubDifficulty_Hahaha,
 };
-
-// Stages -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_STAGE_MAPS 32
-#define MAX_STAGES 32
 
 /*
  * Is RF2 enabled?
@@ -275,12 +146,6 @@ native bool RF2_CanBeStunned(int client);
 native bool RF2_IsPlayerBoss(int client, bool teleporterBoss=false);
 
 /*
- * Returns whether or not the Teleporter Event is currently active.
- * @return		True if the Teleporter Event is active, false otherwise.
- */
-native bool RF2_IsTeleporterEvent();
-
-/*
  * Returns the player's current Survivor index.
  *
  * @param client	Player index.
@@ -289,16 +154,41 @@ native bool RF2_IsTeleporterEvent();
 native int RF2_GetSurvivorIndex(int client);
 
 /*
+ * Returns the player's Survivor level.
+ *
+ * @param client	Player index.
+ * @return			Player's Survivor level. -1 if the player is not a Survivor. 
+ */
+native int RF2_GetSurvivorLevel(int client);
+
+/*
  * Returns the amount of an item that a player has.
  *
  * @param client		Player index.
  * @param itemIdx		Item index.
  * @return			Amount of the item, or -1 if item index is invalid.
  */
-native int RF2_GetPlayerItemAmount(int client, RF2ItemType itemIdx);
+native int RF2_GetPlayerItemAmount(int client, int itemIdx);
 
 /*
- * Returns the number of Survivors that were present at the beginning of the level (meaning killed AND disconnected Survivors still count!).
+ * Gives a player items.
+ *
+ * @param client		Player index.
+ * @param itemIdx		Item index.
+ * @param amount		Amount to give. Negative values can be passed to take away items.
+ * @noreturn
+ */
+native void RF2_GivePlayerItem(int client, int itemIdx, int amount);
+
+/*
+ * Returns the enemy level.
+ *
+ * @return			Enemy level. 
+ */
+native int RF2_GetEnemyLevel();
+
+/*
+ * Returns the number of Survivors that were present at the beginning of the level (meaning killed and disconnected Survivors still count).
  * @return			Number of Survivors.
  */
 native int RF2_GetSurvivorCount();
@@ -324,16 +214,16 @@ native void RF2_SetSurvivorPoints(int client, int points);
 native float RF2_GetDifficultyCoeff();
 
 /*
- * Returns the current sub difficulty value (Easy, Normal, ...)
+ * Returns the current sub difficulty (Easy, Normal, ...)
  * @return			Sub difficulty value.
  */
 native int RF2_GetSubDifficulty();
 
 /*
- * Returns the initial difficulty value (Drizzle, Rainstorm, ...)
- * @return			Initial difficulty value.
+ * Returns the game difficulty (Scrap, Iron, Steel, ...)
+ * @return			Game difficulty value.
  */
-native int RF2_GetInitialDifficulty();
+native int RF2_GetDifficulty();
 
 /*
  * Returns the base max health stat of a player.
@@ -371,16 +261,22 @@ native float RF2_GetCalculatedSpeed(int client);
 native int RF2_GetMaxStages();
 
 /*
- * Returns the current stage number of a run.
- * @return			Stage number.
+ * Returns the current stage number.
+ * @return			Current stage number.
  */
 native int RF2_GetCurrentStage();
 
 /*
  * Returns the current Teleporter entity.
- * @return			Teleporter entity index.
+ * @return			Teleporter entity index, or -1 if the Teleporter event isn't active.
  */
 native int RF2_GetTeleporterEntity();
+
+/*
+ * Returns whether or not Tank Destruction Mode is active.
+ * @return			True if active, false otherwise.
+ */
+native bool RF2_IsTankDestructionMode();
 
 // Prints a message to a client with the [RF2] tag. Uses the same parameters and supports color tags.
 stock void RF2_PrintToChat(int client, const char[] message, any ...)
@@ -423,15 +319,20 @@ stock void RF2_ReplyToCommand(int client, const char[] message, any ...)
 
 /*
  * Called when the Teleporter event is started.
- * @param client	Client responsible for starting the event.
- * @return			Plugin_Handled to block the event from starting.
+ * @param client	Client responsible for starting the event. -1 if that client died or disconnected.
+ * @noreturn
  */
-forward Action RF2_OnTeleporterEventStart(int client);
+forward void RF2_OnTeleporterEventStart(int client);
 
 /*
- * Called when the round's grace period has ended.
+ * Called when the grace period has begun.
  */
-forward Action RF2_OnGracePeriodEnd();
+forward void RF2_OnGracePeriodStart();
+
+/*
+ * Called when the grace period has ended.
+ */
+forward void RF2_OnGracePeriodEnd();
 
 #if !defined REQUIRE_PLUGIN
 public void __pl_RF2_SetNTVOptional()
@@ -440,14 +341,18 @@ public void __pl_RF2_SetNTVOptional()
 	MarkNativeAsOptional("RF2_CanBeStunned");
 	MarkNativeAsOptional("RF2_IsPlayerBoss");
 	MarkNativeAsOptional("RF2_GetPlayerItemAmount");
-	MarkNativeAsOptional("RF2_IsTeleporterEvent");
+	MarkNativeAsOptional("RF2_GivePlayerItem");
+	MarkNativeAsOptional("RF2_GetEnemyLevel");
 	
+	MarkNativeAsOptional("RF2_GetSurvivorIndex");
+	MarkNativeAsOptional("RF2_GetSurvivorLevel");
 	MarkNativeAsOptional("RF2_GetSurvivorCount");
 	MarkNativeAsOptional("RF2_GetSurvivorPoints");
 	MarkNativeAsOptional("RF2_SetSurvivorPoints");
 	
 	MarkNativeAsOptional("RF2_GetDifficultyCoeff");
 	MarkNativeAsOptional("RF2_GetSubDifficulty");
+	MarkNativeAsOptional("RF2_GetDifficulty");
 	
 	MarkNativeAsOptional("RF2_GetBaseMaxHealth");
 	MarkNativeAsOptional("RF2_GetCalculatedMaxHealth");
@@ -456,5 +361,7 @@ public void __pl_RF2_SetNTVOptional()
 	
 	MarkNativeAsOptional("RF2_GetMaxStages");
 	MarkNativeAsOptional("RF2_GetCurrentStage");
+	MarkNativeAsOptional("RF2_GetTeleporterEntity");
+	MarkNativeAsOptional("RF2_IsTankDestructionMode");
 }
 #endif
