@@ -328,6 +328,7 @@ char g_szEnemyHudText[1024] = "\n\n\nStage %i | %02d:%02d\nEnemy Level: %i\n%s\n
 // Players
 bool g_bPlayerInGame[MAXTF2PLAYERS]; // Check IsClientInGameEx() instead of checking IsClientInGame().
 bool g_bPlayerInCondition[MAXTF2PLAYERS][MAX_TF_CONDITIONS]; // Check TF2_IsPlayerInConditionEx() over TF2_IsPlayerInCondition().
+bool g_bPlayerFakeClient[MAXTF2PLAYERS]; // Check IsFakeClientExEx() instead of checking IsFakeClientEx().
 char g_szPlayerOriginalName[MAXTF2PLAYERS][MAX_NAME_LENGTH];
 
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
@@ -756,6 +757,7 @@ public void OnMapStart()
 			{
 				if (IsClientConnected(i))
 				{
+					OnClientConnected(i);
 					OnClientCookiesCached(i);
 				}
 				
@@ -1024,13 +1026,18 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_bot_reevaluate_class_in_spawnroom"));
 }
 
+public void OnClientConnected(int client)
+{
+	g_bPlayerFakeClient[client] = IsFakeClient(client);
+}
+
 public void OnClientPutInServer(int client)
 {
 	g_bPlayerInGame[client] = true;
 
 	if (RF2_IsEnabled())
 	{
-		if (IsFakeClient(client))
+		if (IsFakeClientEx(client))
 		{
 			g_TFBot[client] = new TFBot(client);
 		}
@@ -1060,17 +1067,17 @@ public void OnClientDisconnect(int client)
 	
 	StopMusicTrack(client);
 	
-	if (!IsFakeClient(client))
+	if (!IsFakeClientEx(client))
 	{
 		SaveClientCookies(client);
 	}
 	
-	if (!g_bWaitingForPlayers && !g_bGameOver && g_bGameStarted && !g_bMapChanging && !g_bStageCleared && !IsFakeClient(client))
+	if (!g_bWaitingForPlayers && !g_bGameOver && g_bGameStarted && !g_bMapChanging && !g_bStageCleared && !IsFakeClientEx(client))
 	{
 		int count;
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (i == client || !IsClientConnected(i) || IsFakeClient(i))
+			if (i == client || !IsClientConnected(i) || IsFakeClientEx(i))
 				continue;
 			
 			count++;
@@ -1099,6 +1106,7 @@ public void OnClientDisconnect(int client)
 public void OnClientDisconnect_Post(int client)
 {
 	g_bPlayerInGame[client] = false;
+	g_bPlayerFakeClient[client] = false;
 	g_flLoopMusicAt[client] = -1.0;
 	
 	if (g_hPlayerExtraSentryList[client])
@@ -1130,7 +1138,7 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 			continue;
 		
 		// If we are allowing bots, they lose points in favor of players.
-		if (IsFakeClient(i))
+		if (IsFakeClientEx(i))
 		{
 			if (!allowBots)
 				continue;
@@ -1167,7 +1175,7 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 		if (playerPoints[i] == highestPoints)
 		{
 			// Lucky you - your points won't be getting reset.
-			CreateSurvivor(i, g_iPlayerSurvivorIndex[client], false);
+			MakeSurvivor(i, g_iPlayerSurvivorIndex[client], false);
 			
 			float pos[3];
 			float angles[3];
@@ -1192,7 +1200,7 @@ public Action OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 	
 	g_bRoundActive = true;
 	g_bRoundInitializing = true;
-	if (!SetSurvivors())
+	if (!CreateSurvivors())
 	{
 		g_bRoundActive = false;
 		PrintToServer("[RF2] No Survivors were spawned! Restarting the game...");
@@ -1347,7 +1355,7 @@ public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 		
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGameEx(i) && !IsPlayerSurvivor(i) && !IsFakeClient(i))
+		if (IsClientInGameEx(i) && !IsPlayerSurvivor(i) && !IsFakeClientEx(i))
 		{
 			g_iPlayerSurvivorPoints[i] += 10;
 			RF2_PrintToChat(i, "You gained {lime}10 {default}Survivor Points from this round.");
@@ -1399,7 +1407,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	}
 	
 	// Initialize player bots
-	if (IsFakeClient(client))
+	if (IsFakeClientEx(client))
 	{
 		TFBot_Init(g_TFBot[client]);
 	}
@@ -1407,7 +1415,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	if (team == TEAM_SURVIVOR)
 	{
 		// Gatekeeping
-		if (!IsPlayerSurvivor(client) || IsFakeClient(client) && !g_cvBotsCanBeSurvivor.BoolValue)
+		if (!IsPlayerSurvivor(client) || IsFakeClientEx(client) && !g_cvBotsCanBeSurvivor.BoolValue)
 		{
 			SilentlyKillPlayer(client);
 			ChangeClientTeam(client, TEAM_ENEMY);
@@ -1434,7 +1442,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		
 		if (name[0])
 		{
-			if (IsFakeClient(client))
+			if (IsFakeClientEx(client))
 			{
 				SetClientName(client, name);
 			}
@@ -1793,7 +1801,7 @@ public Action Timer_RespawnSurvivor(Handle timer, int client)
 		return Plugin_Continue;
 	}
 	
-	CreateSurvivor(client, GetSurvivorIndex(client), false, false);
+	MakeSurvivor(client, GetSurvivorIndex(client), false, false);
 	return Plugin_Continue;
 }
 
@@ -2172,15 +2180,19 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		}
 		else if (!pointsGiven[i])
 		{
-			if (!IsFakeClient(i))
+			if (!IsFakeClientEx(i))
+			{
 				spawnPoints[i] += 3;
+			}
 			else
+			{
 				spawnPoints[i]++;
+			}
 				
 			pointsGiven[i] = true;
 		}
 		
-		if (spawnPoints[i] > 0 && IsFakeClient(i))
+		if (spawnPoints[i] > 0 && IsFakeClientEx(i))
 			spawnPoints[i] = 0; // bots have less spawn priority than players this way, but they will still spawn
 		
 		if (count >= maxCount)
@@ -2289,7 +2301,7 @@ public Action Timer_PlayerHud(Handle timer)
 	SetHudTextParams(-1.0, -1.3, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || IsFakeClient(i))
+		if (!IsClientInGameEx(i) || IsFakeClientEx(i))
 			continue;
 		
 		if (g_bGameOver)
@@ -2574,7 +2586,7 @@ public Action Timer_AFKManager(Handle timer)
 	// first we need to count our AFKs to see if anyone needs kicking
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || IsFakeClient(i))
+		if (!IsClientInGameEx(i) || IsFakeClientEx(i))
 			continue;
 		
 		humanCount++;
@@ -2593,7 +2605,7 @@ public Action Timer_AFKManager(Handle timer)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || IsFakeClient(i))
+		if (!IsClientInGameEx(i) || IsFakeClientEx(i))
 			continue;
 		
 		g_flPlayerAFKTime[i] += 1.0;
@@ -2693,7 +2705,7 @@ public Action OnChangeClass(int client, const char[] command, int args)
 		
 		SilentlyKillPlayer(client);
 		TF2_SetPlayerClass(client, desiredClass); // so stats update properly
-		CreateSurvivor(client, GetSurvivorIndex(client), false, false);
+		MakeSurvivor(client, GetSurvivorIndex(client), false, false);
 		
 		// Teleport the player back to their last position in grace period
 		DataPack pack;
@@ -2803,9 +2815,8 @@ public void Hook_PreThink(int client)
 		return;
 	
 	float engineTime = GetEngineTime();
-	bool bot = IsFakeClient(client);
 	
-	if (!g_bTeleporterEventPreparing && !g_bStageCleared && !bot && g_flLoopMusicAt[client] >= 0.0 && engineTime >= g_flLoopMusicAt[client])
+	if (!IsFakeClientEx(client) && !g_bTeleporterEventPreparing && !g_bStageCleared && g_flLoopMusicAt[client] >= 0.0 && engineTime >= g_flLoopMusicAt[client])
 	{
 		StopMusicTrack(client);
 		PlayMusicTrack(client);
@@ -2814,7 +2825,7 @@ public void Hook_PreThink(int client)
 	if (!IsPlayerAlive(client))
 		return;
 	
-	if (bot)
+	if (IsFakeClientEx(client))
 	{
 		TFBot_Think(g_TFBot[client]);
 	}
@@ -3038,25 +3049,22 @@ public void TF2_OnWaitingForPlayersEnd()
 
 public void OnEntityCreated(int entity, const char[] classname)
 {
-	if (!RF2_IsEnabled())
+	if (!RF2_IsEnabled() || entity <= MaxClients || entity >= MAX_EDICTS)
 		return;
-		
-	if (entity >= 0 && entity <= MAX_EDICTS)
-	{
-		g_iItemDropper[entity] = -1;
-		g_iItemOwner[entity] = -1;
-		g_iItemDamageProc[entity] = Item_Null;
-		g_iObjectState[entity] = ObjectState_Invalid;
-		g_flObjectCost[entity] = 0.0;
-		
-		g_bDroppedItem[entity] = false;
-		g_bDontDamageOwner[entity] = false;
-		g_bDontRemoveWearable[entity] = false;
-		g_bItemWearable[entity] = false;
-		g_bCashBomb[entity] = false;
-		g_bPyromancerFireball[entity] = false;
-		g_bFiredWhileRocketJumping[entity] = false;
-	}
+	
+	g_iItemDropper[entity] = -1;
+	g_iItemOwner[entity] = -1;
+	g_iItemDamageProc[entity] = Item_Null;
+	g_iObjectState[entity] = ObjectState_Invalid;
+	g_flObjectCost[entity] = 0.0;
+	
+	g_bDroppedItem[entity] = false;
+	g_bDontDamageOwner[entity] = false;
+	g_bDontRemoveWearable[entity] = false;
+	g_bItemWearable[entity] = false;
+	g_bCashBomb[entity] = false;
+	g_bPyromancerFireball[entity] = false;
+	g_bFiredWhileRocketJumping[entity] = false;
 	
 	if (StrContains(classname, "item_") != -1)
 	{
@@ -3100,11 +3108,12 @@ public void OnEntityCreated(int entity, const char[] classname)
 
 public void OnEntityDestroyed(int entity)
 {
-	if (!RF2_IsEnabled() || !IsValidEdict(entity))
+	if (!RF2_IsEnabled() || entity <= MaxClients || entity >= MAX_EDICTS)
 		return;
 		
 	char classname[32];
 	GetEntityClassname(entity, classname, sizeof(classname));
+	
 	if (strcmp(classname, "tf_wearable") == 0)
 	{
 		for (int i = 1; i <= MaxClients; i++)
@@ -3119,18 +3128,16 @@ public void OnEntityDestroyed(int entity)
 			}
 		}
 	}
-	else if (IsBuilding(entity))
+	else if (StrContains(classname, "obj_") != -1)
 	{
-		int index;
-		for (int i = 1; i <= MaxClients; i++)
+		if (TF2_GetObjectType(entity) == TFObject_Sentry)
 		{
-			if (!IsClientInGameEx(i) || g_hPlayerExtraSentryList[i].Length <= 0)
-				continue;
-
-			if ((index = g_hPlayerExtraSentryList[i].FindValue(entity)) != -1)
+			int index;
+			int builder = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
+			
+			if (builder > 0 && (index = g_hPlayerExtraSentryList[builder].FindValue(entity)) != -1)
 			{
-				g_hPlayerExtraSentryList[i].Erase(index);
-				break;
+				g_hPlayerExtraSentryList[builder].Erase(index);
 			}
 		}
 	}
@@ -3149,8 +3156,7 @@ public void OnEntityDestroyed(int entity)
 bool IsEntityBlacklisted(const char[] classname)
 {
 	return (strcmp(classname, "func_regenerate") == 0 || strcmp(classname, "tf_ammo_pack") == 0 
-	|| strcmp(classname, "halloween_souls_pack") == 0 || StrContains(classname, "tf_logic_") != -1 
-	|| strcmp(classname, "teleport_vortex") == 0);
+	|| strcmp(classname, "halloween_souls_pack") == 0 || strcmp(classname, "teleport_vortex") == 0);
 }
 
 public void Hook_HealthKitSpawnPost(int entity)
@@ -3779,7 +3785,7 @@ public void Hook_WeaponSwitch(int client, int weapon)
 		}
 	}
 	
-	if (IsFakeClient(client))
+	if (IsFakeClientEx(client))
 	{
 		g_TFBot[client].RemoveButtonFlag(IN_RELOAD);
 	}
@@ -3839,9 +3845,8 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	if (RF2_IsEnabled())
 	{
 		Action action = Plugin_Continue;
-		bool bot = IsFakeClient(client);
 		
-		if (bot)
+		if (!IsFakeClientEx(client))
 		{
 			action = TFBot_OnPlayerRunCmd(client, buttons, impulse, vel, angles, weapon, subtype);
 		}
@@ -3854,7 +3859,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		}
 		
 		static bool reloadPressed[MAXTF2PLAYERS];
-		if (!bot && buttons & IN_RELOAD)
+		if (!IsFakeClientEx(client) && buttons & IN_RELOAD)
 		{
 			if (!reloadPressed[client])
 			{
@@ -3903,7 +3908,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		}
 
 		static bool attack3Pressed[MAXTF2PLAYERS];
-		if (!bot && buttons & IN_ATTACK3)
+		if (!IsFakeClientEx(client) && buttons & IN_ATTACK3)
 		{
 			if (!attack3Pressed[client])
 			{
