@@ -6,33 +6,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-// Objects -------------------------------------------------------------------------------------------------------------------------------------
-#define OBJECT_TELEPORTER "rf2_object_teleporter"
-#define TELEPORTER_RADIUS 1500.0
-
-#define OBJECT_ALTAR "rf2_object_altar"
-
-#define OBJECT_CRATE "rf2_object_crate"
-#define OBJECT_CRATE_LARGE "rf2_object_crate_large"
-#define OBJECT_CRATE_STRANGE "rf2_object_crate_strange"
-#define OBJECT_CRATE_HAUNTED "rf2_object_crate_haunted"
-
-#define OBJECT_ITEM "rf2_object_item"
-#define OBJECT_HAUNTED_KEY "rf2_object_haunted_key"
-
-enum
-{
-	ObjectState_Inactive,
-	ObjectState_Active,
-};
-
 // Players -------------------------------------------------------------------------------------------------------------------------------------
 #define TEAM_SURVIVOR view_as<int>(TFTeam_Red)
 #define TEAM_ENEMY view_as<int>(TFTeam_Blue)
 #define MAX_SURVIVORS 6
 
-// Items -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_ITEMS 64
 enum
 {
 	Item_Null = 0,
@@ -50,7 +28,7 @@ enum
 	Item_ClassCrown = 12,
 	Item_ProofOfPurchase = 13,
 	Item_Dangeresque = 14,
-	Item_LuckyShot = 15,
+	Item_Law = 15,
 	ItemStrange_VirtualViewfinder = 16,
 	ItemStrange_RoBro = 17,
 	ItemStrange_SpellbookMagazine = 18,
@@ -60,6 +38,36 @@ enum
 	Item_ScrapMetal = 22,
 	Item_ReclaimedMetal = 23,
 	Item_RefinedMetal = 24,
+	ItemSpy_NohMercy = 25,
+	ItemMedic_WeatherMaster = 26,
+	Item_KillerExclusive = 27,
+	Item_WhaleBoneCharm = 28,
+	Item_BruiserBandana = 29,
+	Item_Executioner = 30,
+	Item_PillarOfHats = 31,
+	Item_CrypticKeepsake = 32,
+	Item_HorrificHeadsplitter = 33,
+	Item_Tux = 34,
+	Item_LuckyCatHat = 35,
+	Item_MisfortuneFedora = 36,
+	Item_DarkHelm = 37,
+	Item_UFO = 38,
+	Item_Goalkeeper = 39,
+	ItemSpy_CounterfeitBillycock = 40,
+	ItemSpy_StealthScarf = 41,
+	Item_HeartOfGold = 42,
+	ItemScout_MonarchWings = 43,
+	ItemMedic_BlightedBeak = 44,
+	ItemMedic_ProcedureMask = 45,
+	ItemPyro_PyromancerMask = 46,
+	ItemEngi_Teddy = 47,
+	ItemEngi_HeadOfDefense = 48,
+	ItemSniper_HolyHunter = 49,
+	ItemEngi_BrainiacHairpiece = 50,
+	ItemDemo_ConjurersCowl = 51,
+	ItemSoldier_Compatriot = 52,
+	ItemHeavy_ToughGuyToque = 53,
+	Item_BatteryCanteens = 54,
 	Item_MaxValid,
 };
 
@@ -72,27 +80,8 @@ enum
 	Quality_Haunted,
 	Quality_Collectors,
 	Quality_Strange,
-};
-
-// Actual TF2 item quality IDs
-enum
-{
-	TF2Quality_Normal,
-	TF2Quality_Genuine,
-	TF2Quality_Unused1,
-	TF2Quality_Vintage,
-	TF2Quality_Unused2,
-	TF2Quality_Unusual,
-	TF2Quality_Unique,
-	TF2Quality_Community,
-	TF2Quality_Valve,
-	TF2Quality_SelfMade,
-	TF2Quality_Unused3,
-	TF2Quality_Strange,
-	TF2Quality_Unused4,
-	TF2Quality_Haunted,
-	TF2Quality_Collectors,
-	TF2Quality_Decorated,
+	Quality_HauntedStrange,
+	Quality_MaxValid,
 };
 
 // Difficulty -------------------------------------------------------------------------------------------------------------------------------------
@@ -102,14 +91,13 @@ enum
 	DIFFICULTY_IRON,
 	DIFFICULTY_STEEL,
 	DIFFICULTY_TITANIUM,
-	DIFFICULTY_AUSTRALIUM,
+	DIFFICULTY_MAX,
 };
 
 #define	DifficultyFactor_Scrap 0.75
 #define	DifficultyFactor_Iron 1.0
 #define	DifficultyFactor_Steel 1.5
 #define DifficultyFactor_Titanium 2.0
-#define DifficultyFactor_Australium 3.0
 
 enum
 {
@@ -124,28 +112,31 @@ enum
 	SubDifficulty_Hahaha,
 };
 
-/*
+/**
  * Is RF2 enabled?
+ *
  * @return		True if RF2 is enabled, false otherwise.
  */
-native bool RF2_IsRF2Enabled();
+native bool RF2_IsEnabled();
 
-/*
- * Returns whether a player is considered stun immune or not. (Players can still be slowed.)
+/**
+ * Returns whether a player is considered stun immune or not. (stun immune players can still be slowed.)
+ *
  * @param client	Player index.
  * @return			True if player can be stunned, false otherwise.
  */
 native bool RF2_CanBeStunned(int client);
 
-/*
+/**
  * Checks whether or not a player is a boss.
+ *
  * @param client			Player index.
  * @param teleporterBoss	Also check if the player is a teleporter boss (bosses that must be killed to complete the Teleporter event).
  * @return					True if player is a boss, false otherwise.
  */
 native bool RF2_IsPlayerBoss(int client, bool teleporterBoss=false);
 
-/*
+/**
  * Returns the player's current Survivor index.
  *
  * @param client	Player index.
@@ -153,7 +144,7 @@ native bool RF2_IsPlayerBoss(int client, bool teleporterBoss=false);
  */
 native int RF2_GetSurvivorIndex(int client);
 
-/*
+/**
  * Returns the player's Survivor level.
  *
  * @param client	Player index.
@@ -161,7 +152,7 @@ native int RF2_GetSurvivorIndex(int client);
  */
 native int RF2_GetSurvivorLevel(int client);
 
-/*
+/**
  * Returns the amount of an item that a player has.
  *
  * @param client		Player index.
@@ -170,76 +161,83 @@ native int RF2_GetSurvivorLevel(int client);
  */
 native int RF2_GetPlayerItemAmount(int client, int itemIdx);
 
-/*
+/**
  * Gives a player items.
  *
  * @param client		Player index.
  * @param itemIdx		Item index.
  * @param amount		Amount to give. Negative values can be passed to take away items.
- * @noreturn
  */
 native void RF2_GivePlayerItem(int client, int itemIdx, int amount);
 
-/*
+/**
  * Returns the enemy level.
  *
  * @return			Enemy level. 
  */
 native int RF2_GetEnemyLevel();
 
-/*
+/**
  * Returns the number of Survivors that were present at the beginning of the level (meaning killed and disconnected Survivors still count).
+ *
  * @return			Number of Survivors.
  */
 native int RF2_GetSurvivorCount();
 
-/*
+/**
  * Gets the Survivor queue points of a player.
+ *
  * @param client	Player index.
  * @return			Survivor queue points of player.
  */
 native int RF2_GetSurvivorPoints(int client);
 
-/*
+/**
  * Sets the Survivor queue points of a player.
+ *
  * @param client	Player index.
  * @param points	New points value.
  */
 native void RF2_SetSurvivorPoints(int client, int points);
 
-/*
+/**
  * Returns the current difficulty coefficient value.
+ *
  * @return			Difficulty coefficient.
  */
 native float RF2_GetDifficultyCoeff();
 
-/*
+/**
  * Returns the current sub difficulty (Easy, Normal, ...)
+ *
  * @return			Sub difficulty value.
  */
 native int RF2_GetSubDifficulty();
 
-/*
+/**
  * Returns the game difficulty (Scrap, Iron, Steel, ...)
+ *
  * @return			Game difficulty value.
  */
 native int RF2_GetDifficulty();
 
-/*
+/**
  * Returns the base max health stat of a player.
+ *
  * @param client	Player index.
  * @return			Player base max health stat.
  */
 native int RF2_GetBaseMaxHealth(int client);
 
-/*
+/**
  * Returns the calculated max health stat of a player.
+ *
  * @param client	Player index.
  * @return			Player max health stat.
  */
 native int RF2_GetCalculatedMaxHealth(int client);
 
-/*
+/**
  * Returns the base speed stat of a player.
  *
  * @param class		Class index.
@@ -247,33 +245,38 @@ native int RF2_GetCalculatedMaxHealth(int client);
  */
 native float RF2_GetBaseSpeed(int client);
 
-/*
+/**
  * Returns the fully calculated speed stat of a player.
+ *
  * @param client	Player index.
  * @return			Player speed stat.
  */
 native float RF2_GetCalculatedSpeed(int client);
 
-/*
+/**
  * Returns the maximum number of stages (the number of stages before a loop occurs).
+ *
  * @return			Maximum stage number.
  */
 native int RF2_GetMaxStages();
 
-/*
+/**
  * Returns the current stage number.
+ *
  * @return			Current stage number.
  */
 native int RF2_GetCurrentStage();
 
-/*
+/**
  * Returns the current Teleporter entity.
+ *
  * @return			Teleporter entity index, or -1 if the Teleporter event isn't active.
  */
 native int RF2_GetTeleporterEntity();
 
-/*
+/**
  * Returns whether or not Tank Destruction Mode is active.
+ *
  * @return			True if active, false otherwise.
  */
 native bool RF2_IsTankDestructionMode();
@@ -317,21 +320,13 @@ stock void RF2_ReplyToCommand(int client, const char[] message, any ...)
 	#endif
 }
 
-/*
- * Called when the Teleporter event is started.
- * @param client	Client responsible for starting the event. -1 if that client died or disconnected.
- * @noreturn
- */
-forward void RF2_OnTeleporterEventStart(int client);
+// Called when the Teleporter event is started.
+forward void RF2_OnTeleporterEventStart();
 
-/*
- * Called when the grace period has begun.
- */
+// Called when the grace period has begun.
 forward void RF2_OnGracePeriodStart();
 
-/*
- * Called when the grace period has ended.
- */
+// Called when the grace period has ended.
 forward void RF2_OnGracePeriodEnd();
 
 #if !defined REQUIRE_PLUGIN
