@@ -34,10 +34,13 @@ void SDK_DoQuickBuild(int building, bool forceMaxLevel=false)
 
 public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookParam params)
 {
-	// skip upgrade anim
-	if (RF2_IsEnabled() && GetEntProp(entity, Prop_Send, "m_bCarryDeploy") || GameRules_GetProp("m_bInSetup"))
+	if (RF2_IsEnabled())
 	{
-		GameRules_SetProp("m_bPlayingMannVsMachine", true);
+		// skip upgrade anim
+		if (GetEntProp(entity, Prop_Send, "m_bCarryDeploy") || g_bGracePeriod)
+		{
+			GameRules_SetProp("m_bPlayingMannVsMachine", true);
+		}
 	}
 	
 	return MRES_Ignored;
