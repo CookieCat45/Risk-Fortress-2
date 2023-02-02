@@ -194,8 +194,8 @@ void OnDifficultyChanged(int newLevel)
 		{
 			case DIFFICULTY_SCRAP, DIFFICULTY_IRON:
 			{
-				int enemyType = GetEnemyType(i);
-				int bossType = GetBossType(i);
+				int enemyType = GetPlayerEnemyType(i);
+				int bossType = GetPlayerBossType(i);
 				int oldSkill = enemyType >= 0 ? g_iEnemyBotSkill[enemyType] : g_iBossBotSkill[bossType];
 				
 				if (skill != oldSkill)

@@ -61,7 +61,7 @@ public any Native_IsPlayerBoss(Handle plugin, int numParams)
 		return g_bPlayerIsTeleporterBoss[GetNativeCell(1)];
 	}
 		
-	return (GetBossType(GetNativeCell(1)) > -1);
+	return (GetPlayerBossType(GetNativeCell(1)) > -1);
 }
 
 public any Native_GetPlayerItemAmount(Handle plugin, int numParams)

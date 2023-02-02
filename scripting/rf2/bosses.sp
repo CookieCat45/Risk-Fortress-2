@@ -228,7 +228,9 @@ int GetRandomBoss(bool getName = false, char[] name="", int size=0)
 	int random = GetRandomInt(0, g_iBossCount-1);
 	
 	if (getName)
+	{
 		strcopy(name, size, g_szLoadedBosses[random]);
+	}
 		
 	return random;
 }
@@ -268,7 +270,7 @@ void SummonTeleporterBosses(int entity)
 		}
 		
 		// Non-bosses are obviously prioritized as well.
-		if (GetBossType(i) < 0)
+		if (GetPlayerBossType(i) < 0)
 			bossPoints[i] += 2000;
 			
 		if (IsPlayerAFK(i))
@@ -370,16 +372,24 @@ void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	float checkPos[3];
 	if (CompareVectors(pos, OFF_THE_MAP))
 	{
-		int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
-		if (IsValidClient(randomSurvivor))
+		int teleporter = GetTeleporterEntity();
+		if (teleporter != INVALID_ENT_REFERENCE && GetTeleporterEventState() == TELE_EVENT_ACTIVE)
 		{
-			GetClientAbsOrigin(randomSurvivor, checkPos);
+			GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", checkPos);
 		}
 		else
 		{
-			checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
-			checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
-			checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
+			int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
+			if (IsValidClient(randomSurvivor))
+			{
+				GetClientAbsOrigin(randomSurvivor, checkPos);
+			}
+			else
+			{
+				checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
+				checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
+				checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
+			}
 		}
 	}
 	else
@@ -412,27 +422,21 @@ void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	float spawnPos[3];
 	CNavArea area = GetSpawnPoint(checkPos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
 	
-	static int attempts;
 	if (!area)
 	{
-		// try again
-		if (attempts < 100)
-		{
-			attempts++;
-			SpawnBoss(client, type, pos, teleporterBoss, minDist, maxDist);
-		}
-		else
-		{
-			attempts = 0;
-			char mapName[128];
-			GetCurrentMap(mapName, sizeof(mapName));
-			LogError("[SpawnBoss] Failed to spawn client %N after 100 tries! There might be a problem. Map: %s", client, mapName);
-		}
-		
+		// try again next frame
+		DataPack pack = CreateDataPack();
+		pack.WriteCell(client);
+		pack.WriteCell(type);
+		pack.WriteFloat(pos[0]);
+		pack.WriteFloat(pos[1]);
+		pack.WriteFloat(pos[2]);
+		pack.WriteCell(teleporterBoss);
+		pack.WriteFloat(minDist);
+		pack.WriteFloat(maxDist);
+		RequestFrame(RF_SpawnBossRecursive, pack);
 		return;
 	}
-	
-	attempts = 0;
 	
 	g_iPlayerBossType[client] = type;
 	g_iPlayerBaseHealth[client] = g_iBossBaseHp[type];
@@ -538,7 +542,33 @@ void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	g_flPlayerGiantFootstepInterval[client] = g_flBossFootstepInterval[type];
 }
 
-int GetBossType(int client)
+public void RF_SpawnBossRecursive(DataPack pack)
+{
+	pack.Reset();
+	int client = pack.ReadCell();
+	if (!IsValidClient(client))
+	{
+		delete pack;
+		return;
+	}
+	
+	int type = pack.ReadCell();
+	
+	float pos[3];
+	pos[0] = pack.ReadFloat();
+	pos[1] = pack.ReadFloat();
+	pos[2] = pack.ReadFloat();
+	
+	bool teleporterBoss = pack.ReadCell();
+	
+	float minDist = pack.ReadFloat();
+	float maxDist = pack.ReadFloat();
+	
+	delete pack;
+	SpawnBoss(client, type, pos, teleporterBoss, minDist, maxDist);
+}
+
+int GetPlayerBossType(int client)
 {
 	return g_iPlayerBossType[client];
 }

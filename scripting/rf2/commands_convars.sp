@@ -65,9 +65,9 @@ void LoadCommandsAndCvars()
 	g_cvBossStabDamagePercent = CreateConVar("rf2_boss_backstab_damage_percentage", "0.12", "If rf2_boss_backstab_damage_type is 1, how much health, in decimal percentage, is subtracted from the boss upon backstab.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamageAmount = CreateConVar("rf2_boss_backstab_damage_amount", "750.0", "If rf2_boss_backstab_damage_type is 0, the base damage that is dealt to a boss upon backstab.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTeleporterRadiusMultiplier = CreateConVar("rf2_object_teleporter_radius_multiplier", "1.0", "How much to multiply the size of the Teleporter radius size.", FCVAR_NOTIFY, true, 0.01);
-	g_cvMaxObjects = CreateConVar("rf2_object_max", "150", "The maximum number of objects allowed to spawn. Does not include Teleporters or Altars.", FCVAR_NOTIFY, true, 0.0);
+	g_cvMaxObjects = CreateConVar("rf2_object_max", "90", "The maximum number of objects allowed to spawn. Does not include Teleporters or Altars.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectSpreadDistance = CreateConVar("rf2_object_spread_distance", "80.0", "The minimum distance that spawned objects must be spread apart from eachother.", FCVAR_NOTIFY, true, 0.0);
-	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "12", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
+	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "8", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCost = CreateConVar("rf2_object_base_cost", "50.0", "The base cost to use objects such as crates. Scales with the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectSpecialChance = CreateConVar("rf2_object_special_chance", "30.0", "The percentage chance for a special object (such as a workbench) to spawn in place of a normal crate.", FCVAR_NOTIFY, true, 0.0);
 	g_cvItemShareEnabled = CreateConVar("rf2_item_share_enabled", "0", "Whether or not to enable item sharing. This prevents Survivors from hogging items in multiplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);

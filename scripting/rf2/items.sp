@@ -572,8 +572,7 @@ int EquipItemAsWearable(int client, int item)
 		while ((entity = FindEntityByClassname(entity, "tf_wearable")) != -1)
 		{
 			// Remove one loadout wearable
-			if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client && entity != g_iPlayerStatWearable[client] 
-			&& !g_bDontRemoveWearable[entity] && !g_bItemWearable[entity])
+			if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client && !g_bDontRemoveWearable[entity] && !g_bItemWearable[entity])
 			{
 				TF2_RemoveWearable(client, entity);
 				break;
@@ -677,18 +676,17 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case Item_Tux:
 		{
-			ValidateStatWearable(client);
 			if (PlayerHasItem(client, Item_Tux))
 			{
 				float jumpHeightAmount = 1.0 + CalcItemMod(client, Item_Tux, 0);
 				float airControlAmount = 1.0 + CalcItemMod(client, Item_Tux, 1);
-				TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 326, jumpHeightAmount); // "increased jump height"
-				TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 610, airControlAmount); // "increased air control"
+				TF2Attrib_SetByDefIndex(client, 326, jumpHeightAmount); // "increased jump height"
+				TF2Attrib_SetByDefIndex(client, 610, airControlAmount); // "increased air control"
 			}
 			else
 			{
-				TF2Attrib_RemoveByDefIndex(g_iPlayerStatWearable[client], 326);
-				TF2Attrib_RemoveByDefIndex(g_iPlayerStatWearable[client], 610);
+				TF2Attrib_RemoveByDefIndex(client, 326);
+				TF2Attrib_RemoveByDefIndex(client, 610);
 			}
 		}
 		case Item_MisfortuneFedora:
@@ -704,20 +702,19 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case Item_UFO:
 		{
-			float gravity = CalcItemMod_HyperbolicInverted(client, Item_UFO, 0);
-			SetEntityGravity(client, gravity);
-			
-			ValidateStatWearable(client);
 			if (PlayerHasItem(client, Item_UFO))
 			{
+				SetEntityGravity(client, CalcItemMod_HyperbolicInverted(client, Item_UFO, 0));
+				
 				float pushForce = 1.0 + CalcItemMod_Hyperbolic(client, Item_UFO, 1);
-				TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 329, pushForce); // "airblast vulnerability multiplier"
-				TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 525, pushForce); // "damage force increase"
+				TF2Attrib_SetByDefIndex(client, 329, pushForce); // "airblast vulnerability multiplier"
+				TF2Attrib_SetByDefIndex(client, 525, pushForce); // "damage force increase"
 			}
 			else
 			{
-				TF2Attrib_RemoveByDefIndex(g_iPlayerStatWearable[client], 329);
-				TF2Attrib_RemoveByDefIndex(g_iPlayerStatWearable[client], 525);
+				SetEntityGravity(client, 1.0);
+				TF2Attrib_RemoveByDefIndex(client, 329);
+				TF2Attrib_RemoveByDefIndex(client, 525);
 			}
 		}
 		case ItemEngi_Teddy:
@@ -792,26 +789,29 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case ItemSpy_StealthScarf:
 		{
-			ValidateStatWearable(client);
-			if (PlayerHasItem(client, ItemSpy_StealthScarf) && CanUseCollectorItem(client, ItemSpy_StealthScarf))
+			int watch = GetPlayerWeaponSlot(client, WeaponSlot_InvisWatch);
+			if (watch > -1)
 			{
-				float regenAmount = CalcItemMod(client, ItemSpy_StealthScarf, 0);
-				float decloakRate = CalcItemMod_HyperbolicInverted(client, ItemSpy_StealthScarf, 1);
-				TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 35, regenAmount); // "mult cloak meter regen rate"
-				TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 221, decloakRate); // "mult decloak rate"
-			}
-			else
-			{
-				TF2Attrib_RemoveByDefIndex(g_iPlayerStatWearable[client], 35);
-				TF2Attrib_RemoveByDefIndex(g_iPlayerStatWearable[client], 221);
+				if (PlayerHasItem(client, ItemSpy_StealthScarf) && CanUseCollectorItem(client, ItemSpy_StealthScarf))
+				{
+					float regenAmount = CalcItemMod(client, ItemSpy_StealthScarf, 0);
+					float decloakRate = CalcItemMod_HyperbolicInverted(client, ItemSpy_StealthScarf, 1);
+					TF2Attrib_SetByDefIndex(watch, 35, regenAmount); // "mult cloak meter regen rate"
+					TF2Attrib_SetByDefIndex(watch, 221, decloakRate); // "mult decloak rate"
+				}
+				else
+				{
+					TF2Attrib_RemoveByDefIndex(watch, 35);
+					TF2Attrib_RemoveByDefIndex(watch, 221);
+				}
 			}
 		}
 		case ItemHeavy_ToughGuyToque:
 		{
 			if (CanUseCollectorItem(client, ItemHeavy_ToughGuyToque))
 			{
-				int minigun;
-				if ((minigun = GetPlayerWeaponSlot(client, 0)) > -1)
+				int minigun = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+				if (minigun > -1)
 				{
 					if (PlayerHasItem(client, ItemHeavy_ToughGuyToque))
 					{

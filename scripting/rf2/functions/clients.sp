@@ -10,12 +10,12 @@ void RefreshClient(int client)
 {
 	g_bPlayerViewingItemMenu[client] = false;
 	g_bPlayerIsTeleporterBoss[client] = false;
-	g_iPlayerStatWearable[client] = -1;
 	g_iPlayerEnemyType[client] = -1;
 	g_iPlayerBossType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;
 	g_iPlayerAirDashCounter[client] = 0;
 	g_bPlayerExtraSentryHint[client] = false;
+	g_bPlayerInSpawnQueue[client] = false;
 	
 	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
 	g_iPlayerEquipmentItem[client] = Item_Null;
@@ -333,8 +333,10 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	int maxHealth = 1;
 	int level = GetPlayerLevel(client);
 	float healthScale = IsPlayerSurvivor(client) ? g_cvSurvivorHealthScale.FloatValue : g_cvEnemyHealthScale.FloatValue;
+	healthScale *= float(level-1);
+	healthScale += 1.0;
 	
-	maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * (1.0 + (float(level-1) * healthScale)));
+	maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * healthScale);
 	
 	int fakeHealth;
 	if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
@@ -357,12 +359,11 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	}
 	
 	// Make sure our attribute wearable exists.
-	ValidateStatWearable(client);
 	int classMaxHealth = TF2_GetClassMaxHealth(TF2_GetPlayerClass(client));
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
-		TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 286, 1.0 + (float(level-1)*healthScale)); // building health
+		TF2Attrib_SetByDefIndex(client, 286, healthScale); // building health
 		
 		// If we have any buildings up, update their max health now
 		int buildingMaxHealth, oldBuildingMaxHealth, buildingHealth;
@@ -411,15 +412,14 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	}
 
 	int attributeMaxHealth = TF2Attrib_HookValueInt(0, "add_maxhealth", client);
-	Address attrib = TF2Attrib_GetByDefIndex(g_iPlayerStatWearable[client], 26);
+	Address attrib = TF2Attrib_GetByDefIndex(client, 26);
 	if (attrib != Address_Null)
 	{
 		attributeMaxHealth -= RoundToFloor(TF2Attrib_GetValue(attrib));
 	}
 	
-	maxHealth += attributeMaxHealth;
-	
-	TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 26, float(maxHealth-classMaxHealth));
+	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth)); // "max health additive bonus"
+	TF2Attrib_SetByDefIndex(client, 70, healthScale); // "health from healers increased"
 	g_iPlayerCalculatedMaxHealth[client] = maxHealth + fakeHealth + attributeMaxHealth;
 	
 	if (fullHeal)
@@ -451,8 +451,7 @@ float CalculatePlayerMaxSpeed(int client)
 	
 	g_flPlayerCalculatedMaxSpeed[client] = speed;
 	float mult = g_flPlayerCalculatedMaxSpeed[client] / g_flPlayerMaxSpeed[client];
-	ValidateStatWearable(client);
-	TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 107, mult); // "move speed bonus"
+	TF2Attrib_SetByDefIndex(client, 107, mult); // "move speed bonus"
 	TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.00001); // hack to force game to update our speed
 	
 	return speed;
@@ -460,39 +459,15 @@ float CalculatePlayerMaxSpeed(int client)
 
 float CalculatePlayerKnockbackResist(int client)
 {
-	ValidateStatWearable(client);
-	
 	float value = 1.0 / (1.0 + (float(GetPlayerLevel(client)-1) * g_cvEnemyDamageScale.FloatValue));
 	if (!IsPlayerSurvivor(client))
 	{
 		value *= 0.5;
 	}
 	
-	TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 252, value);
+	TF2Attrib_SetByDefIndex(client, 252, value); // "damage force reduction"
 	
 	return value;
-}
-
-void ValidateStatWearable(int client)
-{
-	// Create our stat wearable if it doesn't exist already
-	if (g_iPlayerStatWearable[client] == -1 || !IsValidEntity(g_iPlayerStatWearable[client]))
-	{
-		const int wearableIndex = 5000;
-		char attributes[MAX_ATTRIBUTE_STRING_LENGTH];
-		
-		if (GetBossType(client) >= 0)
-		{
-			attributes = BASE_BOSS_ATTRIBUTES;
-		}
-		else
-		{
-			attributes = BASE_PLAYER_ATTRIBUTES;
-		}
-		
-		g_iPlayerStatWearable[client] = CreateWearable(client, "tf_wearable", wearableIndex, attributes, false, false, TF2Quality_Valve, 69);
-		g_bDontRemoveWearable[g_iPlayerStatWearable[client]] = true;
-	}
 }
 
 // Attributes are NOT included!
@@ -668,46 +643,4 @@ public bool TraceFilter_PlayerTeam(int entity, int mask, int team)
 		return true;
 	
 	return false;
-}
-
-void SDK_EquipWearable(int client, int entity)
-{
-	if (g_hSDKEquipWearable)
-		SDKCall(g_hSDKEquipWearable, client, entity);
-}
-
-public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam params)
-{
-	if (!RF2_IsEnabled() || entity > MaxClients)
-	{
-		return MRES_Ignored;
-	}
-	
-	float amount = DHookGetParam(params, 1);
-	
-	if (IsPlayerSurvivor(entity))
-	{
-		amount *= 1.0 + (float(GetPlayerLevel(entity))-1 * g_cvSurvivorHealthScale.FloatValue);
-	}
-	else
-	{
-		amount *= GetEnemyHealthMult();
-	}
-	
-	DHookSetParam(params, 1, amount);
-	return MRES_ChangedHandled;
-}
-
-public MRESReturn DHook_CanBuild(int client, DHookReturn returnVal, DHookParam params)
-{
-	if (RF2_IsEnabled() && PlayerHasItem(client, ItemEngi_HeadOfDefense) && DHookGetParam(params, 1) == view_as<int>(TFObject_Sentry))
-	{
-		if (TF2_GetPlayerBuildingCount(client, TFObject_Sentry) <= RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0))+1)
-		{
-			DHookSetReturn(returnVal, CB_CAN_BUILD);
-			return MRES_Supercede;
-		}
-	}
-	
-	return MRES_Ignored;
 }

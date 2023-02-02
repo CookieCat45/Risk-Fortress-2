@@ -540,6 +540,12 @@ int SDK_GetWeaponClipSize(int entity)
 	return -1;
 }
 
+void SDK_EquipWearable(int client, int entity)
+{
+	if (g_hSDKEquipWearable)
+		SDKCall(g_hSDKEquipWearable, client, entity);
+}
+
 public MRESReturn DHook_DoSwingTrace(int entity, DHookReturn returnVal, DHookParam params)
 {
 	// Don't hit teammates (note: only works for BLU team, but that's what we want anyway)

@@ -15,10 +15,7 @@ enum
 
 bool IsBuilding(int entity)
 {
-	// let's not count sappers
-	char classname[32];
-	GetEntityClassname(entity, classname, sizeof(classname));
-	return (classname[0] == 'o' && StrContains(classname, "obj_") == 0 && !strcmp2(classname, "obj_attachment_sapper"));
+	return (entity > MaxClients && !CBaseEntity(entity).MyNextBotPointer() && CBaseEntity(entity).IsCombatCharacter());
 }
 
 bool CanTeamQuickBuild(int team)
@@ -71,6 +68,20 @@ public MRESReturn DHook_SentryGunAttack(int entity)
 				time *= GetPlayerFireRateMod(owner);
 				SetEntDataFloat(entity, offset, gameTime+time, true);
 			}
+		}
+	}
+	
+	return MRES_Ignored;
+}
+
+public MRESReturn DHook_CanBuild(int client, DHookReturn returnVal, DHookParam params)
+{
+	if (RF2_IsEnabled() && PlayerHasItem(client, ItemEngi_HeadOfDefense) && DHookGetParam(params, 1) == view_as<int>(TFObject_Sentry))
+	{
+		if (TF2_GetPlayerBuildingCount(client, TFObject_Sentry) <= RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0))+1)
+		{
+			DHookSetReturn(returnVal, CB_CAN_BUILD);
+			return MRES_Supercede;
 		}
 	}
 	

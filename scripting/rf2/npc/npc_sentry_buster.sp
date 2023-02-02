@@ -118,7 +118,7 @@ methodmap SentryBuster < CBaseCombatCharacter
 			if (vision.IsLineOfSightClearToEntity(victim.index))
 			{
 				float damage;
-				bool boss = (victim.index <= MaxClients && GetBossType(victim.index) >= 0);
+				bool boss = (victim.index <= MaxClients && GetPlayerBossType(victim.index) >= 0);
 				
 				if (IsBuilding(victim.index))
 				{
@@ -520,7 +520,7 @@ static int SentryBusterMain_Update(NextBotAction action, int actor, float interv
 		// find new target
 		float origin[3];
 		pCC.WorldSpaceCenter(origin);
-		int entity = GetNearestEntity(origin, "obj_sentrygun", _, TEAM_SURVIVOR);
+		int entity = GetNearestEntity(origin, "obj_sentrygun", _, _, TEAM_SURVIVOR);
 		
 		// No targets left, explode
 		if (entity == -1)

@@ -214,7 +214,9 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 	selected = enemyList.Get(GetRandomInt(0, enemyList.Length-1));
 	
 	if (getName)
+	{
 		strcopy(buffer, size, g_szLoadedEnemies[selected]);
+	}
 	
 	delete enemyList;
 	return selected;
@@ -266,16 +268,24 @@ void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	float checkPos[3];
 	if (CompareVectors(pos, OFF_THE_MAP))
 	{
-		int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
-		if (IsValidClient(randomSurvivor))
+		int teleporter = GetTeleporterEntity();
+		if (teleporter != INVALID_ENT_REFERENCE && GetTeleporterEventState() == TELE_EVENT_ACTIVE)
 		{
-			GetClientAbsOrigin(randomSurvivor, checkPos);
+			GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", checkPos);
 		}
 		else
 		{
-			checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
-			checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
-			checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
+			int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
+			if (IsValidClient(randomSurvivor))
+			{
+				GetClientAbsOrigin(randomSurvivor, checkPos);
+			}
+			else
+			{
+				checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
+				checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
+				checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
+			}
 		}
 	}
 	else
@@ -294,27 +304,21 @@ void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	float maxSpawnDistance = maxDist < 0.0 ? g_cvEnemyMaxSpawnDistance.FloatValue : maxDist;
 	CNavArea area = GetSpawnPoint(checkPos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
 	
-	static int attempts;
 	if (!area)
 	{
-		// try again
-		if (attempts < 50)
-		{
-			attempts++;
-			SpawnEnemy(client, type, pos, minDist, maxDist);
-		}
-		else
-		{
-			attempts = 0;
-			char mapName[128];
-			GetCurrentMap(mapName, sizeof(mapName));
-			LogError("[SpawnEnemy] Failed to spawn client %N after 50 tries! There might be a problem. Map: %s", client, mapName);
-		}
+		// try again next frame
+		DataPack pack = CreateDataPack();
+		pack.WriteCell(client);
+		pack.WriteCell(type);
+		pack.WriteFloat(pos[0]);
+		pack.WriteFloat(pos[1]);
+		pack.WriteFloat(pos[2]);
+		pack.WriteFloat(minDist);
+		pack.WriteFloat(maxDist);
 		
+		RequestFrame(RF_SpawnEnemyRecursive, pack);
 		return;
 	}
-	
-	attempts = 0;
 	
 	g_iPlayerEnemyType[client] = type;
 	g_iPlayerBaseHealth[client] = g_iEnemyBaseHp[type];
@@ -379,7 +383,31 @@ void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	CalculatePlayerKnockbackResist(client);
 }
 
-int GetEnemyType(int client)
+public void RF_SpawnEnemyRecursive(DataPack pack)
+{
+	pack.Reset();
+	int client = pack.ReadCell();
+	if (!IsValidClient(client))
+	{
+		delete pack;
+		return;
+	}
+	
+	int type = pack.ReadCell();
+	
+	float pos[3];
+	pos[0] = pack.ReadFloat();
+	pos[1] = pack.ReadFloat();
+	pos[2] = pack.ReadFloat();
+	
+	float minDist = pack.ReadFloat();
+	float maxDist = pack.ReadFloat();
+	
+	delete pack;
+	SpawnEnemy(client, type, pos, minDist, maxDist);
+}
+
+int GetPlayerEnemyType(int client)
 {
 	return g_iPlayerEnemyType[client];
 }

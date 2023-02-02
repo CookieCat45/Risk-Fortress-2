@@ -7,7 +7,7 @@
 #pragma newdecls required
 
 // ONLY pass SQUARED distances for minDistance.
-int GetNearestEntity(float origin[3], const char[] classname, float minDistance = -1.0, int team = -1)
+int GetNearestEntity(float origin[3], const char[] classname, float minDistance=-1.0, float maxDistance=-1.0, int team=-1)
 {
 	int nearestEntity = -1;
 	float pos[3];
@@ -24,7 +24,7 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDistance 
 		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
 		distance = GetVectorDistance(origin, pos, true);
 		
-		if (distance >= minDistance)
+		if (distance >= minDistance && (maxDistance <= 0.0 || distance <= maxDistance))
 		{
 			if (distance < nearestDistance || nearestDistance == -1.0)
 			{
@@ -39,7 +39,7 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDistance 
 
 // ONLY pass SQUARED distances for minDistance.
 // Checks StrContains() on the classname instead of using FindEntityByClassname.
-int GetNearestEntityEx(float origin[3], const char[] str, float minDistance = -1.0, int team = -1)
+int GetNearestEntityEx(float origin[3], const char[] str, float minDistance=-1.0, float maxDistance=-1.0, int team=-1)
 {
 	int nearestEntity = -1;
 	char classname[128];
@@ -63,7 +63,7 @@ int GetNearestEntityEx(float origin[3], const char[] str, float minDistance = -1
 		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
 		distance = GetVectorDistance(origin, pos, true);
 		
-		if (distance >= minDistance)
+		if (distance >= minDistance && (maxDistance <= 0.0 || distance <= maxDistance))
 		{
 			if (distance < nearestDistance || nearestDistance == -1.0)
 			{
@@ -325,5 +325,5 @@ bool IsNPC(int entity)
 	if (entity <= MaxClients) // we don't want player bots
 		return false;
 	
-	return (CBaseEntity(entity).MyNextBotPointer() != NULL_NEXT_BOT);
+	return (CBaseEntity(entity).MyNextBotPointer() && CBaseEntity(entity).IsCombatCharacter());
 }

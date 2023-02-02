@@ -762,7 +762,7 @@ void StartTeleporterEvent(int teleporter)
 		while (hhhSpawnCount > 0 || eyeSpawnCount > 0)
 		{
 			area = GetSpawnPoint(pos, resultPos, 0.0, radius, 4, true, mins, maxs, MASK_NPCSOLID, zOffset);
-			if (area != NULL_AREA)
+			if (area)
 			{
 				if (hhhSpawnCount > 0)
 				{
