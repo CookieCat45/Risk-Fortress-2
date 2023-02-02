@@ -8,23 +8,21 @@
 
 #define DEFAULT_PACK_NAME "default"
 #define DEFAULT_BOSS_PACK_NAME "default_boss"
-#define NULL "vo/null.wav"
+#define NULL "misc/null.wav"
 
 int g_iCurrentStage;
 int g_iMaxStages;
 
+char g_szEnemyPackName[512];
+char g_szBossPackName[512];
 char g_szClientBGM[MAXTF2PLAYERS][PLATFORM_MAX_PATH];
 char g_szStageBGM[PLATFORM_MAX_PATH];
 char g_szBossBGM[PLATFORM_MAX_PATH];
 
+float g_flGracePeriodTime = 15.0;
 float g_flLoopMusicAt[MAXTF2PLAYERS] = {-1.0, ...};
 float g_flStageBGMDuration;
-float g_flBossBGMDuration;
-
-char g_szPackName[512];
-char g_szBossPackName[512];
-
-float g_flGracePeriodTime = 15.0;
+float g_flBGMDuration;
 
 void LoadMapSettings(const char[] mapName)
 {
@@ -59,7 +57,7 @@ void LoadMapSettings(const char[] mapName)
 				g_flStageBGMDuration = mapKey.GetFloat("theme_duration", 60.0);
 				
 				mapKey.GetString("boss_theme", g_szBossBGM, sizeof(g_szBossBGM), NULL);
-				g_flBossBGMDuration = mapKey.GetFloat("boss_theme_duration", 60.0);
+				g_flBGMDuration = mapKey.GetFloat("boss_theme_duration", 60.0);
 				
 				if (g_szStageBGM[0])
 				{
@@ -73,9 +71,9 @@ void LoadMapSettings(const char[] mapName)
 					PrecacheSound(g_szBossBGM);
 				}
 				
-				mapKey.GetString("enemy_pack", g_szPackName, sizeof(g_szPackName), DEFAULT_PACK_NAME);
+				mapKey.GetString("enemy_pack", g_szEnemyPackName, sizeof(g_szEnemyPackName), DEFAULT_PACK_NAME);
 				mapKey.GetString("boss_pack", g_szBossPackName, sizeof(g_szBossPackName), DEFAULT_BOSS_PACK_NAME);
-				LoadEnemiesFromPack(g_szPackName);
+				LoadEnemiesFromPack(g_szEnemyPackName);
 				LoadBossesFromPack(g_szBossPackName);
 				
 				g_flGracePeriodTime = mapKey.GetFloat("grace_period_time", 30.0);
@@ -100,9 +98,9 @@ void LoadMapSettings(const char[] mapName)
 			g_szStageBGM = NULL;
 			g_szBossBGM = NULL;
 			g_flStageBGMDuration = 60.0;
-			g_flBossBGMDuration = 60.0;
+			g_flBGMDuration = 60.0;
 			
-			g_szPackName = DEFAULT_PACK_NAME;
+			g_szEnemyPackName = DEFAULT_PACK_NAME;
 			g_szBossPackName = DEFAULT_BOSS_PACK_NAME;
 			
 			g_flGracePeriodTime = 15.0;
@@ -189,6 +187,7 @@ void SetNextStage(int stage)
 	mapKey.GetString("name", mapName, sizeof(mapName));
 	
 	delete mapKey;
+	g_bMapChanging = true;
 	ForceChangeLevel(mapName, "RF2 automatic map change");
 }
 
@@ -257,9 +256,9 @@ void PlayMusicTrack(int client)
 	{
 		g_flLoopMusicAt[client] = GetEngineTime() + g_flStageBGMDuration;
 	}
-	else if (g_flBossBGMDuration > 0.0)
+	else if (g_flBGMDuration > 0.0)
 	{
-		g_flLoopMusicAt[client] = GetEngineTime() + g_flBossBGMDuration;
+		g_flLoopMusicAt[client] = GetEngineTime() + g_flBGMDuration;
 	}
 	
 	EmitSoundToClient(client, g_szClientBGM[client]);
@@ -307,4 +306,15 @@ void GetCurrentMusicTrack(char[] buffer, int size)
 	{
 		strcopy(buffer, size, g_szStageBGM);
 	}
+}
+
+bool IsStageCleared()
+{
+	int teleporter = GetTeleporterEntity();
+	if (teleporter != INVALID_ENT_REFERENCE)
+	{
+		return GetEntProp(teleporter, Prop_Data, "m_iEventState") == TELE_EVENT_COMPLETE;
+	}
+	
+	return GameRules_GetProp("m_iRoundState") == GR_STATE_TEAM_WIN && GameRules_GetProp("m_iWinningTeam") == TEAM_SURVIVOR;
 }

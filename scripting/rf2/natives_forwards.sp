@@ -38,9 +38,10 @@ void LoadNatives()
 
 void LoadForwards()
 {
-	f_TeleEventStart = CreateGlobalForward("RF2_OnTeleporterEventStart", ET_Hook, Param_Cell);
-	f_GracePeriodStart = CreateGlobalForward("RF2_OnGracePeriodStart", ET_Ignore);
-	f_GracePeriodEnded = CreateGlobalForward("RF2_OnGracePeriodEnd", ET_Ignore);
+	g_fwTeleEventStart = CreateGlobalForward("RF2_OnTeleporterEventStart", ET_Ignore);
+	g_fwTeleEventEnd = CreateGlobalForward("RF2_OnTeleporterEventEnd", ET_Ignore);
+	g_fwGracePeriodStart = CreateGlobalForward("RF2_OnGracePeriodStart", ET_Ignore);
+	g_fwGracePeriodEnded = CreateGlobalForward("RF2_OnGracePeriodEnd", ET_Ignore);
 }
 
 public any Native_IsEnabled(Handle plugin, int numParams)
@@ -65,12 +66,12 @@ public any Native_IsPlayerBoss(Handle plugin, int numParams)
 
 public any Native_GetPlayerItemAmount(Handle plugin, int numParams)
 {
-	int itemIdx = GetNativeCell(2);
+	int item = GetNativeCell(2);
 	
-	if (itemIdx <= Item_Null || itemIdx >= Item_MaxValid)
+	if (item <= Item_Null || item >= Item_MaxValid)
 		return -1;
 	
-	return g_iPlayerItem[GetNativeCell(1)][itemIdx];
+	return GetPlayerItemCount(GetNativeCell(1), item);
 }
 
 public any Native_GivePlayerItem(Handle plugin, int numParams)
@@ -157,7 +158,7 @@ public any Native_GetCurrentStage(Handle plugin, int numParams)
 
 public any Native_GetTeleporterEntity(Handle plugin, int numParams)
 {
-	return g_iTeleporter;
+	return GetTeleporterEntity();
 }
 
 public any Native_IsTankDestructionMode(Handle plugin, int numParams)

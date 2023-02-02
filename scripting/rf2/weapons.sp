@@ -11,14 +11,16 @@
 int g_iWeaponCount[TF_CLASSES];
 
 // These are for Survivors, not enemies or bosses.
+int g_iWeaponIndexReplacement[TF_CLASSES][MAX_WEAPONS];
+
 char g_szWeaponIndexIdentifier[TF_CLASSES][MAX_WEAPONS][PLATFORM_MAX_PATH];
 char g_szWeaponAttributes[TF_CLASSES][MAX_WEAPONS][MAX_ATTRIBUTE_STRING_LENGTH];
 char g_szWeaponClassnameReplacement[TF_CLASSES][MAX_WEAPONS][64];
-int g_iWeaponIndexReplacement[TF_CLASSES][MAX_WEAPONS];
+
 bool g_bWeaponStaticAttributes[TF_CLASSES][MAX_WEAPONS];
 bool g_bWeaponStripAttributes[TF_CLASSES][MAX_WEAPONS];
-
 bool g_bWeaponHasStringAttributes[TF_CLASSES][MAX_WEAPONS];
+
 char g_szWeaponStringAttributeName[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][128];
 char g_szWeaponStringAttributeValue[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][PLATFORM_MAX_PATH];
 
@@ -65,7 +67,7 @@ void LoadWeapons()
 						weaponKey.GetSectionName(g_szWeaponStringAttributeName[i][count][strAttribCount], sizeof(g_szWeaponStringAttributeName[][][]));
 						weaponKey.GetString(NULL_STRING, g_szWeaponStringAttributeValue[i][count][strAttribCount], sizeof(g_szWeaponStringAttributeValue[][][]));
 						
-						if (strcmp(g_szWeaponStringAttributeName[i][count][strAttribCount], "custom projectile model") == 0)
+						if (strcmp2(g_szWeaponStringAttributeName[i][count][strAttribCount], "custom projectile model"))
 						{
 							if (FileExists(g_szWeaponStringAttributeValue[i][count][strAttribCount]))
 							{
@@ -235,9 +237,9 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int inde
 			if (TF2Attrib_IsValidAttributeName(g_szWeaponStringAttributeName[class][weapon][i]))
 			{
 				// Block these attributes, they cause client crashes.
-				if (strcmp(g_szWeaponStringAttributeName[class][weapon][i], "min_viewmodel_offset") == 0 ||
-				strcmp(g_szWeaponStringAttributeName[class][weapon][i], "custom name attr") == 0 ||
-				strcmp(g_szWeaponStringAttributeName[class][weapon][i], "custom desc attr") == 0)
+				if (strcmp2(g_szWeaponStringAttributeName[class][weapon][i], "min_viewmodel_offset") ||
+				strcmp2(g_szWeaponStringAttributeName[class][weapon][i], "custom name attr") ||
+				strcmp2(g_szWeaponStringAttributeName[class][weapon][i], "custom desc attr"))
 				{
 					LogError("Disallowing string attribute \"%s\". Setting this WILL cause clients to CRASH!", g_szWeaponStringAttributeName[class][weapon][i]);
 					continue;
@@ -360,7 +362,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 		SetEntPropFloat(wepEnt, Prop_Send, "m_flModelScale", 0.001);
 	}
 	
-	if (strcmp(classname, "tf_weapon_builder") == 0 && index == 28)
+	if (strcmp2(classname, "tf_weapon_builder") && index == 28)
 	{
 		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 1, _, 0);
 		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 1, _, 1);
@@ -371,7 +373,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 	return wepEnt;
 }
 
-int CreateWearable(int client, const char[] classname, int index, const char[] attributes="", bool visible = true, int quality=0, int level=0)
+int CreateWearable(int client, const char[] classname, int index, const char[] attributes="", bool staticAttributes=false, bool visible = true, int quality=0, int level=0)
 {
 	int wearable = CreateEntityByName(classname);
 	if (wearable == INVALID_ENT_REFERENCE)
@@ -397,6 +399,7 @@ int CreateWearable(int client, const char[] classname, int index, const char[] a
 		
 		int attrib;
 		float val;
+		
 		for (int n = 0; n <= count+1; n+=2)
 		{
 			attrib = StringToInt(attrs[n]);
@@ -410,6 +413,28 @@ int CreateWearable(int client, const char[] classname, int index, const char[] a
 				break;
 				
 			TF2Attrib_SetByDefIndex(wearable, attrib, val);
+		}
+		
+		if (staticAttributes)
+		{
+			int attribArray[MAX_ATTRIBUTES];
+			float valueArray[MAX_ATTRIBUTES];
+			int staticAttribCount = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);
+			
+			if (staticAttribCount > 0)
+			{
+				totalAttribs += staticAttribCount;
+				if (totalAttribs > MAX_ATTRIBUTES)
+					totalAttribs = MAX_ATTRIBUTES;
+				
+				for (int i = 0; i < staticAttribCount; i++)
+				{
+					if (IsAttributeBlacklisted(attribArray[i]) || attribArray[i] <= 0)
+						continue;
+					
+					TF2Attrib_SetByDefIndex(wearable, attribArray[i], valueArray[i]);
+				}
+			}
 		}
 	}
 	
@@ -434,13 +459,14 @@ void TF2_RemoveAllWearables(int client)
 {
 	char classname[64];
 	int entCount = GetEntityCount();
+	
 	for (int i = MaxClients+1; i <= entCount; i++)
 	{
 		if (!IsValidEntity(i))
 			continue;
 			
 		GetEntityClassname(i, classname, sizeof(classname));
-		if (StrContains(classname, "tf_wearable") != -1 || strcmp(classname, "tf_powerup_bottle") == 0)
+		if (StrContains(classname, "tf_wearable") != -1 || strcmp2(classname, "tf_powerup_bottle"))
 		{
 			if (GetEntPropEnt(i, Prop_Send, "m_hOwnerEntity") == client)
 			{
@@ -461,7 +487,7 @@ void TF2_RemoveLoadoutWearables(int client)
 			continue;
 			
 		GetEntityClassname(i, classname, sizeof(classname));
-		if (StrContains(classname, "tf_wearable") != -1 || strcmp(classname, "tf_powerup_bottle") == 0)
+		if (StrContains(classname, "tf_wearable") != -1 || strcmp2(classname, "tf_powerup_bottle"))
 		{
 			if (GetEntPropEnt(i, Prop_Send, "m_hOwnerEntity") == client)
 			{
@@ -494,11 +520,11 @@ float GetWeaponProcCoefficient(int weapon)
 	char classname[128];
 	GetEntityClassname(weapon, classname, sizeof(classname));
 	
-	if (strcmp(classname, "tf_weapon_minigun") == 0 || strcmp(classname, "tf_weapon_flamethrower") == 0)
+	if (strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_flamethrower"))
 	{
 		return 0.2;
 	}
-	else if (strcmp(classname, "tf_weapon_pistol") == 0 || strcmp(classname, "tf_weapon_smg") == 0)
+	else if (strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_smg"))
 	{
 		return 0.5;
 	}

@@ -16,7 +16,7 @@ static bool g_bDisableIncursionHook;
  * @param maxDist				Maximum distance from search position.
  * @param filterTeam				Don't choose a spawn point too close to players on this team. 
  *								If this is above 3 (TFTeam_Blue), all players will be filtered. -1 to skip filtering.
- *					
+ *
  * @param doSpawnTrace		Do a trace to ensure that players and NPCs will not get stuck.
  * @param mins					Hull mins for the trace hull spawn check.
  * @param maxs					Hull maxs for the trace hull spawn check.
@@ -24,7 +24,7 @@ static bool g_bDisableIncursionHook;
  * @param zOffset				Offset the Z position of the result spawn position by this much.
  * @return			CNavArea associated with the spawn point if found. NULL_AREA otherwise.
  */
-CNavArea GetSpawnPointFromNav(const float pos[3], float resultPos[3], 
+CNavArea GetSpawnPoint(const float pos[3], float resultPos[3], 
 float minDist=650.0, float maxDist=1650.0, int filterTeam=-1, 
 bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLAYER_MAXS, int traceFlags=MASK_PLAYERSOLID, float zOffset=0.0)
 {
@@ -33,7 +33,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 	CNavArea area = TheNavMesh.GetNearestNavArea(navPos, false, MAX_MAP_SIZE, false, false);
 	
 	// This should never happen, but just in case
-	if (area == NULL_AREA)
+	if (!area)
 	{
 		float angles[3], direction[3], worldCenter[3];
 		GetWorldCenter(worldCenter);
@@ -44,7 +44,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 		float distance = GetVectorDistance(navPos, worldCenter) * 0.01;
 		int attempts;
 		
-		while (area == NULL_AREA && attempts < 100)
+		while (!area && attempts < 100)
 		{
 			navPos[0] += direction[0] * distance;
 			navPos[1] += direction[1] * distance;
@@ -71,6 +71,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 		if (area.GetCostSoFar() >= minDist)
 		{
 			areaArray.Set(validAreaCount, i);
+			validAreaCount++;
 		}
 	}
 	
@@ -86,9 +87,11 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 	else
 	{
 		int randomCell;
-		float spawnPos[3], playerPos[3];
+		int sentry = -1;
+		float spawnPos[3], playerPos[3], sentryPos[3];
 		bool canSpawn = true;
-		bool npc = traceFlags & MASK_NPCSOLID || traceFlags & MASK_NPCSOLID_BRUSHONLY;
+		int team = -1;
+		team = filterTeam == view_as<int>(TFTeam_Red) ? view_as<int>(TFTeam_Blue) : view_as<int>(TFTeam_Red);
 		
 		while (validAreaCount > 0)
 		{
@@ -98,7 +101,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 			area.GetCenter(spawnPos);
 			spawnPos[2] += zOffset;
 			
-			TR_TraceHullFilter(spawnPos, spawnPos, mins, maxs, traceFlags, TraceFilter_SpawnCheck, npc);
+			TR_TraceHullFilter(spawnPos, spawnPos, mins, maxs, traceFlags, TraceFilter_SpawnCheck, team);
 			if (TR_DidHit())
 			{
 				area = NULL_AREA;
@@ -119,21 +122,47 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 						if (!canSpawn)
 							continue;
 						
-						if (!IsClientInGameEx(i) || !IsPlayerAlive(i) 
-						|| filterTeam <= view_as<int>(TFTeam_Blue) && GetClientTeam(i) != filterTeam)
+						if (!IsClientInGameEx(i) || !IsPlayerAlive(i) || filterTeam <= view_as<int>(TFTeam_Blue) && GetClientTeam(i) != filterTeam)
 							continue;
-
-						GetClientAbsOrigin(i, playerPos);
-						if (GetVectorDistance(spawnPos, playerPos, true) <= sq(minDist))
+						
+						// Don't spawn near this player's non-disposable sentry
+						if (TF2_GetPlayerClass(i) == TFClass_Engineer)
 						{
-							area = NULL_AREA;
-							validAreaCount--;
-							if (areaArray.FindValue(randomArea) != -1)
+							while ((sentry = FindEntityByClassname(sentry, "obj_sentrygun")) != -1)
 							{
-								areaArray.Erase(randomCell);
+								if (GetEntProp(sentry, Prop_Data, "m_iTeamNum") == filterTeam && GetEntPropEnt(sentry, Prop_Send, "m_hBuilder") == i 
+								&& g_hPlayerExtraSentryList[i].FindValue(sentry) != -1)
+								{
+									GetEntPropVector(sentry, Prop_Data, "m_vecAbsOrigin", sentryPos);
+									if (GetVectorDistance(spawnPos, sentryPos, true) <= sq(minDist))
+									{
+										area = NULL_AREA;
+										validAreaCount--;
+										if (areaArray.FindValue(randomArea) != -1)
+										{
+											areaArray.Erase(randomCell);
+										}
+										
+										canSpawn = false;
+									}
+								}
 							}
-							
-							canSpawn = false;
+						}
+						
+						if (canSpawn)
+						{
+							GetClientAbsOrigin(i, playerPos);
+							if (GetVectorDistance(spawnPos, playerPos, true) <= sq(minDist))
+							{
+								area = NULL_AREA;
+								validAreaCount--;
+								if (areaArray.FindValue(randomArea) != -1)
+								{
+									areaArray.Erase(randomCell);
+								}
+								
+								canSpawn = false;
+							}
 						}
 					}
 				}
@@ -158,12 +187,22 @@ void SDK_ComputeIncursionDistances()
 		return;
 	
 	int entity = -1;
-	char name[32];
 	float pos[3];
 	CNavArea redArea, blueArea;
 	
-	// Method A: respawnrooms
-	while ((entity = FindEntityByClassname(entity, "func_respawnroom")) != -1)
+	// Method A: rf2_bot_incursion_point
+	while ((!redArea || !blueArea) && (entity = FindEntityByClassname(entity, "rf2_bot_incursion_point")) != -1)
+	{
+		switch (view_as<TFTeam>(GetEntProp(entity, Prop_Send, "m_iTeamNum")))
+		{
+			case TFTeam_Red:  if (!redArea) redArea = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
+			case TFTeam_Blue: if (!blueArea) blueArea = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
+		}
+	}
+	
+	entity = -1;
+	// Method B: respawnrooms
+	while ((!redArea || !blueArea) && (entity = FindEntityByClassname(entity, "func_respawnroom")) != -1)
 	{
 		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
 		
@@ -174,46 +213,19 @@ void SDK_ComputeIncursionDistances()
 		}
 	}
 	
-	// Method B: info_target
-	entity = -1;
-	while ((!redArea || !blueArea) && (entity = FindEntityByClassname(entity, "info_target")) != -1)
-	{
-		GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
-		
-		if (!redArea && strcmp(name, "rf2_incursion_area_red") == 0)
-		{
-			GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
-			redArea = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
-		}
-		else if (!blueArea && strcmp(name, "rf2_incursion_area_blue") == 0)
-		{
-			GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
-			blueArea = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
-		}
-	}
-	
 	g_bDisableIncursionHook = true;
-	
 	if (redArea) SDKCall(g_hSDKComputeIncursion, TheNavMesh.Address, redArea, TFTeam_Red);
 	if (blueArea) SDKCall(g_hSDKComputeIncursion, TheNavMesh.Address, blueArea, TFTeam_Blue);
-	
 	g_bDisableIncursionHook = false;
 	
-	if (redArea && blueArea)
+	if (!redArea)
 	{
-		LogMessage("[GetIncursionAreas] Located incursion areas for both teams successfully.");
+		LogError("[GetIncursionAreas] Could not locate incursion area for Red team. Bots may perform poorly.");
 	}
-	else
+	
+	if (!blueArea)
 	{
-		if (!redArea)
-		{
-			LogError("[GetIncursionAreas] Could not locate incursion area for Red team. Bots may perform poorly.");
-		}
-		
-		if (!blueArea)
-		{
-			LogError("[GetIncursionAreas] Could not locate incursion area for Blue team. Bots may perform poorly.");
-		}
+		LogError("[GetIncursionAreas] Could not locate incursion area for Blue team. Bots may perform poorly.");
 	}
 }
 
@@ -225,4 +237,21 @@ public MRESReturn DHook_ComputeIncursionDistances(Address navMesh, Handle params
 	}
 	
 	return MRES_Supercede;
+}
+
+public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
+{
+	if (IsObject(entity) && GetEntProp(entity, Prop_Send, "m_CollisionGroup") == COLLISION_GROUP_CRATE)
+		return false;
+	
+	if (team > 0 && (IsValidClient(entity) || IsBuilding(entity) || IsNPC(entity)))
+	{
+		if (team == GetEntProp(entity, Prop_Data, "m_iTeamNum"))
+			return false;
+	}
+	
+	if (mask & MASK_NPCSOLID || mask & MASK_PLAYERSOLID)
+		return true;
+		
+	return false;
 }

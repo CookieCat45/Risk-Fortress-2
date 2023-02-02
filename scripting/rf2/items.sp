@@ -9,38 +9,35 @@
 #define MAX_UNUSUAL_EFFECTS 64
 
 int g_iItemCount;
+int g_iBeamModel;
 
 int g_iPlayerItem[MAXTF2PLAYERS][MAX_ITEMS];
-int g_iPlayerStrangeItem[MAXTF2PLAYERS] = {-1, ...};
-int g_iEntityItemIndex[MAX_EDICTS];
-
+int g_iPlayerEquipmentItem[MAXTF2PLAYERS];
 int g_iItemSchemaIndex[MAX_ITEMS] = {-1, ...};
 int g_iItemQuality[MAX_ITEMS] = {Quality_None, ...};
-
-char g_szItemName[MAX_ITEMS][PLATFORM_MAX_PATH];
-char g_szItemDesc[MAX_ITEMS][PLATFORM_MAX_PATH];
-char g_szItemUnusualDisplayName[MAX_ITEMS][PLATFORM_MAX_PATH];
-
-float g_flItemModifier[MAX_ITEMS][MAX_ITEM_MODIFIERS];
-float g_flStrangeItemCooldown[MAX_ITEMS] = {40.0, ...};
 int g_iCollectorItemClass[MAX_ITEMS];
 
+float g_flItemModifier[MAX_ITEMS][MAX_ITEM_MODIFIERS];
+float g_flEquipmentItemCooldown[MAX_ITEMS] = {40.0, ...};
+float g_flItemSpriteScale[MAX_ITEMS] = {1.0, ...};
+
+char g_szItemName[MAX_ITEMS][MAX_NAME_LENGTH];
+char g_szItemDesc[MAX_ITEMS][MAX_DESC_LENGTH];
+char g_szItemUnusualEffectName[MAX_ITEMS][MAX_NAME_LENGTH];
+
+bool g_bItemInDropPool[MAX_ITEMS];
+bool g_bLaserHitDetected[MAX_EDICTS];
+
 // Unusual effects
+int g_iUnusualEffectCount;
 int g_iItemUnusualEffect[MAX_ITEMS] = {-1, ...};
 int g_iItemSpriteUnusualEffect[MAX_ITEMS] = {-1, ...};
+int g_iUnusualEffectType[MAX_UNUSUAL_EFFECTS]; // Unusual effects have IDs for use with the attribute
 
-int g_iUnusualEffectCount;
-char g_szUnusualEffectName[MAX_UNUSUAL_EFFECTS][64];
-char g_szUnusualEffectDisplayName[MAX_UNUSUAL_EFFECTS][64];
-int g_iUnusualEffectType[MAX_UNUSUAL_EFFECTS];
-
-char g_szItemEquipRegion[MAX_ITEMS][PLATFORM_MAX_PATH];
+char g_szUnusualEffectName[MAX_UNUSUAL_EFFECTS][MAX_NAME_LENGTH];
+char g_szUnusualEffectDisplayName[MAX_UNUSUAL_EFFECTS][MAX_NAME_LENGTH];
+char g_szItemEquipRegion[MAX_ITEMS][64];
 char g_szItemSprite[MAX_ITEMS][PLATFORM_MAX_PATH];
-float g_flItemSpriteScale[MAX_ITEMS] = {1.0, ...};
-bool g_bItemInDropPool[MAX_ITEMS];
-
-int g_iBeamModel;
-bool g_bLaserHitDetected[MAX_EDICTS];
 
 void LoadItems()
 {
@@ -59,7 +56,7 @@ void LoadItems()
 	char buffer[64], split[16];
 	effectKey.GetSectionName(buffer, sizeof(buffer));
 	
-	if (strcmp(buffer, "items") == 0)
+	if (strcmp2(buffer, "items"))
 		effectKey.GotoNextKey();
 	
 	for (int i = 0; i < MAX_UNUSUAL_EFFECTS; i++)
@@ -79,7 +76,7 @@ void LoadItems()
 			g_iUnusualEffectCount++;
 		}
 	}
-	
+
 	delete effectKey;
 	
 	// Now items
@@ -89,7 +86,7 @@ void LoadItems()
 	itemKey.ImportFromFile(config);
 	itemKey.GetSectionName(buffer, sizeof(buffer));
 	
-	if (strcmp(buffer, "effects") == 0)
+	if (strcmp2(buffer, "effects"))
 		itemKey.GotoNextKey();
 	
 	for (int i = 0; i < Item_MaxValid; i++)
@@ -102,7 +99,7 @@ void LoadItems()
 			itemKey.GetString("name", g_szItemName[item], sizeof(g_szItemName[]), "Unnamed Item");
 			itemKey.GetString("desc", g_szItemDesc[item], sizeof(g_szItemDesc[]), "(No description found...)");
 			itemKey.GetString("equip_regions", g_szItemEquipRegion[item], sizeof(g_szItemEquipRegion[]), "none");
-			itemKey.GetString("sprite", g_szItemSprite[item], sizeof(g_szItemSprite[]), DEBUGEMPTY);
+			itemKey.GetString("sprite", g_szItemSprite[item], sizeof(g_szItemSprite[]), MAT_DEBUGEMPTY);
 			g_bItemInDropPool[item] = bool(itemKey.GetNum("in_item_pool", true));
 			
 			if (FileExists(g_szItemSprite[item], true))
@@ -135,12 +132,13 @@ void LoadItems()
 						int random = GetRandomInt(0, g_iUnusualEffectCount-1);
 						g_iItemUnusualEffect[item] = g_iUnusualEffectType[random];
 						g_iItemSpriteUnusualEffect[item] = random;
-						strcopy(g_szItemUnusualDisplayName[item], sizeof(g_szItemUnusualDisplayName[]), g_szUnusualEffectDisplayName[random]);
+						strcopy(g_szItemUnusualEffectName[item], sizeof(g_szItemUnusualEffectName[]), g_szUnusualEffectDisplayName[random]);
 					}
 				}
-				
-				case Quality_Strange: g_flStrangeItemCooldown[item] = itemKey.GetFloat("strange_cooldown", 40.0);
+					
 				case Quality_Collectors: g_iCollectorItemClass[item] = itemKey.GetNum("collector_item_class", 0);
+				
+				case Quality_Strange, Quality_HauntedStrange: g_flEquipmentItemCooldown[item] = itemKey.GetFloat("strange_cooldown", 40.0);
 			}
 			
 			g_iItemCount++;
@@ -157,7 +155,7 @@ void LoadItems()
 
 bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
 {
-	if (strcmp(buffer1, "none") == 0 || strcmp(buffer2, "none") == 0)
+	if (strcmp2(buffer1, "none") || strcmp2(buffer2, "none"))
 	{
 		return false;
 	}
@@ -178,8 +176,8 @@ bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
 	return false;
 }
 
-int GetRandomItem(int normalWeight=79, int genuineWeight=20, 
-int unusualWeight=1, int hauntedWeight=0, int strangeWeight=0)
+int GetRandomItem(int normalWeight=0, int genuineWeight=0, 
+int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, int hauntedStrangeWeight=0)
 {
 	ArrayList array = CreateArray();
 	int quality, count, item;
@@ -193,6 +191,7 @@ int unusualWeight=1, int hauntedWeight=0, int strangeWeight=0)
 			case Quality_Unusual: count = unusualWeight;
 			case Quality_Haunted: count = hauntedWeight;
 			case Quality_Strange: count = strangeWeight;
+			case Quality_HauntedStrange: count = hauntedStrangeWeight;
 		}
 		
 		if (count <= 0)
@@ -205,7 +204,7 @@ int unusualWeight=1, int hauntedWeight=0, int strangeWeight=0)
 	quality = array.Get(GetRandomInt(0, array.Length-1));
 	array.Clear();
 	
-	for (int i = 1; i < g_iItemCount; i++)
+	for (int i = 1; i <= GetItemCount(); i++)
 	{
 		if (!g_bItemInDropPool[i])
 			continue;
@@ -234,7 +233,7 @@ int GetRandomItemEx(int quality)
 	ArrayList array = CreateArray();
 	int item;
 	
-	for (int i = 1; i < g_iItemCount; i++)
+	for (int i = 1; i <= GetItemCount(); i++)
 	{
 		if (!g_bItemInDropPool[i])
 			continue;
@@ -260,26 +259,23 @@ int GetRandomItemEx(int quality)
 
 int GetRandomCollectorItem(int class)
 {
-	ArrayList array = CreateArray(1, g_iItemCount);
-	int count, item;
+	ArrayList array = CreateArray();
+	int item;
 	
-	for (int i = 0; i < g_iItemCount; i++)
+	for (int i = 0; i <= GetItemCount(); i++)
 	{
 		if (!g_bItemInDropPool[i])
 			continue;
 
 		if (g_iItemQuality[i] == Quality_Collectors && GetCollectorItemClass(i) == class)
 		{
-			array.Set(count, i);
-			count++;
+			array.Push(i);
 		}
 	}
-		
-	array.Resize(count);
 	
-	if (count > 0)
+	if (array.Length > 0)
 	{
-		item = array.Get(GetRandomInt(0, count-1));
+		item = array.Get(GetRandomInt(0, array.Length-1));
 	}
 	else
 	{
@@ -302,33 +298,28 @@ bool CanUseCollectorItem(int client, int item)
 	return (view_as<int>(TF2_GetPlayerClass(client)) == GetCollectorItemClass(item));
 }
 
-int SpawnItem(int item, const float pos[3], int spawner=-1, float ownTime=8.0)
+int SpawnItem(int index, const float pos[3], int spawner=-1, float ownTime=8.0)
 {
-	int sprite = CreateEntityByName("env_sprite");
-	g_iEntityItemIndex[sprite] = item;
-	DispatchKeyValue(sprite, "model", g_szItemSprite[item]);
-	DispatchKeyValueFloat(sprite, "scale", g_flItemSpriteScale[item]);
-	DispatchKeyValue(sprite, "rendermode", "9");
-	
-	DispatchSpawn(sprite);
-	TeleportEntity(sprite, pos, NULL_VECTOR, NULL_VECTOR);
-	SetEntPropString(sprite, Prop_Data, "m_iName", OBJECT_ITEM);
+	int item = CreateEntityByName("rf2_item");
+	SetEntProp(item, Prop_Data, "m_iIndex", index);
+	TeleportEntity(item, pos);
+	DispatchSpawn(item);
 	
 	if (spawner > 0) // We spawned this item, so we own it unless we don't pick it up, assuming we don't want it.
 	{
-		g_iItemOwner[sprite] = spawner;
-		CreateTimer(ownTime, Timer_ClearItemOwner, EntIndexToEntRef(sprite), TIMER_FLAG_NO_MAPCHANGE);
+		SetEntPropEnt(item, Prop_Data, "m_hSpawner", spawner);
+		CreateTimer(ownTime, Timer_ClearItemOwner, EntIndexToEntRef(item), TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
-	if (GetItemQuality(item) == Quality_Unusual)
+	if (GetItemQuality(index) == Quality_Unusual)
 	{
 		float effectPos[3];
 		CopyVectors(pos, effectPos);
 		effectPos[2] += 25.0;
-		TE_SetupParticle(g_szUnusualEffectName[g_iItemSpriteUnusualEffect[item]], effectPos, sprite);
+		TE_TFParticle(g_szUnusualEffectName[g_iItemSpriteUnusualEffect[index]], effectPos, item, PATTACH_ABSORIGIN);
 	}
 	
-	return sprite;
+	return item;
 }
 
 public Action Timer_ClearItemOwner(Handle timer, int entity)
@@ -336,75 +327,72 @@ public Action Timer_ClearItemOwner(Handle timer, int entity)
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
 		return Plugin_Continue;
 		
-	g_iItemOwner[entity] = -1;
+	SetEntPropEnt(entity, Prop_Data, "m_hSpawner", -1);
 	return Plugin_Continue;
 }
 
 void GiveItem(int client, int item, int amount=1)
 {
-	if (GetItemQuality(item) == Quality_Strange)
+	if (IsEquipmentItem(item))
 	{
-		if (g_iPlayerStrangeItem[client] > Item_Null)
+		int strangeItem = GetPlayerEquipmentItem(client);
+		
+		if (strangeItem > Item_Null)
 		{
 			float pos[3];
 			GetClientAbsOrigin(client, pos);
 			pos[2] += 30.0;
-			DropItem(client, g_iPlayerStrangeItem[client], pos, client, 5.0);
+			DropItem(client, strangeItem, pos, client, 5.0);
 		}
 		
-		g_iPlayerStrangeItem[client] = item;
+		g_iPlayerEquipmentItem[client] = item;
 	}
 	else
 	{
-		g_iPlayerItem[client][item]+=amount;
-		if (g_iPlayerItem[client][item] < 0)
+		g_iPlayerItem[client][item] += amount;
+		
+		if (GetPlayerItemCount(client, item) < 0)
 			g_iPlayerItem[client][item] = 0;
 	}
-		
-	UpdatePlayerItem(client, item);
 	
-	if (g_bPlayerAutomaticItemMenu[client] || g_bPlayerViewingItemMenu[client])
-	{
-		ShowItemMenu(client);
-	}
+	UpdatePlayerItem(client, item);
 }
 
 // Subject is who we're dropping the item for, or -1 if we don't care.
-bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=-1.0)
+bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=0.0)
 {
-	if (g_iPlayerItem[client][item] <= 0 && GetItemQuality(item) != Quality_Strange)
+	if (GetPlayerItemCount(client, item) <= 0 && !IsEquipmentItem(item))
 	{
 		return false;
 	}
 	
-	if (GetItemQuality(item) == Quality_Strange && g_iPlayerStrangeItem[client] != item)
+	if (IsEquipmentItem(item) && GetPlayerEquipmentItem(client) != item)
 	{
 		return false;
 	}
 	
-	int entity = SpawnItem(item, pos);
+	int entity = SpawnItem(item, pos, client);
+	SetEntProp(entity, Prop_Data, "m_bDropped", true);
 	
-	g_iItemDropper[entity] = client;
 	if (subject > 0)
 	{
-		g_iItemOwner[entity] = subject; // Only the dropper or the one we dropped the item for can pick this up.
+		SetEntPropEnt(entity, Prop_Data, "m_hSubject", subject); // Only the dropper or the one we dropped the item for can pick this up.
 	}
 	
-	if (ownTime > 0.0)
+	if (ownTime > 0.0) // If we own this item but the owner/subject takes too long to pick it up, it's free for taking
 	{
 		CreateTimer(ownTime, Timer_ClearItemOwner, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
-	if (GetItemQuality(item) == Quality_Strange)
+	if (IsEquipmentItem(item))
 	{
-		g_iPlayerStrangeItem[client] = -1;
+		g_iPlayerEquipmentItem[client] = Item_Null;
 	}
 	else
 	{
 		g_iPlayerItem[client][item]--;
 	}
 	
-	g_bDroppedItem[entity] = true;
 	UpdatePlayerItem(client, item);
 	
 	return true;
@@ -426,79 +414,87 @@ bool PickupItem(int client)
 	endPos[1] += direction[1] * range;
 	endPos[2] += direction[2] * range;
 	
-	TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceDontHitSelf, client);
+	TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_DontHitSelf, client);
 	TR_GetEndPosition(endPos);
 	
-	int itemSprite = GetNearestEntity(endPos, "env_sprite", OBJECT_ITEM);
-	if (IsValidEntity(itemSprite))
+	int item = GetNearestEntity(endPos, "rf2_item");
+	if (item == -1)
+		return false;
+	
+	float pos[3];
+	GetEntPropVector(item, Prop_Data, "m_vecAbsOrigin", pos);
+	
+	if (GetVectorDistance(pos, endPos, true) <= sq(range))
 	{
-		float spritePos[3];
-		GetEntPropVector(itemSprite, Prop_Data, "m_vecAbsOrigin", spritePos);
-		if (GetVectorDistance(spritePos, endPos, true) <= sq(range))
+		bool itemShare = g_cvItemShareEnabled.BoolValue;
+		int index = RF2_GetSurvivorIndex(client);
+		int itemIndex = GetEntProp(item, Prop_Data, "m_iIndex");
+		int spawner = GetEntPropEnt(item, Prop_Data, "m_hSpawner");
+		bool dropped = bool(GetEntProp(item, Prop_Data, "m_bDropped"));
+		int quality = GetItemQuality(itemIndex);
+		
+		// Strange items do not count towards the limit.
+		if (itemShare && g_iItemLimit[index] > 0 && !IsEquipmentItem(itemIndex) 
+		&& !dropped && (!IsValidClient(spawner) || !IsPlayerSurvivor(spawner) || spawner == client)
+		&& g_iItemsTaken[index] >= g_iItemLimit[index])
 		{
-			bool itemShare = g_cvItemShareEnabled.BoolValue;
-			int index = GetSurvivorIndex(client);
-			int item = g_iEntityItemIndex[itemSprite];
-			int quality = GetItemQuality(item);
-			
-			// Strange items do not count towards the limit.
-			if (itemShare && quality != Quality_Strange && !g_bDroppedItem[itemSprite] && g_iItemLimit[index] > 0 && g_iItemsTaken[index] >= g_iItemLimit[index])
+			EmitSoundToClient(client, SOUND_NOPE);
+			PrintCenterText(client, "You have reached your item share limit of %i. You can't pick this up!", g_iItemLimit[index]);
+			return false;
+		}
+		
+		int subject = GetEntPropEnt(item, Prop_Data, "m_hSubject");
+		if (IsValidClient(subject))
+		{
+			if (client != spawner && client != subject)
 			{
-				EmitSoundToClient(client, NOPE);
-				PrintCenterText(client, "You have reached your item share limit of %i. You can't pick this up!", g_iItemLimit[index]);
+				EmitSoundToClient(client, SOUND_NOPE);
+				PrintCenterText(client, "That item is not for you!");
 				return false;
 			}
-			
-			if (g_iItemOwner[itemSprite] > 0)
-			{
-				if (client != g_iItemDropper[itemSprite] && client != g_iItemOwner[itemSprite])
-				{
-					EmitSoundToClient(client, NOPE);
-					PrintCenterText(client, "That item is not for you.");
-					return false;
-				}
-			}
-			
-			GiveItem(client, item);
-			
-			if (IsValidEntity(itemSprite))
-				RemoveEntity(itemSprite);
-				
-			char qualityTag[32];
-			char itemName[32];
-			GetQualityColorTag(g_iItemQuality[item], qualityTag, sizeof(qualityTag));
-			GetItemName(item, itemName, sizeof(itemName));
-			
-			if (GetItemQuality(item) == Quality_Strange)
-			{
-				RF2_PrintToChatAll("{yellow}%N{default} picked up %s%s", client, qualityTag, itemName);
-			}
-			else
-			{
-				RF2_PrintToChatAll("{yellow}%N{default} picked up %s%s {lightgray}[%i]", client, qualityTag, itemName, g_iPlayerItem[client][item]);
-			}
-			
-			RF2_PrintToChat(client, "%s%s{default}: %s", qualityTag, g_szItemName[item], g_szItemDesc[item]);
-			EmitSoundToAll(SOUND_ITEM_PICKUP, client);
-			
-			if (!g_bDroppedItem[itemSprite])
-			{
-				g_iTotalItemsFound++;
-				
-				if (quality != Quality_Strange)
-				{
-					g_iItemsTaken[index]++;
-				
-					// Notify our player that they've reached their limit.
-					if (itemShare && g_iItemLimit[index] > 0 && g_iItemsTaken[index] >= g_iItemLimit[index])
-					{
-						PrintCenterText(client, "You've reached your item share limit of %i.\nYou can no longer take items unless they are dropped for you.", g_iItemLimit[index]);
-					}
-				}
-			}
-			
-			return true;
 		}
+		
+		GiveItem(client, itemIndex);
+		RemoveEntity(item);
+		
+		char qualityTag[32], itemName[32];
+		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
+		GetItemName(itemIndex, itemName, sizeof(itemName));
+		
+		if (IsEquipmentItem(itemIndex))
+		{
+			RF2_PrintToChatAll("{yellow}%N{default} picked up %s%s", client, qualityTag, itemName);
+		}
+		else
+		{
+			RF2_PrintToChatAll("{yellow}%N{default} picked up %s%s {lightgray}[%i]", client, qualityTag, itemName, GetPlayerItemCount(client, itemIndex));
+		}
+		
+		RF2_PrintToChat(client, "%s%s{default}: %s", qualityTag, itemName, g_szItemDesc[itemIndex]);
+		EmitSoundToAll(SOUND_ITEM_PICKUP, client);
+		
+		if (!dropped)
+		{
+			g_iTotalItemsFound++;
+			
+			if (!IsEquipmentItem(itemIndex))
+			{
+				g_iItemsTaken[index]++;
+				
+				// Notify our player that they've reached their limit.
+				if (itemShare && g_iItemLimit[index] > 0 && g_iItemsTaken[index] >= g_iItemLimit[index])
+				{
+					PrintCenterText(client, "You've reached your item share limit of %i.\nYou can no longer take items unless they are dropped for you.", g_iItemLimit[index]);
+				}
+			}
+		}
+		
+		if (g_bPlayerAutomaticItemMenu[client] || g_bPlayerViewingItemMenu[client])
+		{
+			ShowItemMenu(client);
+		}
+		
+		return true;
 	}
 	
 	return false;
@@ -526,7 +522,7 @@ int EquipItemAsWearable(int client, int item)
 		
 		index = GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex");
 
-		for (int i = 1; i < g_iItemCount; i++)
+		for (int i = 1; i <= GetItemCount(); i++)
 		{
 			if (PlayerHasItem(client, i) && index == g_iItemSchemaIndex[i])
 			{
@@ -560,7 +556,7 @@ int EquipItemAsWearable(int client, int item)
 			FormatEx(attribute, sizeof(attribute), "134 = %i", g_iItemUnusualEffect[item]);
 		}
 		
-		wearable = CreateWearable(client, "tf_wearable", g_iItemSchemaIndex[item], attribute, true, actualQuality, GetRandomInt(1, 128));
+		wearable = CreateWearable(client, "tf_wearable", g_iItemSchemaIndex[item], attribute, true, true, actualQuality, GetRandomInt(1, 128));
 		g_bItemWearable[wearable] = true;
 		
 		// Enemy item wearables have the flashing effect, so RED players can more easily tell what they have.
@@ -590,8 +586,7 @@ int EquipItemAsWearable(int client, int item)
 
 void RemoveItemAsWearable(int client, int item)
 {
-	int entity;
-	int index;
+	int entity, index;
 	
 	while ((entity = FindEntityByClassname(entity, "tf_wearable")) != -1)
 	{
@@ -605,7 +600,7 @@ void RemoveItemAsWearable(int client, int item)
 		// g_bDontRemoveWearable means this wearable is associated with an item
 		if (index == g_iItemSchemaIndex[item])
 		{
-			// TODO: This causes issues with cosmetics that toggle bodygroups. Not sure how to fix. (Taunting corrects it?)
+			// TODO: This causes issues with cosmetics that toggle bodygroups. Not sure how to fix. Taunting corrects it for some reason?
 			TF2_RemoveWearable(client, entity);
 			break;
 		}
@@ -621,7 +616,7 @@ int GetQualityEquipPriority(int quality)
 		case Quality_Haunted: return 2;
 		case Quality_Collectors: return 3;
 		case Quality_Unusual: return 4;
-		case Quality_Strange: return 5;
+		case Quality_Strange, Quality_HauntedStrange: return 5;
 	}
 	
 	return -1;
@@ -647,8 +642,7 @@ void UpdatePlayerItem(int client, int item)
 				amount = 1.0 + CalcItemMod(client, Item_WhaleBoneCharm, 0);
 			}
 			
-			int weapon;
-			int ammoType;
+			int weapon, ammoType;
 			for (int i = WeaponSlot_Primary; i <= WeaponSlot_Secondary; i++)
 			{
 				weapon = GetPlayerWeaponSlot(client, i);
@@ -726,17 +720,6 @@ void UpdatePlayerItem(int client, int item)
 				TF2Attrib_RemoveByDefIndex(g_iPlayerStatWearable[client], 525);
 			}
 		}
-		/*
-		case ItemScout_MonarchWings:
-		{
-			if (CanUseCollectorItem(client, ItemScout_MonarchWings))
-			{
-				float amount = CalcItemMod(client, ItemScout_MonarchWings, 0);
-				ValidateStatWearable(client);
-				TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 250, amount);
-			}
-		}
-		*/
 		case ItemEngi_Teddy:
 		{
 			if (CanUseCollectorItem(client, ItemEngi_Teddy))
@@ -844,9 +827,24 @@ void UpdatePlayerItem(int client, int item)
 				}	
 			}
 		}
+		case Item_BatteryCanteens:
+		{
+			// start cooldown if we're below max charges
+			int equipment = GetPlayerEquipmentItem(client);
+			if (equipment > Item_Null && g_flPlayerEquipmentItemCooldown[client] <= 0.0)
+			{
+				int maxCharges = RoundToFloor(CalcItemMod(client, Item_BatteryCanteens, 1, 1));
+				if (g_iPlayerEquipmentItemCharges[client] < maxCharges)
+				{
+					g_flPlayerEquipmentItemCooldown[client] = g_flEquipmentItemCooldown[equipment];
+					g_flPlayerEquipmentItemCooldown[client] *= CalcItemMod_HyperbolicInverted(client, Item_BatteryCanteens, 0);
+					CreateTimer(0.1, Timer_StrangeCooldown, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+				}
+			}
+		}
 	}
 	
-	if (!PlayerHasItem(client, item) && GetItemQuality(item) != Quality_Strange || GetItemQuality(item) == Quality_Strange && g_iPlayerStrangeItem[client] != item)
+	if (!PlayerHasItem(client, item) && !IsEquipmentItem(item) || IsEquipmentItem(item) && GetPlayerEquipmentItem(client) != item)
 	{
 		RemoveItemAsWearable(client, item); // Remove the wearable if we don't have the item anymore.
 		
@@ -854,7 +852,7 @@ void UpdatePlayerItem(int client, int item)
 		int qualityPriority = GetQualityEquipPriority(GetItemQuality(item));
 		while (qualityPriority >= 0)
 		{
-			for (int i = 1; i < g_iItemCount; i++)
+			for (int i = 1; i <= GetItemCount(); i++)
 			{
 				if (i != item && PlayerHasItem(client, i) && GetQualityEquipPriority(GetItemQuality(i)) >= qualityPriority)
 				{
@@ -879,12 +877,9 @@ void UpdatePlayerItem(int client, int item)
 // If the result of GetRandomInt(min, max) is below or equal to goal, returns true. Factors in luck stat from client.
 bool RandChanceIntEx(int client, int min, int max, int goal, int &result=0)
 {
-	int random;
-	int rollTimes = 1;
-	int badRolls;
+	int random, badRolls;
+	int rollTimes = 1 + GetPlayerLuckStat(client);
 	bool success;
-	rollTimes += RoundToFloor(CalcItemMod(client, Item_LuckyCatHat, 0));
-	rollTimes -= RoundToFloor(CalcItemMod(client, Item_MisfortuneFedora, 0));
 	
 	if (rollTimes < 0)
 	{
@@ -918,11 +913,9 @@ bool RandChanceIntEx(int client, int min, int max, int goal, int &result=0)
 bool RandChanceFloatEx(int client, float min, float max, float goal, float &result=0.0)
 {
 	float random;
-	int rollTimes = 1;
+	int rollTimes = 1 + GetPlayerLuckStat(client);
 	int badRolls;
 	bool success;
-	rollTimes += RoundToFloor(CalcItemMod(client, Item_LuckyCatHat, 0));
-	rollTimes -= RoundToFloor(CalcItemMod(client, Item_MisfortuneFedora, 0));
 	
 	if (rollTimes < 0)
 	{
@@ -981,24 +974,23 @@ void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, in
 		}
 	}
 	
-	if (PlayerHasItem(attacker, Item_KillerExclusive) && g_iPlayerStrangeItem[attacker] > 0)
+	if (PlayerHasItem(attacker, Item_KillerExclusive) && GetPlayerEquipmentItem(attacker) > Item_Null)
 	{
-		g_flPlayerStrangeItemCooldown[attacker] -= CalcItemMod(attacker, Item_KillerExclusive, 0);
-		if (g_flPlayerStrangeItemCooldown[attacker] < 0.0)
-			g_flPlayerStrangeItemCooldown[attacker] = 0.0;
+		g_flPlayerEquipmentItemCooldown[attacker] -= CalcItemMod(attacker, Item_KillerExclusive, 0);
+		if (g_flPlayerEquipmentItemCooldown[attacker] < 0.0)
+			g_flPlayerEquipmentItemCooldown[attacker] = 0.0;
 	}
 	
 	if (PlayerHasItem(attacker, Item_Executioner) && TF2_IsPlayerInConditionEx(victim, TFCond_Bleeding))
 	{
 		float radius = GetItemMod(Item_Executioner, 2);
 		float bleedTime = CalcItemMod(attacker, Item_Executioner, 3);
-		float victimPos[3];
-		float enemyPos[3];
+		float victimPos[3], enemyPos[3];
 		GetClientAbsOrigin(victim, victimPos);
 		victimPos[2] += 30.0;
 		
 		EmitAmbientSound(SOUND_BLEED_EXPLOSION, victimPos, _, SNDLEVEL_TRAIN);
-		TE_SetupParticle("env_sawblood", victimPos);
+		TE_TFParticle("env_sawblood", victimPos);
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
@@ -1008,7 +1000,7 @@ void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, in
 			}
 
 			GetClientAbsOrigin(i, enemyPos);
-			TR_TraceRayFilter(victimPos, enemyPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceWallsOnly);
+			TR_TraceRayFilter(victimPos, enemyPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
 			if (!TR_DidHit() && GetVectorDistance(victimPos, enemyPos, true) <= sq(radius))
 			{
 				TF2_MakeBleed(i, attacker, bleedTime);
@@ -1032,10 +1024,10 @@ public void RF_SaxtonRadiusDamage(DataPack pack)
 
 bool ActivateStrangeItem(int client)
 {
-	if (g_flPlayerStrangeItemCooldown[client] > 0.0)
+	if (g_iPlayerEquipmentItemCharges[client] <= 0)
 		return false;
 	
-	switch (g_iPlayerStrangeItem[client])
+	switch (GetPlayerEquipmentItem(client))
 	{
 		case ItemStrange_RoBro:
 		{
@@ -1066,9 +1058,7 @@ bool ActivateStrangeItem(int client)
 		
 		case ItemStrange_SpellbookMagazine:
 		{
-			char spellType[64];
-			char sound[PLATFORM_MAX_PATH];
-			char responseConcept[64];
+			char spellType[64], response[64], sound[PLATFORM_MAX_PATH];
 			bool projectileArc;
 			
 			// This item may cast a spell beneficial to the user, or backfire and harm them instead.
@@ -1082,66 +1072,65 @@ bool ActivateStrangeItem(int client)
 						sound = SOUND_SPELL_FIREBALL;
 						
 						// TLK_PLAYER_CAST_FIREBALL doesn't work for some reason. This is better than nothing.
-						responseConcept = "TLK_PLAYER_CAST_MERASMUS_ZAP";
+						response = "TLK_PLAYER_CAST_MERASMUS_ZAP";
 					}
 					case 4, 5, 6:
 					{
 						spellType = "tf_projectile_spellbats";
 						sound = SOUND_SPELL_BATS;
-						responseConcept = "TLK_PLAYER_CAST_MERASMUS_ZAP";
+						response = "TLK_PLAYER_CAST_MERASMUS_ZAP";
 						projectileArc = true;
 					}
 					case 7, 8, 9:
 					{
 						spellType = "tf_projectile_spelltransposeteleport";
 						sound = SOUND_SPELL_TELEPORT;
-						responseConcept = "TLK_PLAYER_CAST_TELEPORT";
+						response = "TLK_PLAYER_CAST_TELEPORT";
 						projectileArc = true;
 					}
 					case 10, 11, 12:
 					{
 						spellType = "BlastJump";
 						sound = SOUND_SPELL_JUMP;
-						responseConcept = "TLK_PLAYER_CAST_BLAST_JUMP";
+						response = "TLK_PLAYER_CAST_BLAST_JUMP";
 					}
 					case 13, 14, 15:
 					{
 						spellType = "Overheal";
 						sound = SOUND_SPELL_OVERHEAL;
-						responseConcept = "TLK_PLAYER_CAST_SELF_HEAL";
+						response = "TLK_PLAYER_CAST_SELF_HEAL";
 					}
 					case 16, 17, 18:
 					{
 						spellType = "Stealth";
 						sound = SOUND_SPELL_STEALTH;
-						responseConcept = "TLK_PLAYER_CAST_STEALTH";
+						response = "TLK_PLAYER_CAST_STEALTH";
 					}
 					case 19:
 					{
 						spellType = "tf_projectile_spellmeteorshower";
 						sound = SOUND_SPELL_METEOR;
-						responseConcept = "TLK_PLAYER_CAST_METEOR_SWARM";
+						response = "TLK_PLAYER_CAST_METEOR_SWARM";
 						projectileArc = true;
 					}
 					case 20:
 					{
 						spellType = "tf_projectile_spellspawnboss";
-						responseConcept = "TLK_PLAYER_CAST_MONOCULOUS";
+						response = "TLK_PLAYER_CAST_MONOCULOUS";
 					}
 					case 21:
 					{
 						spellType = "tf_projectile_lightningorb";
 						sound = SOUND_SPELL_LIGHTNING;
-						responseConcept = "TLK_PLAYER_CAST_LIGHTNING_BALL";
+						response = "TLK_PLAYER_CAST_LIGHTNING_BALL";
 					}
 				}
 				
-				float eyePos[3];
-				float eyeAng[3];
+				float eyePos[3], eyeAng[3];
 				GetClientEyePosition(client, eyePos);
 				GetClientEyeAngles(client, eyeAng);
 				float speed = 1100.0;
-				if (strcmp(spellType, "tf_projectile_lightningorb") == 0)
+				if (strcmp2(spellType, "tf_projectile_lightningorb"))
 				{
 					speed = 500.0;
 				}
@@ -1155,7 +1144,7 @@ bool ActivateStrangeItem(int client)
 				
 				if (!IsValidEntity(entity))
 				{
-					if (strcmp(spellType, "BlastJump") == 0)
+					if (strcmp2(spellType, "BlastJump"))
 					{
 						float velocity[3];
 						GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", velocity);
@@ -1170,12 +1159,12 @@ bool ActivateStrangeItem(int client)
 	
 						TeleportEntity(client, _, _, velocity);
 					}
-					else if (strcmp(spellType, "Overheal") == 0)
+					else if (strcmp2(spellType, "Overheal"))
 					{
 						TF2_AddCondition(client, TFCond_HalloweenQuickHeal, 3.0);
 						TF2_AddCondition(client, TFCond_UberchargedOnTakeDamage, 1.0);
 					}
-					else if (strcmp(spellType, "Stealth") == 0)
+					else if (strcmp2(spellType, "Stealth"))
 					{
 						TF2_AddCondition(client, TFCond_Stealthed, 8.0);
 					}
@@ -1183,11 +1172,11 @@ bool ActivateStrangeItem(int client)
 				
 				if (TF2_GetClientTeam(client) == TFTeam_Red)
 				{
-					TE_SetupParticle("spell_cast_wheel_red", NULL_VECTOR, client);
+					TE_TFParticle("spell_cast_wheel_red", NULL_VECTOR, client, PATTACH_ABSORIGIN_FOLLOW);
 				}
 				else
 				{
-					TE_SetupParticle("spell_cast_wheel_blue", NULL_VECTOR, client);
+					TE_TFParticle("spell_cast_wheel_blue", NULL_VECTOR, client, PATTACH_ABSORIGIN_FOLLOW);
 				}
 				
 				if (sound[0])
@@ -1195,9 +1184,9 @@ bool ActivateStrangeItem(int client)
 					EmitSoundToAll(sound, client);
 				}
 				
-				if (responseConcept[0])
+				if (response[0])
 				{
-					SetVariantString(responseConcept);
+					SetVariantString(response);
 					AcceptEntityInput(client, "SpeakResponseConcept");
 				}
 			}
@@ -1214,8 +1203,10 @@ bool ActivateStrangeItem(int client)
 						TF2_MakeBleed(client, client, 5.0);
 						TF2_AddCondition(client, TFCond_Jarated, 10.0, client);
 					}
-					case 3: // Admin slap. Yes, really.
+					case 3: // Admin slap.
 					{
+						SlapPlayer(client, 20, true);
+						SlapPlayer(client, 20, true);
 						SlapPlayer(client, 20, true);
 					}
 					case 4:
@@ -1264,17 +1255,73 @@ bool ActivateStrangeItem(int client)
 			}
 			
 			FireLaser(client, ItemStrange_VirtualViewfinder, eyePos, angles, true, _, 
-			GetItemMod(ItemStrange_VirtualViewfinder, 0), DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE, 25.0, colors);
+			GetItemMod(ItemStrange_VirtualViewfinder, 0), DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE, 25.0, colors, "partyhat");
 		}
 	}
 	
-	g_flPlayerStrangeItemCooldown[client] = g_flStrangeItemCooldown[g_iPlayerStrangeItem[client]];
-	CreateTimer(0.1, Timer_StrangeCooldown, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	// Don't go on cooldown if our charges are above the limit; we likely dropped some battery canteens
+	int maxCharges = RoundToFloor(CalcItemMod(client, Item_BatteryCanteens, 1, 1));
+	if (g_iPlayerEquipmentItemCharges[client] <= maxCharges)
+	{
+		// If we have any cooldown left, that means we have more than 1 charge, so subtract whatever was remaining from our current cooldown and reset it
+		bool cooldownActive = g_flPlayerEquipmentItemCooldown[client] > 0.0;
+		float cooldown = g_flEquipmentItemCooldown[GetPlayerEquipmentItem(client)];
+		cooldown *= CalcItemMod_HyperbolicInverted(client, Item_BatteryCanteens, 0);
+		
+		if (cooldownActive)
+		{
+			float remainingCooldown = cooldown - g_flPlayerEquipmentItemCooldown[client];
+			cooldown -= remainingCooldown;
+		}
+		
+		g_flPlayerEquipmentItemCooldown[client] = cooldown;
+		
+		if (!cooldownActive)
+		{
+			CreateTimer(0.1, Timer_StrangeCooldown, client, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		}
+	}
 	
+	g_iPlayerEquipmentItemCharges[client]--;
 	return true;
 }
 
-void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float angles[3], bool infiniteRange=true, const float endPos[3]=NULL_VECTOR, float damage, int damageFlags, float size, int colors[4])
+public Action Timer_StrangeCooldown(Handle timer, int client)
+{
+	if (!IsClientInGameEx(client) || !IsPlayerAlive(client))
+		return Plugin_Stop;
+	
+	g_flPlayerEquipmentItemCooldown[client] -= 0.1;
+	if (g_flPlayerEquipmentItemCooldown[client] <= 0.0)
+	{
+		g_flPlayerEquipmentItemCooldown[client] = 0.0;
+		int maxCharges = RoundToFloor(CalcItemMod(client, Item_BatteryCanteens, 1, 1));
+		
+		if (g_iPlayerEquipmentItemCharges[client] < maxCharges)
+		{
+			g_iPlayerEquipmentItemCharges[client]++;
+			
+			if (g_iPlayerEquipmentItemCharges[client] < maxCharges) // still lower? start cooldown again
+			{
+				g_flPlayerEquipmentItemCooldown[client] = g_flEquipmentItemCooldown[GetPlayerEquipmentItem(client)];
+				g_flPlayerEquipmentItemCooldown[client] *= CalcItemMod_HyperbolicInverted(client, Item_BatteryCanteens, 0);
+			}
+			else
+			{
+				return Plugin_Stop;
+			}
+		}
+		else
+		{
+			return Plugin_Stop;
+		}
+	}
+	
+	return Plugin_Continue;
+}
+
+void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float angles[3], bool infiniteRange=true, 
+const float endPos[3]=NULL_VECTOR, float damage, int damageFlags, float size, int colors[4], const char[] particleAttach="")
 {
 	RayType type;
 	float vec[3], end[3];
@@ -1289,55 +1336,62 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 		vec = endPos;
 	}
 	
-	Handle trace = TR_TraceRayFilterEx(pos, vec, MASK_PLAYERSOLID_BRUSHONLY, type, TraceWallsOnly);
+	Handle trace = TR_TraceRayFilterEx(pos, vec, MASK_PLAYERSOLID_BRUSHONLY, type, TraceFilter_WallsOnly);
 	TR_GetEndPosition(end, trace);
 	delete trace;
 	
 	TE_SetupBeamPoints(pos, end, g_iBeamModel, 0, 0, 0, 0.4, size, size, 0, 2.0, colors, 8);
 	TE_SendToAll();
 	EmitSoundToAll(SOUND_LASER, attacker);
-	TE_SetupParticle("drg_manmelter_impact", pos);
 	
-	int entCount = GetEntityCount();
-	for (int i = 1; i <= entCount; i++)
+	if (particleAttach[0])
 	{
-		g_bLaserHitDetected[i] = false;
+		TE_TFParticle("drg_manmelter_impact", pos, attacker, PATTACH_POINT, particleAttach);
+	}
+	else
+	{
+		TE_TFParticle("drg_manmelter_impact", pos);
 	}
 	
+	
 	// hitbox
-	int team = GetEntProp(attacker, Prop_Data, "m_iTeamNum");
 	float mins[3], maxs[3];
-	
-	mins[0] = -size;
-	mins[1] = -size;
-	mins[2] = -size;
-	maxs[0] = size;
-	maxs[1] = size;
-	maxs[2] = size;
-	
+	mins[0] = -size; mins[1] = -size; mins[2] = -size;
+	maxs[0] = size; maxs[1] = size; maxs[2] = size;
 	trace = TR_TraceHullFilterEx(pos, end, mins, maxs, MASK_PLAYERSOLID_BRUSHONLY, TraceFilter_BeamHitbox, attacker);
 	
-	for (int i = 1; i <= entCount; i++)
+	int team = GetEntProp(attacker, Prop_Data, "m_iTeamNum");
+	int entity = -1;
+	while ((entity = FindEntityByClassname(entity, "*")) != -1)
 	{
-		if (!IsValidEntity(i))
-			continue;
-		
-		if ((!IsValidClient(i) || !IsPlayerAlive(i)) && !IsBuilding(i) && !IsNPC(i))
-			continue;
-		
-		if (GetEntProp(i, Prop_Data, "m_iTeamNum") == team)
-			continue;
-		
-		if (g_bLaserHitDetected[i])
+		if (entity > 0 && g_bLaserHitDetected[entity])
 		{
+			g_bLaserHitDetected[entity] = false;
+			
+			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
+				continue;
+			
 			if (item > Item_Null && IsValidClient(attacker))
 			{
 				g_iItemDamageProc[attacker] = ItemStrange_VirtualViewfinder;
 			}
 			
-			SDKHooks_TakeDamage(i, attacker, attacker, damage, damageFlags, _, _, _, false);
+			SDKHooks_TakeDamage(entity, attacker, attacker, damage, damageFlags, _, _, _, false);
 		}
 	}
+}
+
+public bool TraceFilter_BeamHitbox(int entity, int mask, int self)
+{
+	if (entity == self)
+		return false;
+	
+	if (entity > 0 && entity <= MaxClients || IsBuilding(entity) || IsNPC(entity))
+	{
+		g_bLaserHitDetected[entity] = true;
+	}
+	
+	return false;
 }
 
 void StartThrillerDance(const float pos[3])
@@ -1345,7 +1399,7 @@ void StartThrillerDance(const float pos[3])
 	g_bThrillerActive = true;
 	
 	float spawnPos[3];
-	CNavArea area = GetSpawnPointFromNav(pos, spawnPos, 300.0, 1400.0, -1, false);
+	CNavArea area = GetSpawnPoint(pos, spawnPos, 300.0, 1400.0, -1, false);
 	if (!area)
 	{
 		GetWorldCenter(spawnPos);
@@ -1359,7 +1413,7 @@ void StartThrillerDance(const float pos[3])
 	AcceptEntityInput(merasmus, "DisableCollision");
 	
 	EmitAmbientSound(SOUND_MERASMUS_APPEAR, spawnPos, _, SNDLEVEL_TRAIN);
-	TE_SetupParticle("merasmus_spawn", spawnPos);
+	TE_TFParticle("merasmus_spawn", spawnPos);
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -1429,7 +1483,7 @@ public Action Timer_HalloweenThriller(Handle timer, int merasmus)
 			float pos[3];
 			GetEntPropVector(merasmus, Prop_Data, "m_vecAbsOrigin", pos);
 			EmitAmbientSound(SOUND_MERASMUS_DISAPPEAR, pos, _, SNDLEVEL_TRAIN);
-			TE_SetupParticle("merasmus_spawn", pos);
+			TE_TFParticle("merasmus_spawn", pos);
 			
 			RemoveEntity(merasmus);
 			FindConVar("nb_stop").SetInt(0);
@@ -1460,37 +1514,6 @@ public Action Timer_RestoreRage(Handle timer, DataPack pack)
 	return Plugin_Continue;
 }
 
-public Action Timer_StrangeCooldown(Handle timer, int client)
-{
-	if (!IsClientInGameEx(client) || !IsPlayerAlive(client))
-	{
-		g_flPlayerStrangeItemCooldown[client] = 0.0;
-		return Plugin_Stop;
-	}
-	
-	g_flPlayerStrangeItemCooldown[client] -= 0.1;
-	if (g_flPlayerStrangeItemCooldown[client] <= 0.0)
-	{
-		g_flPlayerStrangeItemCooldown[client] = 0.0;
-		return Plugin_Stop;
-	}
-	
-	return Plugin_Continue;
-}
-
-public bool TraceFilter_BeamHitbox(int entity, int mask, int self)
-{
-	if (entity == self)
-		return false;
-		
-	if (entity > 0 && entity <= MaxClients || HasEntProp(entity, Prop_Send, "m_iObjectType"))
-	{
-		g_bLaserHitDetected[entity] = true;
-	}
-	
-	return false;
-}
-
 int GetQualityColorTag(int quality, char[] buffer, int size)
 {
 	int cells;
@@ -1499,9 +1522,9 @@ int GetQualityColorTag(int quality, char[] buffer, int size)
 		case Quality_Normal: cells = strcopy(buffer, size, "{normal}");
 		case Quality_Genuine: cells = strcopy(buffer, size, "{genuine}");
 		case Quality_Unusual: cells = strcopy(buffer, size, "{unusual}");
-		case Quality_Haunted: cells = strcopy(buffer, size, "{haunted}");
 		case Quality_Collectors: cells = strcopy(buffer, size, "{collectors}");
 		case Quality_Strange: cells = strcopy(buffer, size, "{strange}");
+		case Quality_Haunted, Quality_HauntedStrange: cells = strcopy(buffer, size, "{haunted}");
 	}
 	
 	return cells;
@@ -1515,9 +1538,9 @@ int GetQualityName(int quality, char[] buffer, int size)
 		case Quality_Normal: cells = strcopy(buffer, size, "Normal");
 		case Quality_Genuine: cells = strcopy(buffer, size, "Genuine");
 		case Quality_Unusual: cells = strcopy(buffer, size, "Unusual");
-		case Quality_Haunted: cells = strcopy(buffer, size, "Haunted");
 		case Quality_Collectors: cells = strcopy(buffer, size, "Collectors");
 		case Quality_Strange: cells = strcopy(buffer, size, "Strange");
+		case Quality_Haunted, Quality_HauntedStrange: cells = strcopy(buffer, size, "Haunted");
 	}
 	return cells;
 }
@@ -1529,19 +1552,19 @@ int GetActualItemQuality(int quality)
 		case Quality_Normal: return TF2Quality_Normal;
 		case Quality_Genuine: return TF2Quality_Genuine;
 		case Quality_Unusual: return TF2Quality_Unusual;
-		case Quality_Haunted: return TF2Quality_Haunted;
 		case Quality_Collectors: return TF2Quality_Collectors;
 		case Quality_Strange: return TF2Quality_Strange;
+		case Quality_Haunted, Quality_HauntedStrange: return TF2Quality_Haunted;
 	}
 	return TF2Quality_Normal;
 }
 
-int GetItemName(int item, char[] buffer, int size)
+int GetItemName(int item, char[] buffer, int size, bool includeEffect=true)
 {
 	int cells;
-	if (GetItemQuality(item) == Quality_Unusual)
+	if (includeEffect && GetItemQuality(item) == Quality_Unusual)
 	{
-		cells = FormatEx(buffer, size, "%s %s", g_szItemUnusualDisplayName[item], g_szItemName[item]);
+		cells = FormatEx(buffer, size, "%s %s", g_szItemUnusualEffectName[item], g_szItemName[item]);
 	}
 	else
 	{
@@ -1571,6 +1594,16 @@ bool GetItemModBool(int item, int slot)
 	return bool((GetItemModInt(item, slot)));
 }
 
+int GetPlayerItemCount(int client, int item)
+{
+	return g_iPlayerItem[client][item];
+}
+
+int GetPlayerEquipmentItem(int client)
+{
+	return g_iPlayerEquipmentItem[client];
+}
+
 float CalcItemMod(int client, int item, int slot, int extraAmount=0)
 {
 	return g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount);
@@ -1598,10 +1631,26 @@ float GetItemProcCoefficient(int item)
 
 bool PlayerHasItem(int client, int item)
 {
-	if (GetItemQuality(item) == Quality_Strange)
+	if (IsEquipmentItem(item))
 	{
-		return (g_iPlayerStrangeItem[client] == item);
+		return (GetPlayerEquipmentItem(client) == item);
 	}
 	
-	return (g_iPlayerItem[client][item] > 0);
+	return (GetPlayerItemCount(client, item) > 0);
+}
+
+bool IsScrapItem(int item)
+{
+	return item == Item_ScrapMetal || item == Item_ReclaimedMetal || item == Item_RefinedMetal;
+}
+
+bool IsEquipmentItem(int item)
+{
+	int quality = GetItemQuality(item);
+	return quality == Quality_Strange || quality == Quality_HauntedStrange;
+}
+
+int GetItemCount()
+{
+	return g_iItemCount;
 }

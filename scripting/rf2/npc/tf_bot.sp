@@ -13,11 +13,10 @@ static int g_iTFBotFlags[MAXTF2PLAYERS];
 static int g_iTFBotForcedButtons[MAXTF2PLAYERS];
 
 static float g_flTFBotMinReloadTime[MAXTF2PLAYERS];
-static float g_flTFBotReloadTimestamp[MAXTF2PLAYERS];
+static float g_flTFBotReloadTimeStamp[MAXTF2PLAYERS];
 static float g_flTFBotStrafeTime[MAXTF2PLAYERS];
-static float g_flTFBotStrafeTimestamp[MAXTF2PLAYERS];
+static float g_flTFBotStrafeTimeStamp[MAXTF2PLAYERS];
 static float g_flTFBotStuckTime[MAXTF2PLAYERS];
-
 static float g_flTFBotLastSearchTime[MAXTF2PLAYERS];
 static float g_flTFBotLastPosCheckTime[MAXTF2PLAYERS];
 
@@ -25,6 +24,18 @@ static CNavArea g_TFBotEngineerSentryArea[MAXTF2PLAYERS];
 static float g_flTFBotEngineerSearchRetryTime[MAXTF2PLAYERS];
 static bool g_bTFBotEngineerHasBuilt[MAXTF2PLAYERS];
 static bool g_bTFBotEngineerIsBuilding[MAXTF2PLAYERS];
+
+static float g_flTFBotLastPos[MAXTF2PLAYERS][3];
+
+enum TFBotMission
+{
+	MISSION_NONE,
+	MISSION_TELEPORTER,
+	MISSION_BUILD,
+	MISSION_WANDER,
+	MISSION_CHASE,
+};
+static TFBotMission g_TFBotMissionType[MAXTF2PLAYERS];
 
 enum TFBotStrafeDir
 {
@@ -46,7 +57,7 @@ methodmap TFBot < Handle
 	}
 	
 	// Pathing
-	property PathFollower Follower 
+	property PathFollower Follower
 	{
 		public get() 				{ return g_TFBotPathFollower[this.Client]; }
 		public set(PathFollower pf) { g_TFBotPathFollower[this.Client] = pf;   }
@@ -58,6 +69,12 @@ methodmap TFBot < Handle
 	}
 	
 	// Behavior
+	property TFBotMission Mission
+	{
+		public get() 					{ return g_TFBotMissionType[this.Client];  }
+		public set(TFBotMission value) 	{ g_TFBotMissionType[this.Client] = value; }
+	}
+	
 	property int Flags
 	{
 		public get() 			{ return g_iTFBotFlags[this.Client];  }
@@ -76,10 +93,10 @@ methodmap TFBot < Handle
 		public set(float value) { g_flTFBotMinReloadTime[this.Client] = value; }
 	}
 	
-	property float ReloadTimestamp 
+	property float ReloadTimeStamp 
 	{
-		public get() 			{ return g_flTFBotReloadTimestamp[this.Client];  }
-		public set(float value) { g_flTFBotReloadTimestamp[this.Client] = value; }
+		public get() 			{ return g_flTFBotReloadTimeStamp[this.Client];  }
+		public set(float value) { g_flTFBotReloadTimeStamp[this.Client] = value; }
 	}
 	
 	property float StrafeTime 
@@ -88,10 +105,10 @@ methodmap TFBot < Handle
 		public set(float value) { g_flTFBotStrafeTime[this.Client] = value; }
 	}
 	
-	property float StrafeTimestamp
+	property float StrafeTimeStamp
 	{
-		public get() 			{ return g_flTFBotStrafeTimestamp[this.Client];  }
-		public set(float value) { g_flTFBotStrafeTimestamp[this.Client] = value; }
+		public get() 			{ return g_flTFBotStrafeTimeStamp[this.Client];  }
+		public set(float value) { g_flTFBotStrafeTimeStamp[this.Client] = value; }
 	}
 	
 	property float StuckTime 
@@ -206,6 +223,10 @@ methodmap TFBot < Handle
 	{
 		return GetEntProp(this.Client, Prop_Send, "m_nBotSkill");
 	}
+	public void SetSkillLevel(int level)
+	{
+		SetEntProp(this.Client, Prop_Send, "m_nBotSkill", level);
+	}
 	
 	public void GetMyPos(float buffer[3])
 	{
@@ -223,17 +244,10 @@ methodmap TFBot < Handle
 	}
 }
 
-public void TFBot_Init(TFBot bot)
-{
-	if (!bot.Follower)
-	{
-		bot.Follower = PathFollower(_, Path_FilterIgnoreObjects, Path_FilterOnlyActors);
-	}
-}
-
-public void TFBot_Think(TFBot bot)
+void TFBot_Think(TFBot bot)
 {
 	float tickedTime = GetTickedTime();
+	//bool survivor = IsPlayerSurvivor(bot.Client);
 	
 	if (bot.MinReloadTime > 0.0)
 	{
@@ -243,9 +257,9 @@ public void TFBot_Think(TFBot bot)
 			if (!bot.HasButtonFlag(IN_RELOAD) && GetEntProp(activeWeapon, Prop_Send, "m_iClip1") == 0)
 			{
 				bot.AddButtonFlag(IN_RELOAD);
-				bot.ReloadTimestamp = tickedTime;
+				bot.ReloadTimeStamp = tickedTime;
 			}
-			else if (tickedTime >= bot.ReloadTimestamp + bot.MinReloadTime || GetEntProp(activeWeapon, Prop_Send, "m_iClip1") == SDK_GetWeaponClipSize(activeWeapon))
+			else if (tickedTime >= bot.ReloadTimeStamp + bot.MinReloadTime || GetEntProp(activeWeapon, Prop_Send, "m_iClip1") == SDK_GetWeaponClipSize(activeWeapon))
 			{
 				bot.RemoveButtonFlag(IN_RELOAD);
 			}
@@ -256,7 +270,6 @@ public void TFBot_Think(TFBot bot)
 	CKnownEntity known = bot.GetTarget();
 	
 	int threat = -1;
-	
 	if (known != NULL_KNOWN_ENTITY)
 		threat = known.GetEntity();
 		
@@ -264,7 +277,7 @@ public void TFBot_Think(TFBot bot)
 	bot.GetMyPos(botPos);
 	
 	bool aggressiveMode;
-	if (threat > 0 && !bot.HasFlag(TFBOTFLAG_GOTOTELEPORTER))
+	if (threat > 0 && bot.Mission != MISSION_TELEPORTER)
 	{
 		TFClassType class = TF2_GetPlayerClass(bot.Client);
 		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon") == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
@@ -320,16 +333,17 @@ public void TFBot_Think(TFBot bot)
 							bot.StrafeTime = GetRandomFloat(1.25, 1.75);
 						}
 						
-						bot.StrafeTimestamp = tickedTime;
+						bot.StrafeTimeStamp = tickedTime;
 						bot.AddFlag(TFBOTFLAG_STRAFING);
 					}
-					else if (bot.StrafeTimestamp + bot.StrafeTime >= tickedTime)
+					else if (bot.StrafeTimeStamp + bot.StrafeTime >= tickedTime)
 					{
 						bot.RemoveFlag(TFBOTFLAG_STRAFING);
 					}
 				}
-
-				TFBot_UpdatePathPos(bot, threatPos, 3000.0);
+				
+				bot.Mission = MISSION_CHASE;
+				TFBot_PathToPos(bot, threatPos, 3000.0, true);
 			}
 		}
 	}
@@ -365,11 +379,13 @@ public void TFBot_Think(TFBot bot)
 					}
 					
 					if (!owned) // No one owns this area, we can take it.
-					{
-						bot.SentryArea = tfArea;
+					{	
+						bot.Mission = MISSION_BUILD;
 						float areaPos[3];
+						bot.SentryArea = tfArea;
 						bot.SentryArea.GetCenter(areaPos);
-						TFBot_UpdatePathPos(bot, areaPos, 10000.0); // Start marching towards our desired area now
+						TFBot_PathToPos(bot, areaPos, 10000.0); // Start marching towards our desired area now
+
 						break;
 					}
 				}
@@ -395,7 +411,7 @@ public void TFBot_Think(TFBot bot)
 			else
 			{
 				// Not close enough, keep going.
-				TFBot_UpdatePathPos(bot, areaPos, 10000.0);
+				TFBot_PathToPos(bot, areaPos, 10000.0);
 			}
 		}
 		else if (!bot.IsBuilding && !bot.HasBuilt)
@@ -415,24 +431,28 @@ public void TFBot_Think(TFBot bot)
 		bot.RemoveButtonFlag(IN_JUMP);
 	}
 	
-	if (g_bTeleporterEvent)
+	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
 	{
 		float teleporterPos[3];
-		GetEntPropVector(g_iTeleporter, Prop_Data, "m_vecAbsOrigin", teleporterPos);
-		teleporterPos[2] += 50.0;
+		int teleporter = GetTeleporterEntity();
+		GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", teleporterPos);
+		CNavArea area = TheNavMesh.GetNearestNavArea(teleporterPos, true, 800.0, false, false);
+		area.GetCenter(teleporterPos);
 		
 		// stick close to the teleporter
-		if (!bot.HasFlag(TFBOTFLAG_GOTOTELEPORTER) && GetVectorDistance(botPos, teleporterPos, true) > sq(g_flTeleporterRadius)*0.8)
+		float radius = GetEntPropFloat(teleporter, Prop_Data, "m_flRadius");
+		bool tooFar = GetVectorDistance(botPos, teleporterPos, true) > sq(radius);
+		
+		if (tooFar)
 		{
-			TFBot_UpdatePathPos(bot, teleporterPos, TELEPORTER_RADIUS*1.5);
-			bot.AddFlag(TFBOTFLAG_GOTOTELEPORTER);
+			bot.Mission = MISSION_TELEPORTER;
+			TFBot_PathToPos(bot, teleporterPos, 99999.0, true);
 		}
-		else
+		else if (bot.Mission == MISSION_TELEPORTER)
 		{
-			if (!bot.Follower.IsValid())
-			{
-				bot.RemoveFlag(TFBOTFLAG_GOTOTELEPORTER);
-			}
+			bot.Mission = MISSION_NONE;
+			bot.Follower.Invalidate();
+			bot.GetLocomotion().Stop();
 		}
 	}
 	
@@ -464,23 +484,23 @@ public void TFBot_Think(TFBot bot)
 	}
 	
 	// should we use our strange item?
-	if (TFBot_ShouldUseStrangeItem(bot))
+	if (TFBot_ShouldUseEquipmentItem(bot))
 	{
 		ActivateStrangeItem(bot.Client);
 	}
 	
 	// If we aren't doing anything else, wander the map looking for players to attack.
-	if (!bot.HasFlag(TFBOTFLAG_GOTOTELEPORTER) && threat <= 0 && (TF2_GetPlayerClass(bot.Client) != TFClass_Engineer || bot.EngiSearchRetryTime > 0.0) 
+	if (bot.Mission != MISSION_TELEPORTER && threat <= 0 && (TF2_GetPlayerClass(bot.Client) != TFClass_Engineer || bot.EngiSearchRetryTime > 0.0) 
 	&& !bot.IsBuilding && !bot.HasBuilt)
 	{
 		TFBot_WanderMap(bot);
 	}
 }
 	
-bool TFBot_ShouldUseStrangeItem(TFBot bot)
+bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 {
-	int item = g_iPlayerStrangeItem[bot.Client];
-	if (item > Item_Null && g_flPlayerStrangeItemCooldown[bot.Client] <= 0.0)
+	int item = GetPlayerEquipmentItem(bot.Client);
+	if (item > Item_Null && g_iPlayerEquipmentItemCharges[bot.Client] > 0)
 	{
 		IVision vision = CBaseEntity(bot.Client).MyNextBotPointer().GetVisionInterface();
 		CKnownEntity known = vision.GetPrimaryKnownThreat(true);
@@ -507,7 +527,7 @@ bool TFBot_ShouldUseStrangeItem(TFBot bot)
 	return false;
 }
 	
-public void TFBot_WanderMap(TFBot bot)
+void TFBot_WanderMap(TFBot bot)
 {
 	float myPos[3], areaPos[3], goalPos[3], lastPos[3];
 	float tickedTime = GetTickedTime();
@@ -539,8 +559,7 @@ public void TFBot_WanderMap(TFBot bot)
 		}
 		else // continue on our path
 		{
-			bot.GoalArea.GetCenter(goalPos);
-			TFBot_UpdatePathPos(bot, goalPos, g_cvBotWanderMaxDist.FloatValue, true);
+			TFBot_PathToPos(bot, areaPos, g_cvBotWanderMaxDist.FloatValue, true);
 		}
 	}
 	else
@@ -551,11 +570,32 @@ public void TFBot_WanderMap(TFBot bot)
 		{
 			SurroundingAreasCollector collector = TheNavMesh.CollectSurroundingAreas(area, g_cvBotWanderMaxDist.FloatValue, 100.0);
 			ArrayList areaArray = CreateArray();
+			float cost, radius;
+			int teleporter = -1;
+			float telePos[3];
+			bool event = GetTeleporterEventState() != TELE_EVENT_INACTIVE;
+			
+			if (event)
+			{
+				teleporter = GetTeleporterEntity();
+				GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", telePos);
+				radius = GetEntPropFloat(teleporter, Prop_Data, "m_flRadius");
+			}
 			
 			for (int i = 0; i < collector.Count(); i++)
 			{
-				if (collector.Get(i).GetCostSoFar() >= g_cvBotWanderMinDist.FloatValue)
+				cost = collector.Get(i).GetCostSoFar();
+				if (cost >= g_cvBotWanderMinDist.FloatValue)
 				{
+					if (event)
+					{
+						collector.Get(i).GetCenter(areaPos);
+						if (GetVectorDistance(areaPos, telePos, true) >= sq(radius))
+						{
+							continue;
+						}
+					}
+					
 					areaArray.Push(i);
 				}
 			}
@@ -564,8 +604,9 @@ public void TFBot_WanderMap(TFBot bot)
 			{
 				bot.GoalArea = collector.Get(areaArray.Get(GetRandomInt(0, areaArray.Length-1)));
 				bot.GoalArea.GetCenter(goalPos);
-				TFBot_UpdatePathPos(bot, goalPos, g_cvBotWanderMaxDist.FloatValue, true);
+				TFBot_PathToPos(bot, goalPos, g_cvBotWanderMaxDist.FloatValue, true);
 				
+				bot.Mission = MISSION_WANDER;
 				bot.SetLastWanderPos(myPos);
 				bot.LastSearchTime = tickedTime;
 				bot.LastPosCheckTime = tickedTime;
@@ -576,19 +617,13 @@ public void TFBot_WanderMap(TFBot bot)
 		}
 	}
 }
-	
-void TFBot_UpdatePathPos(TFBot bot, float pos[3], float distance=1000.0, bool ignoreGoal=false)
+
+void TFBot_PathToPos(TFBot bot, float pos[3], float distance=1000.0, bool ignoreGoal=false)
 {
-	INextBot nextBot = bot.GetNextBot();
 	ILocomotion locomotion = bot.GetLocomotion();
-	
-	if (bot.Follower.IsValid())
-	{
-		bot.Follower.Invalidate();
-		locomotion.Stop();
-	}
-	
+	INextBot nextBot = bot.GetNextBot();
 	bool goalReached = bot.Follower.ComputeToPos(nextBot, pos, distance);
+	
 	if ((goalReached || ignoreGoal) && bot.Follower.IsValid())
 	{
 		bot.Follower.Update(nextBot);
@@ -714,7 +749,7 @@ public Action Timer_TFBotStopForceAttack(Handle timer, int client)
 
 public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype)
 {
-	bool onGround = (GetEntityFlags(client) & FL_ONGROUND) != 0;
+	bool onGround = bool(GetEntityFlags(client) & FL_ONGROUND);
 	TFBot bot = g_TFBot[client];
 	
 	if (buttons & IN_JUMP && !bot.HasButtonFlag(IN_JUMP) && !bot.HasButtonFlag(IN_DUCK) && !onGround)
@@ -780,7 +815,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse, float
 			float eyePos[3], endPos[3];
 			
 			GetClientEyePosition(client, eyePos);
-			TR_TraceRayFilter(eyePos, {-90.0, 0.0, 0.0}, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceWallsOnly);
+			TR_TraceRayFilter(eyePos, {-90.0, 0.0, 0.0}, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
 			TR_GetEndPosition(endPos);
 			
 			if (GetVectorDistance(eyePos, endPos, true) >= sq(requiredSpace))
@@ -788,7 +823,8 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse, float
 				buttons |= IN_JUMP; // jump, then attack shortly after
 				
 				// only actually rocket jump if we have enough health
-				if (GetClientHealth(client) > float(RF2_GetCalculatedMaxHealth(client)) * (0.35 * TF2Attrib_HookValueFloat(1.0, "rocket_jump_dmg_reduction", client)))
+				const float healthThreshold = 0.35;
+				if (GetClientHealth(client) > RoundToFloor(float(RF2_GetCalculatedMaxHealth(client)) * (healthThreshold * TF2Attrib_HookValueFloat(1.0, "rocket_jump_dmg_reduction", client))))
 				{
 					float eyeAng[3];
 					GetClientEyeAngles(client, eyeAng);
@@ -827,7 +863,7 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 
 public bool Path_FilterIgnoreObjects(int entity, int contentsMask, int desiredcollisiongroup)
 {	
-	if (g_iObjectState[entity] != ObjectState_Invalid)
+	if (IsObject(entity))
 	{
 		return true;
 	}

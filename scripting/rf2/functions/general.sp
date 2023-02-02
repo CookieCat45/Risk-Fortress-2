@@ -9,13 +9,15 @@
 // If the result of GetRandomInt(min, max) is below or equal to goal, returns true.
 bool RandChanceInt(int min, int max, int goal, int &result=0)
 {
-	return ((result = (GetRandomInt(min, max))) <= goal);
+	result = GetRandomInt(min, max);
+	return result <= goal;
 }
 
 // If the result of GetRandomFloat(min, max) is below or equal to goal, returns true.
 bool RandChanceFloat(float min, float max, float goal, float &result=0.0)
 {
-	return ((result = (GetRandomFloat(min, max))) <= goal);
+	result = GetRandomFloat(min, max);
+	return result <= goal;
 }
 
 void ForceTeamWin(int team)
@@ -34,6 +36,8 @@ void ForceTeamWin(int team)
 
 void GameOver()
 {
+	g_bGameOver = true;
+	
 	int fog = CreateEntityByName("env_fog_controller");
 	DispatchKeyValue(fog, "spawnflags", "1");
 	DispatchKeyValueInt(fog, "fogenabled", 1);
@@ -96,7 +100,7 @@ void ReloadPlugin(bool changeMap=true)
 
 bool IsBossEventActive()
 {
-	return g_bTeleporterEvent || g_bTankBossMode && !g_bGracePeriod;
+	return GetTeleporterEventState() == TELE_EVENT_ACTIVE || g_bTankBossMode && !g_bGracePeriod;
 }
 
 void SetHudDifficulty(int difficulty)
@@ -169,17 +173,68 @@ void SetHudDifficulty(int difficulty)
 	}
 }
 
-// Color tags included. Use CRemoveTags() if you don't want them.
-int GetDifficultyName(int difficulty, char[] buffer, int size)
+void SetDifficultyLevel(int level)
 {
+	//int oldLevel = g_iDifficultyLevel;
+	g_iDifficultyLevel = level;
+	OnDifficultyChanged(level);
+}
+
+void OnDifficultyChanged(int newLevel)
+{
+	int skill;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGameEx(i) || !IsFakeClientEx(i) || !IsPlayerAlive(i))
+			continue;
+			
+		skill = g_TFBot[i].GetSkillLevel();
+		
+		switch (newLevel)
+		{
+			case DIFFICULTY_SCRAP, DIFFICULTY_IRON:
+			{
+				int enemyType = GetEnemyType(i);
+				int bossType = GetBossType(i);
+				int oldSkill = enemyType >= 0 ? g_iEnemyBotSkill[enemyType] : g_iBossBotSkill[bossType];
+				
+				if (skill != oldSkill)
+					g_TFBot[i].SetSkillLevel(oldSkill);
+			}
+			
+			case DIFFICULTY_STEEL:
+			{
+				if (skill < TFBotDifficulty_Hard && skill != TFBotDifficulty_Expert)
+					g_TFBot[i].SetSkillLevel(TFBotDifficulty_Hard);
+			}
+			
+			case DIFFICULTY_TITANIUM:
+			{
+				if (skill < TFBotDifficulty_Expert)
+					g_TFBot[i].SetSkillLevel(TFBotDifficulty_Expert);
+			}
+		}
+	}
+}
+
+int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=true)
+{
+	int cells;
 	switch (difficulty)
 	{
-		case DIFFICULTY_SCRAP: return strcopy(buffer, size, "{saddlebrown}Scrap");
-		case DIFFICULTY_IRON: return strcopy(buffer, size, "{gray}Iron");
-		case DIFFICULTY_STEEL: return strcopy(buffer, size, "{darkgray}Steel");
-		case DIFFICULTY_TITANIUM: return strcopy(buffer, size, "{whitesmoke}Titanium");
-		default: return strcopy(buffer, size, "unknown");
+		case DIFFICULTY_SCRAP: cells = strcopy(buffer, size, "{saddlebrown}Scrap{default}");
+		case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron{default}");
+		case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel{default}");
+		case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium{default}");
+		default:  cells = strcopy(buffer, size, "unknown");
 	}
+	
+	if (!colorTags)
+	{
+		CRemoveTags(buffer, size);
+	}
+	
+	return cells;
 }
 
 float GetDifficultyFactor(int difficulty)
@@ -195,27 +250,21 @@ float GetDifficultyFactor(int difficulty)
 	return DifficultyFactor_Iron;
 }
 
-void TE_SetupParticle(const char[] effectName, const float origin[3], int entity=-1, const char[] attachmentName="", int clientArray[MAXTF2PLAYERS] = {INVALID_ENT_REFERENCE, ...}, int clientAmount = 0)
+void TE_TFParticle(const char[] effectName, const float pos[3], int entity=-1, int attachType=PATTACH_ABSORIGIN, const char[] attachmentName="",
+bool reset=false, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0)
 {
 	TE_Start("TFParticleEffect");
-	int table = FindStringTable("ParticleEffectNames");
-	int count = GetStringTableNumStrings(table);
-	int strIndex = -1;
-	char buffer[256];
 	
-	for (int i = 0; i < count; i++)
+	int index = GetParticleEffectIndex(effectName);
+	if (index == -1)
 	{
-		ReadStringTable(table, i, buffer, sizeof(buffer));
-		if (strcmp(buffer, effectName) == 0)
-		{
-			strIndex = i;
-			break;
-		}
+		// try to cache it
+		index = PrecacheParticleEffect(effectName);
 	}
 	
-	if (strIndex > -1)
+	if (index > -1)
 	{
-		TE_WriteNum("m_iParticleSystemIndex", strIndex);
+		TE_WriteNum("m_iParticleSystemIndex", index);
 		
 		if (attachmentName[0])
 		{
@@ -226,17 +275,20 @@ void TE_SetupParticle(const char[] effectName, const float origin[3], int entity
 			}
 		}
 		
-		if (entity > 0)
+		if (entity > -1)
 		{
 			TE_WriteNum("entindex", entity);
 		}
 
-		TE_WriteFloat("m_vecOrigin[0]", origin[0]);
-		TE_WriteFloat("m_vecOrigin[1]", origin[1]);
-		TE_WriteFloat("m_vecOrigin[2]", origin[2]);
-		TE_WriteFloat("m_vecStart[0]", origin[0]);
-		TE_WriteFloat("m_vecStart[1]", origin[1]);
-		TE_WriteFloat("m_vecStart[2]", origin[2]);
+		TE_WriteFloat("m_vecOrigin[0]", pos[0]);
+		TE_WriteFloat("m_vecOrigin[1]", pos[1]);
+		TE_WriteFloat("m_vecOrigin[2]", pos[2]);
+		TE_WriteFloat("m_vecStart[0]", pos[0]);
+		TE_WriteFloat("m_vecStart[1]", pos[1]);
+		TE_WriteFloat("m_vecStart[2]", pos[2]);
+		
+		TE_WriteNum("m_iAttachType", attachType);
+		TE_WriteNum("m_bResetParticles", bool(reset));
 		
 		if (clientAmount <= 0)
 		{
@@ -248,10 +300,38 @@ void TE_SetupParticle(const char[] effectName, const float origin[3], int entity
 				TE_SendToClient(clientArray[i]);
 		}
 	}
-	else
+}
+
+int PrecacheParticleEffect(const char[] name)
+{
+	int index;
+	int table = FindStringTable("ParticleEffectNames");
+	int count = GetStringTableNumStrings(table);
+	char buffer[128];
+	
+	for (int i = 0; i < count; i++)
 	{
-		LogError("[TE_SetupParticle] Couldn't find particle effect \"%s\".", effectName);
+		ReadStringTable(table, i, buffer, sizeof(buffer));
+		if (strcmp2(buffer, name))
+		{
+			index = i;
+			g_hParticleEffectTable.Resize(i+1);
+			g_hParticleEffectTable.SetString(i, name);
+			break;
+		}
 	}
+	
+	if (index < 0)
+	{
+		LogError("[PrecacheParticleEffect] Couldn't find particle effect \"%s\".", name);
+	}
+	
+	return index;
+}
+
+int GetParticleEffectIndex(const char[] name)
+{
+	return g_hParticleEffectTable.FindString(name);
 }
 
 // It does not matter if the .mdl extension is included in the path or not.
@@ -275,11 +355,11 @@ void AddModelToDownloadsTable(const char[] file)
 		}
 		
 		Format(buffer, sizeof(buffer), "%s%s", buffer, extension);
-		if (FileExists(buffer, true))
+		if (FileExists(buffer))
 		{
 			AddFileToDownloadsTable(buffer);
 		}
-		else if (strcmp(extension, ".mdl") == 0) // we only care about reporting if the .mdl file missing
+		else if (strcmp2(extension, ".mdl") && !FileExists(buffer, true)) // we only care about reporting if the .mdl file missing, and non Valve files
 		{
 			LogError("File \"%s\" is missing from the server files. It will not be added to the downloads table.", buffer);
 		}
@@ -299,45 +379,57 @@ void AddSoundToDownloadsTable(const char[] file)
 		FormatEx(buffer, sizeof(buffer), "sound/%s", file);
 	}
 	
-	if (FileExists(buffer, true))
+	if (FileExists(buffer))
 	{
 		AddFileToDownloadsTable(buffer);
 	}
-	else
+	else if (!FileExists(buffer, true)) // don't show warnings for Valve files.
 	{
 		LogError("File \"%s\" is missing from the server files. It will not be added to the downloads table.", buffer);
 	}
 }
 
 // This will remove the extension and attempt to download both the .vmt and .vtf files with the file path given. 
-// If neither exist, an error is logged.
+// If neither exist, an error is logged. 
+// materials/ MUST be included in the file path!
 stock void AddMaterialToDownloadsTable(const char[] file)
-{
-	bool exists;
+{	
+	bool exists, valveFile;
 	char buffer[PLATFORM_MAX_PATH];
 	strcopy(buffer, sizeof(buffer), file);
 	ReplaceStringEx(buffer, sizeof(buffer), ".vmt", "");
 	ReplaceStringEx(buffer, sizeof(buffer), ".vtf", "");
 	
 	Format(buffer, sizeof(buffer), "%s.vmt", buffer);
-	if (FileExists(buffer, true))
+	if (FileExists(buffer))
 	{
 		exists = true;
 		AddFileToDownloadsTable(buffer);
 	}
-	
-	ReplaceStringEx(buffer, sizeof(buffer), ".vmt", "");
-	Format(buffer, sizeof(buffer), "%s.vtf", buffer);
-	if (FileExists(buffer, true))
+	else if (FileExists(buffer, true)) // Check if the file exists in the game's .vpk files
 	{
-		exists = true;
-		AddFileToDownloadsTable(buffer);
+		valveFile = true;
 	}
 	
-	if (!exists)
+	if (!valveFile)
+	{
+		ReplaceStringEx(buffer, sizeof(buffer), ".vmt", "");
+		Format(buffer, sizeof(buffer), "%s.vtf", buffer);
+		if (FileExists(buffer))
+		{
+			exists = true;
+			AddFileToDownloadsTable(buffer);
+		}
+		else if (FileExists(buffer, true))
+		{
+			valveFile = true;
+		}
+	}	
+	
+	if (!exists && !valveFile)
 	{
 		ReplaceStringEx(buffer, sizeof(buffer), ".vtf", "");
-		LogError("Neither a .vmt or .vtf file exists for the file path: \"%s\".", buffer);
+		LogError("Neither a .vmt or .vtf file exists for the file path: \"%s\". It will not be added to the downloads table.", buffer);
 	}
 }
 
@@ -359,7 +451,18 @@ int StrContainsEx(const char[] str, const char[] substr, bool caseSensitive=true
 				return position;
 		}
 	}
+	
 	return -1;
+}
+
+bool strcmp2(const char[] str1, const char[] str2, bool caseSensitive=true)
+{
+	if (caseSensitive && str1[0] != str2[0])
+	{
+		return false;
+	}
+	
+	return (strcmp(str1, str2, caseSensitive) == 0);
 }
 
 void CopyVectors(const float vec1[3], float vec2[3])
@@ -367,6 +470,13 @@ void CopyVectors(const float vec1[3], float vec2[3])
 	vec2[0] = vec1[0];
 	vec2[1] = vec1[1];
 	vec2[2] = vec1[2];
+}
+
+bool CompareVectors(const float vec1[3], const float vec2[3])
+{
+	return(vec1[0] == vec2[0]
+		&& vec1[1] == vec2[1]
+		&& vec1[2] == vec2[2]);
 }
 
 void GetVectorAnglesTwoPoints(const float startPos[3], const float endPos[3], float angles[3])
@@ -389,14 +499,14 @@ void SetAllInArray(any[] array, int size, any value)
 		array[i] = value;
 }
 
-float fmodf(float num, float denom)
-{
-    return num - denom * RoundToFloor(num / denom);
-}
-
 float sq(float num)
 {
 	return Pow(num, 2.0);
+}
+
+float fmodf(float num, float denom)
+{
+    return num - denom * RoundToFloor(num / denom);
 }
 
 // not implemented by default -_-

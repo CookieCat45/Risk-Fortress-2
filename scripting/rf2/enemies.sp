@@ -6,49 +6,48 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-float g_flCashValue[MAX_EDICTS];
-int g_iEnemyCount; // This is the amount of bots currently loaded
+int g_iEnemyCount;
+char g_szLoadedEnemies[MAX_ENEMIES][MAX_CONFIG_NAME_LENGTH];
 
 // General enemy data
-char g_szLoadedEnemies[MAX_ENEMIES][MAX_CONFIG_NAME_LENGTH];
+int g_iEnemyTfClass[MAX_ENEMIES];
+int g_iEnemyBaseHp[MAX_ENEMIES];
+int g_iEnemyWeight[MAX_ENEMIES];
+int g_iEnemyItem[MAX_ENEMIES][MAX_ITEMS];
+
+float g_flEnemyBaseSpeed[MAX_ENEMIES];
+float g_flEnemyModelScale[MAX_ENEMIES];
+float g_flEnemyXPAward[MAX_ENEMIES];
+float g_flEnemyCashAward[MAX_ENEMIES];
+
+bool g_bEnemyFullRage[MAX_ENEMIES];
+bool g_bEnemyNoBleeding[MAX_ENEMIES];
 
 char g_szEnemyName[MAX_ENEMIES][PLATFORM_MAX_PATH];
 char g_szEnemyDesc[MAX_ENEMIES][PLATFORM_MAX_PATH];
 char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
 
-int g_iEnemyTfClass[MAX_ENEMIES];
-int g_iEnemyBaseHp[MAX_ENEMIES];
-float g_flEnemyBaseSpeed[MAX_ENEMIES];
-float g_flEnemyModelScale[MAX_ENEMIES];
-
-float g_flEnemyXPAward[MAX_ENEMIES];
-float g_flEnemyCashAward[MAX_ENEMIES];
-
-int g_iEnemyWeight[MAX_ENEMIES];
-int g_iEnemyItem[MAX_ENEMIES][MAX_ITEMS];
-
-bool g_bEnemyFullRage[MAX_ENEMIES];
-
 // TFBot
-int g_iEnemyBotDifficulty[MAX_ENEMIES];
-float g_flEnemyBotMinReloadTime[MAX_ENEMIES];
+int g_iEnemyBotSkill[MAX_ENEMIES];
 bool g_bEnemyBotAggressive[MAX_ENEMIES];
 bool g_bEnemyBotRocketJump[MAX_ENEMIES];
+float g_flEnemyBotMinReloadTime[MAX_ENEMIES];
 
-// Enemy weapon data
+// Weapons
+bool g_bEnemyWeaponUseStaticAttributes[MAX_ENEMIES][TF_WEAPON_SLOTS];
 bool g_bEnemyWeaponVisible[MAX_ENEMIES][TF_WEAPON_SLOTS];
+int g_iEnemyWeaponIndex[MAX_ENEMIES][TF_WEAPON_SLOTS];
+int g_iEnemyWeaponAmount[MAX_ENEMIES];
 char g_szEnemyWeaponName[MAX_ENEMIES][TF_WEAPON_SLOTS][128];
 char g_szEnemyWeaponAttributes[MAX_ENEMIES][TF_WEAPON_SLOTS][MAX_ATTRIBUTE_STRING_LENGTH];
-int g_iEnemyWeaponIndex[MAX_ENEMIES][TF_WEAPON_SLOTS];
-bool g_bEnemyWeaponUseStaticAttributes[MAX_ENEMIES][TF_WEAPON_SLOTS];
-int g_iEnemyWeaponAmount[MAX_ENEMIES];
 
 // Wearables
+int g_iEnemyWearableAmount[MAX_ENEMIES];
+int g_iEnemyWearableIndex[MAX_ENEMIES][MAX_WEARABLES];
+bool g_bEnemyWearableStaticAttributes[MAX_ENEMIES][MAX_WEARABLES];
+bool g_bEnemyWearableVisible[MAX_ENEMIES][MAX_WEARABLES];
 char g_szEnemyWearableName[MAX_ENEMIES][MAX_WEARABLES][128];
 char g_szEnemyWearableAttributes[MAX_ENEMIES][MAX_WEARABLES][MAX_ATTRIBUTE_STRING_LENGTH];
-int g_iEnemyWearableIndex[MAX_ENEMIES][MAX_WEARABLES];
-bool g_bEnemyWearableVisible[MAX_ENEMIES][MAX_WEARABLES];
-int g_iEnemyWearableAmount[MAX_ENEMIES];
 
 // Sound/voice
 int g_iEnemyVoiceType[MAX_ENEMIES] = {VoiceType_Robot, ...};
@@ -57,12 +56,6 @@ int g_iEnemyFootstepType[MAX_ENEMIES] = {FootstepType_Robot, ...};
 
 void LoadEnemiesFromPack(const char[] config)
 {
-	if (g_iEnemyCount >= MAX_ENEMIES)
-	{
-		LogError("[LoadEnemiesFromPack] Max enemy type limit of %i reached!", MAX_ENEMIES);
-		return;
-	}
-	
 	char path[PLATFORM_MAX_PATH], sectionName[16];
 	bool firstKey;
 	
@@ -76,6 +69,7 @@ void LoadEnemiesFromPack(const char[] config)
 	
 	KeyValues enemyKey = CreateKeyValues("enemies");
 	enemyKey.ImportFromFile(path);
+	g_iEnemyCount = 0;
 	
 	for (int enemy = g_iEnemyCount; enemy <= g_iEnemyCount; enemy++)
 	{
@@ -113,7 +107,7 @@ void LoadEnemiesFromPack(const char[] config)
 		g_iEnemyBaseHp[enemy] = enemyKey.GetNum("health", 150);
 		g_flEnemyBaseSpeed[enemy] = enemyKey.GetFloat("speed", 300.0);
 		
-		g_iEnemyBotDifficulty[enemy] = enemyKey.GetNum("tf_bot_difficulty", TFBotDifficulty_Hard);
+		g_iEnemyBotSkill[enemy] = enemyKey.GetNum("tf_bot_difficulty", TFBotDifficulty_Normal);
 		g_flEnemyBotMinReloadTime[enemy] = enemyKey.GetFloat("tf_bot_min_reload_time", 0.75);
 		g_bEnemyBotAggressive[enemy] = bool(enemyKey.GetNum("tf_bot_aggressive", false));
 		g_bEnemyBotRocketJump[enemy] = bool(enemyKey.GetNum("tf_bot_rocketjump", false));
@@ -129,6 +123,7 @@ void LoadEnemiesFromPack(const char[] config)
 			g_iEnemyWeight[enemy] = 100;
 		
 		g_bEnemyFullRage[enemy] = bool(enemyKey.GetNum("full_rage", false));
+		g_bEnemyNoBleeding[enemy] = bool(enemyKey.GetNum("no_bleeding", true));
 		
 		g_iEnemyWeaponAmount[enemy] = 0;
 		// weapons
@@ -159,6 +154,7 @@ void LoadEnemiesFromPack(const char[] config)
 			enemyKey.GetString("classname", g_szEnemyWearableName[enemy][wearable], sizeof(g_szEnemyWearableName[][]), "tf_wearable");
 			enemyKey.GetString("attributes", g_szEnemyWearableAttributes[enemy][wearable], sizeof(g_szEnemyWearableAttributes[][]), "");
 			g_iEnemyWearableIndex[enemy][wearable] = enemyKey.GetNum("index", 5000);
+			g_bEnemyWearableStaticAttributes[enemy][wearable] = bool(enemyKey.GetNum("static_attributes", false));
 			g_bEnemyWearableVisible[enemy][wearable] = bool(enemyKey.GetNum("visible", true));
 			g_iEnemyWearableAmount[enemy]++;
 			
@@ -224,18 +220,11 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 	return selected;
 }
 
-void SpawnEnemy(int client, int type, int spawnEntity=-1, bool force=false)
+void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minDist=-1.0, float maxDist=-1.0)
 {
 	if (IsPlayerAlive(client))
 	{
-		if (force)
-		{
-			SilentlyKillPlayer(client);
-		}
-		else
-		{
-			return;
-		}
+		SilentlyKillPlayer(client);
 	}
 	
 	ChangeClientTeam(client, TEAM_ENEMY);
@@ -246,24 +235,19 @@ void SpawnEnemy(int client, int type, int spawnEntity=-1, bool force=false)
 		{
 			case DIFFICULTY_STEEL:
 			{
-				if (g_iEnemyBotDifficulty[type] < TFBotDifficulty_Hard && g_iEnemyBotDifficulty[type] != TFBotDifficulty_Expert)
+				if (g_iEnemyBotSkill[type] < TFBotDifficulty_Hard && g_iEnemyBotSkill[type] != TFBotDifficulty_Expert)
 				{
-					SetEntProp(client, Prop_Send, "m_nBotSkill", TFBotDifficulty_Hard);
+					g_TFBot[client].SetSkillLevel(TFBotDifficulty_Hard);
 				}
 				else
 				{
-					SetEntProp(client, Prop_Send, "m_nBotSkill", g_iEnemyBotDifficulty[type]);
+					g_TFBot[client].SetSkillLevel(g_iEnemyBotSkill[type]);
 				}
 			}
-			case DIFFICULTY_TITANIUM:
-			{
-				SetEntProp(client, Prop_Send, "m_nBotSkill", TFBotDifficulty_Expert);
-			}
 			
-			default:
-			{
-				SetEntProp(client, Prop_Send, "m_nBotSkill", g_iEnemyBotDifficulty[type]);
-			}
+			case DIFFICULTY_TITANIUM: g_TFBot[client].SetSkillLevel(TFBotDifficulty_Expert);
+			
+			default: g_TFBot[client].SetSkillLevel(g_iEnemyBotSkill[type]);
 		}
 		
 		g_TFBot[client].MinReloadTime = g_flEnemyBotMinReloadTime[type];
@@ -279,46 +263,58 @@ void SpawnEnemy(int client, int type, int spawnEntity=-1, bool force=false)
 		}
 	}
 	
-	float pos[3];
-	if (!IsValidEntity(spawnEntity))
+	float checkPos[3];
+	if (CompareVectors(pos, OFF_THE_MAP))
 	{
 		int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
 		if (IsValidClient(randomSurvivor))
 		{
-			GetClientAbsOrigin(randomSurvivor, pos);
+			GetClientAbsOrigin(randomSurvivor, checkPos);
 		}
 		else
 		{
-			pos[0] = GetRandomFloat(-3000.0, 3000.0);
-			pos[1] = GetRandomFloat(-3000.0, 3000.0);
-			pos[2] = GetRandomFloat(-1500.0, 1500.0);
+			checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
+			checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
+			checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
 		}
 	}
 	else
 	{
-		GetEntPropVector(spawnEntity, Prop_Data, "m_vecAbsOrigin", pos);
+		CopyVectors(pos, checkPos);
 	}
 
 	float mins[3] = PLAYER_MINS;
 	float maxs[3] = PLAYER_MAXS;
 	ScaleVector(mins, g_flEnemyModelScale[type]);
 	ScaleVector(maxs, g_flEnemyModelScale[type]);
-	float zOffset = 15.0 * g_flEnemyModelScale[type];
+	float zOffset = 25.0 * g_flEnemyModelScale[type];
 	
 	float spawnPos[3];
-	float minSpawnDistance = g_cvEnemyMinSpawnDistance.FloatValue;
-	float maxSpawnDistance = g_cvEnemyMaxSpawnDistance.FloatValue;
-	CNavArea area = GetSpawnPointFromNav(pos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
-	if (area == NULL_AREA)
+	float minSpawnDistance = minDist < 0.0 ? g_cvEnemyMinSpawnDistance.FloatValue : minDist;
+	float maxSpawnDistance = maxDist < 0.0 ? g_cvEnemyMaxSpawnDistance.FloatValue : maxDist;
+	CNavArea area = GetSpawnPoint(checkPos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
+	
+	static int attempts;
+	if (!area)
 	{
-		DataPack pack;
-		CreateDataTimer(0.1, Timer_TrySpawnAgain, pack, TIMER_FLAG_NO_MAPCHANGE);
-		pack.WriteCell(GetClientUserId(client));
-		pack.WriteCell(type);
-		pack.WriteCell(spawnEntity);
-		pack.WriteCell(force);
+		// try again
+		if (attempts < 50)
+		{
+			attempts++;
+			SpawnEnemy(client, type, pos, minDist, maxDist);
+		}
+		else
+		{
+			attempts = 0;
+			char mapName[128];
+			GetCurrentMap(mapName, sizeof(mapName));
+			LogError("[SpawnEnemy] Failed to spawn client %N after 50 tries! There might be a problem. Map: %s", client, mapName);
+		}
+		
 		return;
 	}
+	
+	attempts = 0;
 	
 	g_iPlayerEnemyType[client] = type;
 	g_iPlayerBaseHealth[client] = g_iEnemyBaseHp[type];
@@ -330,7 +326,7 @@ void SpawnEnemy(int client, int type, int spawnEntity=-1, bool force=false)
 	
 	SetEntPropFloat(client, Prop_Send, "m_flModelScale", g_flEnemyModelScale[type]);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 1.0);
-
+	
 	SetVariantString(g_szEnemyModel[type]);
 	AcceptEntityInput(client, "SetCustomModel");
 	SetEntProp(client, Prop_Send, "m_bUseClassAnimations", true);
@@ -366,6 +362,7 @@ void SpawnEnemy(int client, int type, int spawnEntity=-1, bool force=false)
 		g_szEnemyWearableName[type][i], 
 		g_iEnemyWearableIndex[type][i], 
 		g_szEnemyWearableAttributes[type][i], 
+		g_bEnemyWearableStaticAttributes[type][i],
 		g_bEnemyWearableVisible[type][i]);
 		
 		g_bDontRemoveWearable[wearable] = true;
@@ -382,161 +379,6 @@ void SpawnEnemy(int client, int type, int spawnEntity=-1, bool force=false)
 	CalculatePlayerKnockbackResist(client);
 }
 
-public Action Timer_TrySpawnAgain(Handle timer, DataPack pack)
-{
-	pack.Reset();
-	int client = GetClientOfUserId(pack.ReadCell());
-	if (client == 0)
-		return Plugin_Continue;
-		
-	int type = pack.ReadCell();
-	int spawnEntity = pack.ReadCell();
-	bool force = view_as<bool>(pack.ReadCell());
-	
-	SpawnEnemy(client, type, spawnEntity, force);
-	return Plugin_Continue;
-}
-
-/**
-*	Cash stuff
-*
-*/
-void SpawnCashDrop(float cashValue, float pos[3], int size=1)
-{
-	char classname[128];
-	switch (size)
-	{
-		case 1: classname = "item_currencypack_small";
-		case 2: classname = "item_currencypack_medium";
-		case 3: classname = "item_currencypack_large";
-		default: classname = "item_currencypack_small";
-	}
-	
-	int entity = CreateEntityByName(classname);
-	g_flCashValue[entity] = cashValue;
-	
-	TeleportEntity(entity, pos, NULL_VECTOR, NULL_VECTOR);
-	DispatchSpawn(entity);
-	CreateTimer(0.25, Timer_CashMagnet, entity, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-	CreateTimer(g_cvCashBurnTime.FloatValue, Timer_DeleteCash, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
-}
-
-public Action Timer_DeleteCash(Handle timer, int entity)
-{
-	if (EntRefToEntIndex(entity) == INVALID_ENT_REFERENCE)
-		return Plugin_Continue;
-		
-	float pos[3];
-	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
-	TE_SetupParticle("mvm_cash_explosion", pos);
-	RemoveEntity(entity);
-	
-	return Plugin_Continue;
-}
-
-public Action Timer_CashMagnet(Handle timer, int entity)
-{
-	if (!IsValidEntity(entity))
-		return Plugin_Stop;
-	
-	float origin[3];
-	float scoutOrigin[3];
-	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", origin);
-	
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!IsClientInGameEx(i) || !IsPlayerAlive(i))
-			continue;
-		
-		// Scouts pick up cash in a radius automatically, like in MvM. Though the healing is on an item: the Heart Of Gold.
-		if (GetClientTeam(i) == TEAM_SURVIVOR && TF2_GetPlayerClass(i) == TFClass_Scout)
-		{
-			GetClientAbsOrigin(i, scoutOrigin);
-			if (GetVectorDistance(origin, scoutOrigin, true) <= sq(450.0))
-			{
-				EmitSoundToAll(SOUND_MONEY_PICKUP, entity);
-				PickupCash(i, entity);
-			}
-		}
-	}
-	return Plugin_Continue;
-}
-
-public Action Hook_CashTouch(int entity, int other)
-{
-	if (other > 0 && other <= MaxClients)
-	{
-		Action action = PickupCash(other, entity);
-		return action;
-	}
-	
-	char classname[32];
-	GetEntityClassname(other, classname, sizeof(classname));
-	if (strcmp(classname, "trigger_hurt") == 0)
-		PickupCash(0, entity);
-		
-	return Plugin_Continue;
-}
-
-Action PickupCash(int client, int entity)
-{
-	// If client is 0 or below, the cash is most likely being collected automatically.
-	if (client < 1 || GetClientTeam(client) == TEAM_SURVIVOR)
-	{
-		float modifier = 1.0;
-		int clients[MAXTF2PLAYERS];
-		int clientCount;
-		
-		// Check for Proof of Purchase item first to make sure everyone gets the bonus.
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (!IsClientInGameEx(i) || !IsPlayerSurvivor(i))
-				continue;
-				
-			clients[clientCount] = i;
-			clientCount++;			
-				
-			if (PlayerHasItem(i, Item_ProofOfPurchase))
-			{
-				modifier += CalcItemMod(i, Item_ProofOfPurchase, 0);
-			}
-		}
-		
-		for (int i = 0; i < clientCount; i++)
-		{
-			g_flPlayerCash[clients[i]] += g_flCashValue[entity] * modifier;
-		}
-		
-		if (client > 0)
-		{
-			if (PlayerHasItem(client, Item_HeartOfGold))
-			{
-				int heal = RoundToFloor(CalcItemMod(client, Item_HeartOfGold, 0));
-				HealPlayer(client, heal, GetItemModBool(Item_HeartOfGold, 1));
-			}
-			
-			if (GetRandomInt(1, 20) == 1)
-			{
-				SetVariantString("randomnum:100");
-				AcceptEntityInput(client, "AddContext");
-				
-				SetVariantString("IsMvMDefender:1");
-				AcceptEntityInput(client, "AddContext");
-				
-				SetVariantString("TLK_MVM_MONEY_PICKUP");
-				AcceptEntityInput(client, "SpeakResponseConcept");
-				AcceptEntityInput(client, "ClearContext");
-			}
-		}
-		
-		if (IsValidEntity(entity))
-			RemoveEntity(entity);
-			
-		return Plugin_Continue;
-	}
-	return Plugin_Handled;
-}
-
 int GetEnemyType(int client)
 {
 	return g_iPlayerEnemyType[client];
@@ -550,4 +392,14 @@ int GetEnemyCount()
 int GetEnemyName(int type, char[] buffer, int size)
 {
 	return strcopy(buffer, size, g_szEnemyName[type]);
+}
+
+float GetEnemyHealthMult()
+{
+	return 1.0 + float(RF2_GetEnemyLevel()-1) * g_cvEnemyHealthScale.FloatValue;
+}
+
+float GetEnemyDamageMult()
+{
+	return 1.0 + float(RF2_GetEnemyLevel()-1) * g_cvEnemyDamageScale.FloatValue;
 }

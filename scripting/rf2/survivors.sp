@@ -7,18 +7,20 @@
 #pragma newdecls required
 
 int g_iSurvivorCount = 1;
-bool g_bSurvivorIndexUsed[MAX_SURVIVORS];
-
 int g_iSurvivorBaseHealth[TF_CLASSES];
-float g_flSurvivorMaxSpeed[TF_CLASSES];
-char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
-
 int g_iSavedItem[MAX_SURVIVORS][MAX_ITEMS];
 int g_iSavedLevel[MAX_SURVIVORS] = {1, ...};
-int g_iSavedStrangeItem[MAX_SURVIVORS] = {-1, ...};
+int g_iSavedEquipmentItem[MAX_SURVIVORS];
+int g_iSavedHauntedKeys[MAX_SURVIVORS];
+
+float g_flClassMaxSpeed[TF_CLASSES];
 float g_flSavedXP[MAX_SURVIVORS];
 float g_flSavedNextLevelXP[MAX_SURVIVORS] = {150.0, ...};
+
+char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
 char g_szLastInventoryOwner[MAX_SURVIVORS][MAX_NAME_LENGTH];
+
+bool g_bSurvivorIndexUsed[MAX_SURVIVORS];
 
 void LoadSurvivorStats()
 {
@@ -42,7 +44,7 @@ void LoadSurvivorStats()
 			if ((class = TF2_GetClass(sectionName)) != TFClass_Unknown)
 			{
 				g_iSurvivorBaseHealth[class] = survivorKey.GetNum("health", 450);
-				g_flSurvivorMaxSpeed[class] = survivorKey.GetFloat("speed", 300.0);
+				g_flClassMaxSpeed[class] = survivorKey.GetFloat("speed", 300.0);
 				survivorKey.GetString("attributes", g_szSurvivorAttributes[class], sizeof(g_szSurvivorAttributes[]));
 				
 				firstKey = false;
@@ -121,7 +123,7 @@ bool CreateSurvivors()
 	bool indexTaken[MAX_SURVIVORS];
 	int oldPrioritizedIndex;
 	
-	if (g_bGameStarted)
+	if (g_bGameInitialized)
 	{
 		for (int i = 0; i < MAX_SURVIVORS; i++)
 		{
@@ -142,6 +144,7 @@ bool CreateSurvivors()
 		if (!valid[i] || selected[i])
 		{
 			i++;
+			
 			if (i >= MAXTF2PLAYERS)
 				i = 1;
 			
@@ -197,7 +200,7 @@ bool CreateSurvivors()
 	g_iSurvivorCount = survivorCount;
 	bool success = (survivorCount > 0);
 	// We know that objects will all be spawned on the next frame, so we can count objects and determine item sharing between players that way.
-	if (success && g_cvItemShareEnabled.BoolValue && humanCount > 1)
+	if (success && g_cvItemShareEnabled.BoolValue/* && humanCount > 1*/)
 	{
 		RequestFrame(RF_CalculateItemSharing);	
 	}
@@ -213,7 +216,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	TFClassType class = TF2_GetPlayerClass(client);
 	g_iPlayerSurvivorIndex[client] = index;
 	g_iPlayerBaseHealth[client] = g_iSurvivorBaseHealth[class];
-	g_flPlayerMaxSpeed[client] = g_flSurvivorMaxSpeed[class];
+	g_flPlayerMaxSpeed[client] = g_flClassMaxSpeed[class];
 	
 	TF2Attrib_RemoveAll(client);
 	if (g_szSurvivorAttributes[class][0])
@@ -266,7 +269,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	
 	if (loadInventory)
 	{
-		LoadSurvivorInventory(client, g_iPlayerSurvivorIndex[client]);
+		LoadSurvivorInventory(client, index);
 	}
 	else // we should still update our items in case this is a respawn
 	{
@@ -284,6 +287,9 @@ void LoadSurvivorInventory(int client, int index)
 {
 	for (int i = 0; i < Item_MaxValid; i++)
 	{
+		if (IsEquipmentItem(i))
+			continue;
+		
 		g_iPlayerItem[client][i] = g_iSavedItem[index][i];
 		if (PlayerHasItem(client, i))
 		{
@@ -293,14 +299,20 @@ void LoadSurvivorInventory(int client, int index)
 	
 	g_iPlayerLevel[client] = g_iSavedLevel[index];
 	g_flPlayerXP[client] = g_flSavedXP[index];
-	g_flPlayerNextLevelXP[client] = g_flSavedNextLevelXP[index];
-	g_iPlayerStrangeItem[client] = g_iSavedStrangeItem[index];
+	g_iPlayerEquipmentItem[client] = g_iSavedEquipmentItem[index];
+	g_iPlayerHauntedKeys[client] = g_iSavedHauntedKeys[index];
 	g_flPlayerCash[client] = 100.0 * GetObjectCostMultiplier();
 	
-	if (g_iPlayerLevel[client] == 1)
+	if (g_iPlayerLevel[client] > 1)
+	{
+		g_flPlayerNextLevelXP[client] = g_flSavedNextLevelXP[index];
+	}
+	else
 	{
 		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
 	}
+	
+	//ThrowError("test2");
 	
 	if (g_szLastInventoryOwner[index][0])
 	{
@@ -315,13 +327,17 @@ void SaveSurvivorInventory(int client, int index, bool saveName=true)
 		
 	for (int i = 0; i < Item_MaxValid; i++)
 	{
-		g_iSavedItem[index][i] = g_iPlayerItem[client][i];
+		if (IsEquipmentItem(i))
+			continue;
+		
+		g_iSavedItem[index][i] = GetPlayerItemCount(client, i);
 	}
 	
 	g_iSavedLevel[index] = g_iPlayerLevel[client];
 	g_flSavedXP[index] = g_flPlayerXP[client];
 	g_flSavedNextLevelXP[index] = g_flPlayerNextLevelXP[client];
-	g_iSavedStrangeItem[index] = g_iPlayerStrangeItem[client];
+	g_iSavedEquipmentItem[index] = GetPlayerEquipmentItem(client);
+	g_iSavedHauntedKeys[index] = g_iPlayerHauntedKeys[client];
 	
 	if (saveName)
 	{
@@ -345,7 +361,6 @@ public void RF_CalculateItemSharing()
 
 void CalculateSurvivorItemShare(bool recalculate=true)
 {
-	char name[64];
 	int survivorCount;
 	
 	// We want to remember how many objects were spawned at the beginning of the round. If recalculate is true, don't touch our object count.
@@ -355,26 +370,23 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 		objectCount = 0;
 	}
 	
-	int entCount = GetEntityCount();
-	for (int i = 1; i <= entCount; i++)
+	char classname[32];
+	int entity = -1;
+	while ((entity = FindEntityByClassname(entity, "*")) != -1)
 	{
-		if (!IsValidEntity(i))
+		if (entity < 1)
 			continue;
-			
-		if (i <= MaxClients && IsPlayerSurvivor(i))
-		{
+		
+		if (entity <= MaxClients && IsPlayerSurvivor(entity))
 			survivorCount++;
-		}
 		
 		if (!recalculate)
 		{
-			if (HasEntProp(i, Prop_Data, "m_iName"))
+			GetEntityClassname(entity, classname, sizeof(classname));
+			
+			if (StrContains(classname, "rf2_object_crate") == 0)
 			{
-				GetEntPropString(i, Prop_Data, "m_iName", name, sizeof(name));
-				if (StrContains(name, "rf2_object_crate") != -1)
-				{
-					objectCount++;
-				}
+				objectCount++;
 			}
 		}
 	}
@@ -387,7 +399,15 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	{
 		if (IsSurvivorIndexValid(i))
 		{
-			g_iItemLimit[i] = itemShare;
+			if (survivorCount == 1)
+			{
+				g_iItemLimit[i] = 99999;
+				break;
+			}
+			else
+			{
+				g_iItemLimit[i] = itemShare;
+			}	
 		}
 	}
 }
@@ -399,9 +419,10 @@ bool IsSurvivorIndexValid(int index)
 		if (!IsClientInGameEx(i))
 			continue;
 		
-		if (g_iPlayerSurvivorIndex[i] == index)
+		if (RF2_GetSurvivorIndex(i) == index)
 			return true;
 	}
+	
 	return false;
 }
 
@@ -411,7 +432,7 @@ void UpdatePlayerXP(int client, float xpAmount=0.0)
 		
 	if (g_flPlayerXP[client] >= g_flPlayerNextLevelXP[client])
 	{
-		UpdatePlayerLevel(client);
+		PlayerLevelUp(client);
 		
 		float xpRemaining = g_flPlayerXP[client] - g_flPlayerNextLevelXP[client];
 		float oldNextXP = g_flPlayerNextLevelXP[client];
@@ -433,7 +454,7 @@ void UpdatePlayerXP(int client, float xpAmount=0.0)
 	}
 }
 
-void UpdatePlayerLevel(int client)
+void PlayerLevelUp(int client)
 {
 	int oldLevel = g_iPlayerLevel[client];
 	g_iPlayerLevel[client]++;
@@ -443,29 +464,12 @@ void UpdatePlayerLevel(int client)
 	RF2_PrintToChat(client, "Your Level: {lime}%i -> %i", oldLevel, g_iPlayerLevel[client]);
 }
 
-int GetSurvivorIndex(int client)
-{
-	return g_iPlayerSurvivorIndex[client];
-}
-
 bool IsPlayerSurvivor(int client)
 {
-	return (g_iPlayerSurvivorIndex[client] > -1);
+	return (RF2_GetSurvivorIndex(client) > -1);
 }
 
 bool IsSingleplayer()
 {
-	if (g_iSurvivorCount == 1)
-	{
-		return true;
-	}
-	
-	int humanCount;
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!IsFakeClientEx(i))
-			humanCount++;
-	}
-	
-	return humanCount == 1;
+	return g_iSurvivorCount == 1 || GetTotalHumans() == 1;
 }

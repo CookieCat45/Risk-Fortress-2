@@ -8,53 +8,52 @@
 
 #define TF_TEAM_PVE_INVADERS_GIANTS 4
 
-int g_iBossCount; // This is the amount of bosses currently loaded
-
-// General boss data
+int g_iBossCount;
 char g_szLoadedBosses[MAX_BOSSES][MAX_CONFIG_NAME_LENGTH];
 
-char g_szBossName[MAX_BOSSES][PLATFORM_MAX_PATH];
-char g_szBossDesc[MAX_BOSSES][PLATFORM_MAX_PATH];
-char g_szBossModel[MAX_BOSSES][PLATFORM_MAX_PATH];
-
-int g_iBossTfClass[MAX_BOSSES];
+// General boss data
+int g_iTBossTFClass[MAX_BOSSES];
 int g_iBossBaseHp[MAX_BOSSES];
+int g_iBossItem[MAX_BOSSES][MAX_ITEMS];
+
 float g_flBossBaseSpeed[MAX_BOSSES];
 float g_flBossModelScale[MAX_BOSSES];
-bool g_bBossIsGiant[MAX_BOSSES];
-bool g_bBossAllowSelfDamage[MAX_BOSSES];
-
 float g_flBossHeadScale[MAX_BOSSES] = {1.5, ...};
 float g_flBossTorsoScale[MAX_BOSSES] = {1.0, ...};
 float g_flBossHandScale[MAX_BOSSES] = {1.0, ...};
 
-int g_iBossBotDifficulty[MAX_BOSSES];
-float g_flBossBotMinReloadTime[MAX_BOSSES];
-bool g_bBossBotAggressive[MAX_BOSSES];
-
 float g_flBossXPAward[MAX_BOSSES];
 float g_flBossCashAward[MAX_BOSSES];
 
+bool g_bBossIsGiant[MAX_BOSSES];
+bool g_bBossAllowSelfDamage[MAX_BOSSES];
+bool g_bBossFullRage[MAX_BOSSES];
+bool g_bBossNoBleeding[MAX_BOSSES];
+
+char g_szBossName[MAX_BOSSES][MAX_NAME_LENGTH];
+char g_szBossModel[MAX_BOSSES][PLATFORM_MAX_PATH];
 char g_szBossConditions[MAX_BOSSES][256];
 
-int g_iBossItem[MAX_BOSSES][MAX_ITEMS];
-
-bool g_bBossFullRage[MAX_BOSSES];
+// TFBot
+int g_iBossBotSkill[MAX_BOSSES];
+bool g_bBossBotAggressive[MAX_BOSSES];
+float g_flBossBotMinReloadTime[MAX_BOSSES];
 
 // Weapons
-char g_szBossWeaponName[MAX_BOSSES][TF_WEAPON_SLOTS][128];
-char g_szBossWeaponAttributes[MAX_BOSSES][TF_WEAPON_SLOTS][MAX_ATTRIBUTE_STRING_LENGTH];
+int g_iBossWeaponAmount[MAX_BOSSES];
 int g_iBossWeaponIndex[MAX_BOSSES][TF_WEAPON_SLOTS];
 bool g_bBossWeaponUseStaticAttributes[MAX_BOSSES][TF_WEAPON_SLOTS];
 bool g_bBossWeaponVisible[MAX_BOSSES][TF_WEAPON_SLOTS];
-int g_iBossWeaponAmount[MAX_BOSSES];
+char g_szBossWeaponName[MAX_BOSSES][TF_WEAPON_SLOTS][128];
+char g_szBossWeaponAttributes[MAX_BOSSES][TF_WEAPON_SLOTS][MAX_ATTRIBUTE_STRING_LENGTH];
 
 // Wearables
+int g_iBossWearableAmount[MAX_BOSSES];
+int g_iBossWearableIndex[MAX_BOSSES][MAX_WEARABLES];
+bool g_bBossWearableStaticAttributes[MAX_BOSSES][MAX_WEARABLES];
+bool g_bBossWearableVisible[MAX_BOSSES][MAX_WEARABLES];
 char g_szBossWearableName[MAX_BOSSES][MAX_WEARABLES][128];
 char g_szBossWearableAttributes[MAX_BOSSES][MAX_WEARABLES][MAX_ATTRIBUTE_STRING_LENGTH];
-int g_iBossWearableIndex[MAX_BOSSES][MAX_WEARABLES];
-bool g_bBossWearableVisible[MAX_BOSSES][MAX_WEARABLES];
-int g_iBossWearableAmount[MAX_BOSSES];
 
 // Minions (TODO)
 char g_szBossMinions[MAX_BOSSES][PLATFORM_MAX_PATH];
@@ -72,12 +71,6 @@ float g_flBossFootstepInterval[MAX_BOSSES] = {0.5, ...};
 
 void LoadBossesFromPack(const char[] config)
 {
-	if (g_iBossCount >= MAX_BOSSES)
-	{
-		LogError("[LoadBossesFromPack] Max boss limit of %i reached!", MAX_BOSSES);
-		return;
-	}
-	
 	char path[PLATFORM_MAX_PATH], sectionName[16];
 	BuildPath(Path_SM, path, sizeof(path), "%s/%s.cfg", ConfigPath, config);
 	
@@ -89,6 +82,7 @@ void LoadBossesFromPack(const char[] config)
 	
 	KeyValues bossKey = CreateKeyValues("bosses");
 	bossKey.ImportFromFile(path);
+	g_iBossCount = 0;
 	
 	bool firstKey;
 	
@@ -108,7 +102,6 @@ void LoadBossesFromPack(const char[] config)
 		
 		// name, model, description
 		bossKey.GetString("name", g_szBossName[boss], sizeof(g_szBossName[]), "Unnamed boss");
-		bossKey.GetString("desc", g_szBossDesc[boss], sizeof(g_szBossDesc[]), "(No description found...)");
 		bossKey.GetString("model", g_szBossModel[boss], sizeof(g_szBossModel[]), "models/player/soldier.mdl");
 		g_flBossModelScale[boss] = bossKey.GetFloat("model_scale", 1.75);
 		g_bBossIsGiant[boss] = bool(bossKey.GetNum("giant", true));
@@ -130,11 +123,11 @@ void LoadBossesFromPack(const char[] config)
 		}
 		
 		// TF class, health, and speed
-		g_iBossTfClass[boss] = bossKey.GetNum("class", 3);
+		g_iTBossTFClass[boss] = bossKey.GetNum("class", 3);
 		g_iBossBaseHp[boss] = bossKey.GetNum("health", 3000);
 		g_flBossBaseSpeed[boss] = bossKey.GetFloat("speed", 120.0);
 		
-		g_iBossBotDifficulty[boss] = bossKey.GetNum("tf_bot_difficulty", TFBotDifficulty_Expert);
+		g_iBossBotSkill[boss] = bossKey.GetNum("tf_bot_difficulty", TFBotDifficulty_Expert);
 		g_flBossBotMinReloadTime[boss] = bossKey.GetFloat("tf_bot_min_reload_time", 1.5);
 		g_bBossBotAggressive[boss] = bool(bossKey.GetNum("tf_bot_aggressive", false));
 		
@@ -153,6 +146,7 @@ void LoadBossesFromPack(const char[] config)
 		bossKey.GetString("spawn_conditions", g_szBossConditions[boss], sizeof(g_szBossConditions[]), "");
 		
 		g_bBossFullRage[boss] = bool(bossKey.GetNum("full_rage", false));
+		g_bBossNoBleeding[boss] = bool(bossKey.GetNum("no_bleeding", true));
 		
 		g_iBossWeaponAmount[boss] = 0;
 		// weapons
@@ -183,6 +177,7 @@ void LoadBossesFromPack(const char[] config)
 			bossKey.GetString("classname", g_szBossWearableName[boss][wearable], sizeof(g_szBossWearableName[][]), "tf_wearable");
 			bossKey.GetString("attributes", g_szBossWearableAttributes[boss][wearable], sizeof(g_szBossWearableAttributes[][]), "");
 			g_iBossWearableIndex[boss][wearable] = bossKey.GetNum("index", 5000);
+			g_bBossWearableStaticAttributes[boss][wearable] = bool(bossKey.GetNum("static_attributes", false));
 			g_bBossWearableVisible[boss][wearable] = bool(bossKey.GetNum("visible", true));
 			g_iBossWearableAmount[boss]++;
 			
@@ -214,7 +209,7 @@ void LoadBossesFromPack(const char[] config)
 		g_iBossVoicePitch[boss] = bossKey.GetNum("voice_pitch", SNDPITCH_NORMAL);
 		g_bBossVoiceNoPainSounds[boss] = bool(bossKey.GetNum("voice_no_pain", true));
 		g_iBossFootstepType[boss] = bossKey.GetNum("footstep_type", FootstepType_GiantRobot);
-		g_flBossFootstepInterval[boss] = bossKey.GetFloat("giant_footstep_interval", g_iBossTfClass[boss] == view_as<int>(TFClass_Scout) ? 0.25 : 0.5);
+		g_flBossFootstepInterval[boss] = bossKey.GetFloat("giant_footstep_interval", g_iTBossTFClass[boss] == view_as<int>(TFClass_Scout) ? 0.25 : 0.5);
 		
 		g_iBossCount++;
 		if (g_iBossCount >= MAX_BOSSES)
@@ -329,22 +324,18 @@ public Action Timer_SpawnTeleporterBoss(Handle time, DataPack pack)
 	int spawnEntity = pack.ReadCell();
 	
 	g_bPlayerIsTeleporterBoss[client] = true;
-	SpawnBoss(client, type, spawnEntity, true, true);
+	float pos[3];
+	GetEntPropVector(spawnEntity, Prop_Data, "m_vecAbsOrigin", pos);
+	
+	SpawnBoss(client, type, pos, true);
 	return Plugin_Continue;
 }
 
-void SpawnBoss(int client, int type, int spawnEntity=-1, bool force=true, bool teleporterBoss=false)
+void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool teleporterBoss=false, float minDist=-1.0, float maxDist=-1.0)
 {
 	if (IsPlayerAlive(client))
 	{
-		if (force)
-		{
-			SilentlyKillPlayer(client);
-		}
-		else
-		{
-			return;
-		}
+		SilentlyKillPlayer(client);
 	}
 	
 	ChangeClientTeam(client, TEAM_ENEMY);
@@ -355,13 +346,13 @@ void SpawnBoss(int client, int type, int spawnEntity=-1, bool force=true, bool t
 		{
 			case DIFFICULTY_STEEL:
 			{
-				if (g_iBossBotDifficulty[type] < TFBotDifficulty_Hard && g_iBossBotDifficulty[type] != TFBotDifficulty_Expert)
+				if (g_iBossBotSkill[type] < TFBotDifficulty_Hard && g_iBossBotSkill[type] != TFBotDifficulty_Expert)
 				{
 					SetEntProp(client, Prop_Send, "m_nBotSkill", TFBotDifficulty_Hard);
 				}
 				else
 				{
-					SetEntProp(client, Prop_Send, "m_nBotSkill", g_iBossBotDifficulty[type]);
+					SetEntProp(client, Prop_Send, "m_nBotSkill", g_iBossBotSkill[type]);
 				}
 			}
 			case DIFFICULTY_TITANIUM:
@@ -371,64 +362,83 @@ void SpawnBoss(int client, int type, int spawnEntity=-1, bool force=true, bool t
 			
 			default:
 			{
-				SetEntProp(client, Prop_Send, "m_nBotSkill", g_iBossBotDifficulty[type]);
+				SetEntProp(client, Prop_Send, "m_nBotSkill", g_iBossBotSkill[type]);
 			}
 		}
 	}
 	
-	float pos[3];
-	if (!IsValidEntity(spawnEntity))
+	float checkPos[3];
+	if (CompareVectors(pos, OFF_THE_MAP))
 	{
 		int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
 		if (IsValidClient(randomSurvivor))
 		{
-			GetClientAbsOrigin(randomSurvivor, pos);
+			GetClientAbsOrigin(randomSurvivor, checkPos);
 		}
 		else
 		{
-			pos[0] = GetRandomFloat(-3000.0, 3000.0);
-			pos[1] = GetRandomFloat(-3000.0, 3000.0);
-			pos[2] = GetRandomFloat(-1500.0, 1500.0);
+			checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
+			checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
+			checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
 		}
 	}
 	else
 	{
-		GetEntPropVector(spawnEntity, Prop_Data, "m_vecAbsOrigin", pos);
+		CopyVectors(pos, checkPos);
 	}
 	
 	float mins[3] = PLAYER_MINS;
 	float maxs[3] = PLAYER_MAXS;
 	ScaleVector(mins, g_flBossModelScale[type]);
 	ScaleVector(maxs, g_flBossModelScale[type]);
-	float zOffset = 15.0 * g_flBossModelScale[type];
+	float zOffset = 25.0 * g_flBossModelScale[type];
 	
-	float spawnPos[3];
-	float minSpawnDistance = g_cvEnemyMinSpawnDistance.FloatValue;
+	float minSpawnDistance = minDist < 0.0 ? g_cvEnemyMinSpawnDistance.FloatValue : minDist;
 	float maxSpawnDistance;
 	
-	if (!teleporterBoss)
-		maxSpawnDistance = g_cvEnemyMaxSpawnDistance.FloatValue;
+	if (maxDist > 0.0)
+	{
+		maxSpawnDistance = maxDist;
+	}
+	else if (teleporterBoss)
+	{
+		maxSpawnDistance = GetEntPropFloat(GetTeleporterEntity(), Prop_Data, "m_flRadius");
+	}
 	else
-		maxSpawnDistance = GetTeleporterRadius();
+	{
+		maxSpawnDistance = g_cvEnemyMaxSpawnDistance.FloatValue;
+	}
 	
-	CNavArea area = GetSpawnPointFromNav(pos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
+	float spawnPos[3];
+	CNavArea area = GetSpawnPoint(checkPos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
+	
+	static int attempts;
 	if (!area)
 	{
-		DataPack pack = CreateDataPack();
-		pack.WriteCell(GetClientUserId(client));
-		pack.WriteCell(type);
-		pack.WriteCell(spawnEntity);
-		pack.WriteCell(force);
-		RequestFrame(RF_TrySpawnAgainBoss, pack); // try again on every frame instead of on a timer, as boss spawns are much more important
+		// try again
+		if (attempts < 100)
+		{
+			attempts++;
+			SpawnBoss(client, type, pos, teleporterBoss, minDist, maxDist);
+		}
+		else
+		{
+			attempts = 0;
+			char mapName[128];
+			GetCurrentMap(mapName, sizeof(mapName));
+			LogError("[SpawnBoss] Failed to spawn client %N after 100 tries! There might be a problem. Map: %s", client, mapName);
+		}
 		
 		return;
 	}
+	
+	attempts = 0;
 	
 	g_iPlayerBossType[client] = type;
 	g_iPlayerBaseHealth[client] = g_iBossBaseHp[type];
 	g_flPlayerMaxSpeed[client] = g_flBossBaseSpeed[type];
 		
-	TF2_SetPlayerClass(client, view_as<TFClassType>(g_iBossTfClass[type]));
+	TF2_SetPlayerClass(client, view_as<TFClassType>(g_iTBossTFClass[type]));
 	TF2_RespawnPlayer(client);
 	TeleportEntity(client, spawnPos, NULL_VECTOR, NULL_VECTOR);
 	
@@ -443,8 +453,6 @@ void SpawnBoss(int client, int type, int spawnEntity=-1, bool force=true, bool t
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMaxsPreScaled", maxs);
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMins", mins);
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMaxs", maxs);
-	
-	SetEntProp(client, Prop_Data, "m_bloodColor", -1);
 	
 	TF2_RemoveAllWeapons(client);
 	
@@ -493,6 +501,7 @@ void SpawnBoss(int client, int type, int spawnEntity=-1, bool force=true, bool t
 		g_szBossWearableName[type][i], 
 		g_iBossWearableIndex[type][i], 
 		g_szBossWearableAttributes[type][i], 
+		g_bBossWearableStaticAttributes[type][i],
 		g_bBossWearableVisible[type][i]);
 		
 		g_bDontRemoveWearable[wearable] = true;
@@ -527,25 +536,6 @@ void SpawnBoss(int client, int type, int spawnEntity=-1, bool force=true, bool t
 	g_bPlayerVoiceNoPainSounds[client] = g_bBossVoiceNoPainSounds[type];
 	g_iPlayerFootstepType[client] = g_iBossFootstepType[type];
 	g_flPlayerGiantFootstepInterval[client] = g_flBossFootstepInterval[type];
-}
-
-public void RF_TrySpawnAgainBoss(DataPack pack)
-{
-	pack.Reset();
-	
-	int client = GetClientOfUserId(pack.ReadCell());
-	if (client == 0 || !IsClientInGameEx(client))
-	{
-		delete pack;
-		return;
-	}
-	
-	int type = pack.ReadCell();
-	int spawnEntity = pack.ReadCell();
-	bool force = bool(pack.ReadCell());
-	delete pack;
-	
-	SpawnBoss(client, type, spawnEntity, force);
 }
 
 int GetBossType(int client)

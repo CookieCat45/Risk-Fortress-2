@@ -14,10 +14,12 @@ void RefreshClient(int client)
 	g_iPlayerEnemyType[client] = -1;
 	g_iPlayerBossType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;
+	g_iPlayerAirDashCounter[client] = 0;
+	g_bPlayerExtraSentryHint[client] = false;
 	
 	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
-	g_iPlayerStrangeItem[client] = -1;
-	g_flPlayerStrangeItemCooldown[client] = 0.0;
+	g_iPlayerEquipmentItem[client] = Item_Null;
+	g_flPlayerEquipmentItemCooldown[client] = 0.0;
 	
 	g_szObjectiveHud[client] = "";
 	
@@ -37,6 +39,7 @@ void RefreshClient(int client)
 		g_flPlayerXP[client] = 0.0;
 		g_flPlayerCash[client] = 0.0;
 		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
+		g_iPlayerHauntedKeys[client] = 0;
 		g_iPlayerSurvivorIndex[client] = -1;
 		SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
 		
@@ -54,6 +57,7 @@ void RefreshClient(int client)
 	g_TFBot[client].HasBuilt = false;
 	g_TFBot[client].IsBuilding = false;
 	g_TFBot[client].SentryArea = view_as<CTFNavArea>(NULL_AREA);
+	g_TFBot[client].Mission = MISSION_NONE;
 }
 
 public Action Timer_ResetModel(Handle timer, int client)
@@ -90,13 +94,13 @@ int GetPlayersOnTeam(int team, bool alive=false, bool onlyHumans=false)
 	return count;
 }
 
-int GetRandomPlayer(int team = -1, bool alive=true)
+int GetRandomPlayer(int team = -1, bool alive=true, bool onlyHumans=false)
 {
 	int count;
 	int playerArray[MAXTF2PLAYERS] = {-1, ...};
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i))
+		if (!IsClientInGameEx(i) || onlyHumans && IsFakeClientEx(i))
 			continue;
 			
 		if (alive && !IsPlayerAlive(i) || team >= 0 && GetClientTeam(i) != team)
@@ -107,6 +111,23 @@ int GetRandomPlayer(int team = -1, bool alive=true)
 	}
 	
 	return playerArray[GetRandomInt(0, count>0 ? count-1 : count)];
+}
+
+int GetTotalHumans(bool inGameOnly=true)
+{
+	int count;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsFakeClientEx(i))
+			continue;
+			
+		if (!inGameOnly || IsClientInGameEx(i))
+		{
+			count++;
+		}
+	}
+	
+	return count;
 }
 
 int HealPlayer(int client, int amount, bool allowOverheal=false)
@@ -120,9 +141,8 @@ int HealPlayer(int client, int amount, bool allowOverheal=false)
 		return 0;
 	}
 	
-	g_bDisableTakeHealthHook = true;
-	int amountHealed = SDK_TakeHealth(client, amount);
-	g_bDisableTakeHealthHook = false;
+	int amountHealed = amount;
+	SetEntityHealth(client, health+amount);
 	
 	if (!allowOverheal && GetClientHealth(client) > maxHealth)
 	{
@@ -315,7 +335,16 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	float healthScale = IsPlayerSurvivor(client) ? g_cvSurvivorHealthScale.FloatValue : g_cvEnemyHealthScale.FloatValue;
 	
 	maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * (1.0 + (float(level-1) * healthScale)));
-	PrintToChat(client, "%i, %i %.1f, %i", level, maxHealth, healthScale, RF2_GetBaseMaxHealth(client));
+	
+	int fakeHealth;
+	if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
+	{
+		int heads = GetEntProp(client, Prop_Send, "m_iDecapitations");
+		if (heads > 4)
+			heads = 4;
+		
+		fakeHealth = heads * 15;
+	}
 	
 	if (PlayerHasItem(client, Item_PrideScarf))
 	{
@@ -333,7 +362,52 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
-		TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 286, 1.0 + (float(level-1) * healthScale)); // building health
+		TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 286, 1.0 + (float(level-1)*healthScale)); // building health
+		
+		// If we have any buildings up, update their max health now
+		int buildingMaxHealth, oldBuildingMaxHealth, buildingHealth;
+		bool carried;
+		
+		int entity = -1;
+		while ((entity = FindEntityByClassname(entity, "*")) != -1)
+		{
+			if (entity <= MaxClients || !IsBuilding(entity))
+				continue;
+				
+			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
+			{
+				carried = bool(GetEntProp(entity, Prop_Send, "m_bCarried"));
+				
+				if (GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
+				{
+					buildingMaxHealth = 100;
+				}
+				else
+				{
+					switch (GetEntProp(entity, Prop_Send, "m_iUpgradeLevel"))
+					{
+						case 1: buildingMaxHealth = 150;
+						case 2: buildingMaxHealth = 180;
+						case 3: buildingMaxHealth = 216;
+					}
+				}
+				
+				if (!carried)
+				{
+					oldBuildingMaxHealth = GetEntProp(entity, Prop_Send, "m_iMaxHealth");
+				}
+				
+				buildingMaxHealth = RoundToFloor(float(buildingMaxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
+				SetEntProp(entity, Prop_Send, "m_iMaxHealth", buildingMaxHealth);
+				
+				if (!carried && !GetEntProp(entity, Prop_Send, "m_bBuilding"))
+				{
+					buildingHealth = GetEntProp(entity, Prop_Send, "m_iHealth");
+					SetVariantInt(buildingHealth+(buildingMaxHealth-oldBuildingMaxHealth));
+					AcceptEntityInput(entity, "SetHealth");
+				}
+			}
+		}
 	}
 
 	int attributeMaxHealth = TF2Attrib_HookValueInt(0, "add_maxhealth", client);
@@ -344,29 +418,6 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	}
 	
 	maxHealth += attributeMaxHealth;
-	
-	// Handle Eyelander decapitation health increase. Give an extra bonus too; +15 health is worthless at higher levels.
-	// "Fake health" is the +15 health from Eyelander heads (which is hardcoded into the weapon).
-	// So we need to add that health to our total max health count, but not to how much we're setting on the attribute.
-	int fakeHealth;
-	if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
-	{
-		int heads;
-		if ((heads = GetEntProp(client, Prop_Send, "m_iDecapitations")) > 0)
-		{
-			int headLimit = heads;
-			if (heads > 4)
-				headLimit = 4;
-			
-			fakeHealth = headLimit * 15;
-			
-			// We get an extra 1% max health per head with a cap of 100 heads. This will give us at most double our max health.
-			if (heads > 100)
-				heads = 100;
-			
-			maxHealth += (RoundToFloor(float(maxHealth) * 0.99) * float(heads));
-		}
-	}
 	
 	TF2Attrib_SetByDefIndex(g_iPlayerStatWearable[client], 26, float(maxHealth-classMaxHealth));
 	g_iPlayerCalculatedMaxHealth[client] = maxHealth + fakeHealth + attributeMaxHealth;
@@ -439,8 +490,45 @@ void ValidateStatWearable(int client)
 			attributes = BASE_PLAYER_ATTRIBUTES;
 		}
 		
-		g_iPlayerStatWearable[client] = CreateWearable(client, "tf_wearable", wearableIndex, attributes, false, TF2Quality_Valve, 69);
+		g_iPlayerStatWearable[client] = CreateWearable(client, "tf_wearable", wearableIndex, attributes, false, false, TF2Quality_Valve, 69);
 		g_bDontRemoveWearable[g_iPlayerStatWearable[client]] = true;
+	}
+}
+
+// Attributes are NOT included!
+float GetPlayerFireRateMod(int client)
+{
+	float multiplier = 1.0;
+	
+	if (PlayerHasItem(client, Item_MaimLicense))
+	{
+		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_MaimLicense, 0);
+	}
+	
+	if (PlayerHasItem(client, Item_PointAndShoot) && g_iPlayerFireRateStacks[client] > 0)
+	{
+		multiplier *= (1.0 / (1.0 + (float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1))));
+	}
+	
+	return multiplier;
+}
+
+int GetPlayerLuckStat(int client)
+{
+	int luck;
+	luck += RoundToFloor(CalcItemMod(client, Item_LuckyCatHat, 0));
+	luck -= RoundToFloor(CalcItemMod(client, Item_MisfortuneFedora, 0));
+	return luck;
+}
+
+void OnPlayerAirDash(int client, int count)
+{
+	int airDashLimit = 1;
+	airDashLimit += GetPlayerItemCount(client, ItemScout_MonarchWings);
+	
+	if (count < airDashLimit)
+	{
+		SetEntProp(client, Prop_Send, "m_iAirDash", 0);
 	}
 }
 
@@ -508,19 +596,17 @@ void TF2_GetClassString(TFClassType class, char[] buffer, int size, bool underSc
 
 int TF2_GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-1))
 {
-	int entCount = GetEntityCount();
 	int count;
+	int entity = -1;
 	
-	for (int i = MaxClients+1; i <= entCount; i++)
+	while ((entity = FindEntityByClassname(entity, "*")) != -1)
 	{
-		if (!IsValidEntity(i) || !IsBuilding(i))
-		{
+		if (entity <= MaxClients || !IsBuilding(entity))
 			continue;
-		}
 		
-		if (view_as<int>(type) == -1 || view_as<TFObjectType>(GetEntProp(i, Prop_Send, "m_iObjectType")) == type)
+		if (view_as<int>(type) == -1 || view_as<TFObjectType>(GetEntProp(entity, Prop_Send, "m_iObjectType")) == type)
 		{
-			if (GetEntPropEnt(i, Prop_Send, "m_hBuilder") == client)
+			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
 			{
 				count++;
 			}
@@ -563,13 +649,7 @@ void OnPlayerEnterAFK(int client)
 
 bool IsValidClient(int client)
 {
-	if (client<1 || client>MaxClients)
-		return false;
-	
-	if (!IsClientInGameEx(client))
-		return false;
-	
-	return true;
+	return (client > 0 && client <= MaxClients && IsClientInGameEx(client));
 }
 
 bool IsClientInGameEx(int client)
@@ -598,7 +678,7 @@ void SDK_EquipWearable(int client, int entity)
 
 public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam params)
 {
-	if (g_bDisableTakeHealthHook || entity > MaxClients)
+	if (!RF2_IsEnabled() || entity > MaxClients)
 	{
 		return MRES_Ignored;
 	}
@@ -611,7 +691,7 @@ public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam
 	}
 	else
 	{
-		amount *= 1.0 + (float(GetPlayerLevel(entity)-1) * g_cvEnemyHealthScale.FloatValue);
+		amount *= GetEnemyHealthMult();
 	}
 	
 	DHookSetParam(params, 1, amount);
@@ -620,7 +700,7 @@ public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam
 
 public MRESReturn DHook_CanBuild(int client, DHookReturn returnVal, DHookParam params)
 {
-	if (PlayerHasItem(client, ItemEngi_HeadOfDefense) && DHookGetParam(params, 1) == view_as<int>(TFObject_Sentry))
+	if (RF2_IsEnabled() && PlayerHasItem(client, ItemEngi_HeadOfDefense) && DHookGetParam(params, 1) == view_as<int>(TFObject_Sentry))
 	{
 		if (TF2_GetPlayerBuildingCount(client, TFObject_Sentry) <= RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0))+1)
 		{
