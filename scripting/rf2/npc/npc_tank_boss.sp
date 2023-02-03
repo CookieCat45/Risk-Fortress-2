@@ -110,11 +110,6 @@ static int CreateTankBoss()
 	
 	int health = RoundToFloor(float(g_cvTankBaseHealth.IntValue) * (1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvTankHealthScale.FloatValue)));
 	float speed = g_cvTankBaseSpeed.FloatValue;
-	switch (RF2_GetDifficulty())
-	{
-		case DIFFICULTY_STEEL: speed *= 1.25;
-		case DIFFICULTY_TITANIUM: speed *= 1.5;
-	}
 	
 	SetEntProp(tankBoss, Prop_Data, "m_iHealth", health);
 	SetEntProp(tankBoss, Prop_Data, "m_iMaxHealth", health);

@@ -1056,7 +1056,7 @@ bool ActivateStrangeItem(int client)
 			EmitSoundToAll(SOUND_MEDISHIELD, shield);
 		}
 		
-		case ItemStrange_SpellbookMagazine:
+		case ItemStrange_Spellbook:
 		{
 			char spellType[64], response[64], sound[PLATFORM_MAX_PATH];
 			bool projectileArc;
@@ -1064,7 +1064,9 @@ bool ActivateStrangeItem(int client)
 			// This item may cast a spell beneficial to the user, or backfire and harm them instead.
 			if (RandChanceIntEx(client, 1, 8, 7))
 			{
-				switch (GetRandomInt(1, 21))
+				int luck = GetPlayerLuckStat(client);
+				
+				switch (GetRandomInt(1 + imin(luck, 18), 21))
 				{
 					case 1, 2, 3:
 					{

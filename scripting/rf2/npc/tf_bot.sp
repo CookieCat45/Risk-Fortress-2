@@ -185,7 +185,7 @@ methodmap TFBot < Handle
 	// Flags
 	public void AddFlag(int flags)
 	{
-		this.Flags|flags;
+		this.Flags |= flags;
 	}
 	
 	public void RemoveFlag(int flags)
@@ -200,7 +200,7 @@ methodmap TFBot < Handle
 	
 	public void AddButtonFlag(int flags)
 	{
-		this.ForcedButtons|flags;
+		this.ForcedButtons |= flags;
 	}
 	
 	public void RemoveButtonFlag(int flags)
@@ -249,22 +249,30 @@ void TFBot_Think(TFBot bot)
 	float tickedTime = GetTickedTime();
 	//bool survivor = IsPlayerSurvivor(bot.Client);
 	
+	// Does not work at the moment, and possibly never will. Seems like TFBots are stubborn and don't want to reload on command.
+	/*
 	if (bot.MinReloadTime > 0.0)
 	{
 		int activeWeapon = GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon");
-		if (activeWeapon != -1 && activeWeapon == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Primary) || activeWeapon == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Secondary))
+		int clipSize;
+		
+		if (activeWeapon > -1 && (clipSize = SDK_GetWeaponClipSize(activeWeapon)) > 0)
 		{
-			if (!bot.HasButtonFlag(IN_RELOAD) && GetEntProp(activeWeapon, Prop_Send, "m_iClip1") == 0)
+			if (activeWeapon == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Primary) || activeWeapon == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Secondary))
 			{
-				bot.AddButtonFlag(IN_RELOAD);
-				bot.ReloadTimeStamp = tickedTime;
-			}
-			else if (tickedTime >= bot.ReloadTimeStamp + bot.MinReloadTime || GetEntProp(activeWeapon, Prop_Send, "m_iClip1") == SDK_GetWeaponClipSize(activeWeapon))
-			{
-				bot.RemoveButtonFlag(IN_RELOAD);
+				if (!bot.HasButtonFlag(IN_RELOAD) && GetEntProp(activeWeapon, Prop_Send, "m_iClip1") == 0)
+				{
+					bot.AddButtonFlag(IN_RELOAD);
+					bot.ReloadTimeStamp = tickedTime;
+				}
+				else if (bot.HasButtonFlag(IN_RELOAD) && (tickedTime >= bot.ReloadTimeStamp + bot.MinReloadTime || GetEntProp(activeWeapon, Prop_Send, "m_iClip1") >= clipSize))
+				{
+					bot.RemoveButtonFlag(IN_RELOAD);
+				}
 			}
 		}
 	}
+	*/
 	
 	ILocomotion locomotion = bot.GetLocomotion();
 	CKnownEntity known = bot.GetTarget();
@@ -518,7 +526,7 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 		
 		switch (item)
 		{
-			case ItemStrange_VirtualViewfinder, ItemStrange_SpellbookMagazine: return threat > 0 && vision.IsLookingAtTarget(threat) && !invuln;
+			case ItemStrange_VirtualViewfinder, ItemStrange_Spellbook: return threat > 0 && vision.IsLookingAtTarget(threat) && !invuln;
 			
 			case ItemStrange_RoBro: return threat > 0 && GetClientHealth(bot.Client) < RF2_GetCalculatedMaxHealth(bot.Client) / 2;
 		}
@@ -749,95 +757,103 @@ public Action Timer_TFBotStopForceAttack(Handle timer, int client)
 
 public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype)
 {
-	bool onGround = bool(GetEntityFlags(client) & FL_ONGROUND);
+	bool onGround = bool((GetEntityFlags(client) & FL_ONGROUND));
 	TFBot bot = g_TFBot[client];
 	
-	if (buttons & IN_JUMP && !bot.HasButtonFlag(IN_JUMP) && !bot.HasButtonFlag(IN_DUCK) && !onGround)
+	if (bot.HasButtonFlag(IN_RELOAD))
 	{
-		buttons |= IN_DUCK; // Bots always crouch jump
+		buttons &= ~IN_ATTACK;
+		buttons &= ~IN_ATTACK2;
 	}
 	
 	if (buttons & IN_ATTACK || buttons & IN_ATTACK2)
 	{
-		if (bot.HasButtonFlag(IN_RELOAD))
+		int activeWeapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+		int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
+		int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
+		
+		if (secondary > -1 && secondary == activeWeapon)
 		{
-			buttons &= ~IN_ATTACK;
-			buttons &= ~IN_ATTACK2;
-		}
-		else
-		{
-			int activeWeapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-			int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-			int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-			
-			if (secondary > -1 && secondary == activeWeapon)
+			// TFBots have a bug where they won't switch off jar-type weapons after throwing. Forcing them to let go of IN_ATTACK fixes this.
+			int ammoType = GetEntProp(secondary, Prop_Data, "m_iPrimaryAmmoType");
+			if (ammoType >= TFAmmoType_Jarate && GetEntProp(client, Prop_Send, "m_iAmmo", _, ammoType) == 0)
 			{
-				// TFBots have a bug where they won't switch off jar-type weapons after throwing. Forcing them to let go of IN_ATTACK fixes this.
-				int ammoType = GetEntProp(secondary, Prop_Data, "m_iPrimaryAmmoType");
-				if (ammoType >= TFAmmoType_Jarate && GetEntProp(client, Prop_Send, "m_iAmmo", _, ammoType) == 0)
+				buttons &= ~IN_ATTACK;
+				buttons &= ~IN_ATTACK2;
+			}
+		}
+		else if (melee > -1 && melee == activeWeapon)
+		{
+			int threat = -1;
+			CKnownEntity known = bot.GetTarget();
+			
+			if (known != NULL_KNOWN_ENTITY)
+				threat = known.GetEntity();
+			
+			// Melee bots need to crouch to attack teleporters, they won't realize this by default
+			if (threat > -1 && threat > MaxClients && IsBuilding(threat) && TF2_GetObjectType(threat) == TFObject_Teleporter)
+			{
+				float myPos[3], threatPos[3];
+				bot.GetMyPos(myPos);
+				GetEntPropVector(threat, Prop_Data, "m_vecAbsOrigin", threatPos);
+				
+				if (GetVectorDistance(myPos, threatPos, true) <= sq(100.0))
 				{
-					buttons &= ~IN_ATTACK;
-					buttons &= ~IN_ATTACK2;
+					buttons |= IN_DUCK;
 				}
 			}
-			else if (melee > -1 && melee == activeWeapon)
+		}
+	}
+	
+	bool rocketJumping;
+	if (bot.HasFlag(TFBOTFLAG_ROCKETJUMP) && !bot.HasButtonFlag(IN_RELOAD))
+	{
+		if (onGround && bot.GetTarget() != NULL_KNOWN_ENTITY)
+		{
+			int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+			
+			if (primary > -1 && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == primary 
+			&& GetEntProp(primary, Prop_Send, "m_iClip1") >= SDK_GetWeaponClipSize(primary))
 			{
-				int threat = -1;
-				CKnownEntity known = bot.GetTarget();
+				// is there enough space above us?
+				const float requiredSpace = 750.0;
+				float eyePos[3], endPos[3];
 				
-				if (known != NULL_KNOWN_ENTITY)
-					threat = known.GetEntity();
+				GetClientEyePosition(client, eyePos);
+				TR_TraceRayFilter(eyePos, {-90.0, 0.0, 0.0}, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
+				TR_GetEndPosition(endPos);
 				
-				// Melee bots need to crouch to attack teleporters, they won't realize this by default
-				if (threat > -1 && threat > MaxClients && IsBuilding(threat) && TF2_GetObjectType(threat) == TFObject_Teleporter)
+				if (GetVectorDistance(eyePos, endPos, true) >= sq(requiredSpace))
 				{
-					float myPos[3], threatPos[3];
-					bot.GetMyPos(myPos);
-					GetEntPropVector(threat, Prop_Data, "m_vecAbsOrigin", threatPos);
-					
-					if (GetVectorDistance(myPos, threatPos, true) <= sq(100.0))
+					// only actually rocket jump if we have enough health
+					const float healthThreshold = 0.35;
+					if (GetClientHealth(client) > RoundToFloor(float(RF2_GetCalculatedMaxHealth(client)) * (healthThreshold * TF2Attrib_HookValueFloat(1.0, "rocket_jump_dmg_reduction", client))))
 					{
-						buttons |= IN_DUCK;
+						buttons |= IN_JUMP|IN_DUCK; // jump, then attack shortly after
+						rocketJumping = true;
+						
+						float eyeAng[3];
+						GetClientEyeAngles(client, eyeAng);
+						eyeAng[0] = 90.0;
+						TeleportEntity(client, _, eyeAng); // look directly down
+						
+						CreateTimer(0.1, Timer_TFBotRocketJump, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 					}
 				}
 			}
 		}
-	}
-	
-	if (bot.HasFlag(TFBOTFLAG_ROCKETJUMP) && !bot.HasButtonFlag(IN_RELOAD) && onGround)
-	{
-		int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-		
-		if (bot.GetTarget() != NULL_KNOWN_ENTITY && primary > -1 && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == primary)
+		else if (!bot.HasButtonFlag(IN_DUCK))
 		{
-			// is there enough space above us?
-			const float requiredSpace = 750.0;
-			float eyePos[3], endPos[3];
-			
-			GetClientEyePosition(client, eyePos);
-			TR_TraceRayFilter(eyePos, {-90.0, 0.0, 0.0}, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
-			TR_GetEndPosition(endPos);
-			
-			if (GetVectorDistance(eyePos, endPos, true) >= sq(requiredSpace))
-			{	
-				buttons |= IN_JUMP; // jump, then attack shortly after
-				
-				// only actually rocket jump if we have enough health
-				const float healthThreshold = 0.35;
-				if (GetClientHealth(client) > RoundToFloor(float(RF2_GetCalculatedMaxHealth(client)) * (healthThreshold * TF2Attrib_HookValueFloat(1.0, "rocket_jump_dmg_reduction", client))))
-				{
-					float eyeAng[3];
-					GetClientEyeAngles(client, eyeAng);
-					eyeAng[0] = 90.0;
-					TeleportEntity(client, _, eyeAng); // look directly down
-					
-					CreateTimer(0.1, Timer_TFBotRocketJump, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-				}
-			}
+			buttons &= ~IN_DUCK; // likely landed after a rocket jump, stop bot from continuously crouching
 		}
 	}
 	
-	if (bot.HasButtonFlag(IN_DUCK))
+	if (!rocketJumping && !onGround && buttons & IN_JUMP && !bot.HasButtonFlag(IN_JUMP) && !bot.HasButtonFlag(IN_DUCK))
+	{
+		buttons |= IN_DUCK; // Bots always crouch jump
+	}
+	
+	if (!rocketJumping && bot.HasButtonFlag(IN_DUCK))
 	{
 		buttons &= ~IN_JUMP;
 	}

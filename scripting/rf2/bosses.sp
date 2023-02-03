@@ -531,6 +531,11 @@ void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		}
 	}
 	
+	TF2Attrib_SetByDefIndex(client, 252, 0.2); // "damage force reduction"
+	TF2Attrib_SetByDefIndex(client, 329, 0.2); // "airblast vulnerability multiplier"
+	TF2Attrib_SetByDefIndex(client, 326, 1.35); // "increased jump height"
+	TF2Attrib_SetByDefIndex(client, 275, 1.0); // "cancel falling damage"
+	
 	SetEntPropFloat(client, Prop_Send, "m_flHeadScale", g_flBossHeadScale[type]);
 	SetEntPropFloat(client, Prop_Send, "m_flTorsoScale", g_flBossTorsoScale[type]);
 	SetEntPropFloat(client, Prop_Send, "m_flHandScale", g_flBossHandScale[type]);

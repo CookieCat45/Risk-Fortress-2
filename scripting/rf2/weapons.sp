@@ -103,7 +103,7 @@ void LoadWeapons()
 	delete weaponKey;
 }
 
-bool g_bSetStringAttributes = true;
+bool g_bSetStringAttributes;
 int g_iStringAttributeClass;
 int g_iStringAttributeWeapon;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
@@ -315,14 +315,13 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 		{
 			int attrib;
 			float val;
-			for (int i = 0; i <= attribCount+1; i+=2)
+			for (int i = 0; i <= count+1; i+=2)
 			{
 				attrib = StringToInt(attrs[i]);
 				if (IsAttributeBlacklisted(attrib) || attrib <= 0)
 					continue;
 				
 				val = StringToFloat(attrs[i+1]);
-				
 				TF2Items_SetAttribute(weapon, attribSlot, attrib, val);
 				attribSlot++;
 				
@@ -395,7 +394,7 @@ int CreateWearable(int client, const char[] classname, int index, const char[] a
 		strcopy(buffer, sizeof(buffer), attributes);
 		ReplaceString(buffer, MAX_ATTRIBUTE_STRING_LENGTH, " ; ", " = ");
 		char attrs[32][32];
-		int count = ExplodeString(buffer, " = ", attrs, 32, 32);
+		int count = ExplodeString(buffer, " = ", attrs, 32, 32, true);
 		
 		int attrib;
 		float val;

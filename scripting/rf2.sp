@@ -118,9 +118,6 @@ public Plugin myinfo =
 #define PLAYER_MINS {-24.0, -24.0, 0.0}
 #define PLAYER_MAXS {24.0, 24.0, 82.0}
 
-// "mod see enemy health"
-#define BASE_PLAYER_ATTRIBUTES "269 = 1"
-
 
 // TFBots -------------------------------------------------------------------------------------------------------------------------------------
 enum
@@ -137,9 +134,6 @@ enum
 #define MAX_WEARABLES 6
 #define MAX_BOSSES 32
 #define BOSS_BASE_BACKSTAB_DAMAGE 750.0
-
-// "mod see enemy health", "damage force reduction", "airblast vulnerability multiplier", "increased jump height", "cancel falling damage"
-#define BASE_BOSS_ATTRIBUTES "269 = 1 ; 252 = 0.2 ; 329 = 0.2 ; 326 = 1.35 ; 275 = 1"
 
 enum
 {
@@ -537,6 +531,8 @@ TFBot g_TFBot[MAXTF2PLAYERS];
 #define TFBOTFLAG_ROCKETJUMP (1 << 1)
 #define TFBOTFLAG_STRAFING (1 << 2)
 
+#define ALL_BOT_ATTRIBUTES 134217728 // see tf_bot.sp
+
 // Other
 bool g_bThrillerActive;
 int g_iThrillerRepeatCount;
@@ -624,7 +620,7 @@ void LoadGameData()
 	g_hSDKEquipWearable = EndPrepSDKCall();
 	if(!g_hSDKEquipWearable)
 	{
-		SetFailState("[SDK] Failed to create call for CBasePlayer::EquipWearable"); // We need this pretty badly
+		LogError("[SDK] Failed to create call for CBasePlayer::EquipWearable"); // We need this pretty badly
 	}
 	
 	// CTFWeaponBase::GetMaxClip1 --------------------------------------------------------------------------
@@ -1487,6 +1483,8 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
         }
 	}
 	
+	TF2Attrib_SetByDefIndex(client, 269, 1.0); // "mod see enemy health"
+	
 	// Initialize our stats (health, speed, kb resist) the next frame to ensure it's correct
 	RequestFrame(RF_InitStats, client);
 	
@@ -2200,30 +2198,18 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	
 	float reduction = 0.25 * float(g_iRespawnWavesCompleted);
 	float subIncrement = g_flDifficultyCoeff/g_cvSubDifficultyIncrement.FloatValue;
-	if (reduction > subIncrement)
-		reduction = subIncrement;
-	
-	duration -= reduction;
+	duration -= fmin(reduction, subIncrement);
 	
 	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
+	{
 		duration *= 0.65;
+	}
 	
-	float minSpawnWaveTime = g_cvEnemyMinSpawnWaveTime.FloatValue;
-	
-	if (duration < minSpawnWaveTime)
-		duration = minSpawnWaveTime;
-	
-	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue), Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
 	
 	int increment = g_iSubDifficulty/2;
 	int maxCount = GetRandomInt(2+increment, 3+increment) + (survivorCount/2);
-	int absoluteMaxCount = g_cvEnemyMaxSpawnWaveCount.IntValue;
-	
-	if (maxCount > absoluteMaxCount)
-		maxCount = absoluteMaxCount;
-		
-	if (maxCount < 1)
-		maxCount = 1;
+	imax(imin(maxCount, g_cvEnemyMaxSpawnWaveCount.IntValue), 1);
 	
 	ArrayList respawnArray = CreateArray(1, MAXTF2PLAYERS);
 	static int spawnPoints[MAXTF2PLAYERS];
@@ -2233,7 +2219,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	// grab our next players for the spawn
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (chosen[i] || !IsClientInGameEx(i) || GetClientTeam(i) != TEAM_ENEMY)
+		if (chosen[i] || g_bPlayerInSpawnQueue[i] || !IsClientInGameEx(i) || GetClientTeam(i) != TEAM_ENEMY)
 			continue;
 		
 		if (IsPlayerAlive(i))
@@ -2306,6 +2292,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		// Don't spawn everyone on the same frame to reduce lag.
 		CreateTimer(time, Timer_SpawnEnemy, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		time += 0.1;
+		g_bPlayerInSpawnQueue[client] = true;
 	}
 	
 	delete respawnArray;
@@ -2317,6 +2304,8 @@ public Action Timer_SpawnEnemy(Handle timer, int client)
 {
 	if ((client = GetClientOfUserId(client)) == 0)
 		return Plugin_Continue;
+	
+	g_bPlayerInSpawnQueue[client] = false;
 	
 	if (g_iEnemySpawnType[client] > -1)
 	{

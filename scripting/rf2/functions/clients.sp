@@ -438,6 +438,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 float CalculatePlayerMaxSpeed(int client)
 {
 	float speed = g_flPlayerMaxSpeed[client];
+	float originalSpeed = speed;
 	float classMaxSpeed = TF2_GetClassMaxSpeed(TF2_GetPlayerClass(client));
 	if (speed < classMaxSpeed)
 	{
@@ -449,11 +450,11 @@ float CalculatePlayerMaxSpeed(int client)
 		speed *= 1.0 + CalcItemMod(client, Item_RobinWalkers, 0);
 	}
 	
-	g_flPlayerCalculatedMaxSpeed[client] = speed;
-	float mult = g_flPlayerCalculatedMaxSpeed[client] / g_flPlayerMaxSpeed[client];
+	float mult = originalSpeed < classMaxSpeed ? classMaxSpeed / speed : speed / classMaxSpeed;
 	TF2Attrib_SetByDefIndex(client, 107, mult); // "move speed bonus"
 	TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.00001); // hack to force game to update our speed
 	
+	g_flPlayerCalculatedMaxSpeed[client] = speed;
 	return speed;
 }
 

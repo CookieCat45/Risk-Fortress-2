@@ -514,3 +514,35 @@ stock float operator%(float oper1, float oper2)
 {
     return fmodf(oper1, oper2);
 }
+
+int imin(int val1, int val2)
+{
+	if (val1 < val2)
+		return val1;
+		
+	return val2;
+}
+
+int imax(int val1, int val2)
+{
+	if (val1 > val2)
+		return val1;
+		
+	return val2;
+}
+
+float fmin(float val1, float val2)
+{
+	if (val1 < val2)
+		return val1;
+		
+	return val2;
+}
+
+float fmax(float val1, float val2)
+{
+	if (val1 > val2)
+		return val1;
+		
+	return val2;
+}

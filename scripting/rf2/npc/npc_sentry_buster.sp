@@ -202,7 +202,7 @@ void SentryBuster_OnMapStart()
 		g_cvPhysPush = FindConVar("phys_pushscale");
 		g_cvSuicideBombRange = FindConVar("tf_bot_suicide_bomb_range");
 		
-		g_cvBusterSpawnKillThreshold = CreateConVar("rf2_sentry_buster_kill_threshold", "6", "How many kills Sentries on the Survivor team must get for a Sentry Buster wave to spawn.", FCVAR_NOTIFY, true, 0.0);
+		g_cvBusterSpawnKillThreshold = CreateConVar("rf2_sentry_buster_kill_threshold", "6", "How many Sentry Gun kills the Survivor team must get for a Sentry Buster wave to spawn.", FCVAR_NOTIFY, true, 0.0);
 		g_cvBusterSpawnKillRatio = CreateConVar("rf2_sentry_buster_kill_level_ratio", "1", "Per enemy level, how many additional kills by sentries are needed to spawn Sentry Busters.", FCVAR_NOTIFY, true, 0.0);
 		
 		g_EntityFactory = new CEntityFactory("rf2_npc_sentry_buster", SentryBuster_OnCreate, SentryBuster_OnRemove);
