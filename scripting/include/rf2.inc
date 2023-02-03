@@ -31,7 +31,7 @@ enum
 	Item_Law = 15,
 	ItemStrange_VirtualViewfinder = 16,
 	ItemStrange_RoBro = 17,
-	ItemStrange_SpellbookMagazine = 18,
+	ItemStrange_Spellbook = 18,
 	Item_HorsemannHead = 19,
 	Item_Monoculus = 20,
 	Item_SaxtonHat = 21,
