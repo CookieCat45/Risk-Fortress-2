@@ -92,3 +92,4 @@ scripting/include/vector.inc
 scripting/include/version.inc
 scripting/include/version_auto.inc
 scripting/include/morecolors.inc
+plugins/rf2.smx

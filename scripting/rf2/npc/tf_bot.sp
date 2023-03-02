@@ -29,11 +29,11 @@ static float g_flTFBotLastPos[MAXTF2PLAYERS][3];
 
 enum TFBotMission
 {
-	MISSION_NONE,
-	MISSION_TELEPORTER,
-	MISSION_BUILD,
-	MISSION_WANDER,
-	MISSION_CHASE,
+	MISSION_NONE, // No mission, behave normally
+	MISSION_TELEPORTER, // Not to be confused with the building
+	MISSION_BUILD, // An Engineer trying to build
+	MISSION_WANDER, // Wander the map
+	MISSION_CHASE, // Chase an enemy
 };
 static TFBotMission g_TFBotMissionType[MAXTF2PLAYERS];
 
@@ -244,7 +244,7 @@ methodmap TFBot < Handle
 	}
 }
 
-void TFBot_Think(TFBot bot)
+void TFBot_Think(TFBot &bot)
 {
 	float tickedTime = GetTickedTime();
 	//bool survivor = IsPlayerSurvivor(bot.Client);
@@ -537,7 +537,7 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 	return false;
 }
 	
-void TFBot_WanderMap(TFBot bot)
+void TFBot_WanderMap(TFBot &bot)
 {
 	float myPos[3], areaPos[3], goalPos[3], lastPos[3];
 	float tickedTime = GetTickedTime();
@@ -645,7 +645,7 @@ void TFBot_WanderMap(TFBot bot)
 	}
 }
 
-void TFBot_PathToPos(TFBot bot, float pos[3], float distance=1000.0, bool ignoreGoal=false)
+void TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool ignoreGoal=false)
 {
 	ILocomotion locomotion = bot.GetLocomotion();
 	INextBot nextBot = bot.GetNextBot();
@@ -663,7 +663,7 @@ void TFBot_PathToPos(TFBot bot, float pos[3], float distance=1000.0, bool ignore
 	}
 }
 
-void TFBotEngi_AttemptBuild(TFBot bot)
+void TFBotEngi_AttemptBuild(TFBot &bot)
 {
 	bot.IsBuilding = true;
 	
@@ -679,7 +679,7 @@ void TFBotEngi_AttemptBuild(TFBot bot)
 	CreateTimer(5.0, Timer_TFBotFinishBuilding, GetClientUserId(bot.Client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
-void TFBotEngi_BuildObject(TFBot bot, TFObjectType type, TFObjectMode mode=TFObjectMode_Entrance, float yawOffset=0.0)
+void TFBotEngi_BuildObject(TFBot &bot, TFObjectType type, TFObjectMode mode=TFObjectMode_Entrance, float yawOffset=0.0)
 {
 	char command[32];
 	switch (type)
@@ -878,6 +878,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse, float
 	}
 	
 	buttons |= bot.ForcedButtons;
+	g_TFBot[client] = bot;
 	return Plugin_Continue;
 }
 
@@ -894,14 +895,4 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 	g_TFBot[client].AddButtonFlag(IN_ATTACK);
 	CreateTimer(0.25, Timer_TFBotStopForceAttack, client, TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Continue;
-}
-
-public bool Path_FilterIgnoreObjects(int entity, int contentsMask, int desiredcollisiongroup)
-{	
-	if (IsObject(entity))
-	{
-		return true;
-	}
-	
-	return false;
 }

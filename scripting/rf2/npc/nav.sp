@@ -254,3 +254,14 @@ public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 		
 	return false;
 }
+
+public bool Path_FilterIgnoreObjects(int entity, int contentsMask, int desiredcollisiongroup)
+{	
+	// don't worry about objects, most are non solid anyway
+	if (IsObject(entity))
+	{
+		return false;
+	}
+	
+	return !!(contentsMask & MASK_SOLID);
+}
