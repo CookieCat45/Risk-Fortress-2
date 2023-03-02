@@ -281,45 +281,6 @@ native int RF2_GetTeleporterEntity();
  */
 native bool RF2_IsTankDestructionMode();
 
-// Prints a message to a client with the [RF2] tag. Uses the same parameters and supports color tags.
-stock void RF2_PrintToChat(int client, const char[] message, any ...)
-{
-	char buffer[PLATFORM_MAX_PATH];
-	VFormat(buffer, sizeof(buffer), message, 3);
-	
-	#if defined _colors_included
-	CPrintToChat(client, "{lightseagreen}[RF2] {default}%s", buffer);
-	#else
-	PrintToChat(client, "[RF2] %s", buffer);
-	#endif
-}
-
-// Prints a message to all clients with the [RF2] tag. Uses the same parameters and supports color tags.
-stock void RF2_PrintToChatAll(const char[] message, any ...)
-{
-	char buffer[PLATFORM_MAX_PATH];
-	VFormat(buffer, sizeof(buffer), message, 2);
-	
-	#if defined _colors_included
-	CPrintToChatAll("{lightseagreen}[RF2] {default}%s", buffer);
-	#else
-	PrintToChatAll("[RF2] %s", buffer);
-	#endif
-}
-
-// Replies to a command with the [RF2] tag. Uses the same parameters and supports color tags.
-stock void RF2_ReplyToCommand(int client, const char[] message, any ...)
-{
-	char buffer[PLATFORM_MAX_PATH];
-	VFormat(buffer, sizeof(buffer), message, 3);
-	
-	#if defined _colors_included
-	CReplyToCommand(client, "{lightseagreen}[RF2] {default}%s", buffer);
-	#else
-	ReplyToCommand(client, "[RF2] %s", buffer);
-	#endif
-}
-
 // Called when the Teleporter event is started.
 forward void RF2_OnTeleporterEventStart();
 
@@ -328,6 +289,95 @@ forward void RF2_OnGracePeriodStart();
 
 // Called when the grace period has ended.
 forward void RF2_OnGracePeriodEnd();
+
+// Prints a message to a client with the [RF2] tag. Uses the same parameters and supports color tags.
+stock void RF2_PrintToChat(int client, const char[] message, any ...)
+{
+	char buffer[PLATFORM_MAX_PATH];
+	VFormat(buffer, sizeof(buffer), message, 3);
+	CPrintToChat(client, "{lightseagreen}[RF2] {default}%s", buffer);
+}
+
+// Prints a message to all clients with the [RF2] tag. Uses the same parameters and supports color tags.
+stock void RF2_PrintToChatAll(const char[] message, any ...)
+{
+	char buffer[PLATFORM_MAX_PATH];
+	VFormat(buffer, sizeof(buffer), message, 2);
+	CPrintToChatAll("{lightseagreen}[RF2] {default}%s", buffer);
+}
+
+// Replies to a command with the [RF2] tag. Uses the same parameters and supports color tags.
+stock void RF2_ReplyToCommand(int client, const char[] message, any ...)
+{
+	char buffer[PLATFORM_MAX_PATH];
+	VFormat(buffer, sizeof(buffer), message, 3);
+	if (client == 0)
+	{
+		CRemoveTags(buffer, sizeof(buffer));
+	}
+	
+	CReplyToCommand(client, "{lightseagreen}[RF2] {default}%s", buffer);
+}
+
+// Function overrides
+stock void RemoveEntity2(int entity)
+{
+	if (entity == 0)
+	{
+		LogStackTrace("Cannot delete entity 0 (worldspawn)");
+		return;
+	}
+	
+	RemoveEntity(entity);
+}
+#define RemoveEntity RemoveEntity2
+
+stock bool PrecacheSound2(const char[] sound, bool preload=false)
+{
+	if (!sound[0])
+	{
+		LogStackTrace("Sound string is NULL");
+		return false;
+	}
+	
+	return PrecacheSound(sound, preload);
+}
+#define PrecacheSound PrecacheSound2
+
+stock int PrecacheModel2(const char[] model, bool preload=false)
+{
+	if (!model[0])
+	{
+		LogStackTrace("Model string is NULL");
+		return 0;
+	}
+	
+	return PrecacheModel(model, preload);
+}
+#define PrecacheModel PrecacheModel2
+
+stock void SetEntityModel2(int entity, const char[] model)
+{
+	if (!IsModelPrecached(model))
+	{
+		LogStackTrace("Model \"%s\" is not precached", model);
+		return;
+	}
+	
+	SetEntityModel(entity, model);
+}
+#define SetEntityModel SetEntityModel2
+
+public SharedPlugin __pl_RF2 =
+{
+	name = "Risk Fortress 2",
+	file = "rf2.smx",
+	#if defined REQUIRE_PLUGIN
+		required = 1,
+	#else
+		required = 0,
+	#endif
+};
 
 #if !defined REQUIRE_PLUGIN
 public void __pl_RF2_SetNTVOptional()
