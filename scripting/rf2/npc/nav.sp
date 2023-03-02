@@ -63,10 +63,9 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 	for (int i = 0; i < areaCount; i++)
 	{
 		area = collector.Get(i);
+		
 		if (view_as<CTFNavArea>(area).HasAttributeTF(NO_SPAWNING))
-		{
 			continue;
-		}
 		
 		if (area.GetCostSoFar() >= minDist)
 		{
@@ -122,7 +121,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 						if (!canSpawn)
 							continue;
 						
-						if (!IsClientInGameEx(i) || !IsPlayerAlive(i) || filterTeam <= view_as<int>(TFTeam_Blue) && GetClientTeam(i) != filterTeam)
+						if (!IsClientInGame(i) || !IsPlayerAlive(i) || filterTeam <= view_as<int>(TFTeam_Blue) && GetClientTeam(i) != filterTeam)
 							continue;
 						
 						// Don't spawn near this player's non-disposable sentry
@@ -131,9 +130,10 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 							while ((sentry = FindEntityByClassname(sentry, "obj_sentrygun")) != -1)
 							{
 								if (GetEntProp(sentry, Prop_Data, "m_iTeamNum") == filterTeam && GetEntPropEnt(sentry, Prop_Send, "m_hBuilder") == i 
-								&& g_hPlayerExtraSentryList[i].FindValue(sentry) != -1)
+								&& g_hPlayerExtraSentryList[i].FindValue(sentry) == -1)
 								{
-									GetEntPropVector(sentry, Prop_Data, "m_vecAbsOrigin", sentryPos);
+									GetEntPos(sentry, sentryPos);
+									
 									if (GetVectorDistance(spawnPos, sentryPos, true) <= sq(minDist))
 									{
 										area = NULL_AREA;
@@ -151,7 +151,8 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 						
 						if (canSpawn)
 						{
-							GetClientAbsOrigin(i, playerPos);
+							GetEntPos(i, playerPos);
+							
 							if (GetVectorDistance(spawnPos, playerPos, true) <= sq(minDist))
 							{
 								area = NULL_AREA;
@@ -204,7 +205,7 @@ void SDK_ComputeIncursionDistances()
 	// Method B: respawnrooms
 	while ((!redArea || !blueArea) && (entity = FindEntityByClassname(entity, "func_respawnroom")) != -1)
 	{
-		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
+		GetEntPos(entity, pos);
 		
 		switch (view_as<TFTeam>(GetEntProp(entity, Prop_Send, "m_iTeamNum")))
 		{
@@ -232,9 +233,7 @@ void SDK_ComputeIncursionDistances()
 public MRESReturn DHook_ComputeIncursionDistances(Address navMesh, Handle params)
 {
 	if (g_bDisableIncursionHook) // SDKCall
-	{
 		return MRES_Ignored;
-	}
 	
 	return MRES_Supercede;
 }

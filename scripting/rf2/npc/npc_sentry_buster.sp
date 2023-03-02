@@ -339,7 +339,7 @@ void UTIL_ScreenShake(const float center[3], float amplitude, float frequency, f
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || (!bAirShake && (eCommand == SHAKE_START) && !(GetEntityFlags(i) & FL_ONGROUND)))
+		if (!IsClientInGame(i) || (!bAirShake && (eCommand == SHAKE_START) && !(GetEntityFlags(i) & FL_ONGROUND)))
 		{
 			continue;
 		}
@@ -454,7 +454,7 @@ static void SentryBusterMain_OnStart(NextBotAction action, int actor, NextBotAct
 static int SentryBusterMain_Update(NextBotAction action, int actor, float interval)
 {
 	float vecPos[3];
-	GetEntPropVector(actor, Prop_Data, "m_vecAbsOrigin", vecPos);
+	GetEntPos(actor, vecPos);
 
 	SentryBuster pCC = view_as<SentryBuster>(actor);
 	INextBot bot = pCC.MyNextBotPointer();
@@ -475,8 +475,7 @@ static int SentryBusterMain_Update(NextBotAction action, int actor, float interv
 	if (IsValidClient(target) && IsPlayerAlive(target) || valid)
 	{
 		float vecTargetPos[3];
-		GetEntPropVector(target, Prop_Data, "m_vecAbsOrigin", vecTargetPos);
-
+		GetEntPos(target, vecTargetPos);
 		float dist = GetVectorDistance(vecTargetPos, vecPos);
 
 		loco.FaceTowards(vecTargetPos);
@@ -662,7 +661,7 @@ void DoSentryBusterWave()
 void SpawnSentryBuster(int target)
 {
 	float targetPos[3], pos[3], mins[3], maxs[3];
-	GetEntPropVector(target, Prop_Data, "m_vecAbsOrigin", targetPos);
+	GetEntPos(target, targetPos);
 	
 	int entity = CreateEntityByName("rf2_npc_sentry_buster");
 	SetEntProp(entity, Prop_Data, "m_iTeamNum", TEAM_ENEMY);

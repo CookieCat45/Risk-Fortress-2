@@ -230,7 +230,7 @@ methodmap TFBot < Handle
 	
 	public void GetMyPos(float buffer[3])
 	{
-		GetClientAbsOrigin(this.Client, buffer);
+		GetEntPos(this.Client, buffer);
 	}
 	
 	public void GetLastWanderPos(float buffer[3]) 
@@ -296,9 +296,9 @@ void TFBot_Think(TFBot bot)
 			if (threat > MaxClients || !IsInvuln(threat) && class != TFClass_Engineer && class != TFClass_Spy)
 			{
 				float threatPos[3];
-				GetEntPropVector(threat, Prop_Data, "m_vecAbsOrigin", threatPos);
-				
+				GetEntPos(threat, threatPos);
 				int skill = bot.GetSkillLevel();
+				
 				if (threat <= MaxClients && skill >= TFBotDifficulty_Hard)
 				{
 					float angles[3];
@@ -327,7 +327,9 @@ void TFBot_Think(TFBot bot)
 					
 					// Don't bother if we can't "access" that area, we're most likely in a closed space such as a hallway.
 					if (TR_PointOutsideWorld(threatPos) || TR_GetPointContents(threatPos) & MASK_PLAYERSOLID)
-						GetEntPropVector(threat, Prop_Data, "m_vecAbsOrigin", threatPos);
+					{
+						GetEntPos(threat, threatPos);
+					}
 					
 					if (!bot.HasFlag(TFBOTFLAG_STRAFING))
 					{
@@ -379,7 +381,7 @@ void TFBot_Think(TFBot bot)
 					bool owned;
 					for (int b = 1; b <= MaxClients; b++)
 					{
-						if (owned || !g_bPlayerInGame[b] || !IsFakeClientEx(b) || TF2_GetPlayerClass(b) != TFClass_Engineer)
+						if (owned || !IsClientInGame(b) || !IsFakeClient(b) || TF2_GetPlayerClass(b) != TFClass_Engineer)
 							continue;
 							
 						if (g_TFBot[b].SentryArea == tfArea)
@@ -443,7 +445,7 @@ void TFBot_Think(TFBot bot)
 	{
 		float teleporterPos[3];
 		int teleporter = GetTeleporterEntity();
-		GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", teleporterPos);
+		GetEntPos(teleporter, teleporterPos);
 		CNavArea area = TheNavMesh.GetNearestNavArea(teleporterPos, true, 800.0, false, false);
 		area.GetCenter(teleporterPos);
 		
@@ -572,8 +574,20 @@ void TFBot_WanderMap(TFBot bot)
 	}
 	else
 	{
-		CNavArea area = CBaseCombatCharacter(bot.Client).GetLastKnownArea();
+		CNavArea goal;
+		int enemy;
 		
+		// On this difficulty, we always know player whereabouts
+		if (RF2_GetSubDifficulty() >= SubDifficulty_Impossible && GetClientTeam(bot.Client) == TEAM_ENEMY)
+		{
+			enemy = GetNearestPlayer(myPos, _, g_cvBotWanderMaxDist.FloatValue, TEAM_SURVIVOR);
+			if (enemy > 0)
+			{
+				goal = CBaseCombatCharacter(enemy).GetLastKnownArea();
+			}
+		}
+		
+		CNavArea area = !goal ? CBaseCombatCharacter(bot.Client).GetLastKnownArea() : NULL_AREA;
 		if (area)
 		{
 			SurroundingAreasCollector collector = TheNavMesh.CollectSurroundingAreas(area, g_cvBotWanderMaxDist.FloatValue, 100.0);
@@ -586,7 +600,7 @@ void TFBot_WanderMap(TFBot bot)
 			if (event)
 			{
 				teleporter = GetTeleporterEntity();
-				GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", telePos);
+				GetEntPos(teleporter, telePos);
 				radius = GetEntPropFloat(teleporter, Prop_Data, "m_flRadius");
 			}
 			
@@ -610,18 +624,23 @@ void TFBot_WanderMap(TFBot bot)
 			
 			if (areaArray.Length > 0)
 			{
-				bot.GoalArea = collector.Get(areaArray.Get(GetRandomInt(0, areaArray.Length-1)));
-				bot.GoalArea.GetCenter(goalPos);
-				TFBot_PathToPos(bot, goalPos, g_cvBotWanderMaxDist.FloatValue, true);
-				
-				bot.Mission = MISSION_WANDER;
-				bot.SetLastWanderPos(myPos);
-				bot.LastSearchTime = tickedTime;
-				bot.LastPosCheckTime = tickedTime;
+				goal = collector.Get(areaArray.Get(GetRandomInt(0, areaArray.Length-1)));
 			}
 			
 			delete collector;
 			delete areaArray;
+		}
+		
+		if (goal)
+		{
+			bot.GoalArea = goal;
+			bot.GoalArea.GetCenter(goalPos);
+			TFBot_PathToPos(bot, goalPos, g_cvBotWanderMaxDist.FloatValue, true);
+			
+			bot.Mission = MISSION_WANDER;
+			bot.SetLastWanderPos(myPos);
+			bot.LastSearchTime = tickedTime;
+			bot.LastPosCheckTime = tickedTime;
 		}
 	}
 }
@@ -795,7 +814,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse, float
 			{
 				float myPos[3], threatPos[3];
 				bot.GetMyPos(myPos);
-				GetEntPropVector(threat, Prop_Data, "m_vecAbsOrigin", threatPos);
+				GetEntPos(threat, threatPos);
 				
 				if (GetVectorDistance(myPos, threatPos, true) <= sq(100.0))
 				{

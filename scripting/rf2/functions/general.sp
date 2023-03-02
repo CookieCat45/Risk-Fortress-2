@@ -51,14 +51,14 @@ void GameOver()
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i))
+		if (!IsClientInGame(i))
 			continue;
 		
 		SetEntPropEnt(i, Prop_Data, "m_hCtrl", fog);
 	}
 	
 	PrintToServer("[RF2] Game Over!");
-	EmitSoundToAll(SOUND_GAME_OVER);
+	EmitSoundToAll(SND_GAME_OVER);
 	ForceTeamWin(TEAM_ENEMY);
 }
 
@@ -66,7 +66,7 @@ void ReloadPlugin(bool changeMap=true)
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i))
+		if (!IsClientInGame(i))
 			continue;
 			
 		SetVariantString("");
@@ -185,7 +185,7 @@ void OnDifficultyChanged(int newLevel)
 	int skill;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || !IsFakeClientEx(i) || !IsPlayerAlive(i))
+		if (!IsClientInGame(i) || !IsFakeClient(i) || !IsPlayerAlive(i))
 			continue;
 			
 		skill = g_TFBot[i].GetSkillLevel();

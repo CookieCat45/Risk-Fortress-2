@@ -63,7 +63,7 @@ int SpawnObjects()
 			int teleporter = CreateEntityByName("rf2_object_teleporter");
 			
 			float pos[3], angles[3];
-			GetEntPropVector(spawnPoint, Prop_Data, "m_vecAbsOrigin", pos);
+			GetEntPos(spawnPoint, pos);
 			GetEntPropVector(spawnPoint, Prop_Send, "m_angRotation", angles);
 			TeleportEntity(teleporter, pos, angles);
 			DispatchSpawn(teleporter);
@@ -104,11 +104,11 @@ int SpawnObjects()
 	while (spawns < spawnCount && attempts < 1000)
 	{
 		GetSpawnPoint(worldCenter, spawnPos, 0.0, distance, _, true);
-		nearestObject = GetNearestEntityEx(spawnPos, "rf2_object");
+		nearestObject = GetNearestEntity(spawnPos, "rf2_object*");
 		
 		if (nearestObject != -1)
 		{
-			GetEntPropVector(nearestObject, Prop_Data, "m_vecAbsOrigin", nearestPos);
+			GetEntPos(nearestObject, nearestPos);
 			if (GetVectorDistance(spawnPos, nearestPos, true) <= sq(spreadDistance)) // Too close to another object.
 			{
 				attempts++;
@@ -218,8 +218,8 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 		}
 		else
 		{
-			EmitSoundToClient(attacker, SOUND_NOPE);
-			PrintCenterText(attacker, "You don't have any Haunted Keys to open this!");
+			EmitSoundToClient(attacker, SND_NOPE);
+			PrintCenterText(attacker, "%t", "NoKeys");
 			return Plugin_Continue;
 		}
 	}
@@ -229,13 +229,13 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	}
 	else
 	{
-		EmitSoundToClient(attacker, SOUND_NOPE);
-		PrintCenterText(attacker, "You can't afford to open this! (Cost: $%.0f, you have: $%.0f)", cost, g_flPlayerCash[attacker]);
+		EmitSoundToClient(attacker, SND_NOPE);
+		PrintCenterText(attacker, "%t", "NotEnoughMoney", cost, g_flPlayerCash[attacker]);
 		return Plugin_Continue;
 	}
 	
 	float pos[3];
-	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
+	GetEntPos(entity, pos);
 	pos[2] += 40.0;
 	
 	int item;
@@ -250,28 +250,26 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 
 	float removeTime, particleRemoveTime;
 	
+	// Particle TEs seem to not work consistently with this, so we have to use info_particle_system
 	int particle = CreateEntityByName("info_particle_system");
 	switch (GetItemQuality(item))
 	{
 		case Quality_Unusual:
 		{
-			EmitAmbientSound(SOUND_DROP_UNUSUAL, pos);
-			EmitAmbientSound(SOUND_DROP_UNUSUAL, pos);
-			EmitAmbientSound(SOUND_DROP_UNUSUAL, pos);
-			EmitAmbientSound(SOUND_DROP_UNUSUAL, pos);
-			DispatchKeyValue(particle, "effect_name", PARTICLE_UNUSUAL_CRATE_OPEN);
+			EmitAmbientSound(SND_DROP_UNUSUAL, pos);
+			EmitAmbientSound(SND_DROP_UNUSUAL, pos);
+			EmitAmbientSound(SND_DROP_UNUSUAL, pos);
+			EmitAmbientSound(SND_DROP_UNUSUAL, pos);
+			DispatchKeyValue(particle, "effect_name", "mvm_pow_gold_seq");
 			
 			removeTime = 2.9;
 			particleRemoveTime = 10.0;
 			CreateTimer(4.0, Timer_UltraRareResponse, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 		}
-		case Quality_Haunted:
+		case Quality_Haunted, Quality_HauntedStrange:
 		{
-			EmitAmbientSound(SOUND_DROP_HAUNTED, pos);
-			// Doesn't work with "ghost_appearation" for some reason...?
-			//TE_TFParticle(PARTICLE_HAUNTED_CRATE_OPEN, pos);
-			
-			DispatchKeyValue(particle, "effect_name", PARTICLE_HAUNTED_CRATE_OPEN);
+			EmitAmbientSound(SND_DROP_HAUNTED, pos);
+			DispatchKeyValue(particle, "effect_name", "ghost_appearation");
 			
 			int shake = CreateEntityByName("env_shake");
 			DispatchKeyValueFloat(shake, "radius", 150.0);
@@ -288,8 +286,8 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 		}
 		default:
 		{
-			EmitSoundToAll(SOUND_DROP_DEFAULT, entity);
-			DispatchKeyValue(particle, "effect_name", PARTICLE_NORMAL_CRATE_OPEN);
+			EmitSoundToAll(SND_DROP_DEFAULT, entity);
+			DispatchKeyValue(particle, "effect_name", "mvm_loot_explosion");
 			removeTime = 0.0;
 			particleRemoveTime = 3.0;
 		}
@@ -367,14 +365,13 @@ bool ObjectInteract(int client)
 	
 	TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID, RayType_EndPoint, TraceFilter_DontHitSelf, client);
 	TR_GetEndPosition(endPos);
-	int entity = GetNearestEntityEx(endPos, "rf2_object");
+	int entity = GetNearestEntity(endPos, "rf2_object*");
 	
 	if (entity > 0 && GetEntProp(entity, Prop_Data, "m_bActive"))
 	{
 		float pos[3];
-		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
-		
 		char classname[128];
+		GetEntPos(entity, pos);
 		GetEntityClassname(entity, classname, sizeof(classname));
 		
 		if (GetVectorDistance(endPos, pos, true) <= sq(range))
@@ -399,14 +396,20 @@ bool ActivateObject(int client, int entity)
 	
 	if (cost > 0.0) // Display the cost for this object, but don't try to open it
 	{
-		PrintCenterText(client, "This costs $%.0f.", cost);
+		PrintCenterText(client, "%t", "ThisCosts", cost);
 		return true;
 	}
 	else if (strcmp2(classname, "rf2_object_teleporter"))
 	{
 		if (g_bGracePeriod || GetRF2GameRules() != INVALID_ENT_REFERENCE && !GetEntProp(GetRF2GameRules(), Prop_Data, "m_bPlayerTeleporterActivation"))
 		{
-			RF2_PrintToChat(client, "You can't activate the Teleporter right now.");
+			RF2_PrintToChat(client, "%t", "NoActivateTele");
+			return true;
+		}
+		
+		int state = GetTeleporterEventState();
+		if (state == TELE_EVENT_PREPARING || state == TELE_EVENT_ACTIVE)
+		{
 			return true;
 		}
 		
@@ -445,16 +448,16 @@ bool ActivateObject(int client, int entity)
 		{
 			GiveItem(client, item, -1);
 			GiveItem(client, benchItem, 1);
-			EmitSoundToAll(SOUND_USE_WORKBENCH, client);
-			PrintCenterText(client, "You traded 1 %s for a %s.", g_szItemName[item], g_szItemName[benchItem]);
+			EmitSoundToAll(SND_USE_WORKBENCH, client);
+			PrintCenterText(client, "%t", "UsedWorkbench", g_szItemName[item], g_szItemName[benchItem]);
 			return true;
 		}
 		else
 		{
 			char qualityName[32];
 			GetQualityName(quality, qualityName, sizeof(qualityName));
-			EmitSoundToClient(client, SOUND_NOPE);
-			PrintCenterText(client, "You don't have any items to exchange! You need %s quality items.", qualityName);
+			EmitSoundToClient(client, SND_NOPE);
+			PrintCenterText(client, "%t", "NoExchange", qualityName);
 			return false;
 		}
 	}
@@ -497,8 +500,8 @@ void ShowScrapperMenu(int client, bool message=true)
 	}
 	else if (message)
 	{
-		EmitSoundToClient(client, SOUND_NOPE);
-		PrintCenterText(client, "You have no items to scrap!");
+		EmitSoundToClient(client, SND_NOPE);
+		PrintCenterText(client, "%t", "NothingToScrap");
 	}
 }
 
@@ -528,15 +531,15 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 				if (scrap > Item_Null)
 				{
 					GiveItem(param1, scrap, 1);
-					PrintCenterText(param1, "You scrapped 1 %s for 1 %s.", g_szItemName[item], g_szItemName[scrap]);
+					PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[scrap]);
 				}
 				else // haunted item, give haunted key
 				{
 					g_iPlayerHauntedKeys[param1]++;
-					PrintCenterText(param1, "You scrapped 1 %s for 1 Haunted Key.", g_szItemName[item]);
+					PrintCenterText(param1, "%t", "UsedScrapperHaunted", g_szItemName[item]);
 				}
 				
-				EmitSoundToClient(param1, SOUND_USE_SCRAPPER);
+				EmitSoundToClient(param1, SND_USE_SCRAPPER);
 				ShowScrapperMenu(param1, false);
 			}
 		}
@@ -553,7 +556,7 @@ void StartTeleporterVote(int client, bool nextStageVote=false)
 {
 	if (IsVoteInProgress())
 	{
-		RF2_PrintToChat(client, "There is already a vote in progress. Please wait until it finishes.");
+		RF2_PrintToChat(client, "%t", "VoteInProgress");
 		return;
 	}
 	
@@ -562,7 +565,7 @@ void StartTeleporterVote(int client, bool nextStageVote=false)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || !IsPlayerAlive(i))
+		if (!IsClientInGame(i) || !IsPlayerAlive(i))
 			continue;
 			
 		if (IsPlayerSurvivor(i))
@@ -635,14 +638,13 @@ public int Menu_NextStageVote(Menu menu, MenuAction action, int param1, int para
 void PrepareTeleporterEvent(int teleporter)
 {
 	SetEntProp(teleporter, Prop_Data, "m_iEventState", TELE_EVENT_PREPARING);
-	RF2_PrintToChatAll("The Teleporter has been activated...");
+	RF2_PrintToChatAll("%t", "TeleporterActivated");
 	
 	StopMusicTrackAll();
 	
 	float pos[3];
+	GetEntPos(teleporter, pos);
 	SetEntProp(teleporter, Prop_Send, "m_fEffects", 0);
-	SetEntProp(teleporter, Prop_Data, "m_bActive", false);
-	GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", pos);
 	CreateTimer(3.0, Timer_StartTeleporterEvent, teleporter, TIMER_FLAG_NO_MAPCHANGE);
 	
 	// start some effects (fog and shake)
@@ -664,7 +666,7 @@ void PrepareTeleporterEvent(int teleporter)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i))
+		if (!IsClientInGame(i))
 			continue;
 		
 		oldFog[i] = GetEntPropEnt(i, Prop_Data, "m_hCtrl");
@@ -708,7 +710,7 @@ void StartTeleporterEvent(int teleporter)
 	SetEntPropFloat(bubble, Prop_Send, "m_flModelScale", baseModelScale * g_cvTeleporterRadiusMultiplier.FloatValue);
 	
 	float pos[3];
-	GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", pos);
+	GetEntPos(teleporter, pos);
 	TeleportEntity(bubble, pos);
 	DispatchSpawn(bubble);
 	SetEntPropEnt(teleporter, Prop_Data, "m_hBubble", bubble);
@@ -725,7 +727,7 @@ void StartTeleporterEvent(int teleporter)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || !IsPlayerAlive(i))
+		if (!IsClientInGame(i) || !IsPlayerAlive(i))
 		{
 			continue;
 		}
@@ -791,21 +793,19 @@ void StartTeleporterEvent(int teleporter)
 public Action Timer_TeleporterThink(Handle timer, int teleporter)
 {
 	if ((teleporter = EntRefToEntIndex(teleporter)) == INVALID_ENT_REFERENCE)
-	{
 		return Plugin_Stop;
-	}
 	
 	int aliveSurvivors, aliveBosses;
 	float distance;
 	float pos[3], telePos[3];
+	
+	GetEntPos(teleporter, telePos);
 	float radius = GetEntPropFloat(teleporter, Prop_Data, "m_flRadius");
-	float charge = GetEntPropFloat(teleporter, Prop_Data, "m_flCharge");
-	GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", telePos);
 	
 	// calculate alive survivors first
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || !IsPlayerAlive(i))
+		if (!IsClientInGame(i) || !IsPlayerAlive(i))
 			continue;
 		
 		if (IsPlayerSurvivor(i))
@@ -818,35 +818,47 @@ public Action Timer_TeleporterThink(Handle timer, int teleporter)
 		}
 	}
 	
+	float chargeToSet = GetEntPropFloat(teleporter, Prop_Data, "m_flCharge");
+	float oldCharge = chargeToSet;
+	
 	// now let's see how many of them are actually in the radius, so we can add charge based on that
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || !IsPlayerAlive(i) || !IsPlayerSurvivor(i))
-		{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsPlayerSurvivor(i))
 			continue;
-		}
 		
-		GetClientAbsOrigin(i, pos);
-		distance = GetVectorDistance(pos, telePos);
-		
-		if (distance <= radius)
+		if (IsPlayerSurvivor(i))
 		{
-			if (charge < 100.0)
-			{
-				charge += 0.1 / aliveSurvivors;
-				SetEntPropFloat(teleporter, Prop_Data, "m_flCharge", charge);
-			}
+			GetEntPos(i, pos);
+			distance = GetVectorDistance(pos, telePos);
 			
-			FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Teleporter Charge: %.0f percent...\nBosses Left: %i", charge, aliveBosses);
+			if (distance <= radius)
+			{
+				if (chargeToSet < 100.0)
+				{
+					chargeToSet += 0.1 / aliveSurvivors;
+				}
+				
+				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Teleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
+			}
+			else
+			{
+				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Get inside the Teleporter radius! (%.0f)\nBosses Left: %i", oldCharge, aliveBosses);
+			}
 		}
 		else
 		{
-			strcopy(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Get inside the Teleporter radius!");
+			FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Teleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
 		}
 	}
 	
+	if (oldCharge < 100.0 && chargeToSet > 0.0 && oldCharge != chargeToSet)
+	{
+		SetEntPropFloat(teleporter, Prop_Data, "m_flCharge", chargeToSet);
+	}
+	
 	// end once all teleporter bosses are dead and charge is 100%
-	if (charge >= 100.0 && aliveBosses == 0)
+	if (chargeToSet >= 100.0 && aliveBosses == 0)
 	{
 		EndTeleporterEvent(teleporter);
 		return Plugin_Stop;
@@ -862,7 +874,7 @@ void EndTeleporterEvent(int teleporter)
 	bool aliveEnemies;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGameEx(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ENEMY)
+		if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ENEMY)
 		{
 			TF2_StunPlayer(i, 20.0, _, TF_STUNFLAG_BONKSTUCK);
 			aliveEnemies = true;
@@ -871,12 +883,12 @@ void EndTeleporterEvent(int teleporter)
 	
 	if (aliveEnemies)
 	{
-		EmitSoundToAll(SOUND_ENEMY_STUN);
+		EmitSoundToAll(SND_ENEMY_STUN);
 	}
 	
-	EmitSoundToAll(SOUND_TELEPORTER_CHARGED);
+	EmitSoundToAll(SND_TELEPORTER_CHARGED);
 	SetEntProp(teleporter, Prop_Send, "m_fEffects", EF_ITEM_BLINK);
-	RF2_PrintToChatAll("{lime}Teleporter event completed! {default}Interact with the teleporter again to leave.");
+	RF2_PrintToChatAll("%t", "TeleporterComplete");
 	StopMusicTrackAll();
 	
 	Call_StartForward(g_fwTeleEventEnd);
@@ -903,7 +915,7 @@ void GetWorldCenter(float vec[3])
 {
 	if (EntRefToEntIndex(g_iWorldCenterEntity) != INVALID_ENT_REFERENCE)
 	{
-		GetEntPropVector(EntRefToEntIndex(g_iWorldCenterEntity), Prop_Data, "m_vecAbsOrigin", vec);
+		GetEntPos(EntRefToEntIndex(g_iWorldCenterEntity), vec);
 		return;
 	}
 	
@@ -916,7 +928,7 @@ void GetWorldCenter(float vec[3])
 		GetEntPropString(entity, Prop_Data, "m_iName", targetName, sizeof(targetName));
 		if (strcmp2(targetName, WORLD_CENTER))
 		{
-			GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", vec);
+			GetEntPos(entity, vec);
 			found = true;
 			g_iWorldCenterEntity = EntIndexToEntRef(entity);
 			break;

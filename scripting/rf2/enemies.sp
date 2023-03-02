@@ -7,7 +7,7 @@
 #pragma newdecls required
 
 int g_iEnemyCount;
-char g_szLoadedEnemies[MAX_ENEMIES][MAX_CONFIG_NAME_LENGTH];
+char g_szLoadedEnemies[MAX_ENEMIES][64];
 
 // General enemy data
 int g_iEnemyTfClass[MAX_ENEMIES];
@@ -56,20 +56,17 @@ int g_iEnemyFootstepType[MAX_ENEMIES] = {FootstepType_Robot, ...};
 
 void LoadEnemiesFromPack(const char[] config)
 {
-	char path[PLATFORM_MAX_PATH], sectionName[16];
-	bool firstKey;
-	
+	KeyValues enemyKey = CreateKeyValues("enemies");
+	char path[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, path, sizeof(path), "%s/%s.cfg", ConfigPath, config);
-	
-	if (!FileExists(path))
+	if (!enemyKey.ImportFromFile(path))
 	{
-		LogError("[LoadEnemiesFromPack] Config file %s does not exist, please correct this!", path);
-		return;
+		ThrowError("File %s does not exist", path);
 	}
 	
-	KeyValues enemyKey = CreateKeyValues("enemies");
-	enemyKey.ImportFromFile(path);
 	g_iEnemyCount = 0;
+	bool firstKey;
+	char sectionName[16];
 	
 	for (int enemy = g_iEnemyCount; enemy <= g_iEnemyCount; enemy++)
 	{
@@ -115,12 +112,15 @@ void LoadEnemiesFromPack(const char[] config)
 		// XP and cash awards on death
 		g_flEnemyXPAward[enemy] = enemyKey.GetFloat("xp_award", 15.0);
 		g_flEnemyCashAward[enemy] = enemyKey.GetFloat("cash_award", 20.0);
-		
 		g_iEnemyWeight[enemy] = enemyKey.GetNum("weight", 50);
 		if (g_iEnemyWeight[enemy] < 0)
+		{
 			g_iEnemyWeight[enemy] = 1;
+		}
 		else if (g_iEnemyWeight[enemy] > 100)
+		{
 			g_iEnemyWeight[enemy] = 100;
+		}
 		
 		g_bEnemyFullRage[enemy] = bool(enemyKey.GetNum("full_rage", false));
 		g_bEnemyNoBleeding[enemy] = bool(enemyKey.GetNum("no_bleeding", true));
@@ -131,7 +131,9 @@ void LoadEnemiesFromPack(const char[] config)
 		{
 			FormatEx(sectionName, sizeof(sectionName), "weapon%i", wep+1);
 			if (!enemyKey.JumpToKey(sectionName))
+			{
 				break;
+			}
 			
 			enemyKey.GetString("classname", g_szEnemyWeaponName[enemy][wep], sizeof(g_szEnemyWeaponName[][]), "null");
 			enemyKey.GetString("attributes", g_szEnemyWeaponAttributes[enemy][wep], sizeof(g_szEnemyWeaponAttributes[][]), "");
@@ -171,7 +173,9 @@ void LoadEnemiesFromPack(const char[] config)
 					enemyKey.GetSectionName(sectionName, sizeof(sectionName));
 					
 					if ((itemId = StringToInt(sectionName)) > Item_Null)
+					{
 						g_iEnemyItem[enemy][itemId] = enemyKey.GetNum(NULL_STRING);
+					}
 				}
 			}
 			
@@ -231,7 +235,7 @@ void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	
 	ChangeClientTeam(client, TEAM_ENEMY);
 	
-	if (IsFakeClientEx(client))
+	if (IsFakeClient(client))
 	{
 		switch (RF2_GetDifficulty())
 		{
@@ -268,24 +272,16 @@ void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	float checkPos[3];
 	if (CompareVectors(pos, OFF_THE_MAP))
 	{
-		int teleporter = GetTeleporterEntity();
-		if (teleporter != INVALID_ENT_REFERENCE && GetTeleporterEventState() == TELE_EVENT_ACTIVE)
+		int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
+		if (IsValidClient(randomSurvivor))
 		{
-			GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", checkPos);
+			GetEntPos(randomSurvivor, checkPos);
 		}
 		else
 		{
-			int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
-			if (IsValidClient(randomSurvivor))
-			{
-				GetClientAbsOrigin(randomSurvivor, checkPos);
-			}
-			else
-			{
-				checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
-				checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
-				checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
-			}
+			checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
+			checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
+			checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
 		}
 	}
 	else
@@ -319,6 +315,8 @@ void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		RequestFrame(RF_SpawnEnemyRecursive, pack);
 		return;
 	}
+	
+	g_bPlayerInSpawnQueue[client] = false;
 	
 	g_iPlayerEnemyType[client] = type;
 	g_iPlayerBaseHealth[client] = g_iEnemyBaseHp[type];
@@ -380,7 +378,6 @@ void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	g_iPlayerVoiceType[client] = g_iEnemyVoiceType[type];
 	g_iPlayerVoicePitch[client] = g_iEnemyVoicePitch[type];
 	g_iPlayerFootstepType[client] = g_iEnemyFootstepType[type];
-	CalculatePlayerKnockbackResist(client);
 }
 
 public void RF_SpawnEnemyRecursive(DataPack pack)

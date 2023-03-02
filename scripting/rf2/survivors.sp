@@ -13,7 +13,7 @@ int g_iSavedLevel[MAX_SURVIVORS] = {1, ...};
 int g_iSavedEquipmentItem[MAX_SURVIVORS];
 int g_iSavedHauntedKeys[MAX_SURVIVORS];
 
-float g_flClassMaxSpeed[TF_CLASSES];
+float g_flSurvivorMaxSpeed[TF_CLASSES];
 float g_flSavedXP[MAX_SURVIVORS];
 float g_flSavedNextLevelXP[MAX_SURVIVORS] = {150.0, ...};
 
@@ -24,17 +24,18 @@ bool g_bSurvivorIndexUsed[MAX_SURVIVORS];
 
 void LoadSurvivorStats()
 {
-	char config[PLATFORM_MAX_PATH], sectionName[32];
+	KeyValues survivorKey = CreateKeyValues("survivors");
+	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, SurvivorConfig);
-	if (!FileExists(config))
+	if (!survivorKey.ImportFromFile(config))
 	{
+		delete survivorKey;
 		ThrowError("File %s does not exist", config);
 	}
 	
-	KeyValues survivorKey = CreateKeyValues("survivors");
-	survivorKey.ImportFromFile(config);
 	TFClassType class;
 	bool firstKey = true;
+	char sectionName[32];
 	
 	for (int i = 0; i < TF_CLASSES; i++)
 	{
@@ -44,13 +45,14 @@ void LoadSurvivorStats()
 			if ((class = TF2_GetClass(sectionName)) != TFClass_Unknown)
 			{
 				g_iSurvivorBaseHealth[class] = survivorKey.GetNum("health", 450);
-				g_flClassMaxSpeed[class] = survivorKey.GetFloat("speed", 300.0);
+				g_flSurvivorMaxSpeed[class] = survivorKey.GetFloat("speed", 300.0);
 				survivorKey.GetString("attributes", g_szSurvivorAttributes[class], sizeof(g_szSurvivorAttributes[]));
 				
 				firstKey = false;
 			}
 		}
 	}
+	
 	delete survivorKey;
 }
 
@@ -64,10 +66,10 @@ bool CreateSurvivors()
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i))
+		if (!IsClientInGame(i))
 			continue;
 			
-		if (IsFakeClientEx(i))
+		if (IsFakeClient(i))
 		{
 			if (!g_cvBotsCanBeSurvivor.BoolValue)
 			{
@@ -84,7 +86,7 @@ bool CreateSurvivors()
 		points[i] = g_iPlayerSurvivorPoints[i];
 		valid[i] = true;
 		
-		if (IsFakeClientEx(i))
+		if (IsFakeClient(i))
 		{
 			points[i] -= 9999;
 		}
@@ -122,10 +124,11 @@ bool CreateSurvivors()
 	int prioritizedIndex = -1;
 	bool indexTaken[MAX_SURVIVORS];
 	int oldPrioritizedIndex;
+	int maxSurvivors = g_cvMaxSurvivors.IntValue;
 	
 	if (g_bGameInitialized)
 	{
-		for (int i = 0; i < MAX_SURVIVORS; i++)
+		for (int i = 0; i < maxSurvivors; i++)
 		{
 			if (g_bSurvivorIndexUsed[i])
 			{
@@ -137,7 +140,7 @@ bool CreateSurvivors()
 	
 	int attempts;
 	int i = 1;
-	while (attempts < 500 && survivorCount < MAX_SURVIVORS)
+	while (attempts < 500 && survivorCount < maxSurvivors)
 	{
 		attempts++;
 		
@@ -161,7 +164,7 @@ bool CreateSurvivors()
 				oldPrioritizedIndex = prioritizedIndex;
 				indexTaken[prioritizedIndex] = true;
 				
-				for (int index = 0; index < MAX_SURVIVORS; index++)
+				for (int index = 0; index < maxSurvivors; index++)
 				{
 					if (indexTaken[index])
 						continue;
@@ -184,7 +187,7 @@ bool CreateSurvivors()
 				indexTaken[survivorCount] = true;
 			}
 			
-			if (!IsFakeClientEx(i))
+			if (!IsFakeClient(i))
 				humanCount++;
 			
 			MakeSurvivor(i, g_iPlayerSurvivorIndex[i], removePoints[i]);
@@ -216,7 +219,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	TFClassType class = TF2_GetPlayerClass(client);
 	g_iPlayerSurvivorIndex[client] = index;
 	g_iPlayerBaseHealth[client] = g_iSurvivorBaseHealth[class];
-	g_flPlayerMaxSpeed[client] = g_flClassMaxSpeed[class];
+	g_flPlayerMaxSpeed[client] = g_flSurvivorMaxSpeed[class];
 	
 	TF2Attrib_RemoveAll(client);
 	if (g_szSurvivorAttributes[class][0])
@@ -285,6 +288,14 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 
 void LoadSurvivorInventory(int client, int index)
 {
+	g_iPlayerEquipmentItem[client] = g_iSavedEquipmentItem[index];
+	g_iPlayerEquipmentItemCharges[client] = 1;
+	if (GetPlayerEquipmentItem(client) != Item_Null && PlayerHasItem(client, Item_BatteryCanteens))
+	{
+		g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
+		CreateTimer(0.1, Timer_EquipmentCooldown, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	}
+	
 	for (int i = 0; i < Item_MaxValid; i++)
 	{
 		if (IsEquipmentItem(i))
@@ -299,7 +310,6 @@ void LoadSurvivorInventory(int client, int index)
 	
 	g_iPlayerLevel[client] = g_iSavedLevel[index];
 	g_flPlayerXP[client] = g_flSavedXP[index];
-	g_iPlayerEquipmentItem[client] = g_iSavedEquipmentItem[index];
 	g_iPlayerHauntedKeys[client] = g_iSavedHauntedKeys[index];
 	g_flPlayerCash[client] = 100.0 * GetObjectCostMultiplier();
 	
@@ -312,11 +322,9 @@ void LoadSurvivorInventory(int client, int index)
 		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
 	}
 	
-	//ThrowError("test2");
-	
 	if (g_szLastInventoryOwner[index][0])
 	{
-		PrintCenterText(client, "You have been given %s's inventory.", g_szLastInventoryOwner[index]);
+		PrintCenterText(client, "%t", "GivenInventory", g_szLastInventoryOwner[index]);
 	}
 }
 
@@ -416,7 +424,7 @@ bool IsSurvivorIndexValid(int index)
 {
 	for (int i = 1; i < MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i))
+		if (!IsClientInGame(i))
 			continue;
 		
 		if (RF2_GetSurvivorIndex(i) == index)
@@ -460,8 +468,8 @@ void PlayerLevelUp(int client)
 	g_iPlayerLevel[client]++;
 	
 	CalculatePlayerMaxHealth(client);
-	CalculatePlayerKnockbackResist(client);
-	RF2_PrintToChat(client, "Your Level: {lime}%i -> %i", oldLevel, g_iPlayerLevel[client]);
+	CalculatePlayerMiscStats(client);
+	RF2_PrintToChat(client, "%t", "YouLevelUp", oldLevel, g_iPlayerLevel[client]);
 }
 
 bool IsPlayerSurvivor(int client)
@@ -469,7 +477,7 @@ bool IsPlayerSurvivor(int client)
 	return (RF2_GetSurvivorIndex(client) > -1);
 }
 
-bool IsSingleplayer()
+bool IsSingleplayer(bool humanCheck=true)
 {
-	return g_iSurvivorCount == 1 || GetTotalHumans() == 1;
+	return g_iSurvivorCount == 1 || humanCheck && GetTotalHumans() == 1;
 }

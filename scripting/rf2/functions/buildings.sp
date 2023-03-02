@@ -3,6 +3,9 @@
 #endif
 #define _RF2_buildings_included
 
+#pragma semicolon 1
+#pragma newdecls required
+
 enum
 {
 	CB_CAN_BUILD,			// Player is allowed to build this object
@@ -15,7 +18,7 @@ enum
 
 bool IsBuilding(int entity)
 {
-	return (entity > MaxClients && !CBaseEntity(entity).MyNextBotPointer() && CBaseEntity(entity).IsCombatCharacter());
+	return entity > MaxClients && !CBaseEntity(entity).MyNextBotPointer() && CBaseEntity(entity).IsCombatCharacter();
 }
 
 bool CanTeamQuickBuild(int team)
@@ -26,7 +29,9 @@ bool CanTeamQuickBuild(int team)
 void SDK_DoQuickBuild(int building, bool forceMaxLevel=false)
 {
 	if (g_hSDKDoQuickBuild)
+	{
 		SDKCall(g_hSDKDoQuickBuild, building, forceMaxLevel);
+	}
 }
 
 public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookParam params)
@@ -46,7 +51,9 @@ public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookP
 public MRESReturn DHook_StartUpgradingPost(int entity, DHookReturn returnVal, DHookParam params)
 {
 	if (RF2_IsEnabled())
+	{
 		GameRules_SetProp("m_bPlayingMannVsMachine", false);
+	}
 		
 	return MRES_Ignored;
 }
@@ -62,8 +69,8 @@ public MRESReturn DHook_SentryGunAttack(int entity)
 			{
 				float gameTime = GetGameTime();
 				int offset = FindSendPropInfo("CObjectSentrygun", "m_iState") + 4; // m_flNextAttack
-				float time = GetEntDataFloat(entity, offset);
 				
+				float time = GetEntDataFloat(entity, offset);
 				time -= gameTime;
 				time *= GetPlayerFireRateMod(owner);
 				SetEntDataFloat(entity, offset, gameTime+time, true);

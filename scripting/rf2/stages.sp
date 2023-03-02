@@ -6,15 +6,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define DEFAULT_PACK_NAME "default"
-#define DEFAULT_BOSS_PACK_NAME "default_boss"
-#define NULL "misc/null.wav"
+#define INVALID_PACK "null"
 
 int g_iCurrentStage;
 int g_iMaxStages;
 
-char g_szEnemyPackName[512];
-char g_szBossPackName[512];
+char g_szEnemyPackName[64];
+char g_szBossPackName[64];
 char g_szClientBGM[MAXTF2PLAYERS][PLATFORM_MAX_PATH];
 char g_szStageBGM[PLATFORM_MAX_PATH];
 char g_szBossBGM[PLATFORM_MAX_PATH];
@@ -22,24 +20,22 @@ char g_szBossBGM[PLATFORM_MAX_PATH];
 float g_flGracePeriodTime = 15.0;
 float g_flLoopMusicAt[MAXTF2PLAYERS] = {-1.0, ...};
 float g_flStageBGMDuration;
-float g_flBGMDuration;
+float g_flBossBGMDuration;
 
 void LoadMapSettings(const char[] mapName)
 {
+	KeyValues mapKey = CreateKeyValues("stages");
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
-	if (!FileExists(config))
+	if (!mapKey.ImportFromFile(config))
 	{
+		delete mapKey;
 		ThrowError("File %s does not exist", config);
 	}
 	
-	char mapString[PLATFORM_MAX_PATH], section[16], mapId[8];
-	static int stageKv = 1;
 	bool found;
-	
-	KeyValues mapKey = CreateKeyValues("stages");
-	mapKey.ImportFromFile(config);
-	
+	static int stageKv = 1;
+	char mapString[PLATFORM_MAX_PATH], section[16], mapId[8];
 	FormatEx(section, sizeof(section), "stage%i", stageKv);
 	mapKey.JumpToKey(section);
 	
@@ -49,15 +45,28 @@ void LoadMapSettings(const char[] mapName)
 		if (mapKey.JumpToKey(mapId))
 		{
 			mapKey.GetString("name", mapString, sizeof(mapString));
-			if (StrContains(mapName, mapString) != -1)
+			if (StrContains(mapName, mapString) == 0)
 			{
 				found = true;
 				
 				mapKey.GetString("theme", g_szStageBGM, sizeof(g_szStageBGM), NULL);
-				g_flStageBGMDuration = mapKey.GetFloat("theme_duration", 60.0);
-				
+				g_flStageBGMDuration = mapKey.GetFloat("theme_duration", 0.0);
 				mapKey.GetString("boss_theme", g_szBossBGM, sizeof(g_szBossBGM), NULL);
-				g_flBGMDuration = mapKey.GetFloat("boss_theme_duration", 60.0);
+				g_flBossBGMDuration = mapKey.GetFloat("boss_theme_duration", 0.0);
+				if (g_iLoopCount > 0)
+				{
+					char stageTheme[PLATFORM_MAX_PATH], bossTheme[PLATFORM_MAX_PATH];
+					float stageThemeTime, bossThemeTime;
+					mapKey.GetString("theme_loop", stageTheme, sizeof(stageTheme), g_szStageBGM);
+					mapKey.GetString("boss_theme_loop", bossTheme, sizeof(bossTheme), g_szBossBGM);
+					strcopy(g_szStageBGM, sizeof(g_szStageBGM), stageTheme);
+					strcopy(g_szBossBGM, sizeof(g_szBossBGM), bossTheme);
+					
+					stageThemeTime = g_flStageBGMDuration;
+					bossThemeTime = g_flBossBGMDuration;
+					g_flStageBGMDuration = mapKey.GetFloat("theme_loop_duration", stageThemeTime);
+					g_flBossBGMDuration = mapKey.GetFloat("boss_theme_loop_duration", bossThemeTime);
+				}
 				
 				if (g_szStageBGM[0])
 				{
@@ -71,8 +80,17 @@ void LoadMapSettings(const char[] mapName)
 					PrecacheSound(g_szBossBGM);
 				}
 				
-				mapKey.GetString("enemy_pack", g_szEnemyPackName, sizeof(g_szEnemyPackName), DEFAULT_PACK_NAME);
-				mapKey.GetString("boss_pack", g_szBossPackName, sizeof(g_szBossPackName), DEFAULT_BOSS_PACK_NAME);
+				mapKey.GetString("enemy_pack", g_szEnemyPackName, sizeof(g_szEnemyPackName), INVALID_PACK);
+				mapKey.GetString("boss_pack", g_szBossPackName, sizeof(g_szBossPackName), INVALID_PACK);
+				if (g_iLoopCount > 0)
+				{
+					char enemyPack[64], bossPack[64];
+					mapKey.GetString("enemy_pack_loop", enemyPack, sizeof(enemyPack), g_szEnemyPackName);
+					mapKey.GetString("boss_pack_loop", bossPack, sizeof(bossPack), g_szBossPackName);
+					strcopy(g_szEnemyPackName, sizeof(g_szEnemyPackName), enemyPack);
+					strcopy(g_szBossPackName, sizeof(g_szBossPackName), bossPack);
+				}
+				
 				LoadEnemiesFromPack(g_szEnemyPackName);
 				LoadBossesFromPack(g_szBossPackName);
 				
@@ -97,13 +115,13 @@ void LoadMapSettings(const char[] mapName)
 			
 			g_szStageBGM = NULL;
 			g_szBossBGM = NULL;
-			g_flStageBGMDuration = 60.0;
-			g_flBGMDuration = 60.0;
+			g_flStageBGMDuration = 0.0;
+			g_flBossBGMDuration = 0.0;
 			
-			g_szEnemyPackName = DEFAULT_PACK_NAME;
-			g_szBossPackName = DEFAULT_BOSS_PACK_NAME;
+			g_szEnemyPackName = INVALID_PACK;
+			g_szBossPackName = INVALID_PACK;
 			
-			g_flGracePeriodTime = 15.0;
+			g_flGracePeriodTime = 30.0;
 			stageKv = 1;
 		}
 		else
@@ -116,18 +134,16 @@ void LoadMapSettings(const char[] mapName)
 
 int FindMaxStages()
 {
+	KeyValues mapKey = CreateKeyValues("stages");
 	char config[PLATFORM_MAX_PATH], stage[16];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
-	if (!FileExists(config))
+	if (!mapKey.ImportFromFile(config))
 	{
+		delete mapKey;
 		ThrowError("File %s does not exist", config);
 	}
 	
-	KeyValues mapKey = CreateKeyValues("stages");
-	mapKey.ImportFromFile(config);
-	
 	int stageCount = 0;
-	
 	for (int i = 0; i <= MAX_STAGES; i++)
 	{
 		mapKey.Rewind();
@@ -149,19 +165,17 @@ int FindMaxStages()
 
 void SetNextStage(int stage)
 {
+	KeyValues mapKey = CreateKeyValues("stages");
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
-	if (!FileExists(config))
+	if (!mapKey.ImportFromFile(config))
 	{
+		delete mapKey;
 		ThrowError("File %s does not exist", config);
 	}
 	
-	char section[16], mapId[8], mapName[PLATFORM_MAX_PATH];
 	int maps;
-	
-	KeyValues mapKey = CreateKeyValues("stages");
-	mapKey.ImportFromFile(config);
-	
+	char section[16], mapId[8], mapName[PLATFORM_MAX_PATH];
 	FormatEx(section, sizeof(section), "stage%i", stage+1);
 	mapKey.JumpToKey(section);
 	
@@ -196,18 +210,16 @@ bool RF2_IsMapValid(char[] mapName)
 	if (!IsMapValid(mapName))
 		return false;
 		
+	KeyValues mapKey = CreateKeyValues("stages");
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
-	if (!FileExists(config))
+	if (!mapKey.ImportFromFile(config))
 	{
+		delete mapKey;
 		ThrowError("File %s does not exist", config);
 	}
 	
-	KeyValues mapKey = CreateKeyValues("stages");
-	mapKey.ImportFromFile(config);
-	
 	char section[16], mapKvName[256], mapId[8];
-	
 	for (int i = 0; i <= RF2_GetMaxStages(); i++)
 	{
 		FormatEx(section, sizeof(section), "stage%i", i+1);
@@ -246,7 +258,7 @@ public Action Timer_PlayMusicDelay(Handle timer)
 
 void PlayMusicTrack(int client)
 {
-	if (IsFakeClientEx(client) || !g_bPlayerMusicEnabled[client])
+	if (IsFakeClient(client) || !g_bPlayerMusicEnabled[client])
 		return;
 	
 	StopMusicTrack(client);
@@ -256,9 +268,9 @@ void PlayMusicTrack(int client)
 	{
 		g_flLoopMusicAt[client] = GetEngineTime() + g_flStageBGMDuration;
 	}
-	else if (g_flBGMDuration > 0.0)
+	else if (g_flBossBGMDuration > 0.0)
 	{
-		g_flLoopMusicAt[client] = GetEngineTime() + g_flBGMDuration;
+		g_flLoopMusicAt[client] = GetEngineTime() + g_flBossBGMDuration;
 	}
 	
 	EmitSoundToClient(client, g_szClientBGM[client]);
@@ -268,7 +280,7 @@ void StopMusicTrack(int client)
 {
 	g_flLoopMusicAt[client] = -1.0;
 	
-	if (IsClientInGameEx(client) && !IsFakeClientEx(client))
+	if (IsClientInGame(client) && !IsFakeClient(client))
 	{
 		StopSound(client, SNDCHAN_AUTO, g_szClientBGM[client]);
 	}
@@ -278,7 +290,7 @@ void PlayMusicTrackAll()
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i))
+		if (!IsClientInGame(i))
 			continue;
 			
 		PlayMusicTrack(i);

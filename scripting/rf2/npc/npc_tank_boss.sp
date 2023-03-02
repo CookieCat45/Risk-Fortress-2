@@ -3,22 +3,128 @@
 #endif
 #define _RF2_tank_boss_included
 
-#define PATH_TRACK_START "rf2_tank_start"
-#define ATTACHMENT_LAUNCHER_R "launcherR"
-#define ATTACHMENT_LAUNCHER_L "launcherL"
-
-#define TANK_BASE_CASH_DROP 350.0
-
 #pragma semicolon 1
 #pragma newdecls required
 
+#define MODEL_TANK_BADASS "models/rf2/boss_bots/boss_tank_badass.mdl"
+#define PATH_TRACK_START "rf2_tank_start"
+#define ATT_ROCKET_R "rocket_r"
+#define ATT_ROCKET_L "rocket_l"
+#define ATT_LASER "laser"
+
+#define TANK_BASE_CASH_DROP 350.0
+#define ROCKET_ATTACK_COOLDOWN 2.0
+#define LASER_ATTACK_COOLDOWN 25.0
+#define BARRAGE_ATTACK_COOLDOWN 50.0
+
+#define SND_TANK_LASERSHOOT "rf2/sfx/boss_tank_badass/laser_shoot.wav"
+#define SND_TANK_LASERRISE "weapons/teleporter_build_open2.wav"
+#define SND_TANK_LASERRISE_END "weapons/sentry_upgrading2.wav"
+
+public const char g_szTankLaserVoices[][] =
+{
+	"rf2/sfx/boss_tank_badass/vo_charging_laser1.wav",
+	"rf2/sfx/boss_tank_badass/vo_charging_laser2.wav",
+	"rf2/sfx/boss_tank_badass/vo_charging_laser3.wav",
+	"rf2/sfx/boss_tank_badass/vo_charging_laser4.wav"
+};
+
+public const char g_szTankBarrageVoices[][] =
+{
+	"rf2/sfx/boss_tank_badass/vo_firing_missiles1.wav",
+	"rf2/sfx/boss_tank_badass/vo_firing_missiles2.wav",
+	"rf2/sfx/boss_tank_badass/vo_firing_missiles3.wav",
+	"rf2/sfx/boss_tank_badass/vo_firing_missiles4.wav",
+	"rf2/sfx/boss_tank_badass/vo_firing_missiles5.wav"
+};
+
+
+static int g_iBadassTankModelIndex;
 static bool g_bTankDeploying[MAX_EDICTS];
 static bool g_bTankSpeedBoost[MAX_EDICTS];
+
+enum
+{
+	SPECIAL_NONE,
+	SPECIAL_LASER,
+	SPECIAL_BARRAGE,
+};
+
+void BadassTank_OnMapStart()
+{
+	static bool init;
+	if (!init)
+	{
+		CEntityFactory factory = new CEntityFactory("rf2_tank_boss_badass", BadassTank_OnCreate);
+		factory.DeriveFromClass("tank_boss");
+		factory.BeginDataMapDesc()
+			.DefineFloatField("m_flNextRocketAttackR")
+			.DefineFloatField("m_flNextRocketAttackL")
+			.DefineFloatField("m_flNextLaserAttack")
+			.DefineFloatField("m_flNextBarrageAttack")
+			.DefineIntField("m_iSpecialAttack")
+			.DefineIntField("m_iActualMaxHealth")
+		.EndDataMapDesc();
+		
+		factory.Install();
+		init = true;
+	}
+	
+	g_iBadassTankModelIndex = PrecacheModel(MODEL_TANK_BADASS, true);
+	PrecacheSound(SND_TANK_LASERSHOOT, true);
+	PrecacheSound(SND_TANK_LASERRISE, true);
+	PrecacheSound(SND_TANK_LASERRISE_END, true);
+	
+	AddModelToDownloadsTable(MODEL_TANK_BADASS);
+	AddSoundToDownloadsTable(SND_TANK_LASERSHOOT);
+	
+	for (int i = 0; i < sizeof(g_szTankLaserVoices); i++)
+	{
+		PrecacheSound(g_szTankLaserVoices[i], true);
+		AddSoundToDownloadsTable(g_szTankLaserVoices[i]);
+	}
+
+	for (int i = 0; i < sizeof(g_szTankBarrageVoices); i++)
+	{
+		PrecacheSound(g_szTankBarrageVoices[i], true);
+		AddSoundToDownloadsTable(g_szTankBarrageVoices[i]);
+	}
+}
+
+static void BadassTank_OnCreate(int entity)
+{
+	SetEntProp(entity, Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 0);
+	SetEntProp(entity, Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 1);
+	SetEntProp(entity, Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 2);
+	SetEntProp(entity, Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 3);
+	
+	float gameTime = GetGameTime();
+	SetEntPropFloat(entity, Prop_Data, "m_flNextRocketAttackR", gameTime+ROCKET_ATTACK_COOLDOWN);
+	SetEntPropFloat(entity, Prop_Data, "m_flNextRocketAttackL", gameTime+ROCKET_ATTACK_COOLDOWN*1.5);
+	SetEntPropFloat(entity, Prop_Data, "m_flNextLaserAttack", gameTime+LASER_ATTACK_COOLDOWN);
+	SetEntPropFloat(entity, Prop_Data, "m_flNextBarrageAttack", gameTime+BARRAGE_ATTACK_COOLDOWN);
+	SDKHook(entity, SDKHook_Think, Hook_BadassTankThink);
+	SDKHook(entity, SDKHook_SpawnPost, Hook_BadassTankSpawnPost);
+}
+
+public void Hook_BadassTankSpawnPost(int entity)
+{
+	SetEntityModel(entity, MODEL_TANK_BADASS);
+	
+	// The reason this needs to be done is because Tanks will change their model based on how much damage they have taken
+	// in relation to their max health. Setting their max health to 0 AFTER spawning will prevent this behaviour.
+	// Making our own damaged models would have to be done manually as the default ones are hardcoded.
+	int maxHealth = GetEntProp(entity, Prop_Data, "m_iMaxHealth");
+	SetEntProp(entity, Prop_Data, "m_iActualMaxHealth", maxHealth);
+	SetEntProp(entity, Prop_Data, "m_iMaxHealth", 0);
+	
+	TankBoss_SetSequence(entity, "movement");
+}
 
 void BeginTankDestructionMode()
 {
 	g_iTankKillRequirement = SpawnTanks();
-	RF2_PrintToChatAll("The Tank has arrived. Destroy it, RED Team!");
+	RF2_PrintToChatAll("%t", "TanksHaveArrived");
 	PlayMusicTrackAll();
 	
 	int gamerules = GetRF2GameRules();
@@ -31,7 +137,7 @@ void BeginTankDestructionMode()
 void EndTankDestructionMode()
 {
 	ForceTeamWin(TEAM_SURVIVOR);
-	RF2_PrintToChatAll("{lime}Victory!{default} All Tanks have been destroyed.");
+	RF2_PrintToChatAll("%t", "AllTanksDestroyed");
 	
 	int gamerules = GetRF2GameRules();
 	if (gamerules != INVALID_ENT_REFERENCE)
@@ -42,19 +148,30 @@ void EndTankDestructionMode()
 
 static int SpawnTanks()
 {
+	int subDifficulty = RF2_GetSubDifficulty();
 	int spawnCount = 1;
-	spawnCount += (g_iSubDifficulty > SubDifficulty_Hard) ? g_iSubDifficulty-2 : 0;
+	const int maxTanks = 15;
+	spawnCount += subDifficulty;
+	spawnCount = imin(spawnCount, maxTanks);
 	float time = 15.0;
+	
+	int badassTankCount;
+	if (subDifficulty >= SubDifficulty_Impossible)
+	{
+		badassTankCount += subDifficulty/4;
+	}
 	
 	for (int i = 1; i <= spawnCount; i++)
 	{
+		bool badass = badassTankCount > 0 && spawnCount-i <= badassTankCount;
+		
 		if (i == 1)
 		{
-			CreateTankBoss();
+			CreateTankBoss(badass);
 		}
 		else // delay the rest of the spawns by a bit
 		{
-			CreateTimer(time, Timer_CreateTankBoss, _, TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(time, Timer_CreateTankBoss, badass, TIMER_FLAG_NO_MAPCHANGE);
 			time += 15.0;
 		}
 	}
@@ -62,20 +179,20 @@ static int SpawnTanks()
 	return spawnCount;
 }
 
-public Action Timer_CreateTankBoss(Handle timer)
+public Action Timer_CreateTankBoss(Handle timer, bool badass)
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive || !g_bTankBossMode)
 		return Plugin_Continue;
 		
-	CreateTankBoss();
+	CreateTankBoss(badass);
 	return Plugin_Continue;
 }
 
-static int CreateTankBoss()
+static int CreateTankBoss(bool badass=false)
 {
-	int spawnPoints[8];
+	ArrayList spawnPoints = CreateArray();
 	int tankBoss = -1;
-	int spawn, spawnPointCount;
+	int spawn;
 	int entity = MaxClients+1;
 	char name[32];
 	
@@ -84,60 +201,65 @@ static int CreateTankBoss()
 		GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
 		if (StrContains(name, PATH_TRACK_START) != -1)
 		{
-			spawnPoints[spawnPointCount] = entity;
-			spawnPointCount++;
+			spawnPoints.Push(entity);
 		}
 	}
 	
-	if (spawnPointCount <= 0)
+	if (spawnPoints.Length <= 0)
 	{
+		delete spawnPoints;
 		char mapName[128];
 		GetCurrentMap(mapName, sizeof(mapName));
 		LogError("[CreateTankBoss] Map \"%s\" has no path_track entities named \"%s\"! Tanks cannot be spawned!", mapName, PATH_TRACK_START);
 		return -1;
 	}
 	
+	spawn = spawnPoints.Get(GetRandomInt(0, spawnPoints.Length-1));
+	delete spawnPoints;
+	
 	float pos[3], angles[3];
-	spawn = spawnPoints[GetRandomInt(0, spawnPointCount-1)];
-	GetEntPropVector(spawn, Prop_Data, "m_vecAbsOrigin", pos);
+	GetEntPos(spawn, pos);
 	GetEntPropVector(spawn, Prop_Data, "m_angAbsRotation", angles);
 	angles[0] = 0.0;
 	angles[2] = 0.0;
 	
-	tankBoss = CreateEntityByName("tank_boss");
-	TeleportEntity(tankBoss, pos, angles);
-	DispatchSpawn(tankBoss);
+	if (!badass)
+	{
+		tankBoss = CreateEntityByName("tank_boss");
+	}
+	else
+	{
+		tankBoss = CreateEntityByName("rf2_tank_boss_badass");
+	}
 	
-	int health = RoundToFloor(float(g_cvTankBaseHealth.IntValue) * (1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvTankHealthScale.FloatValue)));
-	float speed = g_cvTankBaseSpeed.FloatValue;
+	int health = RoundToFloor(float(g_cvTankBaseHealth.IntValue) * (1.0 + (float(imin(RF2_GetEnemyLevel()-1, 50)) * g_cvTankHealthScale.FloatValue)));
+	int level = RF2_GetEnemyLevel();
+	if (level >= 50)
+	{
+		health = RoundToFloor(Pow(float(health), 1.0 + (float(level-49) * 0.005)));
+	}
 	
 	SetEntProp(tankBoss, Prop_Data, "m_iHealth", health);
 	SetEntProp(tankBoss, Prop_Data, "m_iMaxHealth", health);
+	float speed = g_cvTankBaseSpeed.FloatValue;
 	SetEntPropFloat(tankBoss, Prop_Data, "m_speed", speed);
+	
+	TeleportEntity(tankBoss, pos, angles);
+	DispatchSpawn(tankBoss);
 	
 	g_bTankDeploying[tankBoss] = false;
 	g_bTankSpeedBoost[tankBoss] = false;
 	SDKHook(tankBoss, SDKHook_Think, Hook_TankBossThink);
 	
-	/*
-	SetEntProp(tankBoss, Prop_Send, "m_nModelIndexOverrides", g_iTankModelIndex, _, 0);
-	SetEntProp(tankBoss, Prop_Send, "m_nModelIndexOverrides", g_iTankModelIndex, _, 1);
-	SetEntProp(tankBoss, Prop_Send, "m_nModelIndexOverrides", g_iTankModelIndex, _, 2);
-	SetEntProp(tankBoss, Prop_Send, "m_nModelIndexOverrides", g_iTankModelIndex, _, 3);
-	SetEntityModel(tankBoss, MODEL_BADASS_TANK);
-	TankBossSetSequence(tankBoss, "movement");
-	
-	SetEntProp(tankBoss, Prop_Data, "m_iMaxHealth", 0);
-	*/
-	
 	g_iTanksSpawned++;
 	
 	int pitch = SNDPITCH_NORMAL;
 	if (g_iTanksSpawned > 1)
+	{
 		pitch = SNDPITCH_HIGH;
+	}
 	
-	EmitSoundToAll(SOUND_BOSS_SPAWN, _, _, _, _, _, pitch);
-	
+	EmitSoundToAll(SND_BOSS_SPAWN, _, _, _, _, _, pitch);
 	return tankBoss;
 }
 
@@ -157,14 +279,14 @@ public void Hook_TankBossThink(int entity)
 		if (!g_bTankSpeedBoost[entity] && value > 1.0 && RF2_GetDifficulty() >= g_cvTankBoostDifficulty.IntValue)
 		{
 			int health = GetEntProp(entity, Prop_Data, "m_iHealth");
-			int maxHealth = GetEntProp(entity, Prop_Data, "m_iMaxHealth");
+			int maxHealth = GetEntProp(entity, Prop_Data, "m_iActualMaxHealth");
 			
 			if (RoundToFloor(float(maxHealth) * g_cvTankBoostHealth.FloatValue) < health)
 			{
 				g_bTankSpeedBoost[entity] = true;
 				float speed = GetEntPropFloat(entity, Prop_Data, "m_speed");
 				SetEntPropFloat(entity, Prop_Data, "m_speed", speed * value);
-				EmitSoundToAll(SOUND_TANK_SPEED_UP, entity);
+				EmitSoundToAll(SND_TANK_SPEED_UP, entity);
 			}
 		}
 	}
@@ -194,7 +316,7 @@ public void Output_OnTankKilled(const char[] output, int caller, int activator, 
 	
 	float totalCash = TANK_BASE_CASH_DROP * (1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvEnemyCashDropScale.FloatValue));
 	float pos[3], ang[3], vel[3];
-	GetEntPropVector(caller, Prop_Data, "m_vecAbsOrigin", pos);
+	GetEntPos(caller, pos);
 	
 	for (int i = 1; i <= 10; i++)
 	{
@@ -213,4 +335,390 @@ public void Output_OnTankKilled(const char[] output, int caller, int activator, 
 	{
 		EndTankDestructionMode();
 	}
+}
+
+// ---------------------------------------------- Badass Tank -----------------------------------------------------------
+
+public void Hook_BadassTankThink(int entity)
+{
+	float gameTime = GetGameTime();
+	int special = GetEntProp(entity, Prop_Data, "m_iSpecialAttack");
+	
+	if (special != SPECIAL_BARRAGE)
+	{
+		float nextRocketAttack[2];
+		nextRocketAttack[0] = GetEntPropFloat(entity, Prop_Data, "m_flNextRocketAttackR");
+		nextRocketAttack[1] = GetEntPropFloat(entity, Prop_Data, "m_flNextRocketAttackL");
+
+		// is it time to fire a rocket?
+		if (gameTime >= nextRocketAttack[0] || gameTime >= nextRocketAttack[1])
+		{
+			char attachmentName[16];
+			attachmentName = gameTime >= nextRocketAttack[0] ? ATT_ROCKET_R : ATT_ROCKET_L;
+			int attachment = LookupEntityAttachment(entity, attachmentName);
+			if (attachment > 0)
+			{
+				float pos[3], angles[3];
+				const float speed = 1100.0;
+				const float damage = 200.0;
+				GetEntityAttachment(entity, attachment, pos, NULL_VECTOR);
+				GetEntPropVector(entity, Prop_Send, "m_angRotation", angles);
+				
+				int rocket = ShootProjectile(entity, "tf_projectile_sentryrocket", pos, angles, speed, damage, -10.0);
+				SetEntityMoveType(rocket, MOVETYPE_FLYGRAVITY);
+				CreateTimer(0.1, Timer_TankRocketFixAngles, EntIndexToEntRef(rocket), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+				EmitSoundToAll(SND_LAW_FIRE, entity, _, _, _, _, _, _, pos);
+
+				float attackRate, nextAttackTime;
+				switch (RF2_GetDifficulty())
+				{
+					case DIFFICULTY_STEEL: attackRate = 0.75;
+					case DIFFICULTY_TITANIUM: attackRate = 0.5;
+					default: attackRate = 1.0;
+				}
+
+				nextAttackTime = ROCKET_ATTACK_COOLDOWN * attackRate;
+				
+				if (strcmp(attachmentName, ATT_ROCKET_L) == 0)
+				{
+					TankBoss_AddGesture(entity, "fire_rocket_l");
+					SetEntPropFloat(entity, Prop_Data, "m_flNextRocketAttackL", gameTime+nextAttackTime*1.5);
+				}
+				else
+				{
+					TankBoss_AddGesture(entity, "fire_rocket_r");
+					SetEntPropFloat(entity, Prop_Data, "m_flNextRocketAttackR", gameTime+nextAttackTime);
+				}
+			}
+		}
+	}
+
+	if (special == SPECIAL_NONE)
+	{
+		// decide our next special attack if we can use one
+		float nextLaserAttack = GetEntPropFloat(entity, Prop_Data, "m_flNextLaserAttack");
+		float nextBarrageAttack = GetEntPropFloat(entity, Prop_Data, "m_flNextBarrageAttack");
+
+		int newSpecial;
+		if (gameTime >= nextLaserAttack || gameTime >= nextBarrageAttack)
+		{
+			// both are ready? decide randomly
+			if (gameTime >= nextLaserAttack && gameTime >= nextBarrageAttack)
+			{
+				newSpecial = GetRandomInt(SPECIAL_LASER, SPECIAL_BARRAGE);
+			}
+			else
+			{
+				newSpecial = gameTime >= nextLaserAttack ? SPECIAL_LASER : SPECIAL_BARRAGE;
+			}
+			
+			// don't waste our special attacks if there are no enemies nearby
+			float pos[3];
+			GetEntPos(entity, pos);
+			pos[2] += 100.0;
+			int team = GetEntProp(entity, Prop_Data, "m_iTeamNum");
+			int enemyTeam = team == TEAM_ENEMY ? TEAM_SURVIVOR : TEAM_ENEMY;
+			
+			if (newSpecial != SPECIAL_NONE 
+			&& (GetNearestPlayer(pos, _, 2000.0, enemyTeam, true) != -1 || GetNearestEntity(pos, "obj_*", _, 2000.0, enemyTeam, true) != -1))
+			{
+				switch (newSpecial)
+				{
+					case SPECIAL_LASER:
+					{
+						special = newSpecial;
+						SetEntProp(entity, Prop_Data, "m_iSpecialAttack", special);
+						TankBoss_AddGesture(entity, "eye_rise", _, _, 0.25);
+						
+						int num = GetRandomInt(0, sizeof(g_szTankLaserVoices)-1);
+						EmitSoundToAll(g_szTankLaserVoices[num], entity, _, 120);
+						EmitSoundToAll(g_szTankLaserVoices[num], entity, _, 120);
+						EmitSoundToAll(SND_TANK_LASERRISE, entity, _, 120);
+					}
+					
+					case SPECIAL_BARRAGE:
+					{
+						// check to make sure there's space above us so we don't blast all of our rockets into the ceiling
+						float endPos[3];
+						const float spaceRequired = 800.0;
+						TR_TraceRayFilter(pos, {-90.0, 0.0, 0.0}, MASK_SOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
+						TR_GetEndPosition(endPos);
+						if (GetVectorDistance(pos, endPos, true) >= sq(spaceRequired))
+						{
+							special = newSpecial;
+							SetEntProp(entity, Prop_Data, "m_iSpecialAttack", special);
+							CBaseAnimatingOverlay(entity).RemoveAllGestures();
+							int num = GetRandomInt(0, sizeof(g_szTankBarrageVoices)-1);
+							EmitSoundToAll(g_szTankBarrageVoices[num], entity, _, 120);
+							EmitSoundToAll(g_szTankBarrageVoices[num], entity, _, 120);
+							EmitSoundToAll(SND_TANK_LASERRISE, entity, _, 120);
+							TankBoss_AddGesture(entity, "rocket_turn_up", _, _, 0.2, 2);
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	switch (special)
+	{
+		case SPECIAL_LASER:
+		{
+			// wait for anim to finish
+			if (!TankBoss_IsPlayingGesture(entity, "eye_rise"))
+			{
+				if (!TankBoss_IsPlayingGesture(entity, "eye_up"))
+				{
+					TankBoss_AddGesture(entity, "eye_up", _, false);
+					
+					float duration;
+					switch (RF2_GetDifficulty())
+					{
+						case DIFFICULTY_STEEL: duration = 12.5;
+						case DIFFICULTY_TITANIUM: duration = 17.0;
+						default: duration = 9.0;
+					}
+					
+					StopSound(entity, SNDCHAN_AUTO, SND_TANK_LASERRISE);
+					EmitSoundToAll(SND_TANK_LASERRISE_END, entity, _, 120);
+					CreateTimer(duration, Timer_EndLaserAttack, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+				}
+				
+				static float nextShot[2048];
+				float tickedTime = GetTickedTime();
+				if (tickedTime >= nextShot[entity])
+				{
+					float pos[3];
+					const float range = 2500.0;
+					int team = GetEntProp(entity, Prop_Data, "m_iTeamNum");
+					int enemyTeam = team == TEAM_ENEMY ? TEAM_SURVIVOR : TEAM_ENEMY;
+					int attachment = LookupEntityAttachment(entity, ATT_LASER);
+					GetEntityAttachment(entity, attachment, pos, NULL_VECTOR);
+					int nearestPlayer = GetNearestPlayer(pos, _, range, enemyTeam, true);
+					int nearestBuilding = GetNearestEntity(pos, "obj_*", _, range, enemyTeam, true);
+					
+					float playerPos[3], buildingPos[3];
+					float playerDist = -1.0;
+					if (nearestPlayer != -1)
+					{
+						GetEntPos(nearestPlayer, playerPos);
+						playerDist = GetVectorDistance(pos, playerPos, true);
+						playerPos[2] += 30.0;
+					}
+					
+					int target;
+					
+					if (nearestPlayer > 0 || nearestBuilding > 0)
+					{
+						// should we target the player, or the building?
+						if (nearestPlayer != -1 && playerDist >= 0.0 && nearestBuilding <= 0 || 
+						(TF2_GetObjectType(nearestBuilding) != TFObject_Sentry || GetEntProp(nearestBuilding, Prop_Send, "m_iUpgradeLevel") == 1))
+						{
+							target = nearestPlayer;
+						}
+						else
+						{
+							target = nearestBuilding;
+						}
+					}
+					
+					if (target > 0)
+					{
+						// Face our target
+						float rot[3], angles[3];
+						GetEntPropVector(entity, Prop_Send, "m_angRotation", rot);
+						
+						if (target == nearestPlayer)
+						{
+							GetVectorAnglesTwoPoints(pos, playerPos, angles);
+						}
+						else
+						{
+							GetVectorAnglesTwoPoints(pos, buildingPos, angles);
+						}
+						
+						int poseParam = CBaseAnimating(entity).LookupPoseParameter("eye_look");
+						const float bound = 180.0;
+						float value = angles[1] * -1.0;
+						value += rot[1];
+						if (value < -bound)
+						{
+							value = bound - (FloatAbs(value) - bound);
+						}
+						else if (value > bound)
+						{
+							value = -value + bound;
+						}
+						
+						//PrintCenterTextAll("%.1f", value);
+						CBaseAnimating(entity).SetPoseParameter(poseParam, value);
+						
+						const float speed = 1250.0;
+						const float damage = 80.0;
+						int laser = ShootProjectile(entity, "tf_projectile_rocket", pos, angles, speed, damage);
+						SetEntityModel(laser, MODEL_INVISIBLE);
+						
+						int particle = CreateEntityByName("info_particle_system");
+						DispatchKeyValue(particle, "effect_name", "drg_cow_rockettrail_fire_blue");
+						TeleportEntity(particle, pos);
+						DispatchSpawn(particle);
+						
+						ActivateEntity(particle);
+						AcceptEntityInput(particle, "Start");
+						SetVariantString("!activator");
+						AcceptEntityInput(particle, "SetParent", laser);
+						
+						EmitSoundToAll(SND_TANK_LASERSHOOT, entity, _, 120);
+						
+						float fireRate = float(GetEntProp(entity, Prop_Data, "m_iHealth")) / float(GetEntProp(entity, Prop_Data, "m_iActualMaxHealth"));
+						fireRate = fmax(fireRate, 0.25);
+						nextShot[entity] = tickedTime + (0.15 * fireRate);
+					}
+				}
+			}
+		}
+		
+		case SPECIAL_BARRAGE:
+		{
+			if (!TankBoss_IsPlayingGesture(entity, "rocket_turn_up"))
+			{
+				if (!TankBoss_IsPlayingGesture(entity, "rocket_up"))
+				{
+					TankBoss_AddGesture(entity, "rocket_up", _, false);
+					StopSound(entity, SNDCHAN_AUTO, SND_TANK_LASERRISE);
+					EmitSoundToAll(SND_TANK_LASERRISE_END, entity, _, 120);
+					
+					// note that this is technically double, as the rockets are fired from both chambers each time
+					int rocketCount = 15;
+					switch (RF2_GetDifficulty())
+					{
+						case DIFFICULTY_STEEL: rocketCount += 5;
+						case DIFFICULTY_TITANIUM: rocketCount += 10;
+					}
+					
+					float time = 0.2;
+					for (int i = 1; i <= rocketCount; i++)
+					{
+						CreateTimer(time, Timer_TankFireHomingRockets, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+						time += 0.2;
+					}
+					
+					CreateTimer(time, Timer_EndBarrageAttack, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+				}
+			}
+		}
+	}
+}
+
+public Action Timer_TankFireHomingRockets(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+		return Plugin_Continue;
+	
+	int attachment[2];
+	float pos[3];
+	attachment[0] = LookupEntityAttachment(entity, ATT_ROCKET_L);
+	attachment[1] = LookupEntityAttachment(entity, ATT_ROCKET_R);
+	
+	for (int i = 0; i <= 1; i++)
+	{
+		GetEntityAttachment(entity, attachment[i], pos, NULL_VECTOR);
+		const float speed = 1000.0;
+		const float damage = 135.0;
+		
+		float angles[3];
+		angles[0] = -90.0;
+		angles[1] = GetRandomFloat(-180.0, 180.0);
+		
+		int rocket = ShootProjectile(entity, "tf_projectile_sentryrocket", pos, angles, speed, damage, -10.0);
+		SetEntityMoveType(rocket, MOVETYPE_FLYGRAVITY);
+		CreateTimer(0.1, Timer_TankRocketFixAngles, EntIndexToEntRef(rocket), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	}
+	
+	EmitSoundToAll(SND_LAW_FIRE, entity);
+	TankBoss_AddGesture(entity, "rocket_shoot_up", _, _, _, 2);
+	return Plugin_Continue;
+}
+
+public Action Timer_EndLaserAttack(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+		return Plugin_Continue;
+
+	SetEntProp(entity, Prop_Data, "m_iSpecialAttack", SPECIAL_NONE);
+	SetEntPropFloat(entity, Prop_Data, "m_flNextLaserAttack", GetGameTime()+LASER_ATTACK_COOLDOWN);
+	CBaseAnimatingOverlay(entity).RemoveAllGestures();
+	return Plugin_Continue;
+}
+
+public Action Timer_EndBarrageAttack(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+		return Plugin_Continue;
+
+	SetEntProp(entity, Prop_Data, "m_iSpecialAttack", SPECIAL_NONE);
+	SetEntPropFloat(entity, Prop_Data, "m_flNextBarrageAttack", GetGameTime()+BARRAGE_ATTACK_COOLDOWN);
+	CBaseAnimatingOverlay(entity).RemoveAllGestures();
+	return Plugin_Continue;
+}
+
+public Action Timer_TankRocketFixAngles(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+		return Plugin_Stop;
+
+	// MOVETYPE_FLYGRAVITY does not update angles on rockets; we do it ourselves
+	float vel[3], angles[3];
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
+	GetVectorAngles(vel, angles);
+	TeleportEntity(entity, _, angles);
+	return Plugin_Continue;
+}
+
+static void TankBoss_SetSequence(int entity, const char[] sequence, float playbackrate=1.0)
+{
+	int seq = CBaseAnimating(entity).LookupSequence(sequence);
+	if (seq != -1)
+	{
+		SetEntProp(entity, Prop_Send, "m_nSequence", seq);
+		SetEntPropFloat(entity, Prop_Send, "m_flPlaybackRate", playbackrate);
+	}
+	else
+	{
+		LogError("[TankBoss_SetSequence] Couldn't find sequence \"%s\".", sequence);
+	}
+}
+
+static float TankBoss_AddGesture(int entity, const char[] sequence, float duration=0.0, bool autokill=true, float playbackrate=1.0, int priority=1)
+{
+	int seq = CBaseAnimating(entity).LookupSequence(sequence);
+	if (seq != -1)
+	{
+		if (duration <= 0.0)
+		{
+			duration = CBaseAnimating(entity).SequenceDuration(seq);
+		}
+
+		int layer = CBaseAnimatingOverlay(entity).AddGestureSequence(seq, duration, autokill);
+		CBaseAnimatingOverlay(entity).SetLayerPlaybackRate(layer, playbackrate);
+		CBaseAnimatingOverlay(entity).SetLayerPriority(layer, priority);
+	}
+	else
+	{
+		LogError("[TankBoss_AddGesture] Couldn't find sequence \"%s\".", sequence);
+	}
+
+	return duration;
+}
+
+static bool TankBoss_IsPlayingGesture(int entity, const char[] sequence)
+{
+	int seq = CBaseAnimating(entity).LookupSequence(sequence);
+	if (seq == -1)
+	{
+		LogError("[TankBoss_IsPlayingGesture] Couldn't find sequence \"%s\".", sequence);
+		return false;
+	}
+
+	return (CBaseAnimatingOverlay(entity).FindGestureLayerBySequence(seq) >= 0);
 }

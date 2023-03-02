@@ -26,19 +26,18 @@ char g_szWeaponStringAttributeValue[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUT
 
 void LoadWeapons()
 {
-	char config[PLATFORM_MAX_PATH], tfClassName[32];
+	KeyValues weaponKey = CreateKeyValues("weapons");
+	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, WeaponConfig);
-	if (!FileExists(config))
+	if (!weaponKey.ImportFromFile(config))
 	{
 		ThrowError("File %s does not exist", config);
 	}
 	
-	KeyValues weaponKey = CreateKeyValues("weapons");
-	weaponKey.ImportFromFile(config);
-	
 	bool firstKey = true;
 	bool firstAttrib = true;
 	int count, strAttribCount;
+	char tfClassName[32];
 	
 	for (int i = 1; i < TF_CLASSES; i++)
 	{
@@ -108,12 +107,12 @@ int g_iStringAttributeClass;
 int g_iStringAttributeWeapon;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
 {
-	bool changed;
+	Action action = Plugin_Continue;
 	
 	if (IsPlayerSurvivor(client))
 	{
-		int class = view_as<int>(TF2_GetPlayerClass(client));
 		int flags;
+		int class = view_as<int>(TF2_GetPlayerClass(client));
 		char buffer[64];
 		IntToString(index, buffer, sizeof(buffer));
 		
@@ -127,13 +126,13 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 				// strip the attributes for this weapon?
 				if (g_bWeaponStripAttributes[class][i])
 				{
-					changed = true;
+					action = Plugin_Changed;
 					flags |= OVERRIDE_ATTRIBUTES;
 					TF2Items_SetNumAttributes(item, 0);
 				}
 				else if (g_bWeaponStaticAttributes[class][i])
 				{
-					changed = true;
+					action = Plugin_Changed;
 					flags |= OVERRIDE_ATTRIBUTES;
 					
 					int attribArray[MAX_ATTRIBUTES];
@@ -155,27 +154,26 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 				
 				if (g_iWeaponIndexReplacement[class][i] >= 0)
 				{
-					changed = true;
+					action = Plugin_Changed;
 					flags |= OVERRIDE_ITEM_DEF;
 					TF2Items_SetItemIndex(item, g_iWeaponIndexReplacement[class][i]);
 				}
 				
 				if (g_szWeaponClassnameReplacement[class][i][0])
 				{
-					changed = true;
+					action = Plugin_Changed;
 					flags |= OVERRIDE_CLASSNAME;
 					TF2Items_SetClassname(item, g_szWeaponClassnameReplacement[class][i]);
 				}
 				
 				if (g_szWeaponAttributes[class][i][0])
 				{
-					changed = true;
+					action = Plugin_Changed;
 					flags |= OVERRIDE_ATTRIBUTES;
 					
-					char attributes[MAX_ATTRIBUTE_STRING_LENGTH];
+					char attributes[MAX_ATTRIBUTE_STRING_LENGTH], attrs[32][32];
 					strcopy(attributes, sizeof(attributes), g_szWeaponAttributes[class][i]);
 					ReplaceString(attributes, MAX_ATTRIBUTE_STRING_LENGTH, " ; ", " = ");
-					char attrs[32][32];
 					int count = ExplodeString(attributes, " = ", attrs, 32, 32, true);
 					
 					if (count > 0)
@@ -219,10 +217,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 		}
 	}
 	
-	if (changed)
-		return Plugin_Changed;
-	else
-		return Plugin_Continue;
+	return action;
 }
 
 public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index, int level, int quality, int entity)
@@ -272,10 +267,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 		int attribCount, attribSlot, staticAttribCount;
 		bool maxAttribs;
 		
-		attribCount = count/2;
-		if (attribCount > MAX_ATTRIBUTES)
-			attribCount = MAX_ATTRIBUTES;
-			
+		attribCount = imin(count/2, MAX_ATTRIBUTES);
 		TF2Items_SetNumAttributes(weapon, attribCount+1);
 		
 		if (staticAttributes)
@@ -286,18 +278,13 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 			
 			if (staticAttribCount > 0)
 			{
-				int totalAttribs = attribCount+staticAttribCount;
-				if (totalAttribs > MAX_ATTRIBUTES)
-					totalAttribs = MAX_ATTRIBUTES;
-				
+				int totalAttribs = imin(attribCount+staticAttribCount, MAX_ATTRIBUTES);
 				TF2Items_SetNumAttributes(weapon, totalAttribs);
 				
 				for (int i = 0; i < staticAttribCount; i++)
 				{
 					if (IsAttributeBlacklisted(attribArray[i]) || attribArray[i] <= 0)
-					{
 						continue;
-					}
 					
 					TF2Items_SetAttribute(weapon, attribSlot, attribArray[i], valueArray[i]);
 					attribSlot++;
@@ -319,7 +306,9 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 			{
 				attrib = StringToInt(attrs[i]);
 				if (IsAttributeBlacklisted(attrib) || attrib <= 0)
+				{
 					continue;
+				}
 				
 				val = StringToFloat(attrs[i+1]);
 				TF2Items_SetAttribute(weapon, attribSlot, attrib, val);
@@ -375,10 +364,10 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 int CreateWearable(int client, const char[] classname, int index, const char[] attributes="", bool staticAttributes=false, bool visible = true, int quality=0, int level=0)
 {
 	int wearable = CreateEntityByName(classname);
-	if (wearable == INVALID_ENT_REFERENCE)
+	if (wearable == -1)
 	{
-		LogError("[CreateWearable] Tried to create a wearable for %N, but it had an invalid classname. (%s)", client, classname);
-		return -1;
+		LogError("[CreateWearable] Tried to create a wearable for %N, but it had an invalid classname: %s", client, classname);
+		return wearable;
 	}
 	
 	SetEntProp(wearable, Prop_Send, "m_iItemDefinitionIndex", index);
@@ -403,13 +392,17 @@ int CreateWearable(int client, const char[] classname, int index, const char[] a
 		{
 			attrib = StringToInt(attrs[n]);
 			if (IsAttributeBlacklisted(attrib) || attrib <= 0)
+			{
 				continue;
+			}
 			
 			val = StringToFloat(attrs[n+1]);
 			
 			totalAttribs++;
 			if (totalAttribs > MAX_ATTRIBUTES)
+			{
 				break;
+			}
 				
 			TF2Attrib_SetByDefIndex(wearable, attrib, val);
 		}
@@ -423,8 +416,7 @@ int CreateWearable(int client, const char[] classname, int index, const char[] a
 			if (staticAttribCount > 0)
 			{
 				totalAttribs += staticAttribCount;
-				if (totalAttribs > MAX_ATTRIBUTES)
-					totalAttribs = MAX_ATTRIBUTES;
+				totalAttribs = imin(totalAttribs, MAX_ATTRIBUTES);
 				
 				for (int i = 0; i < staticAttribCount; i++)
 				{
@@ -456,21 +448,19 @@ int CreateWearable(int client, const char[] classname, int index, const char[] a
 // Remove ALL wearables, including plugin created ones.
 void TF2_RemoveAllWearables(int client)
 {
+	int entity = -1;
 	char classname[64];
-	int entCount = GetEntityCount();
-	
-	for (int i = MaxClients+1; i <= entCount; i++)
+	while ((entity = FindEntityByClassname(entity, "tf_*")) != -1)
 	{
-		if (!IsValidEntity(i))
-			continue;
-			
-		GetEntityClassname(i, classname, sizeof(classname));
-		if (StrContains(classname, "tf_wearable") != -1 || strcmp2(classname, "tf_powerup_bottle"))
+		GetEntityClassname(entity, classname, sizeof(classname));
+		if (StrContains(classname, "tf_wearable") == -1 && !strcmp2(classname, "tf_powerup_bottle"))
 		{
-			if (GetEntPropEnt(i, Prop_Send, "m_hOwnerEntity") == client)
-			{
-				TF2_RemoveWearable(client, i);
-			}
+			continue;
+		}
+		
+		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
+		{
+			TF2_RemoveWearable(client, entity);
 		}
 	}
 }
@@ -478,20 +468,22 @@ void TF2_RemoveAllWearables(int client)
 // Removes any wearables not created by the plugin
 void TF2_RemoveLoadoutWearables(int client)
 {
+	int entity = -1;
 	char classname[64];
-	int entCount = GetEntityCount();
-	for (int i = MaxClients+1; i <= entCount; i++)
+	while ((entity = FindEntityByClassname(entity, "tf_*")) != -1)
 	{
-		if (!IsValidEntity(i) || g_bDontRemoveWearable[i] || g_bItemWearable[i])
+		if (g_bDontRemoveWearable[entity] || g_bItemWearable[entity])
 			continue;
-			
-		GetEntityClassname(i, classname, sizeof(classname));
-		if (StrContains(classname, "tf_wearable") != -1 || strcmp2(classname, "tf_powerup_bottle"))
+		
+		GetEntityClassname(entity, classname, sizeof(classname));
+		if (StrContains(classname, "tf_wearable") == -1 && !strcmp2(classname, "tf_powerup_bottle"))
 		{
-			if (GetEntPropEnt(i, Prop_Send, "m_hOwnerEntity") == client)
-			{
-				TF2_RemoveWearable(client, i);
-			}
+			continue;
+		}
+		
+		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
+		{
+			TF2_RemoveWearable(client, entity);
 		}
 	}
 }
@@ -507,7 +499,7 @@ bool IsAttributeBlacklisted(int id)
 	id == 494 || id == 495 || // last of the kill eater attributes
 	id == 2029 || // "allowed in medieval mode"
 	id == 719 || // "weapon_uses_stattrack_module"
-	id == 731 || // "weapon_allow_inspect" (might remove this one?)
+	id == 731 || // "weapon_allow_inspect"
 	id == 724 || // "weapon_stattrak_module_scale"
 	id == 25 || // "hidden secondary max ammo penalty" (don't need these, players have infinite ammo)
 	id == 37 || // "hidden primary max ammo bonus"
@@ -534,7 +526,9 @@ float GetWeaponProcCoefficient(int weapon)
 int SDK_GetWeaponClipSize(int entity)
 {
 	if (g_hSDKGetMaxClip1)
+	{
 		return SDKCall(g_hSDKGetMaxClip1, entity);
+	}
 		
 	return -1;
 }
@@ -542,7 +536,9 @@ int SDK_GetWeaponClipSize(int entity)
 void SDK_EquipWearable(int client, int entity)
 {
 	if (g_hSDKEquipWearable)
+	{
 		SDKCall(g_hSDKEquipWearable, client, entity);
+	}
 }
 
 public MRESReturn DHook_DoSwingTrace(int entity, DHookReturn returnVal, DHookParam params)

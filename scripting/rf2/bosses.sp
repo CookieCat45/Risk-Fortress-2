@@ -9,7 +9,7 @@
 #define TF_TEAM_PVE_INVADERS_GIANTS 4
 
 int g_iBossCount;
-char g_szLoadedBosses[MAX_BOSSES][MAX_CONFIG_NAME_LENGTH];
+char g_szLoadedBosses[MAX_BOSSES][64];
 
 // General boss data
 int g_iTBossTFClass[MAX_BOSSES];
@@ -25,7 +25,6 @@ float g_flBossHandScale[MAX_BOSSES] = {1.0, ...};
 float g_flBossXPAward[MAX_BOSSES];
 float g_flBossCashAward[MAX_BOSSES];
 
-bool g_bBossIsGiant[MAX_BOSSES];
 bool g_bBossAllowSelfDamage[MAX_BOSSES];
 bool g_bBossFullRage[MAX_BOSSES];
 bool g_bBossNoBleeding[MAX_BOSSES];
@@ -71,20 +70,18 @@ float g_flBossFootstepInterval[MAX_BOSSES] = {0.5, ...};
 
 void LoadBossesFromPack(const char[] config)
 {
-	char path[PLATFORM_MAX_PATH], sectionName[16];
+	KeyValues bossKey = CreateKeyValues("bosses");
+	char path[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, path, sizeof(path), "%s/%s.cfg", ConfigPath, config);
-	
-	if (!FileExists(path))
+	if (!bossKey.ImportFromFile(path))
 	{
-		LogError("[LoadBossesFromPack] Config file %s does not exist, please correct this!", path);
-		return;
+		delete bossKey;
+		ThrowError("File %s does not exist", path);
 	}
 	
-	KeyValues bossKey = CreateKeyValues("bosses");
-	bossKey.ImportFromFile(path);
 	g_iBossCount = 0;
-	
 	bool firstKey;
+	char sectionName[16];
 	
 	for (int boss = g_iBossCount; boss <= g_iBossCount; boss++)
 	{
@@ -104,7 +101,6 @@ void LoadBossesFromPack(const char[] config)
 		bossKey.GetString("name", g_szBossName[boss], sizeof(g_szBossName[]), "Unnamed boss");
 		bossKey.GetString("model", g_szBossModel[boss], sizeof(g_szBossModel[]), "models/player/soldier.mdl");
 		g_flBossModelScale[boss] = bossKey.GetFloat("model_scale", 1.75);
-		g_bBossIsGiant[boss] = bool(bossKey.GetNum("giant", true));
 		g_bBossAllowSelfDamage[boss] = bool(bossKey.GetNum("allow_self_damage", false));
 		
 		g_flBossHeadScale[boss] = bossKey.GetFloat("head_scale", 1.5);
@@ -244,7 +240,7 @@ void SummonTeleporterBosses(int entity)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || GetClientTeam(i) != TEAM_ENEMY)
+		if (g_bPlayerInSpawnQueue[i] || !IsClientInGame(i) || GetClientTeam(i) != TEAM_ENEMY)
 		{
 			bossPoints[i] = -9999999999;
 			continue;
@@ -259,7 +255,7 @@ void SummonTeleporterBosses(int entity)
 		* If you do well, you have a higher chance of becoming the boss, but not always -
 		* to give other players a chance even if they aren't scoring as high as their peers. */
 		
-		if (!IsFakeClientEx(i))
+		if (!IsFakeClient(i))
 		{
 			bossPoints[i] += 250; // Players are prioritized over TFBots, so have a free 250 points.
 			if (GetRandomInt(1, 4) == 1)
@@ -282,18 +278,19 @@ void SummonTeleporterBosses(int entity)
 	SortIntegers(bossPoints, sizeof(bossPoints), Sort_Descending);
 	int highestPoints = bossPoints[0];
 	int count;
-	int bossCount = 1 + ((GetPlayersOnTeam(TEAM_SURVIVOR, true)-1)/2) + ((g_iSubDifficulty-1)/2);
-	if (bossCount < 1)
-		bossCount = 1;
+	int bossCount = 1 + ((GetPlayersOnTeam(TEAM_SURVIVOR, true)-1)/2) + ((RF2_GetSubDifficulty()-1)/2);
+	imax(bossCount, 1);
 	
 	float time;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!valid[i] || g_bPlayerIsTeleporterBoss[i])
+		if (g_bPlayerInSpawnQueue[i] || !valid[i] || g_bPlayerIsTeleporterBoss[i])
 			continue;
 		
 		if (playerPoints[i] == highestPoints)
 		{
+			g_bPlayerInSpawnQueue[i] = true;
+			
 			// don't spawn all the bosses at once, as it will cause client crashes if there are too many
 			DataPack pack;
 			CreateDataTimer(time, Timer_SpawnTeleporterBoss, pack, TIMER_FLAG_NO_MAPCHANGE);
@@ -312,14 +309,15 @@ void SummonTeleporterBosses(int entity)
 		}
 	}
 	
-	EmitSoundToAll(SOUND_BOSS_SPAWN);
+	EmitSoundToAll(SND_BOSS_SPAWN);
 }
 
 public Action Timer_SpawnTeleporterBoss(Handle time, DataPack pack)
 {
 	pack.Reset();
 	int client = GetClientOfUserId(pack.ReadCell());
-	if (client == 0 || !IsClientInGameEx(client))
+	
+	if (client == 0 || !IsClientInGame(client))
 		return Plugin_Continue;
 	
 	int type = pack.ReadCell();
@@ -327,7 +325,7 @@ public Action Timer_SpawnTeleporterBoss(Handle time, DataPack pack)
 	
 	g_bPlayerIsTeleporterBoss[client] = true;
 	float pos[3];
-	GetEntPropVector(spawnEntity, Prop_Data, "m_vecAbsOrigin", pos);
+	GetEntPos(spawnEntity, pos);
 	
 	SpawnBoss(client, type, pos, true);
 	return Plugin_Continue;
@@ -342,7 +340,7 @@ void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	
 	ChangeClientTeam(client, TEAM_ENEMY);
 	
-	if (IsFakeClientEx(client))
+	if (IsFakeClient(client))
 	{
 		switch (RF2_GetDifficulty())
 		{
@@ -372,24 +370,16 @@ void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	float checkPos[3];
 	if (CompareVectors(pos, OFF_THE_MAP))
 	{
-		int teleporter = GetTeleporterEntity();
-		if (teleporter != INVALID_ENT_REFERENCE && GetTeleporterEventState() == TELE_EVENT_ACTIVE)
+		int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
+		if (IsValidClient(randomSurvivor))
 		{
-			GetEntPropVector(teleporter, Prop_Data, "m_vecAbsOrigin", checkPos);
+			GetEntPos(randomSurvivor, checkPos);
 		}
 		else
 		{
-			int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
-			if (IsValidClient(randomSurvivor))
-			{
-				GetClientAbsOrigin(randomSurvivor, checkPos);
-			}
-			else
-			{
-				checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
-				checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
-				checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
-			}
+			checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
+			checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
+			checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
 		}
 	}
 	else
@@ -438,6 +428,8 @@ void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		return;
 	}
 	
+	g_bPlayerInSpawnQueue[client] = false;
+	
 	g_iPlayerBossType[client] = type;
 	g_iPlayerBaseHealth[client] = g_iBossBaseHp[type];
 	g_flPlayerMaxSpeed[client] = g_flBossBaseSpeed[type];
@@ -462,21 +454,14 @@ void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	
 	if (g_szBossConditions[type][0])
 	{
-		char buffer[256];
+		char buffer[256], buffers[16][32];
 		strcopy(buffer, sizeof(buffer), g_szBossConditions[type]);
-		Format(buffer, sizeof(buffer), "%s = a = ", buffer);
 		ReplaceString(buffer, MAX_ATTRIBUTE_STRING_LENGTH, " ; ", " = ");
-		char buffers[16][32];
-		int count = ExplodeString(buffer, " = ", buffers, 16, 32);
+		int count = ExplodeString(buffer, " = ", buffers, sizeof(buffers), sizeof(buffers[]), true);
 		
-		int cond;
-		float duration;
 		for (int i = 0; i <= count+1; i+=2)
 		{
-			cond = StringToInt(buffers[i]);
-			duration = StringToFloat(buffers[i+1]);
-			
-			TF2_AddCondition(client, view_as<TFCond>(cond), duration);
+			TF2_AddCondition(client, view_as<TFCond>(StringToInt(buffers[i])), StringToFloat(buffers[i+1]));
 		}
 	}
 	

@@ -14,16 +14,14 @@ void RefreshClient(int client)
 	g_iPlayerBossType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;
 	g_iPlayerAirDashCounter[client] = 0;
+	g_iPlayerEnemySpawnType[client] = -1;
+	g_iPlayerBossSpawnType[client] = -1;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
-	
 	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
-	g_iPlayerEquipmentItem[client] = Item_Null;
-	g_flPlayerEquipmentItemCooldown[client] = 0.0;
-	
 	g_szObjectiveHud[client] = "";
 	
-	if (IsClientInGameEx(client) && !g_bMapChanging)
+	if (IsClientInGame(client) && !g_bMapChanging)
 	{
 		TF2Attrib_RemoveAll(client);
 		SetEntProp(client, Prop_Send, "m_bGlowEnabled", false);
@@ -41,6 +39,8 @@ void RefreshClient(int client)
 		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
 		g_iPlayerHauntedKeys[client] = 0;
 		g_iPlayerSurvivorIndex[client] = -1;
+		g_iPlayerEquipmentItem[client] = Item_Null;
+		g_flPlayerEquipmentItemCooldown[client] = 0.0;
 		SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
 		
 		// Recalculate our item sharing for other players, assuming the game is still going.
@@ -53,11 +53,11 @@ void RefreshClient(int client)
 	g_TFBot[client].GoalArea = NULL_AREA;
 	g_TFBot[client].ForcedButtons = 0;
 	g_TFBot[client].Flags = 0;
+	g_TFBot[client].Mission = MISSION_NONE;
 	
 	g_TFBot[client].HasBuilt = false;
 	g_TFBot[client].IsBuilding = false;
 	g_TFBot[client].SentryArea = view_as<CTFNavArea>(NULL_AREA);
-	g_TFBot[client].Mission = MISSION_NONE;
 }
 
 public Action Timer_ResetModel(Handle timer, int client)
@@ -82,10 +82,10 @@ int GetPlayersOnTeam(int team, bool alive=false, bool onlyHumans=false)
 	int count;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || GetClientTeam(i) != team)
+		if (!IsClientInGame(i) || GetClientTeam(i) != team)
 			continue;
 			
-		if (alive && !IsPlayerAlive(i) || onlyHumans && IsFakeClientEx(i))
+		if (alive && !IsPlayerAlive(i) || onlyHumans && IsFakeClient(i))
 			continue;
 			
 		count++;
@@ -100,7 +100,7 @@ int GetRandomPlayer(int team = -1, bool alive=true, bool onlyHumans=false)
 	int playerArray[MAXTF2PLAYERS] = {-1, ...};
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGameEx(i) || onlyHumans && IsFakeClientEx(i))
+		if (!IsClientInGame(i) || onlyHumans && IsFakeClient(i))
 			continue;
 			
 		if (alive && !IsPlayerAlive(i) || team >= 0 && GetClientTeam(i) != team)
@@ -113,15 +113,62 @@ int GetRandomPlayer(int team = -1, bool alive=true, bool onlyHumans=false)
 	return playerArray[GetRandomInt(0, count>0 ? count-1 : count)];
 }
 
+int GetNearestPlayer(float pos[3], float minDist=-1.0, float maxDist=-1.0, int team = -1, bool trace=false, bool onlyHumans=false)
+{
+	float playerPos[3];
+	float distance;
+	float nearestDist = -1.0;
+	int nearestPlayer = -1;
+	
+	float minDistSq = sq(minDist);
+	float maxDistSq = sq(maxDist);
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || onlyHumans && IsFakeClient(i))
+			continue;
+			
+		if (team > -1 && GetClientTeam(i) != team)
+			continue;
+			
+		GetEntPos(i, playerPos);
+		if (trace)
+		{
+			pos[2] += 20.0;
+			playerPos[2] += 20.0;
+			TR_TraceRayFilter(playerPos, pos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
+			pos[2] -= 20.0;
+			playerPos[2] -= 20.0;
+			
+			if (TR_DidHit())
+			{
+				continue;
+			}
+		}
+		
+		distance = GetVectorDistance(pos, playerPos, true);
+		if ((minDist <= 0.0 || distance >= minDistSq) && (maxDist <= 0.0 || distance <= maxDistSq))
+		{
+			if (distance < nearestDist || nearestDist == -1.0)
+			{
+				nearestPlayer = i;
+				nearestDist = distance;
+			}
+		}
+	}
+	
+	return nearestPlayer;
+}
+
 int GetTotalHumans(bool inGameOnly=true)
 {
 	int count;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsFakeClientEx(i))
+		if (!IsClientConnected(i) || IsFakeClient(i))
 			continue;
 			
-		if (!inGameOnly || IsClientInGameEx(i))
+		if (!inGameOnly || IsClientInGame(i))
 		{
 			count++;
 		}
@@ -330,13 +377,14 @@ void PrintDeathMessage(int client)
 int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=false)
 {
 	int oldMaxHealth = RF2_GetCalculatedMaxHealth(client);
-	int maxHealth = 1;
-	int level = GetPlayerLevel(client);
-	float healthScale = IsPlayerSurvivor(client) ? g_cvSurvivorHealthScale.FloatValue : g_cvEnemyHealthScale.FloatValue;
-	healthScale *= float(level-1);
-	healthScale += 1.0;
+	float healthScale = GetPlayerHealthMult(client);
+	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * healthScale);
 	
-	maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * healthScale);
+	// Bosses have less health in single player, to avoid overly long fights
+	if (IsSingleplayer(false) && GetPlayerBossType(client) >= 0)
+	{
+		maxHealth = RoundToFloor(float(maxHealth) * 0.75);
+	}
 	
 	int fakeHealth;
 	if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
@@ -358,7 +406,6 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_ClassCrown, 0))) - maxHealth;
 	}
 	
-	// Make sure our attribute wearable exists.
 	int classMaxHealth = TF2_GetClassMaxHealth(TF2_GetPlayerClass(client));
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
@@ -413,13 +460,12 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 
 	int attributeMaxHealth = TF2Attrib_HookValueInt(0, "add_maxhealth", client);
 	Address attrib = TF2Attrib_GetByDefIndex(client, 26);
-	if (attrib != Address_Null)
+	if (attrib)
 	{
 		attributeMaxHealth -= RoundToFloor(TF2Attrib_GetValue(attrib));
 	}
 	
 	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth)); // "max health additive bonus"
-	TF2Attrib_SetByDefIndex(client, 70, healthScale); // "health from healers increased"
 	g_iPlayerCalculatedMaxHealth[client] = maxHealth + fakeHealth + attributeMaxHealth;
 	
 	if (fullHeal)
@@ -438,19 +484,14 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 float CalculatePlayerMaxSpeed(int client)
 {
 	float speed = g_flPlayerMaxSpeed[client];
-	float originalSpeed = speed;
 	float classMaxSpeed = TF2_GetClassMaxSpeed(TF2_GetPlayerClass(client));
-	if (speed < classMaxSpeed)
-	{
-		speed *= speed / classMaxSpeed;
-	}
 	
 	if (PlayerHasItem(client, Item_RobinWalkers))
 	{
 		speed *= 1.0 + CalcItemMod(client, Item_RobinWalkers, 0);
 	}
 	
-	float mult = originalSpeed < classMaxSpeed ? classMaxSpeed / speed : speed / classMaxSpeed;
+	float mult = speed / classMaxSpeed;
 	TF2Attrib_SetByDefIndex(client, 107, mult); // "move speed bonus"
 	TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.00001); // hack to force game to update our speed
 	
@@ -458,21 +499,27 @@ float CalculatePlayerMaxSpeed(int client)
 	return speed;
 }
 
-float CalculatePlayerKnockbackResist(int client)
+void CalculatePlayerMiscStats(int client)
 {
-	float value = 1.0 / (1.0 + (float(GetPlayerLevel(client)-1) * g_cvEnemyDamageScale.FloatValue));
-	if (!IsPlayerSurvivor(client))
+	// Knockback resistance
+	if (GetPlayerBossType(client) < 0)
 	{
-		value *= 0.5;
+		float kbRes = 1.0 / GetEnemyDamageMult();
+		if (IsPlayerSurvivor(client))
+		{
+			kbRes *= 0.75; // Survivors get a bit more
+		}
+		
+		TF2Attrib_SetByDefIndex(client, 252, kbRes); // "damage force reduction"
 	}
 	
-	TF2Attrib_SetByDefIndex(client, 252, value); // "damage force reduction"
-	
-	return value;
+	// Rage
+	float value = 1.0 / GetPlayerDamageMult(client);
+	TF2Attrib_SetByDefIndex(client, 478, value); // "rage giving scale"
 }
 
-// Attributes are NOT included!
-float GetPlayerFireRateMod(int client)
+// Attributes are NOT included! This is for items.
+float GetPlayerFireRateMod(int client, int weapon=-1)
 {
 	float multiplier = 1.0;
 	
@@ -484,6 +531,17 @@ float GetPlayerFireRateMod(int client)
 	if (PlayerHasItem(client, Item_PointAndShoot) && g_iPlayerFireRateStacks[client] > 0)
 	{
 		multiplier *= (1.0 / (1.0 + (float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1))));
+	}
+	
+	if (multiplier < 1.0 && weapon > 0)
+	{
+		static char classname[32];
+		GetEntityClassname(weapon, classname, sizeof(classname));
+		if (strcmp2(classname, "tf_weapon_minigun"))
+		{
+			const float penalty = 0.5;
+			multiplier = Pow(multiplier, penalty);
+		}
 	}
 	
 	return multiplier;
@@ -561,7 +619,9 @@ void TF2_GetClassString(TFClassType class, char[] buffer, int size, bool underSc
 	}
 	
 	if (underScore)
+	{
 		Format(buffer, size, "%s_", buffer);
+	}
 		
 	if (capitalize)
 	{
@@ -605,10 +665,11 @@ bool IsPlayerAFK(int client)
 
 void ResetAFKTime(int client)
 {
-	if (!g_bMapChanging && IsPlayerAFK(client))
+	if (IsClientInGame(client) && IsPlayerAFK(client))
 	{
-		PrintCenterText(client, "You are no longer marked as AFK.");
-		if (!IsPlayerAlive(client))
+		PrintCenterText(client, "%t", "NoLongerAFK");
+		
+		if (g_bRoundActive && !IsPlayerAlive(client))
 		{
 			ChangeClientTeam(client, TEAM_ENEMY);
 		}
@@ -625,17 +686,27 @@ void OnPlayerEnterAFK(int client)
 
 bool IsValidClient(int client)
 {
-	return (client > 0 && client <= MaxClients && IsClientInGameEx(client));
+	return (client > 0 && client <= MaxClients && IsClientInGame(client));
 }
 
-bool IsClientInGameEx(int client)
+float GetPlayerHealthMult(int client)
 {
-	return g_bPlayerInGame[client];
+	if (IsPlayerSurvivor(client))
+	{
+		return 1.0 + (float(GetPlayerLevel(client)-1) * g_cvSurvivorHealthScale.FloatValue);
+	}
+	
+	return GetEnemyHealthMult();
 }
 
-bool IsFakeClientEx(int client)
+float GetPlayerDamageMult(int client)
 {
-	return g_bPlayerFakeClient[client];
+	if (IsPlayerSurvivor(client))
+	{
+		return 1.0 + (float(GetPlayerLevel(client)-1) * g_cvSurvivorDamageScale.FloatValue);
+	}
+	
+	return GetEnemyDamageMult();
 }
 
 public bool TraceFilter_PlayerTeam(int entity, int mask, int team)

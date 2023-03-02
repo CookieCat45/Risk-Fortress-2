@@ -1,5 +1,5 @@
 /**
- * This file is for any non-NPC entity factories
+ * This file is for any non-NPC entity factories ONLY.
  *
  */
 #if defined _RF2_entityfactory_included
@@ -7,9 +7,12 @@
 #endif
 #define _RF2_entityfactory_included
 
-#define MODEL_TELEPORTER "models/rf2_models/objects/teleporter.mdl"
-#define MODEL_TELEPORTER_RADIUS "models/rf2_models/objects/teleporter_radius.mdl"
-#define MODEL_CRATE "models/rf2_models/objects/crate.mdl"
+#pragma semicolon 1
+#pragma newdecls required
+
+#define MODEL_TELEPORTER "models/rf2/objects/teleporter.mdl"
+#define MODEL_TELEPORTER_RADIUS "models/rf2/objects/teleporter_radius.mdl"
+#define MODEL_CRATE "models/rf2/objects/crate.mdl"
 #define MODEL_CRATE_STRANGE "models/props_hydro/water_barrel.mdl"
 #define MODEL_CRATE_HAUNTED "models/player/items/crafting/halloween2015_case.mdl"
 #define MODEL_KEY_HAUNTED "models/crafting/halloween2015_gargoyle_key.mdl"
@@ -60,7 +63,7 @@ void InstallEntities()
 	factory = new CEntityFactory("rf2_item", Item_OnCreate);
 	factory.DeriveFromClass("env_sprite");
 	factory.BeginDataMapDesc()
-		.DefineIntField("m_iIndex")
+		.DefineIntField("m_iIndex", _, "type")
 		.DefineBoolField("m_bDropped")
 		.DefineEntityField("m_hSpawner")
 		.DefineEntityField("m_hSubject")
@@ -95,8 +98,8 @@ public void CEntityFactory_OnInstalled(const char[] classname, CEntityFactory in
 		factory = new CEntityFactory("rf2_object_workbench", Workbench_OnCreate, Workbench_OnDestroy);
 		factory.DeriveFromFactory(installedFactory);
 		factory.BeginDataMapDesc()
-			.DefineIntField("m_iItem")
-			.DefineIntField("m_iQuality")
+			.DefineIntField("m_iItem", _, "type")
+			.DefineIntField("m_iQuality", _, "quality")
 			.DefineEntityField("m_hDisplaySprite")
 		.EndDataMapDesc();
 		factory.Install();
@@ -138,10 +141,10 @@ void PrecacheFactoryAssets()
 	
 	AddModelToDownloadsTable(MODEL_TELEPORTER);
 	AddModelToDownloadsTable(MODEL_TELEPORTER_RADIUS);
-	AddMaterialToDownloadsTable("materials/rf2_materials/objects/matteleporterclean");
-	AddMaterialToDownloadsTable("materials/rf2_materials/objects/teleporterbumpmap");
-	AddMaterialToDownloadsTable("materials/rf2_materials/objects/teleporterlightmap");
-	AddMaterialToDownloadsTable("materials/rf2_materials/objects/sphere_1");
+	AddMaterialToDownloadsTable("materials/rf2/objects/matteleporterclean");
+	AddMaterialToDownloadsTable("materials/rf2/objects/teleporterbumpmap");
+	AddMaterialToDownloadsTable("materials/rf2/objects/teleporterlightmap");
+	AddMaterialToDownloadsTable("materials/rf2/objects/sphere_1");
 }
 
 int GetRF2GameRules()
@@ -284,7 +287,8 @@ static void CrateHaunted_OnCreate(int entity)
 		SetEntityModel(entity, MODEL_CRATE_HAUNTED);
 	}
 	
-	SetEntProp(entity, Prop_Data, "m_iItem", GetRandomItem(_, _, _, 2, _, 1));
+	int item = GetRandomItem(_, _, _, 1, _, 1);
+	SetEntProp(entity, Prop_Data, "m_iItem", item);
 }
 
 static void CrateCollector_OnCreate(int entity) // our item is decided when we're opened
@@ -335,7 +339,7 @@ public void Hook_WorkbenchSpawnPost(int entity)
 	DispatchKeyValueInt(sprite, "rendermode", 9);
 	
 	float pos[3];
-	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
+	GetEntPos(entity, pos);
 	pos[2] += 50.0;
 	TeleportEntity(sprite, pos);
 	DispatchSpawn(sprite);
