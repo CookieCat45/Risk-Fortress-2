@@ -1,0 +1,132 @@
+"Games"
+{
+	"tf"
+	{
+		"Offsets"
+		{
+			"CBasePlayer::EquipWearable"
+			{
+				"linux"		"439"
+				"windows"	"438"
+			}
+			"CBaseObject::StartUpgrading"
+			{
+				"linux"		"384"
+				"windows"	"383"
+			}
+			"CBaseEntity::TakeHealth"
+			{
+				"linux"		"67"
+				"windows"	"66"
+			}
+		}
+		"Signatures"
+		{
+			"CTFWeaponBase::GetMaxClip1"
+			{
+				"linux"		"@_ZNK13CTFWeaponBase11GetMaxClip1Ev"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x08\x56\x8B\xF1\x8B\x06\x8B\x80\x2A\x06\x00\x00"
+			}
+			"CTFWeaponBaseMelee::DoSwingTraceInternal"
+			{
+    			"linux"		"@_ZN18CTFWeaponBaseMelee20DoSwingTraceInternalER10CGameTracebP10CUtlVectorIS0_10CUtlMemoryIS0_iEE"
+				"windows"	"\x53\x8B\xDC\x83\xEC\x08\x83\xE4\xF0\x83\xC4\x04\x55\x8B\x6B\x04\x89\x6C\x24\x04\x8B\xEC\x81\xEC\x38\x05\x00\x00\xA1\x2A\x2A\x2A\x2A"
+			}
+			"CTFPlayer::CanBuild"
+			{
+				"linux"		"@_ZN9CTFPlayer8CanBuildEii"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x0C\x53\x8B\x5D\x08\x57\x8B\xF9\x83\xFB\x03"
+			}
+			"CBaseObject::DoQuickBuild"
+			{
+				"linux"		"@_ZN11CBaseObject12DoQuickBuildEb"
+				"windows"	"\x55\x8B\xEC\x53\x56\x57\x8B\xF9\x80\xBF\x2A\x2A\x00\x00\x00\x74\x08\x8B\x07"
+			}
+			"CObjectSentrygun::Attack"
+			{
+				"linux"		"@_ZN16CObjectSentrygun6AttackEv"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x34\x56\x8B\xF1\x8B\x06\xFF\x90\x2A\x2A\x2A\x2A\x8B\xCE"
+			}
+			"CTFNavMesh::ComputeIncursionDistances" // CTFNavArea *spawnArea, int team
+			{
+				"linux"		"@_ZN10CTFNavMesh25ComputeIncursionDistancesEP10CTFNavAreai"
+				"windows"	"\x55\x8B\xEC\x81\xEC\x2C\x01\x00\x00\x56\x8B\x75\x08\x85\xF6\x0F\x84\x2A\x2A\x2A\x2A\x53"
+			}
+		}
+		
+		"Functions"
+        {
+			"CTFWeaponBaseMelee::DoSwingTraceInternal"
+			{
+				"signature"	"CTFWeaponBaseMelee::DoSwingTraceInternal"
+				"callconv"	"thiscall"
+				"return"	"bool"
+				"this"		"entity"
+				
+				"arguments"
+				{
+					"trace"
+					{
+						"type"	"objectptr"
+					}
+					"cleave"
+					{
+						"type"	"bool"
+					}
+					"targetvector"
+					{
+						"type"	"vectorptr"
+					}
+				}
+			}
+			
+			"CTFPlayer::CanBuild"
+            {
+                "signature"  	"CTFPlayer::CanBuild"
+                "callconv"  	"thiscall"
+                "return"  		"int"
+                "this"  		"entity"
+				
+                "arguments"
+                {
+                    "type"
+                    {
+						"type"    "int"
+                    }
+                    "mode"
+                    {
+                        "type"    "int"
+                    }
+                }
+            }
+			
+			"CObjectSentrygun::Attack"
+			{
+				"signature" "CObjectSentrygun::Attack"
+				"callconv"	"thiscall"
+				"return"	"void"
+				"this"		"entity"
+			}
+			
+			"CTFNavMesh::ComputeIncursionDistances"
+            {
+                "signature"  	"CTFNavMesh::ComputeIncursionDistances"
+                "callconv"  	"thiscall"
+                "return"  		"void"
+                "this"  		"address"
+				
+                "arguments"
+                {
+                    "area"
+                    {
+						"type"    "int"
+                    }
+                    "team"
+                    {
+                        "type"    "int"
+                    }
+                }
+            }
+        }
+	}
+}
