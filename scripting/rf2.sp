@@ -435,7 +435,6 @@ Handle g_hDifficultyTimer;
 Handle g_hSDKEquipWearable;
 Handle g_hSDKGetMaxClip1;
 Handle g_hSDKDoQuickBuild;
-Handle g_hSDKComputeIncursion;
 DHookSetup g_hSDKCanBuild;
 DHookSetup g_hSDKComputeIncursionHook;
 DHookSetup g_hSDKDoSwingTrace;
@@ -677,16 +676,6 @@ void LoadGameData()
 	}
 	
 	// CTFNavMesh::ComputeIncursionDistances -------------------------------------------------------------------------------------------------
-	StartPrepSDKCall(SDKCall_Raw);
-	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFNavMesh::ComputeIncursionDistances");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	g_hSDKComputeIncursion = EndPrepSDKCall();
-	if (!g_hSDKComputeIncursion)
-	{
-		LogError("[SDK] Failed to create call for CTFNavMesh::ComputeIncursionDistances");
-	}
-	
 	g_hSDKComputeIncursionHook = DHookCreateFromConf(gamedata, "CTFNavMesh::ComputeIncursionDistances");
 	if (!g_hSDKComputeIncursionHook || !DHookEnableDetour(g_hSDKComputeIncursionHook, false, DHook_ComputeIncursionDistances))
 	{
@@ -1246,8 +1235,6 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 		ReloadPlugin(true);
 		return Plugin_Continue;
 	}
-
-	SDK_ComputeIncursionDistances();
 	
 	if (!g_bGameInitialized)
 	{

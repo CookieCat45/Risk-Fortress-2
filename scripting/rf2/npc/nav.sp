@@ -6,8 +6,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static bool g_bDisableIncursionHook;
-
 /**
  * A function designed to find a valid random spawn point on the map for players, NPCs, objects, and whatever else.
  * @param pos					Position to start searching for spawn points.
@@ -182,60 +180,64 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 	return area;
 }
 
-void SDK_ComputeIncursionDistances()
+CNavArea GetIncursionArea(TFTeam team)
 {
-	if (!g_hSDKComputeIncursion)
-		return;
-	
 	int entity = -1;
 	float pos[3];
-	CNavArea redArea, blueArea;
+	CNavArea area;
 	
 	// Method A: rf2_bot_incursion_point
-	while ((!redArea || !blueArea) && (entity = FindEntityByClassname(entity, "rf2_bot_incursion_point")) != -1)
+	while (!area && (entity = FindEntityByClassname(entity, "rf2_bot_incursion_point")) != -1)
 	{
-		switch (view_as<TFTeam>(GetEntProp(entity, Prop_Send, "m_iTeamNum")))
+		if (view_as<TFTeam>(GetEntProp(entity, Prop_Send, "m_iTeamNum")) == team)
 		{
-			case TFTeam_Red:  if (!redArea) redArea = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
-			case TFTeam_Blue: if (!blueArea) blueArea = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
+			GetEntPos(entity, pos);
+			area = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
 		}
 	}
 	
 	entity = -1;
-	// Method B: respawnrooms
-	while ((!redArea || !blueArea) && (entity = FindEntityByClassname(entity, "func_respawnroom")) != -1)
+	// Method B: respawnrooms (disable them anyway even if we already found our area)
+	while ((entity = FindEntityByClassname(entity, "func_respawnroom")) != -1)
 	{
-		GetEntPos(entity, pos);
-		
-		switch (view_as<TFTeam>(GetEntProp(entity, Prop_Send, "m_iTeamNum")))
+		if (!area && view_as<TFTeam>(GetEntProp(entity, Prop_Send, "m_iTeamNum")) == team)
 		{
-			case TFTeam_Red:  if (!redArea) redArea = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
-			case TFTeam_Blue: if (!blueArea) blueArea = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
+			GetEntPos(entity, pos);
+			area = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
 		}
+		
+		AcceptEntityInput(entity, "Disable");
 	}
 	
-	g_bDisableIncursionHook = true;
-	if (redArea) SDKCall(g_hSDKComputeIncursion, TheNavMesh.Address, redArea, TFTeam_Red);
-	if (blueArea) SDKCall(g_hSDKComputeIncursion, TheNavMesh.Address, blueArea, TFTeam_Blue);
-	g_bDisableIncursionHook = false;
-	
-	if (!redArea)
+	if (!area)
 	{
-		LogError("[GetIncursionAreas] Could not locate incursion area for Red team. Bots may perform poorly.");
+		char teamName[8];
+		switch (team)
+		{
+			case TFTeam_Red: teamName = "RED";
+			case TFTeam_Blue: teamName = "BLU";
+		}
+		
+		LogError("[GetIncursionAreas] Could not locate incursion point for %s team. Bots may perform poorly.", teamName);
 	}
-	
-	if (!blueArea)
-	{
-		LogError("[GetIncursionAreas] Could not locate incursion area for Blue team. Bots may perform poorly.");
-	}
+
+	return area;
 }
 
 public MRESReturn DHook_ComputeIncursionDistances(Address navMesh, Handle params)
 {
-	if (g_bDisableIncursionHook) // SDKCall
+	if (!RF2_IsEnabled())
 		return MRES_Ignored;
 	
-	return MRES_Supercede;
+	CNavArea area = GetIncursionArea(view_as<TFTeam>(DHookGetParam(params, 2)));
+	
+	if (area)
+	{
+		DHookSetParam(params, 1, area);
+		return MRES_ChangedHandled;
+	}
+	
+	return MRES_Ignored;
 }
 
 public bool TraceFilter_SpawnCheck(int entity, int mask, int team)

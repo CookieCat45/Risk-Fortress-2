@@ -113,7 +113,7 @@ enum
 };
 
 /**
- * Is RF2 enabled?
+ * Returns whether or not RF2 is currently enabled.
  *
  * @return		True if RF2 is enabled, false otherwise.
  */
