@@ -241,7 +241,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	int item;
 	if (strcmp2(classname, "rf2_object_crate_collector"))
 	{
-		item = GetRandomCollectorItem(view_as<int>(TF2_GetPlayerClass(attacker)));
+		item = GetRandomCollectorItem(TF2_GetPlayerClass(attacker));
 	}
 	else
 	{

@@ -287,7 +287,7 @@ static void CrateHaunted_OnCreate(int entity)
 		SetEntityModel(entity, MODEL_CRATE_HAUNTED);
 	}
 	
-	int item = GetRandomItem(_, _, _, 1, _, 1);
+	int item = GetRandomItem(_, _, _, 1);
 	SetEntProp(entity, Prop_Data, "m_iItem", item);
 }
 

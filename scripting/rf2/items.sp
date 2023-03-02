@@ -186,14 +186,14 @@ bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
 }
 
 int GetRandomItem(int normalWeight=0, int genuineWeight=0, 
-int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, int hauntedStrangeWeight=0)
+int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, bool allowHauntedStrange=true)
 {
 	ArrayList array = CreateArray();
 	int quality, count, item;
 	
 	for (int i = 0; i < Quality_MaxValid; i++)
 	{
-		if (i == Quality_Collectors)
+		if (i == Quality_Collectors || i == Quality_HauntedStrange)
 			continue;
 		
 		switch (i)
@@ -203,7 +203,6 @@ int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, int hauntedStrang
 			case Quality_Unusual: count = unusualWeight;
 			case Quality_Haunted: count = hauntedWeight;
 			case Quality_Strange: count = strangeWeight;
-			case Quality_HauntedStrange: count = hauntedStrangeWeight;
 		}
 		
 		if (count <= 0)
@@ -220,8 +219,9 @@ int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, int hauntedStrang
 	{
 		if (!g_bItemInDropPool[i] || GetItemQuality(i) == Quality_Collectors)
 			continue;
-
-		if (GetItemQuality(i) == quality)
+		
+		if (GetItemQuality(i) == quality 
+		|| quality == Quality_Haunted && allowHauntedStrange && GetItemQuality(i) == Quality_HauntedStrange)
 		{
 			array.Push(i);
 		}
@@ -271,7 +271,7 @@ int GetRandomItemEx(int quality)
 	return item;
 }
 
-int GetRandomCollectorItem(int class)
+int GetRandomCollectorItem(TFClassType class)
 {
 	ArrayList array = CreateArray();
 	int item;
@@ -302,14 +302,14 @@ int GetRandomCollectorItem(int class)
 	return item;
 }
 
-int GetCollectorItemClass(int item)
+TFClassType GetCollectorItemClass(int item)
 {
-	return g_iCollectorItemClass[item];
+	return view_as<TFClassType>(g_iCollectorItemClass[item]);
 }
 
 bool CanUseCollectorItem(int client, int item)
 {
-	return (view_as<int>(TF2_GetPlayerClass(client)) == GetCollectorItemClass(item));
+	return TF2_GetPlayerClass(client) == GetCollectorItemClass(item);
 }
 
 int SpawnItem(int index, const float pos[3], int spawner=-1, float ownTime=8.0)
