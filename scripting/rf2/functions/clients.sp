@@ -479,8 +479,66 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		attributeMaxHealth -= RoundToFloor(TF2Attrib_GetValue(attrib));
 	}
 	
+	// Handle mannpower runes that affect max health
+	int runeHealth;
+	if (TF2_IsPlayerInConditionEx(client, TFCond_HasRune))
+	{
+		if (TF2_IsPlayerInConditionEx(client, TFCond_RuneKnockout))
+		{
+			switch (TF2_GetPlayerClass(client))
+			{
+				case TFClass_Scout, TFClass_Engineer, TFClass_Sniper, TFClass_Spy: runeHealth += 175;
+				case TFClass_Soldier, TFClass_Medic: runeHealth += 150;
+				case TFClass_Pyro, TFClass_Heavy: runeHealth += 125;
+				
+				// Demo is handled much differently
+				case TFClass_DemoMan:
+				{
+					if (TF2_PlayerHasShieldEquipped(client))
+					{
+						int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
+						if (melee > -1)
+						{
+							int index = GetEntProp(melee, Prop_Send, "m_iItemDefinitionIndex");
+							
+							// Eyelander/Katana when equipped reduce health bonus to 20; with a shield and without these weapons 30, otherwise 150
+							if (index == 482 || index == 132 || index == 266 || index == 357 || index == 1082)
+							{
+								runeHealth += 20;
+							}
+							else
+							{
+								runeHealth += 30;
+							}
+						}
+						else
+						{
+							runeHealth += 30;
+						}
+					}
+					else
+					{
+						runeHealth += 150;
+					}
+				}
+			}
+		}
+		else if (TF2_IsPlayerInConditionEx(client, TFCond_KingRune))
+		{
+			runeHealth += 100;
+		}
+		else if (TF2_IsPlayerInConditionEx(client, TFCond_RuneVampire))
+		{
+			runeHealth += 80;
+		}
+		else if (TF2_IsPlayerInConditionEx(client, TFCond_RuneWarlock))
+		{
+			runeHealth += 400 - classMaxHealth; // Increases max health to 400 regardless of class
+		}
+	}
+	
 	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth)); // "max health additive bonus"
-	g_iPlayerCalculatedMaxHealth[client] = maxHealth + fakeHealth + attributeMaxHealth;
+	g_iPlayerCalculatedMaxHealth[client] = maxHealth + fakeHealth + attributeMaxHealth + runeHealth;
 	
 	if (fullHeal)
 	{
@@ -507,10 +565,10 @@ float CalculatePlayerMaxSpeed(int client)
 	
 	float mult = speed / classMaxSpeed;
 	TF2Attrib_SetByDefIndex(client, 107, mult); // "move speed bonus"
-	TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.00001); // hack to force game to update our speed
+	TF2_AddCondition(client, TFCond_DisguisedAsDispenser, 0.00001); // hack to force game to update our speed
+	TF2_RemoveCondition(client, TFCond_DisguisedAsDispenser);
 	
-	g_flPlayerCalculatedMaxSpeed[client] = speed;
-	return speed;
+	return GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
 }
 
 void CalculatePlayerMiscStats(int client)
@@ -664,6 +722,18 @@ int TF2_GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectTyp
 	}
 	
 	return count;
+}
+
+bool TF2_PlayerHasShieldEquipped(int client)
+{
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "tf_wearable_demoshield")) != -1)
+	{
+		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
+			return true;
+	}
+
+	return false;
 }
 
 // Use this over TF2_IsPlayerInCondition().

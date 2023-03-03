@@ -477,7 +477,7 @@ bool IsPlayerSurvivor(int client)
 	return (RF2_GetSurvivorIndex(client) > -1);
 }
 
-bool IsSingleplayer(bool humanCheck=true)
+bool IsSingleplayer(bool fullCheck=true)
 {
-	return g_iSurvivorCount == 1 || humanCheck && GetTotalHumans() == 1;
+	return g_iSurvivorCount == 1 || fullCheck && GetTotalHumans() == 1;
 }

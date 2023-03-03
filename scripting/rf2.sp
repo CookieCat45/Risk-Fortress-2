@@ -425,7 +425,6 @@ int g_iItemDamageProc[MAX_EDICTS];
 int g_iCashBombSize[MAX_EDICTS];
 
 bool g_bDontDamageOwner[MAX_EDICTS];
-bool g_bPyromancerFireball[MAX_EDICTS];
 bool g_bCashBomb[MAX_EDICTS];
 bool g_bFiredWhileRocketJumping[MAX_EDICTS];
 bool g_bDontRemoveWearable[MAX_EDICTS];
@@ -1107,7 +1106,7 @@ public void OnClientPutInServer(int client)
 		SDKHook(client, SDKHook_PreThink, Hook_PreThink);
 		SDKHook(client, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamageAlive);
 		SDKHook(client, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
-		SDKHook(client, SDKHook_WeaponSwitch, Hook_WeaponSwitch);
+		SDKHook(client, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
 		DHookEntity(g_hSDKTakeHealth, false, client);
 		
 		g_hPlayerExtraSentryList[client] = CreateArray();
@@ -2982,10 +2981,10 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 {
 	if (condition == TFCond_Dazed)
 	{
-		int stunFlags = GetEntProp(client, Prop_Send, "m_iStunFlags");
 		if (!RF2_CanBeStunned(client))
 		{
-			if (stunFlags & TF_STUNFLAGS_SMALLBONK || stunFlags & TF_STUNFLAGS_GHOSTSCARE || stunFlags & TF_STUNFLAGS_BIGBONK)
+			int stunFlags = GetEntProp(client, Prop_Send, "m_iStunFlags");
+			if (stunFlags & TF_STUNFLAG_THIRDPERSON || stunFlags & TF_STUNFLAG_BONKSTUCK)
 			{
 				TF2_RemoveCondition(client, TFCond_Dazed);
 				return;
@@ -2998,17 +2997,21 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 		// These runes modify max health
 		CalculatePlayerMaxHealth(client);
 	}
+	else if (condition == TFCond_RuneHaste || condition == TFCond_RuneAgility || condition == TFCond_SpeedBuffAlly
+	|| condition == TFCond_RegenBuffed || condition == TFCond_HalloweenSpeedBoost || condition == TFCond_Slowed || condition == TFCond_Dazed)
+	{
+		CalculatePlayerMaxSpeed(client);
+	}
 	
 	g_bPlayerInCondition[client][condition] = true;
 }
 
 public void TF2_OnConditionRemoved(int client, TFCond condition)
 {
-	g_bPlayerInCondition[client][condition] = false;
-	
 	if (condition == TFCond_Buffed && PlayerHasItem(client, Item_MisfortuneFedora))
 	{
 		TF2_AddCondition(client, TFCond_Buffed);
+		return;
 	}
 	else if (condition == TFCond_RuneVampire || condition == TFCond_RuneWarlock 
 	|| condition == TFCond_RuneKnockout || condition == TFCond_KingRune)
@@ -3016,6 +3019,13 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 		// These runes modify max health
 		CalculatePlayerMaxHealth(client);
 	}
+	else if (condition == TFCond_RuneHaste || condition == TFCond_RuneAgility || condition == TFCond_SpeedBuffAlly
+	|| condition == TFCond_RegenBuffed || condition == TFCond_HalloweenSpeedBoost || condition == TFCond_Slowed || condition == TFCond_Dazed)
+	{
+		CalculatePlayerMaxSpeed(client);
+	}
+
+	g_bPlayerInCondition[client][condition] = false;
 }
 
 int g_iLastFiredWeapon[MAXTF2PLAYERS] = {-1, ...};
@@ -3068,7 +3078,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			
 			// Damage needs to be set in the damage hook.
 			int fireball = ShootProjectile(client, "tf_projectile_spellfireball", eyePos, eyeAng, speed);
-			g_bPyromancerFireball[fireball] = true;
+			SetEntItemDamageProc(fireball, ItemPyro_PyromancerMask);
 			EmitSoundToAll(SND_SPELL_FIREBALL, client, _, _, _, 0.45);
 		}
 		
@@ -3236,7 +3246,6 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bDontRemoveWearable[entity] = false;
 	g_bItemWearable[entity] = false;
 	g_bCashBomb[entity] = false;
-	g_bPyromancerFireball[entity] = false;
 	g_bFiredWhileRocketJumping[entity] = false;
 	
 	if (strcmp2(classname, "tf_projectile_rocket") || strcmp2(classname, "tf_projectile_flare") || strcmp2(classname, "tf_projectile_arrow"))
@@ -3316,7 +3325,8 @@ public void OnEntityDestroyed(int entity)
 
 bool IsEntityBlacklisted(const char[] classname)
 {
-	return (strcmp2(classname, "func_regenerate") || strcmp2(classname, "tf_ammo_pack") || strcmp2(classname, "halloween_souls_pack") || strcmp2(classname, "teleport_vortex"));
+	return (strcmp2(classname, "func_regenerate") || strcmp2(classname, "tf_ammo_pack") 
+	|| strcmp2(classname, "halloween_souls_pack") || strcmp2(classname, "teleport_vortex"));
 }
 
 public void Hook_ProjectileSpawnPost(int entity)
@@ -3466,6 +3476,23 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			ignoreResist = true;
 		}
 	}
+
+	if (damageCustom == TF_CUSTOM_SPELL_FIREBALL)
+	{
+		switch (GetEntItemDamageProc(inflictor))
+		{
+			case ItemPyro_PyromancerMask:
+			{
+				damage = GetItemMod(ItemPyro_PyromancerMask, 0) + CalcItemMod(attacker, ItemPyro_PyromancerMask, 1, -1);
+			}
+		}
+		
+		if (victimIsClient)
+		{
+			GetEntPropVector(victim, Prop_Data, "m_vecAbsVelocity", g_flPlayerVelocity[victim]);
+			RequestFrame(RF_RemoveFireballKnockback, victim);
+		}
+	}
 	
 	if (victimIsClient && IsSingleplayer(false) && IsPlayerSurvivor(victim) && TF2_GetPlayerClass(victim) != TFClass_Heavy)	
 	{
@@ -3548,21 +3575,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		
 		switch (damageCustom)
 		{
-			case TF_CUSTOM_SPELL_FIREBALL:
-			{
-				proc *= 0.5;
-				
-				if (victimIsClient)
-				{
-					GetEntPropVector(victim, Prop_Data, "m_vecAbsVelocity", g_flPlayerVelocity[victim]);
-					RequestFrame(RF_RemoveFireballKnockback, victim);
-				}
-			}
-			
-			case TF_CUSTOM_BURNING, TF_CUSTOM_BLEEDING:
-			{
-				proc *= 0.75;
-			}
+			case TF_CUSTOM_SPELL_FIREBALL: proc *= 0.5;
+			case TF_CUSTOM_BURNING, TF_CUSTOM_BLEEDING: proc *= 0.75;
 		}
 		
 		damage *= GetPlayerDamageMult(attacker);
@@ -4016,7 +4030,7 @@ public void RF_RemoveFireballKnockback(int client)
 	TeleportEntity(client, _, _, g_flPlayerVelocity[client]);
 }
 
-public void Hook_WeaponSwitch(int client, int weapon)
+public void Hook_WeaponSwitchPost(int client, int weapon)
 {
 	if (IsFakeClient(client))
 	{
@@ -4032,6 +4046,8 @@ public void Hook_WeaponSwitch(int client, int weapon)
 			g_bPlayerExtraSentryHint[client] = true;
 		}
 	}
+	
+	CalculatePlayerMaxSpeed(client);
 }
 
 public Action Hook_DisableTouch(int entity, int other)

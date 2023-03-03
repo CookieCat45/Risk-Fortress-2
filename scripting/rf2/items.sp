@@ -1329,6 +1329,21 @@ bool ActivateStrangeItem(int client)
 			FireLaser(client, ItemStrange_VirtualViewfinder, eyePos, angles, true, _, 
 			GetItemMod(ItemStrange_VirtualViewfinder, 0), DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE, 25.0, colors, "partyhat");
 		}
+		
+		case ItemStrange_NastyNorsemann:
+		{
+			if (TF2_IsPlayerInConditionEx(client, TFCond_HasRune))
+			{
+				EmitSoundToClient(client, SND_NOPE);
+				PrintCenterText(client, "%t", "AlreadyHasRune");
+				return false;
+			}
+			
+			char sound[PLATFORM_MAX_PATH];
+			TFCond rune = GetRandomMannpowerRune(sound, sizeof(sound));
+			TF2_AddCondition(client, rune, GetItemMod(ItemStrange_NastyNorsemann, 0));
+			EmitSoundToAll(sound, client);
+		}
 	}
 	
 	// Don't go on cooldown if our charges are above the limit; we likely dropped some battery canteens
