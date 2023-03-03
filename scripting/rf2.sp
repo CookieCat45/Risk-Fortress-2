@@ -97,6 +97,16 @@ public Plugin myinfo =
 #define SND_SPELL_JUMP "misc/halloween/spell_blast_jump.wav"
 #define SND_SPELL_STEALTH "misc/halloween/spell_stealth.wav"
 #define SND_SPELL_TELEPORT "misc/halloween/spell_teleport.wav"
+#define SND_RUNE_AGILITY "items/powerup_pickup_agility.wav"
+#define SND_RUNE_HASTE "items/powerup_pickup_haste.wav"
+#define SND_RUNE_KNOCKOUT "items/powerup_pickup_knockout.wav"
+#define SND_RUNE_PRECISION "items/powerup_pickup_precision.wav"
+#define SND_RUNE_WARLOCK "items/powerup_pickup_reflect.wav"
+#define SND_RUNE_REGEN "items/powerup_pickup_regeneration.wav"
+#define SND_RUNE_RESIST "items/powerup_pickup_resistance.wav"
+#define SND_RUNE_STRENGTH "items/powerup_pickup_strength.wav"
+#define SND_RUNE_VAMPIRE "items/powerup_pickup_vampire.wav"
+#define SND_RUNE_KING "items/powerup_pickup_king.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
@@ -1025,6 +1035,17 @@ void LoadAssets()
 	PrecacheSound(SND_SPELL_OVERHEAL, true);
 	PrecacheSound(SND_SPELL_JUMP, true);
 	PrecacheSound(SND_SPELL_STEALTH, true);
+	
+	PrecacheSound(SND_RUNE_AGILITY, true);
+	PrecacheSound(SND_RUNE_HASTE, true);
+	PrecacheSound(SND_RUNE_WARLOCK, true);
+	PrecacheSound(SND_RUNE_PRECISION, true);
+	PrecacheSound(SND_RUNE_REGEN, true);
+	PrecacheSound(SND_RUNE_KNOCKOUT, true);
+	PrecacheSound(SND_RUNE_RESIST, true);
+	PrecacheSound(SND_RUNE_STRENGTH, true);
+	PrecacheSound(SND_RUNE_VAMPIRE, true);
+	PrecacheSound(SND_RUNE_KING, true);
 	
 	PrecacheScriptSound(GSND_CRIT);
 	PrecacheScriptSound(GSND_MINICRIT);
@@ -2971,6 +2992,12 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 			}
 		}
 	}
+	else if (condition == TFCond_RuneVampire || condition == TFCond_RuneWarlock 
+	|| condition == TFCond_RuneKnockout || condition == TFCond_KingRune)
+	{
+		// These runes modify max health
+		CalculatePlayerMaxHealth(client);
+	}
 	
 	g_bPlayerInCondition[client][condition] = true;
 }
@@ -2982,6 +3009,12 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	if (condition == TFCond_Buffed && PlayerHasItem(client, Item_MisfortuneFedora))
 	{
 		TF2_AddCondition(client, TFCond_Buffed);
+	}
+	else if (condition == TFCond_RuneVampire || condition == TFCond_RuneWarlock 
+	|| condition == TFCond_RuneKnockout || condition == TFCond_KingRune)
+	{
+		// These runes modify max health
+		CalculatePlayerMaxHealth(client);
 	}
 }
 

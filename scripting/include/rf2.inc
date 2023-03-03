@@ -55,7 +55,7 @@ enum
 	Item_Goalkeeper = 39,
 	ItemSpy_CounterfeitBillycock = 40,
 	ItemSpy_StealthScarf = 41,
-	Item_HeartOfGold = 42,
+	ItemStrange_HeartOfGold = 42,
 	ItemScout_MonarchWings = 43,
 	ItemMedic_BlightedBeak = 44,
 	ItemMedic_ProcedureMask = 45,
@@ -68,6 +68,7 @@ enum
 	ItemSoldier_Compatriot = 52,
 	ItemHeavy_ToughGuyToque = 53,
 	Item_BatteryCanteens = 54,
+	ItemStrange_NastyNorsemann = 55,
 	Item_MaxValid,
 };
 

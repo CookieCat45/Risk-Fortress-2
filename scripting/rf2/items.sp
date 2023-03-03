@@ -1060,6 +1060,78 @@ bool ActivateStrangeItem(int client)
 			DispatchSpawn(shield);
 			EmitSoundToAll(SND_MEDISHIELD, shield);
 		}
+
+		case ItemStrange_HeartOfGold:
+		{
+			// check for teammate
+			const float range = 150.0;
+			int healTarget = -1;
+			
+			if (IsFakeClient(client))
+			{
+				IVision vision = g_TFBot[client].GetVision();
+				int team = GetClientTeam(client);
+				float pos[3], allyPos[3];
+				GetEntPos(client, pos);
+				
+				// if we're a bot, simply check for weakened allies in our FOV
+				int lowestHealth, health;
+				for (int i = 1; i <= MaxClients; i++)
+				{
+					if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != team)
+						continue;
+					
+					if (GetClientHealth(i) > RF2_GetCalculatedMaxHealth(i) / 2)
+						continue;
+					
+					GetEntPos(i, allyPos);
+					if (GetVectorDistance(pos, allyPos, true) > Pow(range, 2.0))
+						continue;
+					
+					if (!vision.IsAbleToSeeTarget(i, USE_FOV))
+						continue;
+					
+					health = GetClientHealth(i);
+					if (lowestHealth <= 0 || health < lowestHealth)
+					{
+						lowestHealth = health;
+						healTarget = i;
+					}
+				}
+				
+				// no teammate? check if we should heal ourselves
+				if (healTarget == -1 && GetClientHealth(client) < RF2_GetCalculatedMaxHealth(client) / 2)
+				{
+					healTarget = client;
+				}
+			}
+			else
+			{
+				float eyePos[3], endPos[3], angles[3], dir[3];
+				GetClientEyePosition(client, eyePos);
+				GetClientEyeAngles(client, angles);
+				GetAngleVectors(angles, dir, NULL_VECTOR, NULL_VECTOR);
+				NormalizeVector(dir, dir);
+				endPos[0] = eyePos[0] + dir[0] * range;
+				endPos[1] = eyePos[1] + dir[1] * range;
+				endPos[2] = eyePos[2] + dir[2] * range;
+				
+				TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID, RayType_EndPoint, TraceFilter_PlayerTeam, client);
+				healTarget = TR_GetEntityIndex();
+				if (healTarget == -1)
+				{
+					// no heal target, heal ourselves
+					healTarget = client;
+				}
+			}
+			
+			if (healTarget != -1)
+			{
+				int heal = RoundToFloor(RF2_GetCalculatedMaxHealth(healTarget) * GetItemMod(ItemStrange_HeartOfGold, 0));
+				EmitSoundToAll(SND_SPELL_OVERHEAL, healTarget);
+				HealPlayer(healTarget, heal, true);
+			}
+		}
 		
 		case ItemStrange_Spellbook:
 		{
@@ -1071,7 +1143,7 @@ bool ActivateStrangeItem(int client)
 			{
 				int luck = GetPlayerLuckStat(client);
 				
-				switch (GetRandomInt(1 + imin(luck, 18), 21))
+				switch (GetRandomInt(1 + imin(luck, 18), 18))
 				{
 					case 1, 2, 3:
 					{
@@ -1090,42 +1162,35 @@ bool ActivateStrangeItem(int client)
 					}
 					case 7, 8, 9:
 					{
-						spellType = "tf_projectile_spelltransposeteleport";
-						sound = SND_SPELL_TELEPORT;
-						response = "TLK_PLAYER_CAST_TELEPORT";
-						projectileArc = true;
-					}
-					case 10, 11, 12:
-					{
 						spellType = "BlastJump";
 						sound = SND_SPELL_JUMP;
 						response = "TLK_PLAYER_CAST_BLAST_JUMP";
 					}
-					case 13, 14, 15:
+					case 10, 11, 12:
 					{
 						spellType = "Overheal";
 						sound = SND_SPELL_OVERHEAL;
 						response = "TLK_PLAYER_CAST_SELF_HEAL";
 					}
-					case 16, 17, 18:
+					case 13, 14, 15:
 					{
 						spellType = "Stealth";
 						sound = SND_SPELL_STEALTH;
 						response = "TLK_PLAYER_CAST_STEALTH";
 					}
-					case 19:
+					case 16:
 					{
 						spellType = "tf_projectile_spellmeteorshower";
 						sound = SND_SPELL_METEOR;
 						response = "TLK_PLAYER_CAST_METEOR_SWARM";
 						projectileArc = true;
 					}
-					case 20:
+					case 17:
 					{
 						spellType = "tf_projectile_spellspawnboss";
 						response = "TLK_PLAYER_CAST_MONOCULOUS";
 					}
-					case 21:
+					case 18:
 					{
 						spellType = "tf_projectile_lightningorb";
 						sound = SND_SPELL_LIGHTNING;
@@ -1588,17 +1653,19 @@ float GetItemMod(int item, int slot)
 {
 	return g_flItemModifier[item][slot];
 }
-
+/*
 int GetItemModInt(int item, int slot)
 {
 	return RoundToFloor(g_flItemModifier[item][slot]);
 }
+*/
 
+/*
 bool GetItemModBool(int item, int slot)
 {
 	return bool((GetItemModInt(item, slot)));
 }
-
+*/
 int GetPlayerItemCount(int client, int item)
 {
 	return g_iPlayerItem[client][item];

@@ -268,12 +268,6 @@ void PickupCash(int client, int entity)
 		
 		if (client > 0)
 		{
-			if (PlayerHasItem(client, Item_HeartOfGold))
-			{
-				int heal = RoundToFloor(CalcItemMod(client, Item_HeartOfGold, 0));
-				HealPlayer(client, heal, GetItemModBool(Item_HeartOfGold, 1));
-			}
-			
 			if (GetRandomInt(1, 20) == 1)
 			{
 				SetVariantString("randomnum:100");

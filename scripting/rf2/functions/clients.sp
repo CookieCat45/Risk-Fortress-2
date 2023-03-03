@@ -6,6 +6,20 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+public const TFCond g_MannpowerRunes[] =
+{
+	TFCond_RuneAgility,
+	TFCond_RuneHaste,
+	TFCond_RuneKnockout,
+	TFCond_RunePrecision,
+	TFCond_RuneRegen,
+	TFCond_RuneResist,
+	TFCond_RuneStrength,
+	TFCond_RuneVampire,
+	TFCond_RuneWarlock,
+	TFCond_KingRune,
+};
+
 void RefreshClient(int client)
 {
 	g_bPlayerViewingItemMenu[client] = false;
@@ -658,6 +672,29 @@ bool TF2_IsPlayerInConditionEx(int client, TFCond condition)
 	return g_bPlayerInCondition[client][condition];
 }
 
+TFCond GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0)
+{
+	TFCond rune = view_as<TFCond>(g_MannpowerRunes[GetRandomInt(0, sizeof(g_MannpowerRunes)-1)]);
+	
+	if (size > 0)
+	{
+		switch (rune)
+		{
+			case TFCond_RuneAgility: strcopy(soundBuffer, size, SND_RUNE_AGILITY);
+			case TFCond_RuneHaste: strcopy(soundBuffer, size, SND_RUNE_HASTE);
+			case TFCond_RuneKnockout: strcopy(soundBuffer, size, SND_RUNE_KNOCKOUT);
+			case TFCond_RunePrecision: strcopy(soundBuffer, size, SND_RUNE_PRECISION);
+			case TFCond_RuneRegen: strcopy(soundBuffer, size, SND_RUNE_REGEN);
+			case TFCond_RuneResist: strcopy(soundBuffer, size, SND_RUNE_RESIST);
+			case TFCond_RuneStrength: strcopy(soundBuffer, size, SND_RUNE_STRENGTH);
+			case TFCond_RuneVampire: strcopy(soundBuffer, size, SND_RUNE_VAMPIRE);
+			case TFCond_RuneWarlock: strcopy(soundBuffer, size, SND_RUNE_WARLOCK);
+		}
+	}
+	
+	return rune;
+}
+
 bool IsPlayerAFK(int client)
 {
 	return g_bPlayerIsAFK[client];
@@ -709,9 +746,9 @@ float GetPlayerDamageMult(int client)
 	return GetEnemyDamageMult();
 }
 
-public bool TraceFilter_PlayerTeam(int entity, int mask, int team)
+public bool TraceFilter_PlayerTeam(int entity, int mask, int client)
 {
-	if (entity <= MaxClients && GetClientTeam(entity) == team)
+	if (entity <= MaxClients && entity != client && GetClientTeam(entity) == GetClientTeam(client))
 		return true;
 	
 	return false;
