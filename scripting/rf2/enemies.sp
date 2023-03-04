@@ -228,6 +228,8 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 
 void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minDist=-1.0, float maxDist=-1.0)
 {
+	g_bPlayerInSpawnQueue[client] = true;
+	
 	if (IsPlayerAlive(client))
 	{
 		SilentlyKillPlayer(client);

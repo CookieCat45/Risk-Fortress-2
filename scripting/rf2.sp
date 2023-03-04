@@ -444,6 +444,7 @@ Handle g_hDifficultyTimer;
 Handle g_hSDKEquipWearable;
 Handle g_hSDKGetMaxClip1;
 Handle g_hSDKDoQuickBuild;
+Handle g_hSDKGetMaxHealth;
 DHookSetup g_hSDKCanBuild;
 DHookSetup g_hSDKComputeIncursionHook;
 DHookSetup g_hSDKDoSwingTrace;
@@ -489,6 +490,7 @@ ConVar g_cvEnemyXPDropScale;
 ConVar g_cvEnemyCashDropScale;
 ConVar g_cvEnemyMinSpawnDistance;
 ConVar g_cvEnemyMaxSpawnDistance;
+ConVar g_cvEnemyMinSpawnWaveCount;
 ConVar g_cvEnemyMaxSpawnWaveCount;
 ConVar g_cvEnemyMinSpawnWaveTime;
 ConVar g_cvEnemyBaseSpawnWaveTime;
@@ -689,6 +691,18 @@ void LoadGameData()
 	if (!g_hSDKComputeIncursionHook || !DHookEnableDetour(g_hSDKComputeIncursionHook, false, DHook_ComputeIncursionDistances))
 	{
 		LogError("[DHooks] Failed to create detour for CTFNavMesh::ComputeIncursionDistances");
+	}
+	
+	delete gamedata;
+	
+	gamedata = LoadGameConfigFile("sdkhooks.games");
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "GetMaxHealth");
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_ByValue);
+	g_hSDKGetMaxHealth = EndPrepSDKCall();
+	if (!g_hSDKGetMaxHealth)
+	{
+		LogError("[SDK] Failed to create call for CBasePlayer::GetMaxHealth");
 	}
 	
 	delete gamedata;
@@ -2235,21 +2249,17 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	int actualSurvivorCount = GetPlayersOnTeam(TEAM_SURVIVOR, true);
 	int humanCount = GetTotalHumans();
 	
-	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - ((1.5 * float(survivorCount-1)) - (float(RF2_GetEnemyLevel()-1) * 0.2));
-	float reduction = 0.25 * float(g_iRespawnWavesCompleted);
-	float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
-	duration -= fmin(reduction, subIncrement);
+	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 2.0 * float(survivorCount-1);
+	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
+	duration -= 0.25 * float(imin(g_iRespawnWavesCompleted, RF2_GetEnemyLevel()+9));
 	
 	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
-	{
 		duration *= 0.75;
-	}
 	
 	CreateTimer(fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue), Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
 	
-	int increment = RF2_GetSubDifficulty() / 2;
-	int maxCount = GetRandomInt(2+increment, 3+increment) + (survivorCount/2);
-	imax(imin(maxCount, g_cvEnemyMaxSpawnWaveCount.IntValue), 1);
+	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + ((survivorCount-1)/2) + RF2_GetSubDifficulty() / 2;
+	spawnCount = imax(imin(spawnCount, g_cvEnemyMaxSpawnWaveCount.IntValue), g_cvEnemyMinSpawnWaveCount.IntValue);
 	
 	ArrayList respawnArray = CreateArray();
 	bool finished, ignorePoints, chosen[MAXTF2PLAYERS], pointsGiven[MAXTF2PLAYERS];
@@ -2261,6 +2271,8 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		for (int i = 1; i < MAXTF2PLAYERS; i++)
 			spawnPoints[i] = 0;
 	}
+	
+	float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
 	
 	// grab our next players for the spawn (bots don't get points)
 	for (int i = 1; i <= MaxClients; i++)
@@ -2279,7 +2291,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 			continue;
 		}
 		
-		if (ignorePoints && respawnArray.Length < maxCount || !finished && spawnPoints[i] >= 0 && (humanCount <= actualSurvivorCount || !IsFakeClient(i)))
+		if (ignorePoints && respawnArray.Length < spawnCount || !finished && spawnPoints[i] >= 0 && (humanCount <= actualSurvivorCount || !IsFakeClient(i)))
 		{
 			respawnArray.Push(i);
 			respawnArray.SwapAt(GetRandomInt(0, respawnArray.Length-1), GetRandomInt(0, respawnArray.Length-1));
@@ -2296,7 +2308,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 			pointsGiven[i] = true;
 		}
 		
-		if (respawnArray.Length >= maxCount)
+		if (respawnArray.Length >= spawnCount)
 		{
 			finished = true; // if we're finished, we're just setting everyone's points for next time around
 		}
@@ -3397,7 +3409,7 @@ public void Hook_CashSpawnPost(int entity)
 		GetEntityClassname(owner, classname, sizeof(classname));
 		
 		// remove cash drops spawned by tank_boss and base_boss
-		if (strcmp2(classname, "tank_boss") || strcmp2(classname, "base_boss"))
+		if (StrContains(classname, "tank_boss") != -1 || strcmp2(classname, "base_boss"))
 		{
 			RemoveEntity(entity);
 		}

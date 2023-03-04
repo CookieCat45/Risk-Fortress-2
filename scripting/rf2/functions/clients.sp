@@ -205,7 +205,7 @@ int HealPlayer(int client, int amount, bool allowOverheal=false)
 	int amountHealed = amount;
 	SetEntityHealth(client, health+amount);
 	
-	if (!allowOverheal && GetClientHealth(client) > maxHealth)
+	if (!allowOverheal && health+amount > maxHealth)
 	{
 		SetEntityHealth(client, maxHealth);
 		amountHealed = maxHealth - health;
@@ -399,17 +399,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	{
 		maxHealth = RoundToFloor(float(maxHealth) * 0.75);
 	}
-	
-	int fakeHealth;
-	if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
-	{
-		int heads = GetEntProp(client, Prop_Send, "m_iDecapitations");
-		if (heads > 4)
-			heads = 4;
-		
-		fakeHealth = heads * 15;
-	}
-	
+
 	if (PlayerHasItem(client, Item_PrideScarf))
 	{
 		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_PrideScarf, 0))) - maxHealth;
@@ -419,8 +409,6 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	{
 		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_ClassCrown, 0))) - maxHealth;
 	}
-	
-	int classMaxHealth = TF2_GetClassMaxHealth(TF2_GetPlayerClass(client));
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
@@ -471,86 +459,33 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 			}
 		}
 	}
-
-	int attributeMaxHealth = TF2Attrib_HookValueInt(0, "add_maxhealth", client);
-	Address attrib = TF2Attrib_GetByDefIndex(client, 26);
-	if (attrib)
-	{
-		attributeMaxHealth -= RoundToFloor(TF2Attrib_GetValue(attrib));
-	}
 	
-	// Handle mannpower runes that affect max health
-	int runeHealth;
-	if (TF2_IsPlayerInConditionEx(client, TFCond_HasRune))
-	{
-		if (TF2_IsPlayerInConditionEx(client, TFCond_RuneKnockout))
-		{
-			switch (TF2_GetPlayerClass(client))
-			{
-				case TFClass_Scout, TFClass_Engineer, TFClass_Sniper, TFClass_Spy: runeHealth += 175;
-				case TFClass_Soldier, TFClass_Medic: runeHealth += 150;
-				case TFClass_Pyro, TFClass_Heavy: runeHealth += 125;
-				
-				// Demo is handled much differently
-				case TFClass_DemoMan:
-				{
-					if (TF2_PlayerHasShieldEquipped(client))
-					{
-						int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-						if (melee > -1)
-						{
-							int index = GetEntProp(melee, Prop_Send, "m_iItemDefinitionIndex");
-							
-							// Eyelander/Katana when equipped reduce health bonus to 20; with a shield and without these weapons 30, otherwise 150
-							if (index == 482 || index == 132 || index == 266 || index == 357 || index == 1082)
-							{
-								runeHealth += 20;
-							}
-							else
-							{
-								runeHealth += 30;
-							}
-						}
-						else
-						{
-							runeHealth += 30;
-						}
-					}
-					else
-					{
-						runeHealth += 150;
-					}
-				}
-			}
-		}
-		else if (TF2_IsPlayerInConditionEx(client, TFCond_KingRune))
-		{
-			runeHealth += 100;
-		}
-		else if (TF2_IsPlayerInConditionEx(client, TFCond_RuneVampire))
-		{
-			runeHealth += 80;
-		}
-		else if (TF2_IsPlayerInConditionEx(client, TFCond_RuneWarlock))
-		{
-			runeHealth += 400 - classMaxHealth; // Increases max health to 400 regardless of class
-		}
-	}
-	
+	int classMaxHealth = TF2_GetClassMaxHealth(TF2_GetPlayerClass(client));
 	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth)); // "max health additive bonus"
-	g_iPlayerCalculatedMaxHealth[client] = maxHealth + fakeHealth + attributeMaxHealth + runeHealth;
-	
+	int actualMaxHealth = SDK_GetPlayerMaxHealth(client);
+
 	if (fullHeal)
 	{
-		HealPlayer(client, maxHealth, false);
+		HealPlayer(client, actualMaxHealth, false);
 	}
 	else if (partialHeal)
 	{
-		int heal = maxHealth - oldMaxHealth;
+		int heal = actualMaxHealth - oldMaxHealth;
 		HealPlayer(client, heal, false);
 	}
 	
-	return maxHealth;
+	g_iPlayerCalculatedMaxHealth[client] = actualMaxHealth;
+	return actualMaxHealth;
+}
+
+int SDK_GetPlayerMaxHealth(int client)
+{
+	if (g_hSDKGetMaxHealth)
+	{
+		return SDKCall(g_hSDKGetMaxHealth, client);
+	}
+	
+	return 0;
 }
 
 float CalculatePlayerMaxSpeed(int client)
@@ -724,6 +659,7 @@ int TF2_GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectTyp
 	return count;
 }
 
+/*
 bool TF2_PlayerHasShieldEquipped(int client)
 {
 	int entity = MaxClients+1;
@@ -732,9 +668,10 @@ bool TF2_PlayerHasShieldEquipped(int client)
 		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
 			return true;
 	}
-
+	
 	return false;
 }
+*/
 
 // Use this over TF2_IsPlayerInCondition().
 bool TF2_IsPlayerInConditionEx(int client, TFCond condition)

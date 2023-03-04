@@ -333,6 +333,8 @@ public Action Timer_SpawnTeleporterBoss(Handle time, DataPack pack)
 
 void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool teleporterBoss=false, float minDist=-1.0, float maxDist=-1.0)
 {
+	g_bPlayerInSpawnQueue[client] = true;
+
 	if (IsPlayerAlive(client))
 	{
 		SilentlyKillPlayer(client);

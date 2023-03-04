@@ -488,23 +488,23 @@ void GetVectorAnglesTwoPoints(const float startPos[3], const float endPos[3], fl
 	GetVectorAngles(tmpVec, angles);
 }
 
-bool bool(any value)
-{
-	return view_as<bool>(value);
-}
-
 void SetAllInArray(any[] array, int size, any value)
 {
 	for (int i = 0; i < size; i++)
 		array[i] = value;
 }
 
-float sq(float num)
+stock bool bool(any value)
+{
+	return view_as<bool>(value);
+}
+
+stock float sq(float num)
 {
 	return Pow(num, 2.0);
 }
 
-float fmodf(float num, float denom)
+stock float fmodf(float num, float denom)
 {
     return num - denom * RoundToFloor(num / denom);
 }
@@ -515,34 +515,22 @@ stock float operator%(float oper1, float oper2)
     return fmodf(oper1, oper2);
 }
 
-int imin(int val1, int val2)
+stock int imin(int val1, int val2)
 {
-	if (val1 < val2)
-		return val1;
-		
-	return val2;
+	return val1 < val2 ? val1 : val2;
 }
 
-int imax(int val1, int val2)
+stock int imax(int val1, int val2)
 {
-	if (val1 > val2)
-		return val1;
-		
-	return val2;
+	return val1 > val2 ? val1 : val2;
 }
 
-float fmin(float val1, float val2)
+stock float fmin(float val1, float val2)
 {
-	if (val1 < val2)
-		return val1;
-		
-	return val2;
+	return val1 < val2 ? val1 : val2;
 }
 
-float fmax(float val1, float val2)
-{
-	if (val1 > val2)
-		return val1;
-		
-	return val2;
+stock float fmax(float val1, float val2)
+{	
+	return val1 > val2 ? val1 : val2;
 }
