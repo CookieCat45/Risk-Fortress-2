@@ -186,7 +186,6 @@ CNavArea GetIncursionArea(TFTeam team)
 	float pos[3];
 	CNavArea area;
 	
-	// Method A: rf2_bot_incursion_point
 	while (!area && (entity = FindEntityByClassname(entity, "rf2_bot_incursion_point")) != -1)
 	{
 		if (view_as<TFTeam>(GetEntProp(entity, Prop_Send, "m_iTeamNum")) == team)
@@ -194,19 +193,6 @@ CNavArea GetIncursionArea(TFTeam team)
 			GetEntPos(entity, pos);
 			area = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
 		}
-	}
-	
-	entity = -1;
-	// Method B: respawnrooms (disable them anyway even if we already found our area)
-	while ((entity = FindEntityByClassname(entity, "func_respawnroom")) != -1)
-	{
-		if (!area && view_as<TFTeam>(GetEntProp(entity, Prop_Send, "m_iTeamNum")) == team)
-		{
-			GetEntPos(entity, pos);
-			area = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
-		}
-		
-		AcceptEntityInput(entity, "Disable");
 	}
 	
 	if (!area)
@@ -224,20 +210,12 @@ CNavArea GetIncursionArea(TFTeam team)
 	return area;
 }
 
-public MRESReturn DHook_ComputeIncursionDistances(Address navMesh, Handle params)
+void SDK_ComputeIncursionDistances(CNavArea spawnArea, TFTeam team)
 {
-	if (!RF2_IsEnabled())
-		return MRES_Ignored;
-	
-	CNavArea area = GetIncursionArea(view_as<TFTeam>(DHookGetParam(params, 2)));
-	
-	if (area)
+	if (g_hSDKComputeIncursion)
 	{
-		DHookSetParam(params, 1, area);
-		return MRES_ChangedHandled;
+		SDKCall(g_hSDKComputeIncursion, TheNavMesh.Address, spawnArea, team);
 	}
-	
-	return MRES_Ignored;
 }
 
 public bool TraceFilter_SpawnCheck(int entity, int mask, int team)

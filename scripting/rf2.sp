@@ -445,8 +445,8 @@ Handle g_hSDKEquipWearable;
 Handle g_hSDKGetMaxClip1;
 Handle g_hSDKDoQuickBuild;
 Handle g_hSDKGetMaxHealth;
+Handle g_hSDKComputeIncursion;
 DHookSetup g_hSDKCanBuild;
-DHookSetup g_hSDKComputeIncursionHook;
 DHookSetup g_hSDKDoSwingTrace;
 DHookSetup g_hSDKSentryAttack;
 DynamicHook g_hSDKTakeHealth;
@@ -687,10 +687,14 @@ void LoadGameData()
 	}
 	
 	// CTFNavMesh::ComputeIncursionDistances -------------------------------------------------------------------------------------------------
-	g_hSDKComputeIncursionHook = DHookCreateFromConf(gamedata, "CTFNavMesh::ComputeIncursionDistances");
-	if (!g_hSDKComputeIncursionHook || !DHookEnableDetour(g_hSDKComputeIncursionHook, false, DHook_ComputeIncursionDistances))
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFNavMesh::ComputeIncursionDistances");
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // spawnArea
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // team
+	g_hSDKComputeIncursion = EndPrepSDKCall();
+	if (!g_hSDKComputeIncursion)
 	{
-		LogError("[DHooks] Failed to create detour for CTFNavMesh::ComputeIncursionDistances");
+		LogError("[SDK] Failed to create call for CTFNavMesh::ComputeIncursionDistances");
 	}
 	
 	delete gamedata;
@@ -1288,6 +1292,15 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	AcceptEntityInput(gamerules, "SetRedTeamRespawnWaveTime");
 	SetVariantInt(9999);
 	AcceptEntityInput(gamerules, "SetBlueTeamRespawnWaveTime");
+	
+	CNavArea redArea = GetIncursionArea(TFTeam_Red);
+	CNavArea blueArea = GetIncursionArea(TFTeam_Blue);
+	
+	if (redArea)
+		SDK_ComputeIncursionDistances(redArea, TFTeam_Red);
+	
+	if (blueArea)
+		SDK_ComputeIncursionDistances(blueArea, TFTeam_Blue);
 	
 	SpawnObjects();
 	
@@ -3281,11 +3294,6 @@ public void OnEntityCreated(int entity, const char[] classname)
 			RemoveEntity(entity);
 		}
 	}
-	else if (!g_bMapChanging && strcmp2(classname, "prop_dynamic"))
-	{
-		// temp fix for maps not updated to use new entities yet
-		SDKHook(entity, SDKHook_SpawnPost, Hook_TempTeleporterFix);
-	}
 	else if (IsEntityBlacklisted(classname))
 	{
 		RemoveEntity(entity);
@@ -3338,7 +3346,8 @@ public void OnEntityDestroyed(int entity)
 bool IsEntityBlacklisted(const char[] classname)
 {
 	return (strcmp2(classname, "func_regenerate") || strcmp2(classname, "tf_ammo_pack") 
-	|| strcmp2(classname, "halloween_souls_pack") || strcmp2(classname, "teleport_vortex"));
+	|| strcmp2(classname, "halloween_souls_pack") || strcmp2(classname, "teleport_vortex")
+	|| strcmp2(classname, "func_respawnroom"));
 }
 
 public void Hook_ProjectileSpawnPost(int entity)
@@ -3429,26 +3438,6 @@ public Action Hook_CashTouch(int entity, int other)
 	return Plugin_Continue;
 }
 
-public void Hook_TempTeleporterFix(int entity)
-{
-	char name[32];
-	GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
-	
-	if (strcmp2(name, "rf2_object_teleporter"))
-	{
-		float pos[3], angles[3];
-		GetEntPos(entity, pos);
-		GetEntPropVector(entity, Prop_Send, "m_angRotation", angles);
-		
-		int spawnPoint = CreateEntityByName("rf2_teleporter_spawn");
-		TeleportEntity(spawnPoint, pos, angles);
-		DispatchSpawn(spawnPoint);
-		
-		RemoveEntity(entity);
-	}
-}
-
-float g_flPlayerVelocity[MAXTF2PLAYERS][3];
 float g_flDamageProc;
 
 public Action Hook_OnTakeDamageAlive(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, 
@@ -3497,12 +3486,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			{
 				damage = GetItemMod(ItemPyro_PyromancerMask, 0) + CalcItemMod(attacker, ItemPyro_PyromancerMask, 1, -1);
 			}
-		}
-		
-		if (victimIsClient)
-		{
-			GetEntPropVector(victim, Prop_Data, "m_vecAbsVelocity", g_flPlayerVelocity[victim]);
-			RequestFrame(RF_RemoveFireballKnockback, victim);
 		}
 	}
 	
@@ -4035,11 +4018,6 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	}
 	
 	return Plugin_Continue;
-}
-
-public void RF_RemoveFireballKnockback(int client)
-{
-	TeleportEntity(client, _, _, g_flPlayerVelocity[client]);
 }
 
 public void Hook_WeaponSwitchPost(int client, int weapon)

@@ -205,7 +205,7 @@ int HealPlayer(int client, int amount, bool allowOverheal=false)
 	int amountHealed = amount;
 	SetEntityHealth(client, health+amount);
 	
-	if (!allowOverheal && health+amount > maxHealth)
+	if (!allowOverheal && GetClientHealth(client) > maxHealth)
 	{
 		SetEntityHealth(client, maxHealth);
 		amountHealed = maxHealth - health;
@@ -463,7 +463,8 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	int classMaxHealth = TF2_GetClassMaxHealth(TF2_GetPlayerClass(client));
 	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth)); // "max health additive bonus"
 	int actualMaxHealth = SDK_GetPlayerMaxHealth(client);
-
+	g_iPlayerCalculatedMaxHealth[client] = actualMaxHealth;
+	
 	if (fullHeal)
 	{
 		HealPlayer(client, actualMaxHealth, false);
@@ -474,7 +475,6 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		HealPlayer(client, heal, false);
 	}
 	
-	g_iPlayerCalculatedMaxHealth[client] = actualMaxHealth;
 	return actualMaxHealth;
 }
 
@@ -500,8 +500,8 @@ float CalculatePlayerMaxSpeed(int client)
 	
 	float mult = speed / classMaxSpeed;
 	TF2Attrib_SetByDefIndex(client, 107, mult); // "move speed bonus"
-	TF2_AddCondition(client, TFCond_DisguisedAsDispenser, 0.00001); // hack to force game to update our speed
-	TF2_RemoveCondition(client, TFCond_DisguisedAsDispenser);
+	TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.00001); // hack to force game to update our speed
+	TF2_RemoveCondition(client, TFCond_SpeedBuffAlly);
 	
 	return GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
 }
