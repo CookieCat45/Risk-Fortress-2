@@ -357,6 +357,11 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 1, _, 2);
 		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 0, _, 3);
 	}
+	else if (strcmp2(classname, "tf_weapon_sapper"))
+	{
+		SetEntProp(wepEnt, Prop_Send, "m_iObjectType", 3);
+		SetEntProp(wepEnt, Prop_Data, "m_iSubType", 3);
+	}
 	
 	return wepEnt;
 }

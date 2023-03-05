@@ -31,7 +31,6 @@ char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
 int g_iEnemyBotSkill[MAX_ENEMIES];
 bool g_bEnemyBotAggressive[MAX_ENEMIES];
 bool g_bEnemyBotRocketJump[MAX_ENEMIES];
-float g_flEnemyBotMinReloadTime[MAX_ENEMIES];
 
 // Weapons
 bool g_bEnemyWeaponUseStaticAttributes[MAX_ENEMIES][TF_WEAPON_SLOTS];
@@ -105,7 +104,6 @@ void LoadEnemiesFromPack(const char[] config)
 		g_flEnemyBaseSpeed[enemy] = enemyKey.GetFloat("speed", 300.0);
 		
 		g_iEnemyBotSkill[enemy] = enemyKey.GetNum("tf_bot_difficulty", TFBotDifficulty_Normal);
-		g_flEnemyBotMinReloadTime[enemy] = enemyKey.GetFloat("tf_bot_min_reload_time", 0.75);
 		g_bEnemyBotAggressive[enemy] = bool(enemyKey.GetNum("tf_bot_aggressive", false));
 		g_bEnemyBotRocketJump[enemy] = bool(enemyKey.GetNum("tf_bot_rocketjump", false));
 		
@@ -257,8 +255,6 @@ void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 			
 			default: g_TFBot[client].SetSkillLevel(g_iEnemyBotSkill[type]);
 		}
-		
-		g_TFBot[client].MinReloadTime = g_flEnemyBotMinReloadTime[type];
 		
 		if (g_bEnemyBotAggressive[type])
 		{

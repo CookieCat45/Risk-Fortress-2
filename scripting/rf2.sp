@@ -449,6 +449,7 @@ Handle g_hSDKComputeIncursion;
 DHookSetup g_hSDKCanBuild;
 DHookSetup g_hSDKDoSwingTrace;
 DHookSetup g_hSDKSentryAttack;
+DHookSetup g_hSDKComputeIncursionVoid;
 DynamicHook g_hSDKTakeHealth;
 DynamicHook g_hSDKStartUpgrading;
 
@@ -695,6 +696,13 @@ void LoadGameData()
 	if (!g_hSDKComputeIncursion)
 	{
 		LogError("[SDK] Failed to create call for CTFNavMesh::ComputeIncursionDistances");
+	}
+	
+	// CTFNavMesh::ComputeIncursionDistances(void) -------------------------------------------------------------------------------------------------
+	g_hSDKComputeIncursionVoid = DHookCreateFromConf(gamedata, "CTFNavMesh::ComputeIncursionDistances_Void");
+	if (!g_hSDKComputeIncursionVoid || !DHookEnableDetour(g_hSDKComputeIncursionVoid, true, DHook_ComputeIncursionVoid))
+	{
+		LogError("[DHooks] Failed to create detour for CTFNavMesh::ComputeIncursionDistances(void)");
 	}
 	
 	delete gamedata;
@@ -1293,6 +1301,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	SetVariantInt(9999);
 	AcceptEntityInput(gamerules, "SetBlueTeamRespawnWaveTime");
 	
+	/*
 	CNavArea redArea = GetIncursionArea(TFTeam_Red);
 	CNavArea blueArea = GetIncursionArea(TFTeam_Blue);
 	
@@ -1301,6 +1310,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	
 	if (blueArea)
 		SDK_ComputeIncursionDistances(blueArea, TFTeam_Blue);
+	*/
 	
 	SpawnObjects();
 	
@@ -1812,20 +1822,23 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			AcceptEntityInput(fog, "TurnOn");				
 			
 			const float time = 0.1;
-			int oldFog[MAXTF2PLAYERS] = {-1, ...};
+			int oldFog;
 			
 			for (int i = 1; i <= MaxClients; i++)
 			{
-				if (!IsClientInGame(i))
+				if (!IsClientInGame(i) || IsFakeClient(i))
 					continue;
 				
-				oldFog[i] = GetEntPropEnt(i, Prop_Data, "m_hCtrl");
+				oldFog = GetEntPropEnt(i, Prop_Data, "m_hCtrl");
 				SetEntPropEnt(i, Prop_Data, "m_hCtrl", fog);
 				
-				DataPack pack;
-				CreateDataTimer(time, Timer_RestorePlayerFog, pack, TIMER_FLAG_NO_MAPCHANGE);
-				pack.WriteCell(GetClientUserId(i));
-				pack.WriteCell(EntIndexToEntRef(oldFog[i]));
+				if (IsValidEntity(oldFog))
+				{
+					DataPack pack;
+					CreateDataTimer(time, Timer_RestorePlayerFog, pack, TIMER_FLAG_NO_MAPCHANGE);
+					pack.WriteCell(GetClientUserId(i));
+					pack.WriteCell(EntIndexToEntRef(oldFog));
+				}
 			}
 			
 			CreateTimer(time, Timer_KillFog, EntIndexToEntRef(fog), TIMER_FLAG_NO_MAPCHANGE);
@@ -2264,7 +2277,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	
 	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 2.0 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
-	duration -= 0.25 * float(imin(g_iRespawnWavesCompleted, RF2_GetEnemyLevel()+9));
+	duration -= 0.25 * float(imin(g_iRespawnWavesCompleted, 20));
 	
 	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
 		duration *= 0.75;
@@ -4335,11 +4348,11 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				}
 				else
 				{
-					ReplaceStringEx(sample, sizeof(sample), "vo/", "vo/mvm/norm/");
+					ReplaceStringEx(sample, sizeof(sample), "vo/", "vo/mvm/norm/", _, _, false);
 					FormatEx(newString, sizeof(newString), "%smvm_", classString);
 				}
 				
-				ReplaceStringEx(sample, sizeof(sample), classString, newString);
+				ReplaceStringEx(sample, sizeof(sample), classString, newString, _, _, false);
 				
 				// avoid repeatedly calling PrecacheSound()
 				if (g_hInvalidPlayerSounds.FindString(sample) >= 0)

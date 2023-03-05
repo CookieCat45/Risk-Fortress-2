@@ -36,7 +36,7 @@ char g_szBossConditions[MAX_BOSSES][256];
 // TFBot
 int g_iBossBotSkill[MAX_BOSSES];
 bool g_bBossBotAggressive[MAX_BOSSES];
-float g_flBossBotMinReloadTime[MAX_BOSSES];
+bool g_bBossBotRocketJump[MAX_BOSSES];
 
 // Weapons
 int g_iBossWeaponAmount[MAX_BOSSES];
@@ -124,8 +124,8 @@ void LoadBossesFromPack(const char[] config)
 		g_flBossBaseSpeed[boss] = bossKey.GetFloat("speed", 120.0);
 		
 		g_iBossBotSkill[boss] = bossKey.GetNum("tf_bot_difficulty", TFBotDifficulty_Expert);
-		g_flBossBotMinReloadTime[boss] = bossKey.GetFloat("tf_bot_min_reload_time", 1.5);
 		g_bBossBotAggressive[boss] = bool(bossKey.GetNum("tf_bot_aggressive", false));
+		g_bBossBotRocketJump[boss] = bool(bossKey.GetNum("tf_bot_rocketjump", false));
 		
 		// boss minions (TODO)
 		bossKey.GetString("minions", g_szBossMinions[boss], sizeof(g_szBossMinions[]), "");
@@ -366,6 +366,16 @@ void SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 			{
 				SetEntProp(client, Prop_Send, "m_nBotSkill", g_iBossBotSkill[type]);
 			}
+		}
+
+		if (g_bBossBotAggressive[type])
+		{
+			g_TFBot[client].AddFlag(TFBOTFLAG_AGGRESSIVE);
+		}
+		
+		if (g_bBossBotRocketJump[type])
+		{
+			g_TFBot[client].AddFlag(TFBOTFLAG_ROCKETJUMP);
 		}
 	}
 	

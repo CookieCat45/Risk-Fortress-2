@@ -218,6 +218,23 @@ void SDK_ComputeIncursionDistances(CNavArea spawnArea, TFTeam team)
 	}
 }
 
+public MRESReturn DHook_ComputeIncursionVoid(Address navMesh)
+{
+	if (RF2_IsEnabled())
+	{
+		CNavArea redArea = GetIncursionArea(TFTeam_Red);
+		CNavArea blueArea = GetIncursionArea(TFTeam_Blue);
+		
+		if (redArea)
+			SDK_ComputeIncursionDistances(redArea, TFTeam_Red);
+		
+		if (blueArea)
+			SDK_ComputeIncursionDistances(blueArea, TFTeam_Blue);
+	}
+	
+	return MRES_Ignored;
+}
+
 public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 {
 	if (IsObject(entity) && GetEntProp(entity, Prop_Send, "m_CollisionGroup") == COLLISION_GROUP_CRATE)
@@ -240,8 +257,8 @@ public bool Path_FilterIgnoreObjects(int entity, int contentsMask, int desiredco
 	// don't worry about objects, most are non solid anyway
 	if (IsObject(entity))
 	{
-		return false;
+		return true;
 	}
 	
-	return !!(contentsMask & MASK_SOLID);
+	return !(contentsMask & MASK_SOLID);
 }
