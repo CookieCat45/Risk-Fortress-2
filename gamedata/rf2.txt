@@ -52,6 +52,11 @@
 				"linux"		"@_ZN10CTFNavMesh25ComputeIncursionDistancesEP10CTFNavAreai"
 				"windows"	"\x55\x8B\xEC\x81\xEC\x2C\x01\x00\x00\x56\x8B\x75\x08\x85\xF6\x0F\x84\x2A\x2A\x2A\x2A\x53"
 			}
+			"CTFNavMesh::ComputeIncursionDistances_Void" // Yes, these two functions have the same names. This one has no arguments. Thanks Valve.
+			{
+				"linux"		"@_ZN10CTFNavMesh25ComputeIncursionDistancesEv"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x24\x8B\x15\x2A\x2A\x2A\x2A\x53\x33\xDB"
+			}
 		}
 		
 		"Functions"
@@ -108,25 +113,13 @@
 				"this"		"entity"
 			}
 			
-			"CTFNavMesh::ComputeIncursionDistances"
-            {
-                "signature"  	"CTFNavMesh::ComputeIncursionDistances"
-                "callconv"  	"thiscall"
-                "return"  		"void"
-                "this"  		"address"
-				
-                "arguments"
-                {
-                    "area"
-                    {
-						"type"    "int"
-                    }
-                    "team"
-                    {
-                        "type"    "int"
-                    }
-                }
-            }
+			"CTFNavMesh::ComputeIncursionDistances_Void"
+			{
+				"signature"	"CTFNavMesh::ComputeIncursionDistances_Void"
+				"callconv"	"thiscall"
+				"return"	"void"
+				"this"		"address"
+			}
         }
 	}
 }
