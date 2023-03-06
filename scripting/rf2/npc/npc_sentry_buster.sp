@@ -136,11 +136,11 @@ methodmap SentryBuster < CBaseCombatCharacter
 				{
 					float force[3];
 					CalculateMeleeDamageForce(damage, delta, 1.0, force);
-					SDKHooks_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST, _, force, center, false);
+					SDKHooks_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST, _, force, center);
 				}
 				else
 				{
-					SDKHooks_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST|DMG_PREVENT_PHYSICS_FORCE, _, _, center, false);
+					SDKHooks_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST|DMG_PREVENT_PHYSICS_FORCE, _, _, center);
 				}
 			}
 		}

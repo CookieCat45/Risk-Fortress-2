@@ -320,55 +320,6 @@ stock void RF2_ReplyToCommand(int client, const char[] message, any ...)
 	CReplyToCommand(client, "{lightseagreen}[RF2] {default}%s", buffer);
 }
 
-// Function overrides
-stock void RemoveEntity2(int entity)
-{
-	if (entity == 0)
-	{
-		LogStackTrace("Cannot delete entity 0 (worldspawn)");
-		return;
-	}
-	
-	RemoveEntity(entity);
-}
-#define RemoveEntity RemoveEntity2
-
-stock bool PrecacheSound2(const char[] sound, bool preload=false)
-{
-	if (!sound[0])
-	{
-		LogStackTrace("Sound string is NULL");
-		return false;
-	}
-	
-	return PrecacheSound(sound, preload);
-}
-#define PrecacheSound PrecacheSound2
-
-stock int PrecacheModel2(const char[] model, bool preload=false)
-{
-	if (!model[0])
-	{
-		LogStackTrace("Model string is NULL");
-		return 0;
-	}
-	
-	return PrecacheModel(model, preload);
-}
-#define PrecacheModel PrecacheModel2
-
-stock void SetEntityModel2(int entity, const char[] model)
-{
-	if (!IsModelPrecached(model))
-	{
-		LogStackTrace("Model \"%s\" is not precached", model);
-		return;
-	}
-	
-	SetEntityModel(entity, model);
-}
-#define SetEntityModel SetEntityModel2
-
 public SharedPlugin __pl_RF2 =
 {
 	name = "Risk Fortress 2",

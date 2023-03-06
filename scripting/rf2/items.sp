@@ -1332,7 +1332,7 @@ bool ActivateStrangeItem(int client)
 		
 		case ItemStrange_NastyNorsemann:
 		{
-			if (TF2_IsPlayerInConditionEx(client, TFCond_HasRune))
+			if (TF2_IsPlayerInCondition(client, TFCond_HasRune))
 			{
 				EmitSoundToClient(client, SND_NOPE);
 				PrintCenterText(client, "%t", "AlreadyHasRune");
@@ -1468,7 +1468,7 @@ const float endPos[3]=NULL_VECTOR, float damage, int damageFlags, float size, in
 				SetEntItemDamageProc(attacker, item);
 			}
 			
-			SDKHooks_TakeDamage(entity, attacker, attacker, damage, damageFlags, _, _, _, false);
+			SDKHooks_TakeDamage(entity, attacker, attacker, damage, damageFlags);
 		}
 	}
 }

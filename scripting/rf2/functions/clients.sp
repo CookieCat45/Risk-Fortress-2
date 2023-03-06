@@ -296,27 +296,27 @@ int GetPlayerLevel(int client)
 
 bool IsInvuln(int client)
 {
-	return (TF2_IsPlayerInConditionEx(client, TFCond_Ubercharged) ||
-		TF2_IsPlayerInConditionEx(client, TFCond_UberchargedCanteen) ||
-		TF2_IsPlayerInConditionEx(client, TFCond_UberchargedHidden) ||
-		TF2_IsPlayerInConditionEx(client, TFCond_UberchargedOnTakeDamage) ||
-		TF2_IsPlayerInConditionEx(client, TFCond_Bonked) ||
-		TF2_IsPlayerInConditionEx(client, TFCond_HalloweenGhostMode) ||
+	return (TF2_IsPlayerInCondition(client, TFCond_Ubercharged) ||
+		TF2_IsPlayerInCondition(client, TFCond_UberchargedCanteen) ||
+		TF2_IsPlayerInCondition(client, TFCond_UberchargedHidden) ||
+		TF2_IsPlayerInCondition(client, TFCond_UberchargedOnTakeDamage) ||
+		TF2_IsPlayerInCondition(client, TFCond_Bonked) ||
+		TF2_IsPlayerInCondition(client, TFCond_HalloweenGhostMode) ||
 		!GetEntProp(client, Prop_Data, "m_takedamage"));
 }
 
 /*
 bool IsInvis(int client, bool fullyInvis=true)
 {
-	return ((TF2_IsPlayerInConditionEx(client, TFCond_Cloaked) ||
-		TF2_IsPlayerInConditionEx(client, TFCond_Stealthed) ||
-		TF2_IsPlayerInConditionEx(client, TFCond_StealthedUserBuffFade))
-		&& (!fullyInvis || !TF2_IsPlayerInConditionEx(client, TFCond_CloakFlicker)
-		&& !TF2_IsPlayerInConditionEx(client, TFCond_OnFire)
-		&& !TF2_IsPlayerInConditionEx(client, TFCond_Jarated)
-		&& !TF2_IsPlayerInConditionEx(client, TFCond_Milked)
-		&& !TF2_IsPlayerInConditionEx(client, TFCond_Bleeding)
-		&& !TF2_IsPlayerInConditionEx(client, TFCond_Gas)));
+	return ((TF2_IsPlayerInCondition(client, TFCond_Cloaked) ||
+		TF2_IsPlayerInCondition(client, TFCond_Stealthed) ||
+		TF2_IsPlayerInCondition(client, TFCond_StealthedUserBuffFade))
+		&& (!fullyInvis || !TF2_IsPlayerInCondition(client, TFCond_CloakFlicker)
+		&& !TF2_IsPlayerInCondition(client, TFCond_OnFire)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Jarated)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Milked)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Bleeding)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Gas)));
 }
 */
 
@@ -673,12 +673,6 @@ bool TF2_PlayerHasShieldEquipped(int client)
 	return false;
 }
 */
-
-// Use this over TF2_IsPlayerInCondition().
-bool TF2_IsPlayerInConditionEx(int client, TFCond condition)
-{
-	return g_bPlayerInCondition[client][condition];
-}
 
 TFCond GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0)
 {

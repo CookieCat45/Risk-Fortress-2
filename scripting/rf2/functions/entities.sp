@@ -157,7 +157,7 @@ void DoRadiusDamage(int attacker, int item=Item_Null, const float pos[3], float 
 					SetEntItemDamageProc(attacker, item);
 				}
 				
-				SDKHooks_TakeDamage(entity, attacker, attacker, calculatedDamage, damageFlags, weapon, _, _, false);
+				SDKHooks_TakeDamage(entity, attacker, attacker, calculatedDamage, damageFlags, weapon);
 			}
 			
 			delete trace;

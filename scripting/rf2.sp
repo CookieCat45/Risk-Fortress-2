@@ -373,7 +373,7 @@ char g_szSurvivorHudText[2048] = "\n\nStage %i | %02d:%02d\nEnemy Level: %i | Yo
 char g_szEnemyHudText[1024] = "\n\nStage %i | %02d:%02d\nEnemy Level: %i\n%s\n%s";
 
 // Players
-bool g_bPlayerInCondition[MAXTF2PLAYERS][MAX_TF_CONDITIONS]; // Check TF2_IsPlayerInConditionEx() over TF2_IsPlayerInCondition().
+bool g_bPlayerInCondition[MAXTF2PLAYERS][MAX_TF_CONDITIONS]; // Check TF2_IsPlayerInCondition() over TF2_IsPlayerInCondition().
 bool g_bPlayerViewingItemMenu[MAXTF2PLAYERS];
 bool g_bPlayerIsTeleporterBoss[MAXTF2PLAYERS];
 bool g_bPlayerVoiceNoPainSounds[MAXTF2PLAYERS];
@@ -540,6 +540,7 @@ bool g_bThrillerActive;
 int g_iThrillerRepeatCount;
 ArrayList g_hParticleEffectTable;
 
+#include "rf2/overrides.sp"
 #include "rf2/items.sp"
 #include "rf2/survivors.sp"
 #include "rf2/entityfactory.sp"
@@ -2066,7 +2067,7 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 				if (!TR_DidHit(trace))
 				{
 					SetEntItemDamageProc(medic, ItemMedic_WeatherMaster);
-					SDKHooks_TakeDamage(entity, medic, medic, damage, DMG_SHOCK, _, _, _, false);
+					SDKHooks_TakeDamage(entity, medic, medic, damage, DMG_SHOCK);
 					
 					CopyVectors(enemyPos, beamPos);
 					beamPos[2]+=1500.0;
@@ -2643,7 +2644,7 @@ public Action Timer_PlayerTimer(Handle timer)
 		if (CanPlayerRegen(i))
 		{
 			g_flPlayerHealthRegenTime[i] -= 0.1;
-			if (g_flPlayerHealthRegenTime[i] <= 0.0 && !TF2_IsPlayerInConditionEx(i, TFCond_Overhealed))
+			if (g_flPlayerHealthRegenTime[i] <= 0.0 && !TF2_IsPlayerInCondition(i, TFCond_Overhealed))
 			{
 				g_flPlayerHealthRegenTime[i] = 0.0;
 				health = GetClientHealth(i);
@@ -2679,7 +2680,7 @@ public Action Timer_PlayerTimer(Handle timer)
 			}
 		}
 		
-		if (PlayerHasItem(i, Item_HorrificHeadsplitter) && !TF2_IsPlayerInConditionEx(i, TFCond_Bleeding))
+		if (PlayerHasItem(i, Item_HorrificHeadsplitter) && !TF2_IsPlayerInCondition(i, TFCond_Bleeding))
 		{
 			TF2_MakeBleed(i, i, 60.0);
 		}
@@ -3226,7 +3227,7 @@ public Action Hook_ProjectileForceDamage(int entity, int other)
 		damageFlags |= DMG_CRIT;
 	}
 	
-	SDKHooks_TakeDamage(other, entity, owner, damage, damageFlags, _, _, _, false);
+	SDKHooks_TakeDamage(other, entity, owner, damage, damageFlags);
 	
 	if (remove)
 	{
@@ -3380,7 +3381,7 @@ public void Hook_ProjectileSpawnPost(int entity)
 		GetEntityClassname(entity, buffer, sizeof(buffer));
 		if (strcmp2(buffer, "tf_projectile_rocket"))
 		{
-			if (PlayerHasItem(owner, ItemSoldier_Compatriot) && CanUseCollectorItem(owner, ItemSoldier_Compatriot) && TF2_IsPlayerInConditionEx(owner, TFCond_BlastJumping))
+			if (PlayerHasItem(owner, ItemSoldier_Compatriot) && CanUseCollectorItem(owner, ItemSoldier_Compatriot) && TF2_IsPlayerInCondition(owner, TFCond_BlastJumping))
 			{
 				g_bFiredWhileRocketJumping[entity] = true;
 			}
@@ -3759,7 +3760,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			
 			if (PlayerHasItem(attacker, ItemSpy_CounterfeitBillycock) && CanUseCollectorItem(attacker, ItemSpy_CounterfeitBillycock))
 			{
-				if (TF2_IsPlayerInConditionEx(attacker, TFCond_Disguised) || TF2_IsPlayerInConditionEx(attacker, TFCond_DisguiseRemoved))
+				if (TF2_IsPlayerInCondition(attacker, TFCond_Disguised) || TF2_IsPlayerInCondition(attacker, TFCond_DisguiseRemoved))
 				{
 					damage *= 1.0 + CalcItemMod(attacker, ItemSpy_CounterfeitBillycock, 0);
 				}
@@ -3789,7 +3790,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		if (PlayerHasItem(victim, ItemSpy_CounterfeitBillycock) && CanUseCollectorItem(victim, ItemSpy_CounterfeitBillycock))
 		{
 			// If we're disguised and uncloaked, this item gives us resist
-			if (TF2_IsPlayerInConditionEx(victim, TFCond_Disguised) && !TF2_IsPlayerInConditionEx(victim, TFCond_Cloaked))
+			if (TF2_IsPlayerInCondition(victim, TFCond_Disguised) && !TF2_IsPlayerInCondition(victim, TFCond_Cloaked))
 			{
 				damage *= CalcItemMod_HyperbolicInverted(victim, ItemSpy_CounterfeitBillycock, 1);
 			}
@@ -4196,7 +4197,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	}
 	
 	static float nextFootstepTime[MAXTF2PLAYERS];
-	if (g_iPlayerFootstepType[client] == FootstepType_GiantRobot && GetTickedTime() >= nextFootstepTime[client] && !TF2_IsPlayerInConditionEx(client, TFCond_Disguised))
+	if (g_iPlayerFootstepType[client] == FootstepType_GiantRobot && GetTickedTime() >= nextFootstepTime[client] && !TF2_IsPlayerInCondition(client, TFCond_Disguised))
 	{
 		if ((buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT) && GetEntityFlags(client) & FL_ONGROUND)
 		{
@@ -4235,7 +4236,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				
 				if (class == TFClass_Spy)
 				{
-					if (TF2_IsPlayerInConditionEx(client, TFCond_Disguised) || TF2_IsPlayerInConditionEx(client, TFCond_Cloaked))
+					if (TF2_IsPlayerInCondition(client, TFCond_Disguised) || TF2_IsPlayerInCondition(client, TFCond_Cloaked))
 					{
 						sample = "misc/null.wav";
 					}
@@ -4278,13 +4279,13 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 	if (!RF2_IsEnabled() || g_bWaitingForPlayers)
 		return Plugin_Continue;
 	
-	if (IsValidClient(client) && (GetClientTeam(client) == TEAM_ENEMY || TF2_IsPlayerInConditionEx(client, TFCond_Disguised)))
+	if (IsValidClient(client) && (GetClientTeam(client) == TEAM_ENEMY || TF2_IsPlayerInCondition(client, TFCond_Disguised)))
 	{
 		Action action = Plugin_Continue;
 		int voiceType = g_iPlayerVoiceType[client];
 		int footstepType = g_iPlayerFootstepType[client];
 		
-		if (TF2_IsPlayerInConditionEx(client, TFCond_Disguised))
+		if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		{
 			if (IsPlayerSurvivor(client))
 			{
@@ -4302,7 +4303,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 		bool blacklist[MAXTF2PLAYERS];
 		
 		// If we're disguised, play the original sample to our teammates before doing anything.
-		if (TF2_IsPlayerInConditionEx(client, TFCond_Disguised))
+		if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		{
 			for (int i = 0; i < numClients; i++)
 			{
@@ -4387,7 +4388,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 					return Plugin_Stop;
 				
 				// For the love of god...
-				if (TF2_IsPlayerInConditionEx(client, TFCond_Taunting))
+				if (TF2_IsPlayerInCondition(client, TFCond_Taunting))
 				{
 					return Plugin_Continue;
 				}
@@ -4423,7 +4424,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				}
 				
 				// Only works this way for some reason
-				if (TF2_IsPlayerInConditionEx(client, TFCond_Disguised))
+				if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 				{
 					EmitSoundToClient(client, sample, client, channel, level, flags, volume, pitch);
 					
@@ -4443,7 +4444,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 		}
 		
 		// If we're disguised, don't play the new sound to our teammates
-		if (TF2_IsPlayerInConditionEx(client, TFCond_Disguised))
+		if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		{
 			for (int i = 0; i < numClients; i++)
 			{
