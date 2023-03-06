@@ -491,7 +491,7 @@ static int SentryBusterMain_Update(NextBotAction action, int actor, float interv
 					int pathingFailures = action.GetData("m_PathFailures") + 1;
 					if (!path.ComputeToTarget(bot, target))
 					{
-						if (pathingFailures == 3)
+						if (pathingFailures == 10)
 						{
 							return action.ChangeTo(SentryBusterExplode_Create());
 						}

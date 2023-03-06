@@ -1498,25 +1498,20 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		// TODO: Do something about voodoo-cursed (zombie) cosmetics causing player skin issues.
 		TF2_RemoveLoadoutWearables(client);
 		
-		char name[MAX_NAME_LENGTH];
-		if (GetPlayerEnemyType(client) > -1)
+		if (IsFakeClient(client))
 		{
-			strcopy(name, sizeof(name), g_szEnemyName[GetPlayerEnemyType(client)]);
-		}
-		else if (GetPlayerBossType(client) > -1)
-		{
-			strcopy(name, sizeof(name), g_szBossName[GetPlayerBossType(client)]);
-		}
-		
-		if (name[0])
-		{
-			if (IsFakeClient(client))
+			char name[MAX_NAME_LENGTH];
+			if (GetPlayerEnemyType(client) > -1)
 			{
-				SetClientName(client, name);
+				strcopy(name, sizeof(name), g_szEnemyName[GetPlayerEnemyType(client)]);
 			}
-			else
+			else if (GetPlayerBossType(client) > -1)
 			{
-				Format(name, sizeof(name), "%s (%s)", name, g_szPlayerOriginalName[client]);
+				strcopy(name, sizeof(name), g_szBossName[GetPlayerBossType(client)]);
+			}
+			
+			if (name[0])
+			{
 				SetClientName(client, name);
 			}
 		}
