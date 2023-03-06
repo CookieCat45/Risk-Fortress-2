@@ -51,7 +51,7 @@ void GameOver()
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i))
+		if (!IsClientInGame(i) || IsFakeClient(i))
 			continue;
 		
 		SetEntPropEnt(i, Prop_Data, "m_hCtrl", fog);

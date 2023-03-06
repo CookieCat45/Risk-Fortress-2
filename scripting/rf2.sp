@@ -32,8 +32,6 @@ public Plugin myinfo =
 #define WAIT_TIME_DEFAULT 100 // Waiting For Players time
 #define TF_CLASSES 9+1 // because arrays
 #define MAX_TF_CONDITIONS 150
-
-// this is the actual unique damage flag that TF2 uses for melee damage, not all weapons use DMG_CLUB
 #define DMG_MELEE DMG_BLAST_SURFACE
 #define WORLD_CENTER "rf2_world_center" // An info_target used to determine where the "center" of the world is, according to the map designer
 
@@ -2174,6 +2172,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 			// Need to set health. m_bDisposableBuilding being set also messes with the building health.
 			int maxHealth = GetEntProp(building, Prop_Send, "m_iMaxHealth");
 			maxHealth = RoundToFloor(float(maxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
+			maxHealth = imax(maxHealth, 1); // prevent 0, causes division by zero crash on client
 			SetEntProp(building, Prop_Send, "m_iMaxHealth", maxHealth);
 			SetVariantInt(maxHealth);
 			AcceptEntityInput(building, "SetHealth");
@@ -2564,7 +2563,7 @@ public Action Timer_Difficulty(Handle timer)
 	
 	float timeFactor = g_flSecondsPassed / 10.0;
 	float playerFactor = fmax(1.0 + float(RF2_GetSurvivorCount()-1) * 0.12, 1.0);
-	float value = fmax(1.12 - (0.01 * float(RF2_GetSurvivorCount()-1)), 1.02);
+	float value = fmax(1.08 - (0.005 * float(RF2_GetSurvivorCount()-1)), 1.02);
 	float stageFactor = Pow(value, float(g_iStagesCompleted));
 	
 	float difficultyFactor = GetDifficultyFactor(RF2_GetDifficulty());

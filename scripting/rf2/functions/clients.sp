@@ -448,12 +448,13 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 				}
 				
 				buildingMaxHealth = RoundToFloor(float(buildingMaxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
+				buildingMaxHealth = imax(buildingMaxHealth, 1); // prevent 0, causes division by zero crash on client
 				SetEntProp(entity, Prop_Send, "m_iMaxHealth", buildingMaxHealth);
 				
 				if (!carried && !GetEntProp(entity, Prop_Send, "m_bBuilding"))
 				{
-					buildingHealth = GetEntProp(entity, Prop_Send, "m_iHealth");
-					SetVariantInt(buildingHealth+(buildingMaxHealth-oldBuildingMaxHealth));
+					buildingHealth = GetEntProp(entity, Prop_Send, "m_iHealth") + (buildingMaxHealth-oldBuildingMaxHealth);
+					SetVariantInt(imax(buildingHealth, 1));
 					AcceptEntityInput(entity, "SetHealth");
 				}
 			}
