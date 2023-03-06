@@ -713,7 +713,7 @@ void LoadGameData()
 	g_hSDKGetMaxHealth = EndPrepSDKCall();
 	if (!g_hSDKGetMaxHealth)
 	{
-		LogError("[SDK] Failed to create call for CBasePlayer::GetMaxHealth");
+		SetFailState("[SDK] Failed to create call for CBasePlayer::GetMaxHealth from SDKHooks gamedata");
 	}
 	
 	delete gamedata;
