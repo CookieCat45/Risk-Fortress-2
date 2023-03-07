@@ -101,7 +101,7 @@ int SpawnObjects()
 	float width = FloatAbs(worldMins[1]) + FloatAbs(worldMaxs[1]);
 	float distance = SquareRoot(length * width);
 	
-	ArrayList objectArray = CreateArray();
+	ArrayList objectArray = CreateArray(64);
 	const int largeWeight = 3;
 	const int strangeWeight = 2;
 	const int hauntedWeight = 1;
@@ -115,12 +115,12 @@ int SpawnObjects()
 	{
 		switch (i)
 		{
-			case 1: name = "rf2_object_crate_large", count = largeWeight;
-			case 2: name = "rf2_object_crate_strange", count = strangeWeight;
-			case 3: name = "rf2_object_crate_haunted", count = hauntedWeight;
-			case 4: name = "rf2_object_crate_collector", count = collectorWeight;
-			case 5: name = "rf2_object_workbench", count = workbenchWeight;
-			case 6: name = "rf2_object_scrapper", count = scrapperWeight;
+			case 1: strcopy(name, sizeof(name), "rf2_object_crate_large"), count = largeWeight;
+			case 2: strcopy(name, sizeof(name), "rf2_object_crate_strange"), count = strangeWeight;
+			case 3: strcopy(name, sizeof(name), "rf2_object_crate_haunted"), count = hauntedWeight;
+			case 4: strcopy(name, sizeof(name), "rf2_object_crate_collector"), count = collectorWeight;
+			case 5: strcopy(name, sizeof(name), "rf2_object_workbench"), count = workbenchWeight;
+			case 6: strcopy(name, sizeof(name), "rf2_object_scrapper"), count = scrapperWeight;
 		}
 		
 		for (int j = 1; j <= count; j++)

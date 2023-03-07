@@ -6,30 +6,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+bool g_bPlayerInCondition[MAXTF2PLAYERS][MAX_TF_CONDITIONS];
+
 bool TF2_IsPlayerInCondition2(int client, TFCond condition)
 {
 	return g_bPlayerInCondition[client][condition];
 }
 #define TF2_IsPlayerInCondition TF2_IsPlayerInCondition2
-
-void FixConditionFlag(int client, TFCond condition, bool state)
-{
-	g_bPlayerInCondition[client][condition] = state;
-}
-
-void TF2_AddCondition2(int client, TFCond condition, float duration=TFCondDuration_Infinite, int inflictor=0)
-{
-	TF2_AddCondition(client, condition, duration, inflictor);
-	FixConditionFlag(client, condition, true);
-}
-#define TF2_AddCondition TF2_AddCondition2
-
-void TF2_RemoveCondition2(int client, TFCond condition)
-{
-	TF2_RemoveCondition(client, condition);
-	FixConditionFlag(client, condition, false);
-}
-#define TF2_RemoveCondition TF2_RemoveCondition2
 
 public void RemoveEntity2(int entity)
 {
@@ -81,3 +64,12 @@ void SetEntityModel2(int entity, const char[] model)
 	SetEntityModel(entity, model);
 }
 #define SetEntityModel SetEntityModel2
+
+bool IsValidEntity2(int entity)
+{
+	if (entity == 0)
+		return false;
+	
+	return IsValidEntity(entity);
+}
+#define IsValidEntity IsValidEntity2

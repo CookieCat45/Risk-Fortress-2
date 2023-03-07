@@ -165,7 +165,7 @@ public Action Command_GiveItem(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	char arg1[MAX_NAME_LENGTH], arg2[MAX_NAME_LENGTH], arg3[16];
+	char arg1[MAX_NAME_LENGTH], arg2[MAX_NAME_LENGTH];
 	GetCmdArg(1, arg1, sizeof(arg1)); // player(s)
 	GetCmdArg(2, arg2, sizeof(arg2)); // item name
 	
@@ -188,9 +188,9 @@ public Action Command_GiveItem(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	GetCmdArg(3, arg3, sizeof(arg3)); // item amount
-	int amount = StringToInt(arg3);
-	if (amount == 0)
+	int amount = GetCmdArgInt(3); // item amount
+
+	if (amount == 0) // assume 1 if no number is passed
 	{
 		amount = 1;
 	}
@@ -252,12 +252,10 @@ public Action Command_GiveCash(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	char arg1[128], arg2[32];
+	char arg1[128];
 	
 	GetCmdArg(1, arg1, sizeof(arg1)); // player(s)
-	GetCmdArg(2, arg2, sizeof(arg2));
-	
-	float amount = StringToFloat(arg2);
+	float amount = GetCmdArgFloat(2);
 	
 	char clientName[MAX_TARGET_LENGTH];
 	int clients[MAXTF2PLAYERS];
@@ -311,12 +309,11 @@ public Action Command_GiveXP(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	char arg1[MAX_TARGET_LENGTH], arg2[32];
+	char arg1[MAX_TARGET_LENGTH];
 	
 	GetCmdArg(1, arg1, sizeof(arg1)); // player(s)
-	GetCmdArg(2, arg2, sizeof(arg2));
-	
-	float amount = StringToFloat(arg2);
+	float amount = GetCmdArgFloat(2);
+
 	if (amount <= 0.0)
 	{
 		RF2_ReplyToCommand(client, "%t", "MoreThanZero");
@@ -504,17 +501,15 @@ public Action Command_AddPoints(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	char arg1[32], arg2[32];
+	char arg1[32];
 	
 	char clientName[MAX_TARGET_LENGTH];
 	int clients[MAXTF2PLAYERS];
 	bool multiLanguage;
 	
-	GetCmdArg(1, arg1, sizeof(arg1));
-	GetCmdArg(2, arg2, sizeof(arg2));
-	
+	GetCmdArg(1, arg1, sizeof(arg1)); // player(s)
+	int amount = GetCmdArgInt(2);
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
-	int amount = StringToInt(arg2);
 	
 	if (matches < 1)
 	{
@@ -603,7 +598,7 @@ public Action Command_ForceBoss(int client, int args)
 	char arg1[32];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	int target = FindTarget(client, arg1);
-
+	
 	if (target == -1)
 	{
 		ReplyToTargetError(client, COMMAND_TARGET_NONE);
@@ -786,14 +781,17 @@ public Action Command_AFK(int client, int args)
 		return Plugin_Handled;
 	}
 	
+	/*
 	if (IsSingleplayer())
 	{
 		RF2_ReplyToCommand(client, "%t", "OnlyMultiplayer");
 		return Plugin_Handled;
 	}
+	*/
 	
 	if (IsPlayerAFK(client))
 	{
+		ResetAFKTime(client);
 		return Plugin_Handled;
 	}
 	
@@ -808,17 +806,21 @@ public Action Command_AFK(int client, int args)
 		if (g_bGracePeriod)
 		{
 			FakeClientCommand(client, "explode");
-			ReshuffleSurvivor(client, view_as<int>(TFTeam_Unassigned));
+			
+			if (!IsSingleplayer())
+			{
+				ReshuffleSurvivor(client, view_as<int>(TFTeam_Spectator));
+			}
+			else
+			{
+				TF2_ChangeClientTeam(client, TFTeam_Spectator);
+			}
 		}
 		else
 		{
 			RF2_ReplyToCommand(client, "%t", "NotAsSurvivorAfterGrace");
 			return Plugin_Handled;
 		}
-	}
-	else
-	{
-		
 	}
 	
 	g_bPlayerIsAFK[client] = true;
@@ -1191,9 +1193,8 @@ public Action Command_SetDifficulty(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	char arg1[8], name[32];
-	GetCmdArg(1, arg1, sizeof(arg1));
-	int level = StringToInt(arg1);
+	char name[32];
+	int level = GetCmdArgInt(1);
 	
 	if (level < DIFFICULTY_SCRAP || level >= DIFFICULTY_MAX)
 	{

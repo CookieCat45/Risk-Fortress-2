@@ -33,6 +33,7 @@ void RefreshClient(int client)
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
 	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
+
 	g_szObjectiveHud[client] = "";
 	
 	if (IsClientInGame(client) && !g_bMapChanging)
@@ -72,6 +73,7 @@ void RefreshClient(int client)
 	g_TFBot[client].HasBuilt = false;
 	g_TFBot[client].IsBuilding = false;
 	g_TFBot[client].SentryArea = view_as<CTFNavArea>(NULL_AREA);
+	g_TFBot[client].BuildingTarget = -1;
 }
 
 public Action Timer_ResetModel(Handle timer, int client)

@@ -373,7 +373,6 @@ char g_szSurvivorHudText[2048] = "\n\nStage %i | %02d:%02d\nEnemy Level: %i | Yo
 char g_szEnemyHudText[1024] = "\n\nStage %i | %02d:%02d\nEnemy Level: %i\n%s\n%s";
 
 // Players
-bool g_bPlayerInCondition[MAXTF2PLAYERS][MAX_TF_CONDITIONS]; // Check TF2_IsPlayerInCondition() over TF2_IsPlayerInCondition().
 bool g_bPlayerViewingItemMenu[MAXTF2PLAYERS];
 bool g_bPlayerIsTeleporterBoss[MAXTF2PLAYERS];
 bool g_bPlayerVoiceNoPainSounds[MAXTF2PLAYERS];
@@ -2802,12 +2801,8 @@ public Action OnVoiceCommand(int client, const char[] command, int args)
 	if (!RF2_IsEnabled() || !IsPlayerAlive(client))
 		return Plugin_Continue;
 	
-	char arg1[8], arg2[8];
-	int num1, num2;
-	GetCmdArg(1, arg1, sizeof(arg1));
-	GetCmdArg(2, arg2, sizeof(arg2));
-	num1 = StringToInt(arg1);
-	num2 = StringToInt(arg2);
+	int num1 = GetCmdArgInt(1);
+	int num2 = GetCmdArgInt(2);
 	
 	if (IsPlayerSurvivor(client))
 	{
@@ -2835,6 +2830,7 @@ public Action OnChangeClass(int client, const char[] command, int args)
 	char arg1[32];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	TFClassType desiredClass = TF2_GetClass(arg1);
+
 	if (g_bRoundActive && !g_bGracePeriod || GetClientTeam(client) == TEAM_ENEMY)
 	{
 		RF2_PrintToChat(client, "%t", "NoChangeClass");
@@ -2871,12 +2867,19 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
 	
-	int team = GetClientTeam(client);
-	
-	if (team == TEAM_ENEMY || team == TEAM_SURVIVOR)
+	if (strcmp2(command, "spectate") || strcmp2(command, "autoteam") || view_as<TFTeam>(GetCmdArgInt(1)) <= TFTeam_Spectator)
 	{
 		RF2_PrintToChat(client, "%t", "NoChangeTeam");
 		return Plugin_Handled;
+	}
+	else if (g_bRoundActive)
+	{
+		int team = GetClientTeam(client);
+		if (team == TEAM_ENEMY || team == TEAM_SURVIVOR)
+		{
+			RF2_PrintToChat(client, "%t", "NoChangeTeam");
+			return Plugin_Handled;
+		}
 	}
 	
 	return Plugin_Continue;
@@ -2884,28 +2887,21 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 
 public Action OnChangeSpec(int client, const char[] command, int args)
 {
-	ResetAFKTime(client);
+	if (!IsSingleplayer(false))
+		ResetAFKTime(client);
+
 	return Plugin_Continue;
 }
 
 public Action OnBuildCommand(int client, const char[] command, int args)
 {
-	if (GetClientTeam(client) == TEAM_ENEMY)
+	if (GetClientTeam(client) == TEAM_ENEMY && GetCmdArgInt(1) == view_as<int>(TFObject_Teleporter))
 	{
-		char arg1[8];
-		GetCmdArg(1, arg1, sizeof(arg1));
-		
-		if (StringToInt(arg1) == 1)
+		if (args == 1 || GetCmdArgInt(2) == view_as<int>(TFObjectMode_Entrance))
 		{
-			char arg2[8];
-			GetCmdArg(2, arg2, sizeof(arg2));
-			
-			if (args == 1 || StringToInt(arg2) == 0)
-			{
-				EmitSoundToClient(client, SND_NOPE);
-				PrintCenterText(client, "%t", "OnlyBuildExit");
-				return Plugin_Handled;
-			}
+			EmitSoundToClient(client, SND_NOPE);
+			PrintCenterText(client, "%t", "OnlyBuildExit");
+			return Plugin_Handled;
 		}
 	}
 	
@@ -3012,6 +3008,11 @@ public void Hook_PreThink(int client)
 
 public void TF2_OnConditionAdded(int client, TFCond condition)
 {
+	g_bPlayerInCondition[client][condition] = true;
+	
+	if (!RF2_IsEnabled())
+		return;
+	
 	if (condition == TFCond_Dazed)
 	{
 		if (!RF2_CanBeStunned(client))
@@ -3035,12 +3036,15 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	{
 		CalculatePlayerMaxSpeed(client);
 	}
-	
-	g_bPlayerInCondition[client][condition] = true;
 }
 
 public void TF2_OnConditionRemoved(int client, TFCond condition)
 {
+	g_bPlayerInCondition[client][condition] = false;
+	
+	if (!RF2_IsEnabled())
+		return;
+	
 	if (condition == TFCond_Buffed && PlayerHasItem(client, Item_MisfortuneFedora))
 	{
 		TF2_AddCondition(client, TFCond_Buffed);
@@ -3057,8 +3061,6 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	{
 		CalculatePlayerMaxSpeed(client);
 	}
-
-	g_bPlayerInCondition[client][condition] = false;
 }
 
 int g_iLastFiredWeapon[MAXTF2PLAYERS] = {-1, ...};
@@ -4089,7 +4091,7 @@ public Action Timer_DecayFireRateBuff(Handle timer, int client)
 	return Plugin_Continue;
 }
 
-public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype)
+public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3])
 {
 	if (!RF2_IsEnabled() || g_bWaitingForPlayers)
 		return Plugin_Continue;
@@ -4099,11 +4101,11 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	
 	if (bot)
 	{
-		action = TFBot_OnPlayerRunCmd(client, buttons, impulse, vel, angles, weapon, subtype);
+		action = TFBot_OnPlayerRunCmd(client, buttons, impulse);
 	}
 	else
 	{
-		if (buttons)
+		if (buttons && !IsSingleplayer(false))
 		{
 			ResetAFKTime(client);
 		}
