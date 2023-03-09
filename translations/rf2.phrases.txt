@@ -1,0 +1,528 @@
+"Phrases"
+{
+	"AFKDetected" // No color tags
+	{
+		"en"		"You have been detected as AFK. Press any button or you will be kicked shortly."
+	}
+	
+	"NoLongerAFK" // No color tags
+	{
+		"en"		"You are no longer marked as AFK."
+	}
+	
+	"LastMan" // No color tags
+	{
+		"en"		"You're the last one. Good luck..."
+	}
+	
+	"ExtraSentryHint" // No color tags
+	{
+		"en"		"Press ATTACK3 (Middle Mouse Button) to build extra sentries. TAB + ATTACK3 to detonate them."
+	}
+	
+	"PocketMedic" // No color tags
+	{
+		"en"		"Pocket Medic activated!"
+	}
+	
+	"OnlyBuildExit" // No color tags
+	{
+		"en"		"You can't build a Teleporter entrance. You only need to build an exit!"
+	}
+
+	"DisconnectChosenAsSurvivor"
+	{
+		"#format"	"{1:N}"
+		"en"		"You've been chosen as a Survivor because {1} disconnected or went AFK. Enjoy!"
+	}
+	
+	"GainedSurvivorPoints"
+	{
+		"en"		"You gained {lime}10 {default}Survivor Points from this round."
+	}
+	
+	"TanksWillArrive"
+	{
+		"#format"	"{1:.0f}"
+		"en"		"Tanks will arrive in {1} seconds."
+	}
+	
+	"TanksHaveArrived"
+	{
+		"en"		"The Tank has arrived. Destroy it, RED Team!"
+	}
+	
+	"AllTanksDestroyed"
+	{
+		"en"		"{lime}Victory!{default} All Tanks have been destroyed."
+	}
+	
+	"DifficultySet"
+	{
+		"#format"	"{1:s}"
+		"en"		"The difficulty has been set to {1}."
+	}
+	
+	"DifficultySetBy"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{1} set the difficulty to {2}."
+	}
+	
+	"DifficultySetDeadly"
+	{
+		"#format"	"{1:s}"
+		"en"		"The difficulty has been set to {1}! {red}Prepare to die..."
+	}
+	
+	"PickupItem"
+	{
+		"#format"	"{1:N},{2:s},{3:s},{4:d}"
+		"en"		"{yellow}{1}{default} picked up {2}{3} {lightgray}[{4}]"
+	}
+	
+	"PickupItemStrange"
+	{
+		"#format"	"{1:N},{2:s},{3:s}"
+		"en"		"{yellow}{1}{default} picked up {2}{3}"
+	}
+	
+	"ItemShareLimit" // No color tags
+	{
+		"#format"	"{1:d}"
+		"en"		"You've reached your item share limit of {1}.\nYou can no longer take items unless they are dropped for you."
+	}
+	
+	"NotForYou" // No color tags
+	{
+		"en"		"That item is not for you!"
+	}
+	
+	"NotEnoughMoney" // No color tags
+	{
+		"#format"	"{1:.0f},{2:.0f}"
+		"en"		"You can't afford to open this! (Cost: ${1}, you have: ${2})"
+	}
+	
+	"ThisCosts" // No color tags
+	{
+		"#format"	"{1:.0f}"
+		"en"		"This costs ${1}."
+	}
+	
+	"UsedWorkbench" // No color tags
+	{
+		"#format"	"{1:s},{2:s}"
+		"en"		"You traded 1 {1} for a {2}."
+	}
+	
+	"NoExchange" // No color tags
+	{
+		"#format"	"{1:s}"
+		"en"		"You don't have any items to exchange! You need {1} quality items."
+	}
+	
+	"NothingToScrap" // No color tags
+	{
+		"en"		"You have no items to scrap!"
+	}
+	
+	"UsedScrapper" // No color tags
+	{
+		"#format"	"{1:s},{2:s}"
+		"en"		"You scrapped 1 {1} for 1 {2}."
+	}
+	
+	"UsedScrapperHaunted" // No color tags
+	{
+		"#format"	"{1:s}"
+		"en"		"You scrapped 1 {1} for 1 Haunted Key."
+	}
+	
+	"GivenInventory" // No color tags
+	{
+		"#format"	"{1:s}"
+		"en"		"You have been given {1}'s inventory."
+	}
+	
+	"NoKeys" // No color tags
+	{
+		"en"		"You don't have any Haunted Keys to open this!"
+	}
+	
+	"GaveItem"
+	{
+		"#format"	"{1:N},{2:d},{3:s},{4:s},{5:N},{6:d}"
+		"en"		"{yellow}{1}{default} gave {lime}{2}{default} of item {3}{4}{default} to {yellow}{5}{default}. They now have {lime}{6}{default} of the item."
+	}
+	
+	"GaveItemStrange"
+	{
+		"#format"	"{1:N},{2:s},{3:s},{4:N}"
+		"en"		"{yellow}{1}{default} gave item {2}{3}{default} to {yellow}{4}{default}."
+	}
+	
+	"GaveMoney"
+	{
+		"#format"	"{1:N},{2:.0f},{3:d}"
+		"en"		"{yellow}{1}{default} gave {lime}${2}{default} to {yellow}{3}"
+	}
+	
+	"GaveXP"
+	{
+		"#format"	"{1:N},{2:.0f},{3:N}"
+		"en"		"{yellow}{1}{default} gave {cyan}{2}{default} XP to {yellow}{3}"
+	}
+	
+	"GaveQueuePoints"
+	{
+		"#format"	"{1:N},{2:d},{3:N}"
+		"en"		"{yellow}{1}{default} gave {lime}{2}{default} queue points to {yellow}{3}{default}."
+	}
+	
+	"EnemyLevelUp"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"Enemy Level: {red}{1} -> {2}"
+	}
+	
+	"YouLevelUp"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"Your Level: {lime}{1} -> {2}"
+	}
+	
+	"WaitingInactive"
+	{
+		"en"		"The Waiting For Players sequence is not active."
+	}
+	
+	"GracePeriodEnded"
+	{
+		"en"		"Grace period has ended. Death on RED will result in joining BLU."
+	}
+	
+	"GracePeriodNotActive"
+	{
+		"en"		"The grace period is not active."
+	}
+	
+	"GracePeriodSkipped"
+	{
+		"en"		"The grace period has been skipped."
+	}
+	
+	"HauntedKeyDrop"
+	{
+		"#format"	"{1:N}"
+		"en"		"{yellow}{1}{default} dropped a {haunted}Haunted Key!"
+	}
+	
+	"VoteInProgress"
+	{
+		"en"		"There is already a vote in progress. Please wait until it finishes."
+	}
+	
+	"TeleporterActivated"
+	{
+		"en"		"The Teleporter has been activated..."
+	}
+	
+	"TeleporterComplete"
+	{
+		"en"		"{lime}The Teleporter is charged! {default}Interact with it again to leave."
+	}
+	
+	"NoActivateTele"
+	{
+		"en"		"You can't activate the Teleporter right now."
+	}
+	
+	"NoChangeClass"
+	{
+		"en"		"You can't change your class at this time!"
+	}
+	
+	"NoChangeTeam"
+	{
+		"en"		"You can't change your team!"
+	}
+	
+	"NoSuicide"
+	{
+		"en"		"You are not allowed to suicide!"
+	}
+	
+	"AlreadyHasRune"
+	{
+		"en"		"You can't use this when you already have a rune active!"
+	}
+	
+	"TipSettings"
+	{
+		"en"		"Type {lightblue}/rf2_settings{default} to change your in-game preferences at any time."
+	}
+	
+	"TipAFK"
+	{
+		"#format"	"{1:d}"
+		"en"		"Need to AFK? No problem! Type {lightblue}/rf2_afk{default} into chat to enter AFK Mode. Only up to {yellow}{1}{default} players may use this at a time, however."
+	}
+	
+	"TipCredits"
+	{
+		"#format"	"{1:s}"
+		"en"		"{lightblue}Risk Fortress 2{default} version {pink}{1}{default} created by {indianred}CookieCat"
+	}
+	
+	"TipQueue"
+	{
+		"en"		"Don't want to be a Survivor or want to save up queue points? Toggle it off in {lightblue}/rf2_settings"
+	}
+	
+	"TipMenu"
+	{
+		"en"		"As a Survivor, you can press {yellow}TAB + E{default} to quickly open your inventory menu."
+	}
+	
+	"PluginDisabled"
+	{
+		"en"		"RF2 is currently disabled!"
+	}
+	
+	"WaitForRoundStart"
+	{
+		"en"		"Wait for the round to start."
+	}
+	
+	"MoreThanZero"
+	{
+		"en"		"Please specify an amount above 0."
+	}
+	
+	"NotASurvivor"
+	{
+		"#format"	"{1:N}"
+		"en"		"{1} is not a Survivor."
+	}
+	
+	"YouAreNotSurvivor"
+	{
+		"en"		"You are not a Survivor."
+	}
+	
+	"YourItemsShareEnabled"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"Your Items (select to drop). Item Share Limit: {1}/{2}"
+	}
+	
+	"YourItems"
+	{
+		"en"		"Your Items (select to drop)."
+	}
+	
+	"NoItems"
+	{
+		"en"		"You have no items."
+	}
+	
+	"ItemDrop"
+	{
+		"#format"	"{1:N}"
+		"en"		"Dropped item for player {yellow}{1}{default}."
+	}
+	
+	"IsDead"
+	{
+		"#format"	"{1:N}"
+		"en"		"{1} is dead."
+	}
+	
+	"TargetInvalid"
+	{
+		"en"		"Your target is no longer valid!"
+	}
+	
+	"NoEnemiesLoaded"
+	{
+		"en"		"There are no enemies loaded!"
+	}
+	
+	"NoBossesLoaded"
+	{
+		"en"		"There are no bosses loaded!"
+	}
+	
+	"CannotBeUsed"
+	{
+		"en"		"This can't be used right now!"
+	}
+	
+	"CantUseOnSurvivor"
+	{
+		"en"		"You can't use this on a Survivor!"
+	}
+	
+	"OnlyInGame"
+	{
+		"en"		"This command can only be used in-game."
+	}
+	
+	"OnlyMultiplayer"
+	{
+		"en"		"You can't use this in singleplayer!"
+	}
+	
+	"NotAsTeleBoss"
+	{
+		"en"		"You cannot use this as a Teleporter boss!"
+	}
+	
+	"NotAsSurvivorAfterGrace"
+	{
+		"en"		"You cannot use this as a Survivor after the grace period."
+	}
+	
+	"SpawnAs"
+	{
+		"#format"	"{1:N}"
+		"en"		"Spawn {1} as..."
+	}
+	
+	"SpawnedAsEnemy"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"Spawned {1} as enemy: {2}"
+	}
+	
+	"SpawnedAsBoss"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"Spawned {1} as boss: {2}"
+	}
+	
+	"ToggleSurvivor"
+	{
+		"#format"	"{1:s}"
+		"en"		"Toggle becoming a Survivor ({1})"
+	}
+	
+	"ToggleTeleBoss"
+	{
+		"#format"	"{1:s}"
+		"en"		"Toggle becoming a Teleporter boss ({1})"
+	}
+	
+	"ToggleMusic"
+	{
+		"#format"	"{1:s}"
+		"en"		"Toggle music ({1})"
+	}
+	
+	"AutoItemMenu"
+	{
+		"#format"	"{1:s}"
+		"en"		"Enable automatic item menu ({1})"
+	}
+	
+	"On"
+	{
+		"en"		"ON"
+	}
+	
+	"Off"
+	{
+		"en"		"OFF"
+	}
+	
+	"ItemsReloaded"
+	{
+		"en"		"All items reloaded successfully."
+	}
+	
+	"EntityCount"
+	{
+		"#format"	"{1:d}"
+		"en"		"Entity Count: {yellow}{1}"
+	}
+	
+	"ItemNoMatch"
+	{
+		"#format"	"{1:s}"
+		"en"		"Item \"{1}\" doesn't match any existing item name!"
+	}
+	
+	"InvalidMap"
+	{
+		"#format"	"{1:s}"
+		"en"		"{1} is not a valid map."
+	}
+	
+	"InvalidDifficulty"
+	{
+		"en"		"Invalid difficulty value specified, valid values are: 0 (Scrap), 1 (Iron), 2 (Steel), 3 (Titanium)."
+	}
+	
+	"GiveItemUsage"
+	{
+		"en"		"Usage: /rf2_giveitem <player> <item name> <amount>\nNegative amounts will remove items from a player."
+	}
+	
+	"GiveCashUsage"
+	{
+		"en"		"Usage: /rf2_givecash <player> <amount>"
+	}
+	
+	"GiveXpUsage"
+	{
+		"en"		"Usage: /rf2_givexp <player> <amount>"
+	}
+	
+	"NextMapForced"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{yellow}{1} {default}forced the next map to {yellow}{2}"
+	}
+	
+	"NextMapCanUndo"
+	{
+		"en"		"You can undo this by typing {yellow}/rf2_setnextmap{default} without specifying a map."
+	}
+	
+	"NextMapCancel"
+	{
+		"#format"	"{1:N}"
+		"en"		"{yellow}{1} {default}cancelled the forced map change."
+	}
+	
+	"ForceWinUsage"
+	{
+		"en"		"Usage: /rf2_forcewin <red|blue>"
+	}
+	
+	"AddPointsUsage"
+	{
+		"en"		"Usage: /rf2_addpoints <player> <amount>"
+	}
+	
+	"AllHumansDisconnected"
+	{
+		"en"		"[RF2] All human players have disconnected from the server. Restarting the game..."
+	}
+	
+	"NoSurvivorsSpawned"
+	{
+		"en"		"[RF2] No Survivors were spawned! Restarting the game..."
+	}
+	
+	"WaitingStart"
+	{
+		"en"		"[RF2] Waiting For Players sequence started."
+	}
+	
+	"WaitingEnd"
+	{
+		"en"		"[RF2] Waiting For Players sequence ended."
+	}
+}

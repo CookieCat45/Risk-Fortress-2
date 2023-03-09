@@ -440,6 +440,7 @@ Handle g_hDifficultyTimer;
 // Gamedata handles
 Handle g_hSDKEquipWearable;
 Handle g_hSDKGetMaxClip1;
+Handle g_hSDKUpdateSpeed;
 Handle g_hSDKDoQuickBuild;
 Handle g_hSDKGetMaxHealth;
 Handle g_hSDKComputeIncursion;
@@ -628,6 +629,14 @@ void LoadGameData()
 	if (!g_hSDKCanBuild || !DHookEnableDetour(g_hSDKCanBuild, true, DHook_CanBuild))
 	{
 		LogError("[DHooks] Failed to create detour for CTFPlayer::CanBuild");
+	}
+	
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFPlayer::TeamFortress_SetSpeed");
+	g_hSDKUpdateSpeed = EndPrepSDKCall();
+	if (!g_hSDKUpdateSpeed)
+	{
+		LogError("[SDK] Failed to create call for CTFPlayer::TeamFortress_SetSpeed");
 	}
 	
 	// CBaseEntity::TakeHealth ---------------------------------------------------------------------------------------------------------------
@@ -2634,6 +2643,13 @@ public Action Timer_PlayerTimer(Handle timer)
 			}
 		}
 		
+		// Make sure our max health is up to date (mainly for things like the GRU)
+		maxHealth = SDK_GetPlayerMaxHealth(i);
+		if (g_iPlayerCalculatedMaxHealth[i] != maxHealth)
+		{
+			g_iPlayerCalculatedMaxHealth[i] = maxHealth;
+		}
+		
 		// Health Regen
 		if (CanPlayerRegen(i))
 		{
@@ -3001,7 +3017,7 @@ public void Hook_PreThink(int client)
 		else if (GetEntProp(client, Prop_Send, "m_iAirDash") > 0)
 		{
 			g_iPlayerAirDashCounter[client]++;
-			OnPlayerAirDash(client, g_iPlayerAirDashCounter[client]);
+			TF2_OnPlayerAirDash(client, g_iPlayerAirDashCounter[client]);
 		}
 	}
 }
@@ -3416,6 +3432,11 @@ public Action Hook_HealthKitTouch(int entity, int other)
 	if (IsValidClient(other) && GetClientTeam(other) == TEAM_ENEMY)
 		return Plugin_Handled;
 	
+	if (GetClientHealth(other) < RF2_GetCalculatedMaxHealth(other))
+	{
+
+	}
+
 	return Plugin_Continue;
 }
 
@@ -3509,7 +3530,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	bool selfDamage = (attacker == victim || inflictor == victim);
 	bool rangedDamage = (damageType & DMG_BULLET || damageType & DMG_BLAST || damageType & DMG_IGNITE || damageType & DMG_SONIC);
-	bool invuln = victimIsClient && IsInvuln(victim);
+	bool invuln = victimIsClient && TF2_IsInvuln(victim);
 	
 	if (victimIsClient)
 	{
@@ -3808,7 +3829,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 {
 	bool attackerIsClient = IsValidClient(attacker);
 	bool victimIsClient = IsValidClient(victim);
-	bool invuln = victimIsClient && IsInvuln(victim);
+	bool invuln = victimIsClient && TF2_IsInvuln(victim);
 	bool selfDamage = victim == attacker;
 	float proc = g_flDamageProc;
 	

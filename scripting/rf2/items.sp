@@ -482,11 +482,24 @@ bool PickupItem(int client)
 		
 		if (IsEquipmentItem(itemIndex))
 		{
-			RF2_PrintToChatAll("%t", "PickupItemStrange", client, qualityTag, itemName);
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (i == client || IsFakeClient(i))
+					continue;
+				
+				RF2_PrintToChat(i, "%t", "PickupItemStrange", client, qualityTag, itemName);
+			}
+			
 		}
 		else
 		{
-			RF2_PrintToChatAll("%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, itemIndex));
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (i == client || IsFakeClient(i))
+					continue;
+				
+				RF2_PrintToChat(i, "%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, itemIndex));
+			} 
 		}
 		
 		RF2_PrintToChat(client, "%s%s{default}: %s", qualityTag, itemName, g_szItemDesc[itemIndex]);
@@ -1340,7 +1353,7 @@ bool ActivateStrangeItem(int client)
 			}
 			
 			char sound[PLATFORM_MAX_PATH];
-			TFCond rune = GetRandomMannpowerRune(sound, sizeof(sound));
+			TFCond rune = TF2_GetRandomMannpowerRune(sound, sizeof(sound));
 			TF2_AddCondition(client, rune, GetItemMod(ItemStrange_NastyNorsemann, 0));
 			EmitSoundToAll(sound, client);
 		}

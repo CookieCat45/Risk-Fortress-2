@@ -346,7 +346,7 @@ public Action Command_GiveXP(int client, int args)
 			}
 			
 			UpdatePlayerXP(clients[i], amount);
-			RF2_PrintToChatAll("%t", "GaveMoney", client, amount, clients[i]);
+			RF2_PrintToChatAll("%t", "GaveXP", client, amount, clients[i]);
 		}
 	}
 	return Plugin_Handled;

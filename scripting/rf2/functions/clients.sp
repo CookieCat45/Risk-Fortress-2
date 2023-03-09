@@ -296,32 +296,6 @@ int GetPlayerLevel(int client)
 	}
 }
 
-bool IsInvuln(int client)
-{
-	return (TF2_IsPlayerInCondition(client, TFCond_Ubercharged) ||
-		TF2_IsPlayerInCondition(client, TFCond_UberchargedCanteen) ||
-		TF2_IsPlayerInCondition(client, TFCond_UberchargedHidden) ||
-		TF2_IsPlayerInCondition(client, TFCond_UberchargedOnTakeDamage) ||
-		TF2_IsPlayerInCondition(client, TFCond_Bonked) ||
-		TF2_IsPlayerInCondition(client, TFCond_HalloweenGhostMode) ||
-		!GetEntProp(client, Prop_Data, "m_takedamage"));
-}
-
-/*
-bool IsInvis(int client, bool fullyInvis=true)
-{
-	return ((TF2_IsPlayerInCondition(client, TFCond_Cloaked) ||
-		TF2_IsPlayerInCondition(client, TFCond_Stealthed) ||
-		TF2_IsPlayerInCondition(client, TFCond_StealthedUserBuffFade))
-		&& (!fullyInvis || !TF2_IsPlayerInCondition(client, TFCond_CloakFlicker)
-		&& !TF2_IsPlayerInCondition(client, TFCond_OnFire)
-		&& !TF2_IsPlayerInCondition(client, TFCond_Jarated)
-		&& !TF2_IsPlayerInCondition(client, TFCond_Milked)
-		&& !TF2_IsPlayerInCondition(client, TFCond_Bleeding)
-		&& !TF2_IsPlayerInCondition(client, TFCond_Gas)));
-}
-*/
-
 bool CanPlayerRegen(int client)
 {
 	if (PlayerHasItem(client, Item_HorrificHeadsplitter))
@@ -503,9 +477,8 @@ float CalculatePlayerMaxSpeed(int client)
 	
 	float mult = speed / classMaxSpeed;
 	TF2Attrib_SetByDefIndex(client, 107, mult); // "move speed bonus"
-	TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.00001); // hack to force game to update our speed
-	TF2_RemoveCondition(client, TFCond_SpeedBuffAlly);
-	
+	SDK_ForceSpeedUpdate(client);
+
 	return GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
 }
 
@@ -565,7 +538,7 @@ int GetPlayerLuckStat(int client)
 	return luck;
 }
 
-void OnPlayerAirDash(int client, int count)
+void TF2_OnPlayerAirDash(int client, int count)
 {
 	int airDashLimit = 1;
 	airDashLimit += GetPlayerItemCount(client, ItemScout_MonarchWings);
@@ -676,7 +649,7 @@ bool TF2_PlayerHasShieldEquipped(int client)
 }
 */
 
-TFCond GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0)
+TFCond TF2_GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0)
 {
 	TFCond rune = view_as<TFCond>(g_MannpowerRunes[GetRandomInt(0, sizeof(g_MannpowerRunes)-1)]);
 	
@@ -697,6 +670,45 @@ TFCond GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0
 	}
 	
 	return rune;
+}
+
+void SDK_ForceSpeedUpdate(int client)
+{
+	if (g_hSDKUpdateSpeed)
+	{
+		SDKCall(g_hSDKUpdateSpeed, client);
+	}
+}
+
+bool TF2_IsInvuln(int client)
+{
+	return (TF2_IsPlayerInCondition(client, TFCond_Ubercharged) ||
+		TF2_IsPlayerInCondition(client, TFCond_UberchargedCanteen) ||
+		TF2_IsPlayerInCondition(client, TFCond_UberchargedHidden) ||
+		TF2_IsPlayerInCondition(client, TFCond_UberchargedOnTakeDamage) ||
+		TF2_IsPlayerInCondition(client, TFCond_Bonked) ||
+		TF2_IsPlayerInCondition(client, TFCond_HalloweenGhostMode) ||
+		!GetEntProp(client, Prop_Data, "m_takedamage"));
+}
+
+/*
+bool TF2_IsInvis(int client, bool fullyInvis=true)
+{
+	return ((TF2_IsPlayerInCondition(client, TFCond_Cloaked) ||
+		TF2_IsPlayerInCondition(client, TFCond_Stealthed) ||
+		TF2_IsPlayerInCondition(client, TFCond_StealthedUserBuffFade))
+		&& (!fullyInvis || !TF2_IsPlayerInCondition(client, TFCond_CloakFlicker)
+		&& !TF2_IsPlayerInCondition(client, TFCond_OnFire)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Jarated)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Milked)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Bleeding)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Gas)));
+}
+*/
+
+void TF2_ForceWeaponSwitch(int client, int slot)
+{
+	ClientCommand(client, "slot%i", slot+1);
 }
 
 bool IsPlayerAFK(int client)
