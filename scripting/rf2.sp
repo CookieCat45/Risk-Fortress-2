@@ -531,9 +531,10 @@ int g_iPlayerSurvivorPoints[MAXTF2PLAYERS];
 // TFBots
 TFBot g_TFBot[MAXTF2PLAYERS];
 
-#define TFBOTFLAG_AGGRESSIVE (1 << 0)
-#define TFBOTFLAG_ROCKETJUMP (1 << 1)
-#define TFBOTFLAG_STRAFING (1 << 2)
+#define TFBOTFLAG_AGGRESSIVE (1 << 0) // Bot should always act aggressive (relentlessly chase target)
+#define TFBOTFLAG_ROCKETJUMP (1 << 1) // Bot should rocket jump
+#define TFBOTFLAG_STRAFING (1 << 2) // Bot is currently strafing 
+#define TFBOTFLAG_HOLDFIRE (1 << 3) // Hold fire until fully reloaded
 
 // Other
 bool g_bThrillerActive;
@@ -1194,7 +1195,7 @@ public void OnClientDisconnect_Post(int client)
 		g_TFBot[client].Follower.Destroy();
 		g_TFBot[client].Follower = view_as<PathFollower>(0);
 	}
-	
+
 	g_TFBot[client] = null;
 	RefreshClient(client);
 	ResetAFKTime(client);
@@ -4114,7 +4115,7 @@ public Action Timer_DecayFireRateBuff(Handle timer, int client)
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3])
 {
-	if (!RF2_IsEnabled() || g_bWaitingForPlayers)
+	if (!RF2_IsEnabled() || g_bWaitingForPlayers || !IsPlayerAlive(client))
 		return Plugin_Continue;
 		
 	Action action = Plugin_Continue;

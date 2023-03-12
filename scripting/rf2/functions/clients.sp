@@ -501,7 +501,7 @@ void CalculatePlayerMiscStats(int client)
 	TF2Attrib_SetByDefIndex(client, 478, value); // "rage giving scale"
 }
 
-// Attributes are NOT included! This is for items.
+// This is for items, NOT ATTRIBUTES
 float GetPlayerFireRateMod(int client, int weapon=-1)
 {
 	float multiplier = 1.0;

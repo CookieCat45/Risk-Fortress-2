@@ -31,6 +31,7 @@ char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
 int g_iEnemyBotSkill[MAX_ENEMIES];
 bool g_bEnemyBotAggressive[MAX_ENEMIES];
 bool g_bEnemyBotRocketJump[MAX_ENEMIES];
+bool g_bEnemyBotHoldFireUntilReloaded[MAX_ENEMIES];
 
 // Weapons
 bool g_bEnemyWeaponUseStaticAttributes[MAX_ENEMIES][TF_WEAPON_SLOTS];
@@ -106,6 +107,7 @@ void LoadEnemiesFromPack(const char[] config)
 		g_iEnemyBotSkill[enemy] = enemyKey.GetNum("tf_bot_difficulty", TFBotDifficulty_Normal);
 		g_bEnemyBotAggressive[enemy] = bool(enemyKey.GetNum("tf_bot_aggressive", false));
 		g_bEnemyBotRocketJump[enemy] = bool(enemyKey.GetNum("tf_bot_rocketjump", false));
+		g_bEnemyBotHoldFireUntilReloaded[enemy] = bool(enemyKey.GetNum("tf_bot_hold_fire_until_reload", false));
 		
 		// XP and cash awards on death
 		g_flEnemyXPAward[enemy] = enemyKey.GetFloat("xp_award", 15.0);
@@ -264,6 +266,11 @@ void SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		if (g_bEnemyBotRocketJump[type])
 		{
 			g_TFBot[client].AddFlag(TFBOTFLAG_ROCKETJUMP);
+		}
+		
+		if (g_bEnemyBotHoldFireUntilReloaded[type])
+		{
+			g_TFBot[client].AddFlag(TFBOTFLAG_HOLDFIRE);
 		}
 	}
 	

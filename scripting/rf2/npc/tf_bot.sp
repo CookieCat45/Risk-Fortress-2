@@ -12,8 +12,6 @@ static CNavArea g_TFBotGoalArea[MAXTF2PLAYERS];
 static int g_iTFBotFlags[MAXTF2PLAYERS];
 static int g_iTFBotForcedButtons[MAXTF2PLAYERS];
 
-static float g_flTFBotMinReloadTime[MAXTF2PLAYERS];
-static float g_flTFBotReloadTimeStamp[MAXTF2PLAYERS];
 static float g_flTFBotStrafeTime[MAXTF2PLAYERS];
 static float g_flTFBotStrafeTimeStamp[MAXTF2PLAYERS];
 static float g_flTFBotStuckTime[MAXTF2PLAYERS];
@@ -89,19 +87,7 @@ methodmap TFBot < Handle
 		public get() 			{ return g_iTFBotForcedButtons[this.Client];  }
 		public set(int value) 	{ g_iTFBotForcedButtons[this.Client] = value; }
 	}
-	
-	property float MinReloadTime 
-	{
-		public get() 			{ return g_flTFBotMinReloadTime[this.Client];  }
-		public set(float value) { g_flTFBotMinReloadTime[this.Client] = value; }
-	}
-	
-	property float ReloadTimeStamp 
-	{
-		public get() 			{ return g_flTFBotReloadTimeStamp[this.Client];  }
-		public set(float value) { g_flTFBotReloadTimeStamp[this.Client] = value; }
-	}
-	
+
 	property float StrafeTime 
 	{
 		public get() 			{ return g_flTFBotStrafeTime[this.Client];  }
@@ -798,21 +784,67 @@ public Action Timer_TFBotStopForceAttack(Handle timer, int client)
 
 public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 {
-	bool onGround = bool((GetEntityFlags(client) & FL_ONGROUND));
 	TFBot bot = g_TFBot[client];
-
+	
 	if (!bot)
 	{
 		return Plugin_Continue;
 	}
 	
-	/*
-	if (bot.HasButtonFlag(IN_RELOAD))
+	static bool reloading[MAXTF2PLAYERS];
+	int activeWep = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	
+	if (activeWep > -1 && activeWep != GetPlayerWeaponSlot(client, WeaponSlot_Melee))
 	{
-		buttons &= ~IN_ATTACK;
-		buttons &= ~IN_ATTACK2;
+		int clip = GetEntProp(activeWep, Prop_Send, "m_iClip1");
+		int maxClip = SDK_GetWeaponClipSize(activeWep);
+		
+		if (TF2Attrib_HookValueInt(0, "auto_fires_full_clip", activeWep) != 0)
+		{
+			CKnownEntity known = bot.GetTarget();
+			int target = known != NULL_KNOWN_ENTITY ? known.GetEntity() : -1;
+			bool targetInvuln = IsValidClient(target) && TF2_IsInvuln(target);
+			bool overload = TF2Attrib_HookValueInt(0, "can_overload", activeWep) != 0;
+			
+			if (clip >= maxClip)
+			{
+				// unload barrage if target is visible and vulnerable or we can overload the clip (beggars)
+				if (overload || target > -1 && !targetIsInvuln)
+				{
+					buttons &= ~IN_ATTACK;
+				}
+			}
+			else if (!overload)
+			{
+				// load chamber if we have no enemy we can see and can't overload
+				buttons |= IN_ATTACK;
+			}
+		}
+		else if (bot.HasFlag(TFBOTFLAG_HOLDFIRE))
+		{
+			if (!reloading[client] && clip == 0)
+			{
+				buttons &= ~IN_ATTACK;
+				reloading[client] = true;
+				return Plugin_Continue;
+			}
+			else if (reloading[client])
+			{
+				if (maxClip <= 0 || clip >= maxClip)
+				{
+					reloading[client] = false;
+				}
+				else
+				{
+					buttons &= ~IN_ATTACK;
+				}
+			}
+		}
 	}
-	*/
+	else
+	{
+		reloading[client] = false;
+	}
 	
 	int threat = -1;
 	CKnownEntity known = bot.GetTarget(TF2_GetPlayerClass(client) == TFClass_Spy ? false : true);
@@ -820,7 +852,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	if (known != NULL_KNOWN_ENTITY)
 		threat = known.GetEntity();
 	
-	if (buttons & IN_ATTACK || buttons & IN_ATTACK2)
+	if (!reloading[client] && (buttons & IN_ATTACK || buttons & IN_ATTACK2))
 	{
 		int activeWeapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 		int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
@@ -856,6 +888,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	}
 	
 	bool rocketJumping;
+	bool onGround = bool((GetEntityFlags(client) & FL_ONGROUND));
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Spy)
 	{
@@ -1082,7 +1115,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			SetAllInArray(g_flTFBotSpyTimeInFOV[client], sizeof(g_flTFBotSpyTimeInFOV[]), 0.0);
 		}
 	}
-	else if (bot.HasFlag(TFBOTFLAG_ROCKETJUMP) && !bot.HasButtonFlag(IN_RELOAD))
+	else if (!reloading[client] && bot.HasFlag(TFBOTFLAG_ROCKETJUMP) && !bot.HasButtonFlag(IN_RELOAD))
 	{
 		if (onGround && bot.GetTarget() != NULL_KNOWN_ENTITY)
 		{

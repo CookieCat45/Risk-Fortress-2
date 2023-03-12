@@ -57,8 +57,8 @@ void SetEntityModel2(int entity, const char[] model)
 {
 	if (!IsModelPrecached(model))
 	{
-		LogStackTrace("Model \"%s\" is not precached", model);
-		return;
+		// just precache it, better than a server crash
+		PrecacheModel(model);
 	}
 	
 	SetEntityModel(entity, model);

@@ -230,16 +230,7 @@ static void Teleporter_OnDestroy(int entity)
 
 static void Crate_OnCreate(int entity)
 {
-	// There is a case where map entities get created before OnMapStart() can be fired, which crashes the server if we try to set a model.
-	if (g_bMapChanging)
-	{
-		SetEntityRenderMode(entity, RENDER_NONE);
-	}
-	else
-	{
-		SetEntityModel(entity, MODEL_CRATE);
-	}
-	
+	SetEntityModel(entity, MODEL_CRATE);
 	SetEntityCollisionGroup(entity, COLLISION_GROUP_CRATE);
 	SetEntPropFloat(entity, Prop_Data, "m_flCost", CalculateObjectCost(entity));
 	SetEntProp(entity, Prop_Data, "m_iItem", GetRandomItem(79, 20, 1));
@@ -248,59 +239,32 @@ static void Crate_OnCreate(int entity)
 
 static void CrateLarge_OnCreate(int entity)
 {
-	if (g_bMapChanging)
-	{
-		SetEntityRenderMode(entity, RENDER_NONE);
-	}
-	else
-	{
-		SetEntityModel(entity, MODEL_CRATE);
-		SetEntPropFloat(entity, Prop_Send, "m_flModelScale", 1.35);
-	}
-	
+	SetEntityRenderMode(entity, RENDER_NONE);
+	SetEntityModel(entity, MODEL_CRATE);
+	SetEntPropFloat(entity, Prop_Send, "m_flModelScale", 1.35);
 	SetEntProp(entity, Prop_Data, "m_iItem", GetRandomItem(_, 85, 15));
 }
 
 static void CrateStrange_OnCreate(int entity)
 {
-	if (g_bMapChanging)
-	{
-		SetEntityRenderMode(entity, RENDER_NONE);
-	}
-	else
-	{
-		SetEntityModel(entity, MODEL_CRATE_STRANGE);
-		SetEntityRenderColor(entity, 255, 100, 0);
-	}
-	
+	SetEntityRenderMode(entity, RENDER_NONE);
+	SetEntityModel(entity, MODEL_CRATE_STRANGE);
+	SetEntityRenderColor(entity, 255, 100, 0);
 	SetEntProp(entity, Prop_Data, "m_iItem", GetRandomItemEx(Quality_Strange));
 }
 
 static void CrateHaunted_OnCreate(int entity)
 {
-	if (g_bMapChanging)
-	{
-		SetEntityRenderMode(entity, RENDER_NONE);
-	}
-	else
-	{
-		SetEntityModel(entity, MODEL_CRATE_HAUNTED);
-	}
-	
+	SetEntityRenderMode(entity, RENDER_NONE);
+	SetEntityModel(entity, MODEL_CRATE_HAUNTED);
 	int item = GetRandomItem(_, _, _, 1);
 	SetEntProp(entity, Prop_Data, "m_iItem", item);
 }
 
 static void CrateCollector_OnCreate(int entity) // our item is decided when we're opened
 {
-	if (g_bMapChanging)
-	{
-		SetEntityRenderMode(entity, RENDER_NONE);
-	}
-	else
-	{
-		SetEntityModel(entity, MODEL_CRATE_COLLECTOR);
-	}
+	SetEntityRenderMode(entity, RENDER_NONE);
+	SetEntityModel(entity, MODEL_CRATE_COLLECTOR);
 }
 
 static void Workbench_OnCreate(int entity)
@@ -357,14 +321,7 @@ static void Workbench_OnDestroy(int entity)
 
 static void Scrapper_OnCreate(int entity)
 {
-	if (g_bMapChanging)
-	{
-		SetEntityRenderMode(entity, RENDER_NONE);
-	}
-	else
-	{
-		SetEntityModel(entity, MODEL_SCRAPPER);
-	}
-		
+	SetEntityRenderMode(entity, RENDER_NONE);
+	SetEntityModel(entity, MODEL_SCRAPPER);
 	SetEntityCollisionGroup(entity, COLLISION_GROUP_CRATE);
 }

@@ -22,7 +22,7 @@ bool IsObject(int entity)
 	if (!factory)
 		return false;
 	
-	char classname[128];
+	static char classname[32];
 	factory.GetClassname(classname, sizeof(classname));
 	return (StrContains(classname, "rf2_object") == 0);
 }

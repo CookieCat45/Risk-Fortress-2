@@ -216,7 +216,7 @@ void SentryBuster_OnMapStart()
 			.DefineIntField("m_airSequence")
 			.DefineEntityField("m_hTarget")
 		.EndDataMapDesc();
-
+		
 		g_EntityFactory.Install();
 		init = true;
 	}
