@@ -164,7 +164,7 @@
 	
 	"GaveMoney"
 	{
-		"#format"	"{1:N},{2:.0f},{3:d}"
+		"#format"	"{1:N},{2:.0f},{3:N}"
 		"en"		"{yellow}{1}{default} gave {lime}${2}{default} to {yellow}{3}"
 	}
 	
@@ -178,6 +178,24 @@
 	{
 		"#format"	"{1:N},{2:d},{3:N}"
 		"en"		"{yellow}{1}{default} gave {lime}{2}{default} queue points to {yellow}{3}{default}."
+	}
+
+	"AlreadySurvivor"
+	{
+		"#format"	"{1:N}"
+		"en"		"{yellow}{1}{default} is already a Survivor."
+	}
+	
+	"HitMaxSurvivors"
+	{
+		"#format"	"{1:d}"
+		"en"		"The max Survivor count of {yellow}{1}{default} has been reached."
+	}
+	
+	"MadeSurvivor"
+	{
+		"#format"	"{1:N}"
+		"en"		"Made {yellow}{1}{default} into a Survivor."
 	}
 	
 	"EnemyLevelUp"
@@ -321,10 +339,22 @@
 	{
 		"en"		"Your Items (select to drop)."
 	}
+
+	"InspectTargetItems"
+	{
+		"#format"	"{1:N}"
+		"en"		"{1}'s items"
+	}
 	
 	"NoItems"
 	{
-		"en"		"You have no items."
+		"en"		"No items."
+	}
+	
+	"DroppedItemForYou" // No color tags
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{1} dropped {2} for you!"
 	}
 	
 	"ItemDrop"

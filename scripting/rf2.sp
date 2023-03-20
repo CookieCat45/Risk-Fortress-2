@@ -15,7 +15,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1b"
+#define PLUGIN_VERSION "0.1.1b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -313,10 +313,10 @@ enum // gamerules_roundstate_t
 
     //Game is in a bonus state, transitioned to after a round ends
     GR_STATE_BONUS,
-
+    
     //Game is awaiting the next wave/round of a multi round experience
     GR_STATE_BETWEEN_RNDS,
-
+    
     GR_NUM_ROUND_STATES
 };
 
@@ -908,6 +908,7 @@ public void OnConfigsExecuted()
 		FindConVar("tf_weapon_criticals").SetBool(false);
 		FindConVar("tf_forced_holiday").SetInt(2);
 		FindConVar("tf_player_movement_restart_freeze").SetBool(false);
+		//FindConVar("sv_pure").SetInt(0);
 		
 		// TFBots
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
@@ -938,7 +939,9 @@ public void OnMapEnd()
 {
 	// Reset our ConVars if we've changed them
 	if (g_bConVarsModified)
+	{
 		ResetConVars();
+	}
 		
 	g_bMapChanging = true;
 
@@ -1093,6 +1096,7 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_use_fixed_weaponspreads"));
 	ResetConVar(FindConVar("tf_avoidteammates_pushaway"));
 	ResetConVar(FindConVar("mp_waitingforplayers_time"));
+	//ResetConVar(FindConVar("sv_pure"));
 	
 	ResetConVar(FindConVar("mp_teams_unbalance_limit"));
 	ResetConVar(FindConVar("mp_forcecamera"));
@@ -2830,6 +2834,15 @@ public Action OnVoiceCommand(int client, const char[] command, int args)
 				ShowItemMenu(client); // shortcut
 				return Plugin_Handled;
 			}
+			else
+			{
+				int target = GetClientAimTarget(client);
+				if (IsValidClient(target) && IsPlayerSurvivor(target))
+				{
+					ShowItemMenu(client, target);
+					return Plugin_Handled;
+				}
+			}
 			
 			if (PickupItem(client) || ObjectInteract(client))
 				return Plugin_Handled;
@@ -3379,6 +3392,14 @@ bool IsEntityBlacklisted(const char[] classname)
 
 public void Hook_ProjectileSpawnPost(int entity)
 {
+	RequestFrame(RF_ProjectileSpawnPost, EntIndexToEntRef(entity)); // just in case
+}
+
+public void RF_ProjectileSpawnPost(int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+		return;
+	
 	int launcher = GetEntPropEnt(entity, Prop_Send, "m_hLauncher");
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 	
@@ -3432,11 +3453,6 @@ public Action Hook_HealthKitTouch(int entity, int other)
 {
 	if (IsValidClient(other) && GetClientTeam(other) == TEAM_ENEMY)
 		return Plugin_Handled;
-	
-	if (GetClientHealth(other) < RF2_GetCalculatedMaxHealth(other))
-	{
-
-	}
 
 	return Plugin_Continue;
 }

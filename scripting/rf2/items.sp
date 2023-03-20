@@ -394,7 +394,11 @@ bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=
 	
 	if (subject > 0)
 	{
-		SetEntPropEnt(entity, Prop_Data, "m_hSubject", subject); // Only the dropper or the one we dropped the item for can pick this up.
+		// Only the dropper or the one we dropped the item for can pick this up.
+		SetEntPropEnt(entity, Prop_Data, "m_hSubject", subject);
+		char itemName[64];
+		GetItemName(item, itemName, sizeof(itemName), false);
+		PrintHintText(subject, "%t", "DroppedItemForYou", client, itemName);
 	}
 	
 	if (ownTime > 0.0) // If we own this item but the owner/subject takes too long to pick it up, it's free for taking
@@ -484,7 +488,7 @@ bool PickupItem(int client)
 		{
 			for (int i = 1; i <= MaxClients; i++)
 			{
-				if (i == client || IsFakeClient(i))
+				if (i == client || !IsClientInGame(i) || IsFakeClient(i))
 					continue;
 				
 				RF2_PrintToChat(i, "%t", "PickupItemStrange", client, qualityTag, itemName);
@@ -495,7 +499,7 @@ bool PickupItem(int client)
 		{
 			for (int i = 1; i <= MaxClients; i++)
 			{
-				if (i == client || IsFakeClient(i))
+				if (i == client || !IsClientInGame(i) || IsFakeClient(i))
 					continue;
 				
 				RF2_PrintToChat(i, "%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, itemIndex));

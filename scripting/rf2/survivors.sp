@@ -88,7 +88,7 @@ bool CreateSurvivors()
 		
 		if (IsFakeClient(i))
 		{
-			points[i] -= 9999;
+			points[i] -= 99999;
 		}
 		else if (!g_bPlayerBecomeSurvivor[i])
 		{
@@ -96,14 +96,9 @@ bool CreateSurvivors()
 			removePoints[i] = false;
 		}
 		
-		if (IsPlayerAFK(i))
-		{
-			points[i] -= 99999;
-		}
-		
 		if (GetClientTeam(i) <= 1)
 		{
-			points[i] -= 999;
+			points[i] -= 9999;
 		}
 		
 		actualPoints[i] = points[i];
@@ -312,6 +307,7 @@ void LoadSurvivorInventory(int client, int index)
 	g_flPlayerXP[client] = g_flSavedXP[index];
 	g_iPlayerHauntedKeys[client] = g_iSavedHauntedKeys[index];
 	g_flPlayerCash[client] = 100.0 * GetObjectCostMultiplier();
+	g_iItemsTaken[index] = 0;
 	
 	if (g_iPlayerLevel[client] > 1)
 	{

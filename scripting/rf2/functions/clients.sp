@@ -86,8 +86,13 @@ public Action Timer_ResetModel(Handle timer, int client)
 	return Plugin_Continue;
 }
 
-void SilentlyKillPlayer(int client)
+void SilentlyKillPlayer(int client, bool refresh=false)
 {
+	if (refresh)
+	{
+		RefreshClient(client);
+	}
+
 	int team = GetClientTeam(client);
 	ChangeClientTeam(client, 0);
 	ChangeClientTeam(client, team);

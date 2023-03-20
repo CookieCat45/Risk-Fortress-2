@@ -809,7 +809,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			if (clip >= maxClip)
 			{
 				// unload barrage if target is visible and vulnerable or we can overload the clip (beggars)
-				if (overload || target > -1 && !targetIsInvuln)
+				if (overload || target > -1 && !targetInvuln)
 				{
 					buttons &= ~IN_ATTACK;
 				}

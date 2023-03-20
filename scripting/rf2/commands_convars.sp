@@ -28,7 +28,8 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_spawn_enemy", Command_ForceEnemy, ADMFLAG_SLAY, "Force a (non-survivor) player to become an enemy. /rf2_spawn_enemy <player>");
 	RegAdminCmd("rf2_set_difficulty", Command_SetDifficulty, ADMFLAG_SLAY, "Sets the difficulty level. 0 = Scrap, 1 = Iron, 2 = Steel, 3 = Titanium");
 	RegAdminCmd("rf2_setnextmap", Command_ForceMap, ADMFLAG_SLAY, "Forces the next map to be the map specified. This will not immediately change the map.");
-	
+	RegAdminCmd("rf2_make_survivor", Command_MakeSurvivor, ADMFLAG_SLAY, "Force a player to become a Survivor.\nWill not work if the maximum survivor count has been reached.");
+
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
 	RegConsoleCmd("rf2_afk", Command_AFK, "Puts you into AFK mode instantly.");
@@ -981,31 +982,40 @@ public Action Command_Items(int client, int args)
 	return Plugin_Handled;
 }
 
-void ShowItemMenu(int client)
+void ShowItemMenu(int client, int inspectTarget=-1)
 {
 	if (!IsPlayerSurvivor(client))
 		return;
 	
+	int target = IsValidClient(inspectTarget) ? inspectTarget : client;
 	Menu menu = CreateMenu(Menu_Items);
 	char buffer[128], info[16], itemName[MAX_NAME_LENGTH];
 	int itemCount;
 	int lang = GetClientLanguage(client);
 	
-	if (!IsSingleplayer(false) && g_cvItemShareEnabled.BoolValue)
+	if (!IsSingleplayer(false) && g_cvItemShareEnabled.BoolValue && target != inspectTarget)
 	{
-		int index = RF2_GetSurvivorIndex(client);
-		menu.SetTitle("%t", "YourItemsShareEnabled", lang, g_iItemsTaken[index], g_iItemLimit[index]);
+		int index = RF2_GetSurvivorIndex(target);
+		menu.SetTitle("%T", "YourItemsShareEnabled", lang, g_iItemsTaken[index], g_iItemLimit[index]);
 	}
 	else
 	{
-		menu.SetTitle("%t", "YourItems", lang);
+		if (client == target)
+		{
+			menu.SetTitle("%T", "YourItems", lang);
+		}
+		else
+		{
+			menu.SetTitle("%T", "InspectTargetItems", lang, target);
+		}
 	}
 	
+	int flags = target == inspectTarget ? ITEMDRAW_DISABLED : ITEMDRAW_DEFAULT;
 	char qualityName[32];
 	GetQualityName(Quality_Strange, qualityName, sizeof(qualityName));
 	for (int i = 1; i < Item_MaxValid; i++)
 	{
-		if (GetPlayerItemCount(client, i) > 0 || IsEquipmentItem(i) && GetPlayerEquipmentItem(client) == i)
+		if (GetPlayerItemCount(target, i) > 0 || IsEquipmentItem(i) && GetPlayerEquipmentItem(target) == i)
 		{
 			itemCount++;
 			GetItemName(i, itemName, sizeof(itemName));
@@ -1017,17 +1027,17 @@ void ShowItemMenu(int client)
 			}
 			else
 			{
-				FormatEx(buffer, sizeof(buffer), "%s [%i]", itemName, GetPlayerItemCount(client, i));
+				FormatEx(buffer, sizeof(buffer), "%s [%i]", itemName, GetPlayerItemCount(target, i));
 			}
 			
 			if (IsScrapItem(i))
 			{
 				// Show metals at the top of the list
-				menu.InsertItem(0, info, buffer);
+				menu.InsertItem(0, info, buffer, flags);
 			}
 			else
 			{
-				menu.AddItem(info, buffer);
+				menu.AddItem(info, buffer, flags);
 			}
 		}
 	}
@@ -1036,7 +1046,7 @@ void ShowItemMenu(int client)
 	{
 		char noItems[64];
 		FormatEx(noItems, sizeof(noItems), "%t", "NoItems", lang);
-		menu.AddItem("no_items", noItems);
+		menu.AddItem("no_items", noItems, flags);
 	}
 	
 	menu.Display(client, MENU_TIME_FOREVER);
@@ -1209,10 +1219,73 @@ public Action Command_SetDifficulty(int client, int args)
 	return Plugin_Handled;
 }
 
+public Action Command_MakeSurvivor(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (!g_bRoundActive)
+	{
+		RF2_ReplyToCommand(client, "%t", "WaitForRoundStart");
+		return Plugin_Handled;
+	}
+	
+	int redCount = GetPlayersOnTeam(TEAM_SURVIVOR, true); 
+	if (redCount >= MAX_SURVIVORS)
+	{
+		RF2_ReplyToCommand(client, "%t", "HitMaxSurvivors", MAX_SURVIVORS);
+		return Plugin_Handled;
+	}
+	
+	char arg1[16], clientName[MAX_NAME_LENGTH];
+	bool multiLanguage;
+	int clients[MAXTF2PLAYERS];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	
+	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
+	if (matches < 1)
+	{
+		ReplyToTargetError(client, matches);
+		return Plugin_Handled;
+	}
+	else if (matches >= 1)
+	{
+		for (int i = 0; i < matches; i++)
+		{
+			if (IsPlayerSurvivor(clients[i]))
+			{
+				RF2_ReplyToCommand(client, "%t", "AlreadySurvivor", clients[i]);
+				continue;
+			}
+			
+			for (int index = 0; index < MAX_SURVIVORS; index++)
+			{
+				if (!IsSurvivorIndexValid(index))
+				{
+					SilentlyKillPlayer(clients[i], true);
+					MakeSurvivor(clients[i], index, false);
+					RF2_ReplyToCommand(client, "%t", "MadeSurvivor", clients[i]);
+					if (redCount+1 > g_iSurvivorCount)
+					{
+						g_iSurvivorCount++;
+					}
+
+					break;
+				}
+			}
+		}
+	}
+	
+	return Plugin_Handled;
+}
+
 public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	int iNewValue = StringToInt(newValue);
-	if (iNewValue == 0)
+	int newVal = StringToInt(newValue);
+	if (newVal == 0)
 	{
 		for (int i = 1; i <= MaxClients; i++)
 		{

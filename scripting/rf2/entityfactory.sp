@@ -239,7 +239,6 @@ static void Crate_OnCreate(int entity)
 
 static void CrateLarge_OnCreate(int entity)
 {
-	SetEntityRenderMode(entity, RENDER_NONE);
 	SetEntityModel(entity, MODEL_CRATE);
 	SetEntPropFloat(entity, Prop_Send, "m_flModelScale", 1.35);
 	SetEntProp(entity, Prop_Data, "m_iItem", GetRandomItem(_, 85, 15));
@@ -247,7 +246,6 @@ static void CrateLarge_OnCreate(int entity)
 
 static void CrateStrange_OnCreate(int entity)
 {
-	SetEntityRenderMode(entity, RENDER_NONE);
 	SetEntityModel(entity, MODEL_CRATE_STRANGE);
 	SetEntityRenderColor(entity, 255, 100, 0);
 	SetEntProp(entity, Prop_Data, "m_iItem", GetRandomItemEx(Quality_Strange));
@@ -255,7 +253,6 @@ static void CrateStrange_OnCreate(int entity)
 
 static void CrateHaunted_OnCreate(int entity)
 {
-	SetEntityRenderMode(entity, RENDER_NONE);
 	SetEntityModel(entity, MODEL_CRATE_HAUNTED);
 	int item = GetRandomItem(_, _, _, 1);
 	SetEntProp(entity, Prop_Data, "m_iItem", item);
@@ -263,7 +260,6 @@ static void CrateHaunted_OnCreate(int entity)
 
 static void CrateCollector_OnCreate(int entity) // our item is decided when we're opened
 {
-	SetEntityRenderMode(entity, RENDER_NONE);
 	SetEntityModel(entity, MODEL_CRATE_COLLECTOR);
 }
 
@@ -321,7 +317,6 @@ static void Workbench_OnDestroy(int entity)
 
 static void Scrapper_OnCreate(int entity)
 {
-	SetEntityRenderMode(entity, RENDER_NONE);
 	SetEntityModel(entity, MODEL_SCRAPPER);
 	SetEntityCollisionGroup(entity, COLLISION_GROUP_CRATE);
 }
