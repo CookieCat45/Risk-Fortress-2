@@ -908,7 +908,10 @@ public void OnConfigsExecuted()
 		FindConVar("tf_weapon_criticals").SetBool(false);
 		FindConVar("tf_forced_holiday").SetInt(2);
 		FindConVar("tf_player_movement_restart_freeze").SetBool(false);
-		//FindConVar("sv_pure").SetInt(0);
+		
+		// For some reason, FindConVar() with sv_pure returns NULL
+		// So we will use this as a workaround. Custom servers should have sv_pure 0 anyways.
+		InsertServerCommand("sv_pure 0");
 		
 		// TFBots
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
@@ -1096,7 +1099,6 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_use_fixed_weaponspreads"));
 	ResetConVar(FindConVar("tf_avoidteammates_pushaway"));
 	ResetConVar(FindConVar("mp_waitingforplayers_time"));
-	//ResetConVar(FindConVar("sv_pure"));
 	
 	ResetConVar(FindConVar("mp_teams_unbalance_limit"));
 	ResetConVar(FindConVar("mp_forcecamera"));
