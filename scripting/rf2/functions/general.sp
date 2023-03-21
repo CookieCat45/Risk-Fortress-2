@@ -194,9 +194,8 @@ void OnDifficultyChanged(int newLevel)
 		{
 			case DIFFICULTY_SCRAP, DIFFICULTY_IRON:
 			{
-				int enemyType = GetPlayerEnemyType(i);
-				int bossType = GetPlayerBossType(i);
-				int oldSkill = enemyType >= 0 ? g_iEnemyBotSkill[enemyType] : g_iBossBotSkill[bossType];
+				Enemy enemy = Enemy(i);
+				int oldSkill = enemy.BotSkill;
 				
 				if (skill != oldSkill)
 					g_TFBot[i].SetSkillLevel(oldSkill);

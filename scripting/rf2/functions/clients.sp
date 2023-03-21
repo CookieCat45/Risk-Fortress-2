@@ -376,7 +376,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * healthScale);
 	
 	// Bosses have less health in single player, to avoid overly long fights
-	if (IsSingleplayer(false) && GetPlayerBossType(client) >= 0)
+	if (IsSingleplayer(false) && IsBoss(client))
 	{
 		maxHealth = RoundToFloor(float(maxHealth) * 0.75);
 	}
@@ -490,7 +490,7 @@ float CalculatePlayerMaxSpeed(int client)
 void CalculatePlayerMiscStats(int client)
 {
 	// Knockback resistance
-	if (GetPlayerBossType(client) < 0)
+	if (!IsBoss(client))
 	{
 		float kbRes = 1.0 / GetEnemyDamageMult();
 		if (IsPlayerSurvivor(client))

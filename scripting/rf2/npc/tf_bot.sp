@@ -443,7 +443,7 @@ void TFBot_Think(TFBot &bot)
 	}
 	
 	// Only for bosses for now, as they are large.
-	if (GetPlayerBossType(bot.Client) >= 0)
+	if (IsBoss(bot.Client))
 	{
 		if (locomotion.IsAttemptingToMove() && locomotion.IsStuck())
 		{

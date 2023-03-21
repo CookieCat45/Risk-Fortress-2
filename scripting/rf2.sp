@@ -375,7 +375,6 @@ char g_szEnemyHudText[1024] = "\n\nStage %i | %02d:%02d\nEnemy Level: %i\n%s\n%s
 // Players
 bool g_bPlayerViewingItemMenu[MAXTF2PLAYERS];
 bool g_bPlayerIsTeleporterBoss[MAXTF2PLAYERS];
-bool g_bPlayerVoiceNoPainSounds[MAXTF2PLAYERS];
 bool g_bPlayerStunnable[MAXTF2PLAYERS] = { true, ... };
 bool g_bPlayerIsAFK[MAXTF2PLAYERS];
 bool g_bPlayerExtraSentryHint[MAXTF2PLAYERS];
@@ -547,7 +546,6 @@ ArrayList g_hParticleEffectTable;
 #include "rf2/entityfactory.sp"
 #include "rf2/objects.sp"
 #include "rf2/cookies.sp"
-#include "rf2/bosses.sp"
 #include "rf2/enemies.sp"
 #include "rf2/stages.sp"
 #include "rf2/weapons.sp"
@@ -1241,9 +1239,13 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 		
 		// Dead players and non-bosses have higher priority.
 		if (!IsPlayerAlive(i))
+		{
 			points[i] += 5000;
-		else if (GetClientTeam(i) == TEAM_ENEMY && GetPlayerBossType(i) < 0)
+		}
+		else if (IsEnemy(i) && !IsBoss(i))
+		{
 			points[i] += 500;
+		}
 		
 		points[i] += GetRandomInt(1, 150);
 		playerPoints[i] = points[i];		
@@ -1485,10 +1487,10 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	int team = GetClientTeam(client);
 	
-	// If we're an enemy and spawn during the grace period, or don't have a type, die
+	// If we're an enemy and spawn during the grace period, or somehow don't have a type, die
 	if (team == TEAM_ENEMY)
 	{
-		if (g_bGracePeriod || GetPlayerEnemyType(client) < 0 && GetPlayerBossType(client) < 0)
+		if (g_bGracePeriod || !IsEnemy(client))
 		{
 			SilentlyKillPlayer(client);
 			return Plugin_Continue;
@@ -1516,13 +1518,9 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		if (IsFakeClient(client))
 		{
 			char name[MAX_NAME_LENGTH];
-			if (GetPlayerEnemyType(client) > -1)
+			if (IsEnemy(client))
 			{
-				strcopy(name, sizeof(name), g_szEnemyName[GetPlayerEnemyType(client)]);
-			}
-			else if (GetPlayerBossType(client) > -1)
-			{
-				strcopy(name, sizeof(name), g_szBossName[GetPlayerBossType(client)]);
+				Enemy(client).GetName(name, sizeof(name));
 			}
 			
 			if (name[0])
@@ -1625,24 +1623,24 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			float cashAmount;
 			int size;
 			
-			if (GetPlayerEnemyType(victim) >= 0)
+			if (IsEnemy(victim))
 			{
 				g_iTotalEnemiesKilled++;
-				cashAmount = g_flEnemyCashAward[g_iPlayerEnemyType[victim]];
-			}
-			else if (GetPlayerBossType(victim) >= 0)
-			{
-				cashAmount = g_flBossCashAward[g_iPlayerBossType[victim]];
-				g_iTotalBossesKilled++;
-				size = 3;
+				cashAmount = Enemy(victim).CashAward;
 				
-				EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
-				EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
-				EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
-				EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
-				
-				TE_TFParticle("fireSmokeExplosion", pos);
-				RequestFrame(RF_DeleteRagdoll, victim);
+				if (IsBoss(victim))
+				{
+					g_iTotalBossesKilled++;
+					size = 3;
+					
+					EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
+					EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
+					EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
+					EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
+					
+					TE_TFParticle("fireSmokeExplosion", pos);
+					RequestFrame(RF_DeleteRagdoll, victim);
+				}
 			}
 			
 			cashAmount *= 1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvEnemyCashDropScale.FloatValue);
@@ -1676,13 +1674,9 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			if (victimTeam == TEAM_ENEMY && IsPlayerSurvivor(attacker))
 			{
 				float xp;
-				if (GetPlayerEnemyType(victim) >= 0)
+				if (IsEnemy(victim))
 				{
-					xp = g_flEnemyXPAward[g_iPlayerEnemyType[victim]];
-				}
-				else if (GetPlayerBossType(victim) >= 0)
-				{
-					xp = g_flBossXPAward[g_iPlayerBossType[victim]];
+					xp = Enemy(victim).XPAward;
 				}
 				
 				if (xp > 0.0)
@@ -1698,8 +1692,9 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						if (!IsClientInGame(i) || attacker == i || !IsPlayerSurvivor(i))
 							continue;
 							
-						if (GetPlayerBossType(victim) >= 0 || i == assister 
-						|| TF2_GetPlayerClass(i) == TFClass_Medic && (medigun = GetPlayerWeaponSlot(i, WeaponSlot_Secondary)) > -1 && GetEntPropEnt(medigun, Prop_Send, "m_hHealingTarget") == attacker)
+						if (IsBoss(victim) || i == assister 
+						|| TF2_GetPlayerClass(i) == TFClass_Medic && (medigun = GetPlayerWeaponSlot(i, WeaponSlot_Secondary)) > -1 
+						&& GetEntPropEnt(medigun, Prop_Send, "m_hHealingTarget") == attacker)
 						{
 							UpdatePlayerXP(i, xp);
 						}
@@ -1778,17 +1773,12 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						SetEntProp(bomb, Prop_Data, "m_iTeamNum", GetClientTeam(attacker));
 						
 						g_bCashBomb[bomb] = true;
-						if (GetPlayerEnemyType(victim) != -1)
+						if (IsEnemy(victim))
 						{
-							g_flCashBombAmount[bomb] = g_flEnemyCashAward[g_iPlayerEnemyType[victim]];
+							g_flCashBombAmount[bomb] = Enemy(victim).CashAward;
 							g_iCashBombSize[bomb] = 2;
 						}
-						else if (GetPlayerBossType(victim) >= 0)
-						{
-							g_flCashBombAmount[bomb] = g_flBossCashAward[g_iPlayerBossType[victim]];
-							g_iCashBombSize[bomb] = 3;
-						}
-						
+
 						g_flCashBombAmount[bomb] *= 1.0 + (float(GetPlayerLevel(victim)-1) * g_cvEnemyCashDropScale.FloatValue);
 						
 						if (PlayerHasItem(attacker, Item_BanditsBoots))
@@ -2995,7 +2985,7 @@ public void Hook_PreThink(int client)
 	float engineTime = GetEngineTime();
 	bool bot = IsFakeClient(client);
 	
-	if (!bot && !IsStageCleared() && g_flLoopMusicAt[client] >= 0.0 && engineTime >= g_flLoopMusicAt[client])
+	if (!bot && !IsStageCleared() && g_flLoopMusicAt[client] > 0.0 && engineTime >= g_flLoopMusicAt[client])
 	{
 		if (GetTeleporterEntity() == INVALID_ENT_REFERENCE || GetTeleporterEventState() != TELE_EVENT_PREPARING)
 		{
@@ -3694,7 +3684,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		
 		if (!victimIsBuilding && !victimIsNpc)
 		{
-			if (selfDamage && GetPlayerBossType(victim) >= 0 && !g_bBossAllowSelfDamage[GetPlayerBossType(victim)] &&
+			if (selfDamage && IsBoss(victim) && !Enemy(victim).AllowSelfDamage &&
 			(!PlayerHasItem(victim, Item_HorrificHeadsplitter) && damageCustom != TF_CUSTOM_BLEEDING))
 			{
 				// bosses normally don't do damage to themselves
@@ -3705,7 +3695,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			// backstabs do set damage against survivors and bosses
 			if (damageCustom == TF_CUSTOM_BACKSTAB)
 			{
-				if (GetPlayerBossType(victim) >= 0)
+				if (IsBoss(victim))
 				{
 					int stabType = g_cvBossStabDamageType.IntValue;
 					if (stabType == StabDamageType_Raw)
@@ -4316,7 +4306,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 	if (!RF2_IsEnabled() || g_bWaitingForPlayers)
 		return Plugin_Continue;
 	
-	if (IsValidClient(client) && (GetClientTeam(client) == TEAM_ENEMY || TF2_IsPlayerInCondition(client, TFCond_Disguised)))
+	if (IsValidClient(client) && (Enemy(client) != NULL_ENEMY || TF2_IsPlayerInCondition(client, TFCond_Disguised)))
 	{
 		Action action = Plugin_Continue;
 		int voiceType = g_iPlayerVoiceType[client];
@@ -4363,7 +4353,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 		
 		if (StrContains(sample, "vo/") != -1)
 		{
-			if (voiceType == VoiceType_Silent || g_bPlayerVoiceNoPainSounds[client] && StrContains(sample, "_pain") != -1)
+			if (voiceType == VoiceType_Silent)
 			{
 				return Plugin_Stop;
 			}
@@ -4378,7 +4368,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				char classString[16], newString[32];
 				TF2_GetClassString(class, classString, sizeof(classString), true);
 				
-				if (GetPlayerBossType(client) >= 0 && !noGiantLines)
+				if (IsBoss(client) && !noGiantLines)
 				{
 					ReplaceStringEx(sample, sizeof(sample), "vo/", "vo/mvm/mght/");
 					FormatEx(newString, sizeof(newString), "%smvm_m_", classString);
@@ -4508,18 +4498,16 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 static float g_flBloodPos[3];
 public Action TEHook_TFBlood(const char[] te_name, const int[] clients, int numClients, float delay)
 {
-	int index = TE_ReadNum("entindex");
+	int client = TE_ReadNum("entindex");
 	
-	if (IsValidClient(index))
+	if (IsValidClient(client) && Enemy(client) != NULL_ENEMY) 
 	{
-		int type = GetPlayerEnemyType(index);
-		int bossType = GetPlayerBossType(index);
-		if (type >= 0 && g_bEnemyNoBleeding[type] || bossType >= 0 && g_bBossNoBleeding[bossType])
+		if (Enemy(client).NoBleeding)
 		{
 			g_flBloodPos[0] = TE_ReadFloat("m_vecOrigin[0]");
 			g_flBloodPos[1] = TE_ReadFloat("m_vecOrigin[1]");
 			g_flBloodPos[2] = TE_ReadFloat("m_vecOrigin[2]");
-			RequestFrame(RF_SpawnMechBlood, index);
+			RequestFrame(RF_SpawnMechBlood, client);
 			return Plugin_Stop;
 		}
 	}

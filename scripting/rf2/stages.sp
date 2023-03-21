@@ -92,7 +92,7 @@ void LoadMapSettings(const char[] mapName)
 				}
 				
 				LoadEnemiesFromPack(g_szEnemyPackName);
-				LoadBossesFromPack(g_szBossPackName);
+				LoadEnemiesFromPack(g_szBossPackName, true);
 				
 				g_flGracePeriodTime = mapKey.GetFloat("grace_period_time", 30.0);
 				g_bTankBossMode = bool(mapKey.GetNum("tank_destruction", false));
@@ -264,7 +264,7 @@ void PlayMusicTrack(int client)
 	StopMusicTrack(client);
 	GetCurrentMusicTrack(g_szClientBGM[client], sizeof(g_szClientBGM[]));
 	
-	if (!IsBossEventActive() && g_flStageBGMDuration > 0.0)
+	if ((!IsBossEventActive() || !g_szBossBGM[0]) && g_flStageBGMDuration > 0.0)
 	{
 		g_flLoopMusicAt[client] = GetEngineTime() + g_flStageBGMDuration;
 	}
@@ -310,7 +310,7 @@ void StopMusicTrackAll()
 
 void GetCurrentMusicTrack(char[] buffer, int size)
 {
-	if (IsBossEventActive())
+	if (IsBossEventActive() && g_szBossBGM[0])
 	{
 		strcopy(buffer, size, g_szBossBGM);
 	}

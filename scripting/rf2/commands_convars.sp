@@ -590,7 +590,7 @@ public Action Command_ForceBoss(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	if (GetBossCount() <= 0)
+	if (GetEnemyCount() <= 0)
 	{
 		RF2_ReplyToCommand(client, "%t", "NoBossesLoaded");
 		return Plugin_Handled;
@@ -656,9 +656,9 @@ void ShowBossSpawnMenu(int client, int target)
 	char buffer[128], info[16], bossName[256];
 	
 	SetMenuTitle(menu, "%T", "SpawnAs", LANG_SERVER, target);
-	for (int i = 0; i < GetBossCount(); i++)
+	for (int i = 0; i < GetEnemyCount(); i++)
 	{
-		GetBossName(i, bossName, sizeof(bossName));
+		Enemy(i).GetName(bossName, sizeof(bossName));
 		strcopy(buffer, sizeof(buffer), bossName);
 		FormatEx(info, sizeof(info), "%i;%i_", target, i);
 		AddMenuItem(menu, info, buffer);
@@ -696,7 +696,7 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 				GetEntPos(param1, pos);
 				
 				SpawnBoss(client, type, pos, false, 0.0, 2000.0);
-				GetBossName(type, bossName, sizeof(bossName));
+				Enemy(client).GetName(bossName, sizeof(bossName));
 				RF2_PrintToChat(param1, "%t", "SpawnedAsBoss", client, bossName);
 			}
 		}
@@ -717,7 +717,7 @@ void ShowEnemySpawnMenu(int client, int target)
 	SetMenuTitle(menu, "%T", "SpawnAs", LANG_SERVER, target);
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
-		GetEnemyName(i, enemyName, sizeof(enemyName));
+		EnemyByIndex(i).GetName(enemyName, sizeof(enemyName));
 		strcopy(buffer, sizeof(buffer), enemyName);
 		FormatEx(info, sizeof(info), "%i;%i_", target, i);
 		AddMenuItem(menu, info, buffer);
@@ -755,7 +755,7 @@ public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
 				GetEntPos(param1, pos);
 				
 				SpawnEnemy(client, type, pos, 0.0, 2000.0);
-				GetEnemyName(type, enemyName, sizeof(enemyName));
+				EnemyByIndex(type).GetName(enemyName, sizeof(enemyName));
 				RF2_PrintToChat(param1, "%t", "SpawnedAsEnemy", client, enemyName);
 			}
 		}

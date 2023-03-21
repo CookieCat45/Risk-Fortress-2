@@ -118,7 +118,7 @@ methodmap SentryBuster < CBaseCombatCharacter
 			if (vision.IsLineOfSightClearToEntity(victim.index))
 			{
 				float damage;
-				bool boss = (victim.index <= MaxClients && GetPlayerBossType(victim.index) >= 0);
+				bool boss = (victim.index <= MaxClients && IsBoss(victim.index));
 				
 				if (IsBuilding(victim.index))
 				{

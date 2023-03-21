@@ -56,12 +56,7 @@ public any Native_CanBeStunned(Handle plugin, int numParams)
 
 public any Native_IsPlayerBoss(Handle plugin, int numParams)
 {
-	if (GetNativeCell(2) == true)
-	{
-		return g_bPlayerIsTeleporterBoss[GetNativeCell(1)];
-	}
-		
-	return (GetPlayerBossType(GetNativeCell(1)) > -1);
+	return IsBoss(GetNativeCell(1), GetNativeCell(2));
 }
 
 public any Native_GetPlayerItemAmount(Handle plugin, int numParams)
