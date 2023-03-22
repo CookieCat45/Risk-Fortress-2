@@ -658,7 +658,10 @@ void ShowBossSpawnMenu(int client, int target)
 	SetMenuTitle(menu, "%T", "SpawnAs", LANG_SERVER, target);
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
-		Enemy(i).GetName(bossName, sizeof(bossName));
+		if (!EnemyByIndex(i).IsBoss)
+			continue;
+
+		EnemyByIndex(i).GetName(bossName, sizeof(bossName));
 		strcopy(buffer, sizeof(buffer), bossName);
 		FormatEx(info, sizeof(info), "%i;%i_", target, i);
 		AddMenuItem(menu, info, buffer);
@@ -717,6 +720,9 @@ void ShowEnemySpawnMenu(int client, int target)
 	SetMenuTitle(menu, "%T", "SpawnAs", LANG_SERVER, target);
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
+		if (EnemyByIndex(i).IsBoss)
+			continue;
+		
 		EnemyByIndex(i).GetName(enemyName, sizeof(enemyName));
 		strcopy(buffer, sizeof(buffer), enemyName);
 		FormatEx(info, sizeof(info), "%i;%i_", target, i);

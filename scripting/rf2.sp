@@ -15,7 +15,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1.1b"
+#define PLUGIN_VERSION "0.1.2b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -544,10 +544,10 @@ ArrayList g_hParticleEffectTable;
 #include "rf2/items.sp"
 #include "rf2/survivors.sp"
 #include "rf2/entityfactory.sp"
-#include "rf2/objects.sp"
-#include "rf2/cookies.sp"
 #include "rf2/enemies.sp"
 #include "rf2/stages.sp"
+#include "rf2/objects.sp"
+#include "rf2/cookies.sp"
 #include "rf2/weapons.sp"
 #include "rf2/functions/general.sp"
 #include "rf2/functions/clients.sp"
@@ -1500,9 +1500,9 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	if (team == TEAM_SURVIVOR)
 	{
 		// Gatekeeping
-		if (!IsPlayerSurvivor(client) || IsFakeClient(client) && !g_cvBotsCanBeSurvivor.BoolValue)
+		if (!IsPlayerSurvivor(client))
 		{
-			SilentlyKillPlayer(client);
+			SilentlyKillPlayer(client, true);
 			ChangeClientTeam(client, TEAM_ENEMY);
 		}
 		else if (g_bPlayerAutomaticItemMenu[client])

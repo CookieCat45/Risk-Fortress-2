@@ -394,7 +394,9 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		ThrowError("File %s does not exist", path);
 	}
 	
-	g_iEnemyCount = 0;
+	if (!bosses)
+		g_iEnemyCount = 0;
+
 	bool firstKey;
 	char sectionName[16];
 	Enemy enemy;
@@ -475,7 +477,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			if (!enemyKey.JumpToKey(sectionName))
 				continue;
 			
-			enemyKey.GetString("classname", g_szEnemyWearableName[e][w], sizeof(g_szEnemyWearableName[][]), "null");
+			enemyKey.GetString("classname", g_szEnemyWearableName[e][w], sizeof(g_szEnemyWearableName[][]), "tf_wearable");
 			enemyKey.GetString("attributes", g_szEnemyWearableAttributes[e][w], sizeof(g_szEnemyWearableAttributes[][]), "");
 			enemy.SetWearableIndex(w, enemyKey.GetNum("index", 5));
 			enemy.SetWearableVisible(w, bool(enemyKey.GetNum("visible", true)));
@@ -533,7 +535,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 	}
 	
 	delete enemyKey;
-	PrintToServer("[RF2] Enemies/bosses loaded: %i", g_iEnemyCount);
 }
 
 // Returns the index of a currently-loaded enemy at random based on weight.
@@ -545,6 +546,9 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 	
 	for (int i = 0; i < g_iEnemyCount; i++)
 	{
+		if (EnemyByIndex(i).IsBoss)
+			continue;
+
 		for (int j = 1; j <= EnemyByIndex(i).Weight; j++)
 			enemyList.Push(i);
 	}
@@ -560,6 +564,8 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 	return selected;
 }
 
+// Returns the index of a currently-loaded boss at random based on weight.
+// Optionally can retrieve the config name.
 int GetRandomBoss(bool getName = false, char[] buffer="", int size=0)
 {
 	ArrayList bossList = CreateArray();
@@ -712,7 +718,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMaxs", maxs);
 	
 	TF2_RemoveAllWeapons(client);
-	char name[128], attributes[512];
+	char name[128], attributes[MAX_ATTRIBUTE_STRING_LENGTH];
 	for (int i = 0; i < enemy.WeaponCount; i++)
 	{
 		enemy.GetWeaponName(i, name, sizeof(name));
@@ -734,7 +740,9 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		enemy.GetWearableName(i, name, sizeof(name));
 		enemy.GetWearableAttributes(i, attributes, sizeof(attributes));
 		wearable = CreateWearable(client, name, enemy.WearableIndex(i), attributes, enemy.WearableUseStaticAtts(i), enemy.WearableVisible(i));
-		g_bDontRemoveWearable[wearable] = true;
+		
+		if (wearable > 0)
+			g_bDontRemoveWearable[wearable] = true;
 	}
 	
 	if (enemy.FullRage)

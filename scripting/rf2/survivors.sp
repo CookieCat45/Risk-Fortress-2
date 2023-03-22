@@ -21,6 +21,7 @@ char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
 char g_szLastInventoryOwner[MAX_SURVIVORS][MAX_NAME_LENGTH];
 
 bool g_bSurvivorIndexUsed[MAX_SURVIVORS];
+char g_szSurvivorIndexSteamID[MAX_SURVIVORS][32];
 
 void LoadSurvivorStats()
 {
@@ -135,6 +136,8 @@ bool CreateSurvivors()
 	
 	int attempts;
 	int i = 1;
+	char authId[64];
+
 	while (attempts < 500 && survivorCount < maxSurvivors)
 	{
 		attempts++;
@@ -148,10 +151,24 @@ bool CreateSurvivors()
 			
 			continue;
 		}
-
+		
 		if (highestPoints == actualPoints[i]) // if client owns these points, they are a survivor since it's the highest
 		{
 			selected[i] = true;
+			
+			if (g_bGameInitialized && !IsFakeClient(i))
+			{
+				// check to see if we can get our own inventory back
+				GetClientAuthId(i, AuthId_SteamID64, authId, sizeof(authId));
+				for (int s = 0; s < maxSurvivors; s++)
+				{
+					if (strcmp2(authId, g_szSurvivorIndexSteamID[s]))
+					{
+						prioritizedIndex = s;
+						break;
+					}
+				}
+			}
 			
 			if (prioritizedIndex > -1)
 			{
@@ -264,6 +281,11 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	TF2_RespawnPlayer(client);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 5.0);
 	SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);
+	
+	if (!IsFakeClient(client))
+	{
+		GetClientAuthId(client, AuthId_SteamID64, g_szSurvivorIndexSteamID[index], sizeof(g_szSurvivorIndexSteamID[]));
+	}
 	
 	if (loadInventory)
 	{

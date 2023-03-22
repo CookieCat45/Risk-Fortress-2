@@ -745,6 +745,9 @@ void StartTeleporterEvent(int teleporter)
 	int hhhSpawnCount, eyeSpawnCount;
 	const int bossSpawnLimit = 20;
 	
+	if (g_szBossBGM[0])
+		PlayMusicTrackAll();
+	
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerAlive(i))
