@@ -342,7 +342,6 @@ int g_iTotalItemsFound;
 int g_iTanksKilledObjective;
 int g_iTankKillRequirement;
 int g_iTanksSpawned;
-int g_iMapFog = -1;
 int g_iWorldCenterEntity = -1;
 
 // Difficulty
@@ -872,12 +871,6 @@ public void OnMapStart()
 				SetEntProp(entity, Prop_Data, "m_bMapPlaced", true);
 			}
 		}
-		
-		g_iMapFog = FindEntityByClassname(-1, "env_fog_controller");
-		if (IsValidEntity(g_iMapFog))
-		{
-			g_iMapFog = EntIndexToEntRef(g_iMapFog);
-		}
 	}
 	else
 	{
@@ -1005,7 +998,6 @@ void CleanUp()
 	g_szEnemyPackName = "";
 	g_szBossPackName = "";
 	g_iTeleporterEntRef = -1;
-	g_iMapFog = -1;
 	g_iWorldCenterEntity = -1;
 	g_bTankBossMode = false;
 	g_iTanksKilledObjective = 0;
@@ -1980,18 +1972,6 @@ public Action Timer_KillFog(Handle timer, int fog)
 	
 	AcceptEntityInput(fog, "TurnOff");
 	RemoveEntity(fog);
-	
-	int mapFog = EntRefToEntIndex(g_iMapFog);
-	if (mapFog != INVALID_ENT_REFERENCE)
-	{
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (!IsClientInGame(i))
-				continue;
-				
-			SetEntPropEnt(i, Prop_Data, "m_hCtrl", mapFog);
-		}
-	}
 	
 	return Plugin_Continue;
 }
