@@ -555,4 +555,64 @@
 	{
 		"en"		"[RF2] Waiting For Players sequence ended."
 	}
+	
+	"DeathMessage1"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1}'s family will never know how they died."
+	}
+	
+	"DeathMessage2"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1}'s death was extremely painful."
+	}
+	
+	"DeathMessage3"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} really messed up."
+	}
+	
+	"DeathMessage4"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}Try playing on \"Scrap\" mode for an easier time, {1}."
+	}
+	
+	"DeathMessage5"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}That was absolutely your fault, {1}."
+	}
+	
+	"DeathMessage6"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}They will surely feast on {1}'s flesh."
+	}
+	
+	"DeathMessage7"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} dies in a hilarious pose."
+	}
+	
+	"DeathMessage8"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} embraces the void."
+	}
+	
+	"DeathMessage9"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} had a lot more to live for."
+	}
+	
+	"DeathMessage10"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1}'s body was gone an hour later."
+	}
 }

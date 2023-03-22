@@ -314,59 +314,10 @@ bool CanPlayerRegen(int client)
 void PrintDeathMessage(int client)
 {
 	char message[256];
-	switch (GetRandomInt(1, 10))
-	{
-		case 1:
-		{
-			FormatEx(message, sizeof(message), "{red}%N's family will never know how they died.", client);
-		}
-		case 2:
-		{
-			FormatEx(message, sizeof(message), "{red}%N really messed up.", client);
-		}
-		case 3:
-		{
-			FormatEx(message, sizeof(message), "{red}%N's death was extremely painful.", client);
-		}
-		case 4:
-		{
-			FormatEx(message, sizeof(message), "{red}Try playing on \"Scrap\" mode for an easier time, %N.", client);
-		}
-		case 5:
-		{
-			FormatEx(message, sizeof(message), "{red}That was absolutely your fault, %N.", client);
-		}
-		case 6:
-		{
-			FormatEx(message, sizeof(message), "{red}They will surely feast on %N's flesh.", client);
-		}
-		case 7:
-		{
-			FormatEx(message, sizeof(message), "{red}%N dies in a hilarious pose.", client);
-		}
-		case 8:
-		{
-			FormatEx(message, sizeof(message), "{red}%N embraces the void.", client);
-		}
-		case 9:
-		{
-			FormatEx(message, sizeof(message), "{red}%N had a lot more to live for.", client);
-		}
-		case 10:
-		{
-			FormatEx(message, sizeof(message), "{red}%N's body was gone an hour later.", client);
-		}
-	}
-	
-	#if defined _colors_included
-	CPrintToChatAll(message);
-	CRemoveTags(message, sizeof(message));
-	#else
-	ReplaceStringEx(message, sizeof(message), "{red}", "");
-	PrintToChatAll(message);
-	#endif
-	
-	PrintToServer(message);
+	const int maxMessages = 10;
+	FormatEx(message, sizeof(message), "DeathMessage%i", GetRandomInt(1, maxMessages));
+	CPrintToChatAll("%t", message, client);
+	PrintToServer("%T", message, LANG_SERVER, client);
 }
 
 int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=false)
