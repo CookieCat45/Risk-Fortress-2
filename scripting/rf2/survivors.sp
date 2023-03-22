@@ -177,6 +177,7 @@ bool CreateSurvivors()
 			if (prioritizedIndex > -1 || steamIDIndex > -1)
 			{
 				g_iPlayerSurvivorIndex[i] = steamIDIndex > -1 ? steamIDIndex : prioritizedIndex;
+				steamIDIndex = -1;
 				indexTaken[g_iPlayerSurvivorIndex[i]] = true;
 				
 				if (g_iPlayerSurvivorIndex[i] == prioritizedIndex)
@@ -200,7 +201,6 @@ bool CreateSurvivors()
 						prioritizedIndex = -1;
 					}
 				}
-				
 			}
 			else
 			{
