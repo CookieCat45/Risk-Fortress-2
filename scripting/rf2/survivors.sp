@@ -137,6 +137,7 @@ bool CreateSurvivors()
 	int attempts;
 	int i = 1;
 	char authId[64];
+	int steamIDIndex = -1;
 
 	while (attempts < 500 && survivorCount < maxSurvivors)
 	{
@@ -164,37 +165,42 @@ bool CreateSurvivors()
 				{
 					if (!g_szSurvivorIndexSteamID[s][0])
 						continue;
-
+					
 					if (strcmp2(authId, g_szSurvivorIndexSteamID[s]))
 					{
-						prioritizedIndex = s;
+						steamIDIndex = s;
 						break;
 					}
 				}
 			}
 			
-			if (prioritizedIndex > -1)
+			if (prioritizedIndex > -1 || steamIDIndex > -1)
 			{
-				g_iPlayerSurvivorIndex[i] = prioritizedIndex;
-				oldPrioritizedIndex = prioritizedIndex;
-				indexTaken[prioritizedIndex] = true;
+				g_iPlayerSurvivorIndex[i] = steamIDIndex > -1 ? steamIDIndex : prioritizedIndex;
+				indexTaken[g_iPlayerSurvivorIndex[i]] = true;
 				
-				for (int index = 0; index < maxSurvivors; index++)
+				if (g_iPlayerSurvivorIndex[i] == prioritizedIndex)
 				{
-					if (indexTaken[index])
-						continue;
+					oldPrioritizedIndex = prioritizedIndex;
 					
-					if (g_bSurvivorIndexUsed[index])
+					for (int index = 0; index < maxSurvivors; index++)
 					{
-						prioritizedIndex = index;
-						break;
+						if (indexTaken[index])
+							continue;
+						
+						if (g_bSurvivorIndexUsed[index])
+						{
+							prioritizedIndex = index;
+							break;
+						}
+					}
+					
+					if (prioritizedIndex == oldPrioritizedIndex) // no more used indexes were found, the rest are empty
+					{
+						prioritizedIndex = -1;
 					}
 				}
 				
-				if (prioritizedIndex == oldPrioritizedIndex) // no more used indexes were found, the rest are empty
-				{
-					prioritizedIndex = -1;
-				}
 			}
 			else
 			{
