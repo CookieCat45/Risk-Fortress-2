@@ -1682,10 +1682,10 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				if (xp > 0.0)
 				{
 					xp *= 1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvEnemyXPDropScale.FloatValue);
-					
 					UpdatePlayerXP(attacker, xp);
 					
-					// Only share xp for boss kills, assisters, or a medic healing us.
+					// The killer, assister, and any medics healing the killer get full XP.
+					// Everyone else gets 60% of the XP (unless this is a boss kill)
 					int medigun;
 					for (int i = 1; i <= MaxClients; i++)
 					{
@@ -1697,6 +1697,10 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						&& GetEntPropEnt(medigun, Prop_Send, "m_hHealingTarget") == attacker)
 						{
 							UpdatePlayerXP(i, xp);
+						}
+						else
+						{
+							UpdatePlayerXP(i, xp*0.6);
 						}
 					}
 				}
