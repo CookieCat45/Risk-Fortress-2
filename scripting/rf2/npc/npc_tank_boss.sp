@@ -118,7 +118,7 @@ public void Hook_BadassTankSpawnPost(int entity)
 	SetEntProp(entity, Prop_Data, "m_iActualMaxHealth", maxHealth);
 	SetEntProp(entity, Prop_Data, "m_iMaxHealth", 0);
 	
-	TankBoss_SetSequence(entity, "movement");
+	SetSequence(entity, "movement");
 }
 
 void BeginTankDestructionMode()
@@ -381,12 +381,12 @@ public void Hook_BadassTankThink(int entity)
 				
 				if (strcmp(attachmentName, ATT_ROCKET_L) == 0)
 				{
-					TankBoss_AddGesture(entity, "fire_rocket_l");
+					AddGesture(entity, "fire_rocket_l");
 					SetEntPropFloat(entity, Prop_Data, "m_flNextRocketAttackL", gameTime+nextAttackTime*1.5);
 				}
 				else
 				{
-					TankBoss_AddGesture(entity, "fire_rocket_r");
+					AddGesture(entity, "fire_rocket_r");
 					SetEntPropFloat(entity, Prop_Data, "m_flNextRocketAttackR", gameTime+nextAttackTime);
 				}
 			}
@@ -428,7 +428,7 @@ public void Hook_BadassTankThink(int entity)
 					{
 						special = newSpecial;
 						SetEntProp(entity, Prop_Data, "m_iSpecialAttack", special);
-						TankBoss_AddGesture(entity, "eye_rise", _, _, 0.25);
+						AddGesture(entity, "eye_rise", _, _, 0.25);
 						
 						int num = GetRandomInt(0, sizeof(g_szTankLaserVoices)-1);
 						EmitSoundToAll(g_szTankLaserVoices[num], entity, _, 120);
@@ -452,7 +452,7 @@ public void Hook_BadassTankThink(int entity)
 							EmitSoundToAll(g_szTankBarrageVoices[num], entity, _, 120);
 							EmitSoundToAll(g_szTankBarrageVoices[num], entity, _, 120);
 							EmitSoundToAll(SND_TANK_LASERRISE, entity, _, 120);
-							TankBoss_AddGesture(entity, "rocket_turn_up", _, _, 0.2, 2);
+							AddGesture(entity, "rocket_turn_up", _, _, 0.2, 2);
 						}
 					}
 				}
@@ -465,11 +465,11 @@ public void Hook_BadassTankThink(int entity)
 		case SPECIAL_LASER:
 		{
 			// wait for anim to finish
-			if (!TankBoss_IsPlayingGesture(entity, "eye_rise"))
+			if (!IsPlayingGesture(entity, "eye_rise"))
 			{
-				if (!TankBoss_IsPlayingGesture(entity, "eye_up"))
+				if (!IsPlayingGesture(entity, "eye_up"))
 				{
-					TankBoss_AddGesture(entity, "eye_up", _, false);
+					AddGesture(entity, "eye_up", _, false);
 					
 					float duration;
 					switch (RF2_GetDifficulty())
@@ -580,11 +580,11 @@ public void Hook_BadassTankThink(int entity)
 		
 		case SPECIAL_BARRAGE:
 		{
-			if (!TankBoss_IsPlayingGesture(entity, "rocket_turn_up"))
+			if (!IsPlayingGesture(entity, "rocket_turn_up"))
 			{
-				if (!TankBoss_IsPlayingGesture(entity, "rocket_up"))
+				if (!IsPlayingGesture(entity, "rocket_up"))
 				{
-					TankBoss_AddGesture(entity, "rocket_up", _, false);
+					AddGesture(entity, "rocket_up", _, false);
 					StopSound(entity, SNDCHAN_AUTO, SND_TANK_LASERRISE);
 					EmitSoundToAll(SND_TANK_LASERRISE_END, entity, _, 120);
 					
@@ -636,7 +636,7 @@ public Action Timer_TankFireHomingRockets(Handle timer, int entity)
 	}
 	
 	EmitSoundToAll(SND_LAW_FIRE, entity);
-	TankBoss_AddGesture(entity, "rocket_shoot_up", _, _, _, 2);
+	AddGesture(entity, "rocket_shoot_up", _, _, _, 2);
 	return Plugin_Continue;
 }
 
@@ -673,52 +673,4 @@ public Action Timer_TankRocketFixAngles(Handle timer, int entity)
 	GetVectorAngles(vel, angles);
 	TeleportEntity(entity, _, angles);
 	return Plugin_Continue;
-}
-
-static void TankBoss_SetSequence(int entity, const char[] sequence, float playbackrate=1.0)
-{
-	int seq = CBaseAnimating(entity).LookupSequence(sequence);
-	if (seq != -1)
-	{
-		SetEntProp(entity, Prop_Send, "m_nSequence", seq);
-		SetEntPropFloat(entity, Prop_Send, "m_flPlaybackRate", playbackrate);
-	}
-	else
-	{
-		LogError("[TankBoss_SetSequence] Couldn't find sequence \"%s\".", sequence);
-	}
-}
-
-static float TankBoss_AddGesture(int entity, const char[] sequence, float duration=0.0, bool autokill=true, float playbackrate=1.0, int priority=1)
-{
-	int seq = CBaseAnimating(entity).LookupSequence(sequence);
-	if (seq != -1)
-	{
-		if (duration <= 0.0)
-		{
-			duration = CBaseAnimating(entity).SequenceDuration(seq);
-		}
-
-		int layer = CBaseAnimatingOverlay(entity).AddGestureSequence(seq, duration, autokill);
-		CBaseAnimatingOverlay(entity).SetLayerPlaybackRate(layer, playbackrate);
-		CBaseAnimatingOverlay(entity).SetLayerPriority(layer, priority);
-	}
-	else
-	{
-		LogError("[TankBoss_AddGesture] Couldn't find sequence \"%s\".", sequence);
-	}
-
-	return duration;
-}
-
-static bool TankBoss_IsPlayingGesture(int entity, const char[] sequence)
-{
-	int seq = CBaseAnimating(entity).LookupSequence(sequence);
-	if (seq == -1)
-	{
-		LogError("[TankBoss_IsPlayingGesture] Couldn't find sequence \"%s\".", sequence);
-		return false;
-	}
-
-	return (CBaseAnimatingOverlay(entity).FindGestureLayerBySequence(seq) >= 0);
 }

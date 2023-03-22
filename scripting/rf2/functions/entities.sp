@@ -314,6 +314,54 @@ void GetEntPos(int entity, float buffer[3])
 	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", buffer);
 }
 
+void SetSequence(int entity, const char[] sequence, float playbackrate=1.0)
+{
+	int seq = CBaseAnimating(entity).LookupSequence(sequence);
+	if (seq != -1)
+	{
+		SetEntProp(entity, Prop_Send, "m_nSequence", seq);
+		SetEntPropFloat(entity, Prop_Send, "m_flPlaybackRate", playbackrate);
+	}
+	else
+	{
+		LogError("[SetSequence] Couldn't find sequence \"%s\".", sequence);
+	}
+}
+
+float AddGesture(int entity, const char[] sequence, float duration=0.0, bool autokill=true, float playbackrate=1.0, int priority=1)
+{
+	int seq = CBaseAnimating(entity).LookupSequence(sequence);
+	if (seq != -1)
+	{
+		if (duration <= 0.0)
+		{
+			duration = CBaseAnimating(entity).SequenceDuration(seq);
+		}
+		
+		int layer = CBaseAnimatingOverlay(entity).AddGestureSequence(seq, duration, autokill);
+		CBaseAnimatingOverlay(entity).SetLayerPlaybackRate(layer, playbackrate);
+		CBaseAnimatingOverlay(entity).SetLayerPriority(layer, priority);
+	}
+	else
+	{
+		LogError("[AddGesture] Couldn't find sequence \"%s\".", sequence);
+	}
+	
+	return duration;
+}
+
+bool IsPlayingGesture(int entity, const char[] sequence)
+{
+	int seq = CBaseAnimating(entity).LookupSequence(sequence);
+	if (seq == -1)
+	{
+		LogError("[IsPlayingGesture] Couldn't find sequence \"%s\".", sequence);
+		return false;
+	}
+	
+	return (CBaseAnimatingOverlay(entity).FindGestureLayerBySequence(seq) >= 0);
+}
+
 public MRESReturn DHook_TakeHealth(int entity, Handle returnVal, Handle params)
 {
 	if (IsValidClient(entity))
