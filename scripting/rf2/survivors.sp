@@ -222,14 +222,7 @@ bool CreateSurvivors()
 	}
 	
 	g_iSurvivorCount = survivorCount;
-	bool success = (survivorCount > 0);
-	// We know that objects will all be spawned on the next frame, so we can count objects and determine item sharing between players that way.
-	if (success && g_cvItemShareEnabled.BoolValue/* && humanCount > 1*/)
-	{
-		RequestFrame(RF_CalculateItemSharing);	
-	}
-	
-	return success;
+	return survivorCount > 0;
 }
 
 void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInventory=true)
@@ -387,11 +380,6 @@ void SaveSurvivorInventory(int client, int index, bool saveName=true)
 			strcopy(g_szLastInventoryOwner[index], sizeof(g_szLastInventoryOwner[]), "[unknown]");
 		}
 	}
-}
-
-public void RF_CalculateItemSharing()
-{
-	CalculateSurvivorItemShare(false);
 }
 
 void CalculateSurvivorItemShare(bool recalculate=true)

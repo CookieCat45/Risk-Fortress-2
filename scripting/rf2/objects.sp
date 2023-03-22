@@ -157,6 +157,11 @@ int SpawnObjects()
 		spawns++;
 	}
 	
+	if (g_cvItemShareEnabled.BoolValue)
+	{
+		CalculateSurvivorItemShare(false);	
+	}
+	
 	delete objectArray;
 	return spawns;
 }
