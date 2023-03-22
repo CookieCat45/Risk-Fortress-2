@@ -162,6 +162,9 @@ bool CreateSurvivors()
 				GetClientAuthId(i, AuthId_SteamID64, authId, sizeof(authId));
 				for (int s = 0; s < maxSurvivors; s++)
 				{
+					if (!g_szSurvivorIndexSteamID[s][0])
+						continue;
+
 					if (strcmp2(authId, g_szSurvivorIndexSteamID[s]))
 					{
 						prioritizedIndex = s;
