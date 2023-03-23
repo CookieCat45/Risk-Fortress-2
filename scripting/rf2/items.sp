@@ -1117,7 +1117,7 @@ bool ActivateStrangeItem(int client)
 				}
 				
 				// no teammate? check if we should heal ourselves
-				if (healTarget == -1 && GetClientHealth(client) < RF2_GetCalculatedMaxHealth(client) / 2)
+				if (healTarget <= 0 && GetClientHealth(client) < RF2_GetCalculatedMaxHealth(client) / 2)
 				{
 					healTarget = client;
 				}
@@ -1135,14 +1135,14 @@ bool ActivateStrangeItem(int client)
 				
 				TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID, RayType_EndPoint, TraceFilter_PlayerTeam, client);
 				healTarget = TR_GetEntityIndex();
-				if (healTarget == -1)
+				if (!IsValidClient(healTarget))
 				{
 					// no heal target, heal ourselves
 					healTarget = client;
 				}
 			}
 			
-			if (healTarget != -1)
+			if (healTarget > 0)
 			{
 				int heal = RoundToFloor(RF2_GetCalculatedMaxHealth(healTarget) * GetItemMod(ItemStrange_HeartOfGold, 0));
 				EmitSoundToAll(SND_SPELL_OVERHEAL, healTarget);
