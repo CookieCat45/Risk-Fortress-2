@@ -11,6 +11,7 @@
 #include <tf2items>
 #include <tf_ontakedamage>
 #include <morecolors>
+#tryinclude <SteamWorks>
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -737,7 +738,7 @@ public void OnMapStart()
 	g_bMapChanging = false;
 	float engineTime = GetEngineTime();
 	char mapName[256], buffer[8];
-
+	
 	GetCurrentMap(mapName, sizeof(mapName));
 	SplitString(mapName, "_", buffer, sizeof(buffer));
 	
@@ -772,6 +773,15 @@ public void OnMapStart()
 		{
 			SetFailState("[NAV] The NavMesh for map \"%s\" does not exist", mapName);
 		}
+		
+		#if defined _SteamWorks_Included
+		if (GetExtensionFileStatus("SteamWorks.ext") == 1)
+		{
+			char desc[64];
+			FormatEx(desc, sizeof(desc), "Risk Fortress 2 - %s (Stage %d)", PLUGIN_VERSION, g_iStagesCompleted+1);
+			SteamWorks_SetGameDescription(desc);
+		}
+		#endif
 		
 		LoadAssets();
 		
