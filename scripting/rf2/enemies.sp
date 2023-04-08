@@ -512,9 +512,9 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		
 		enemy.VoiceType = enemyKey.GetNum("voice_type", VoiceType_Robot);
 		enemy.VoicePitch = enemyKey.GetNum("voice_pitch", SNDPITCH_NORMAL);
-		enemy.FootstepType = enemyKey.GetNum("footstep_type", FootstepType_Robot);
+		enemy.FootstepType = enemyKey.GetNum("footstep_type", enemy.IsBoss ? FootstepType_GiantRobot : FootstepType_Robot);
 		
-		enemy.AllowSelfDamage = bool(enemyKey.GetNum("allow_self_damage", enemy.IsBoss ? true : false));
+		enemy.AllowSelfDamage = bool(enemyKey.GetNum("allow_self_damage", enemy.IsBoss ? false : true));
 		enemy.HeadScale = enemyKey.GetFloat("head_scale", enemy.IsBoss ? 1.5 : 1.0);
 		enemy.TorsoScale = enemyKey.GetFloat("torso_scale", 1.0);
 		enemy.HandScale = enemyKey.GetFloat("hand_scale", 1.0);

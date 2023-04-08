@@ -173,7 +173,7 @@ public Action Command_GiveItem(int client, int args)
 	int item;
 	char name[MAX_NAME_LENGTH];
 	
-	for (int i = 1; i <= GetItemCount(); i++)
+	for (int i = 1; i <= GetTotalItems(); i++)
 	{
 		GetItemName(i, name, sizeof(name), false);
 		if (StrContains(name, arg2, false) != -1)

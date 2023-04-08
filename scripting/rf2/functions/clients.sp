@@ -317,6 +317,7 @@ void PrintDeathMessage(int client)
 	const int maxMessages = 10;
 	FormatEx(message, sizeof(message), "DeathMessage%i", GetRandomInt(1, maxMessages));
 	CPrintToChatAll("%t", message, client);
+	CRemoveTags(message, sizeof(message));
 	PrintToServer("%T", message, LANG_SERVER, client);
 }
 

@@ -450,7 +450,7 @@ bool ActivateObject(int client, int entity)
 		int benchItem = GetEntProp(entity, Prop_Data, "m_iItem");
 		int item;
 		
-		for (int i = 1; i <= GetItemCount(); i++)
+		for (int i = 1; i <= GetTotalItems(); i++)
 		{
 			if (i != benchItem && GetItemQuality(i) == quality && PlayerHasItem(client, i))
 			{
@@ -476,7 +476,8 @@ bool ActivateObject(int client, int entity)
 			GiveItem(client, item, -1);
 			GiveItem(client, benchItem, 1);
 			EmitSoundToAll(SND_USE_WORKBENCH, client);
-			PrintCenterText(client, "%t", "UsedWorkbench", g_szItemName[item], g_szItemName[benchItem]);
+			PrintCenterText(client, "%t", "UsedWorkbench", 
+			g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item), g_szItemName[item]);
 			return true;
 		}
 		else
@@ -503,21 +504,31 @@ void ShowScrapperMenu(int client, bool message=true)
 	
 	int count, quality;
 	char info[8], display[128];
-	for (int i = 1; i <= GetItemCount(); i++)
+	bool collector;
+	for (int i = 1; i <= GetTotalItems(); i++)
 	{
-		if (IsScrapItem(i))
+		if (IsScrapItem(i) || IsEquipmentItem(i))
 			continue;
+		
+		if (GetItemQuality(i) == Quality_Collectors)
+		{
+			if (GetCollectorItemClass(i) == TF2_GetPlayerClass(client))
+				continue;
+
+			if (!collector)
+			{
+				FormatEx(display, sizeof(display), "%t", "ScrapCollectors", client);
+				menu.InsertItem(0, "scrap_collectors", display);
+				collector = true;
+			}
+		}
 		
 		if (PlayerHasItem(client, i))
 		{
-			quality = GetItemQuality(i);
-			if (quality == Quality_Normal || quality == Quality_Genuine || quality == Quality_Unusual || quality == Quality_Haunted)
-			{
-				IntToString(i, info, sizeof(info));
-				FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[i], GetPlayerItemCount(client, i));
-				menu.AddItem(info, display);
-				count++;
-			}
+			IntToString(i, info, sizeof(info));
+			FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[i], GetPlayerItemCount(client, i));
+			menu.AddItem(info, display);
+			count++;
 		}
 	}
 	
@@ -541,33 +552,99 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 			char info[8];
 			menu.GetItem(param2, info, sizeof(info));
 			int item = StringToInt(info);
+			bool scrapAllCollectors = strcmp2(info, "scrap_collectors");
 			
-			if (PlayerHasItem(param1, item))
+			if (scrapAllCollectors || item != Item_Null && PlayerHasItem(param1, item))
 			{
-				GiveItem(param1, item, -1);
-				int quality = GetItemQuality(item);
-				int scrap;
-				
-				switch (quality)
+				if (scrapAllCollectors || GetItemQuality(item) == Quality_Collectors)
 				{
-					case Quality_Normal: scrap = Item_ScrapMetal;
-					case Quality_Genuine: scrap = Item_ReclaimedMetal;
-					case Quality_Unusual: scrap = Item_RefinedMetal;
+					TFClassType class = TF2_GetPlayerClass(param1);
+					
+					if (scrapAllCollectors)
+					{
+						int total, count;
+						for (int i = 1; i <= GetTotalItems(); i++)
+						{
+							if (GetItemQuality(i) != Quality_Collectors || !PlayerHasItem(param1, i))
+								continue;
+							
+							if (GetCollectorItemClass(i) == class)
+								continue;
+							
+							count = GetPlayerItemCount(param1, i);
+							GiveItem(param1, i, -count);
+							total += count;
+						}
+						
+						if (total <= 0)
+						{
+							EmitSoundToClient(param1, SND_NOPE);
+							PrintCenterText(param1, "%t", "NoCollectorItems", param1);
+							return 0;
+						}
+						
+						ArrayList itemList = CreateArray();
+						int randomItem;
+						
+						for (int i = 1; i <= total; i++)
+						{
+							randomItem = GetRandomCollectorItem(class);
+							GiveItem(param1, randomItem);
+							if (itemList.FindValue(randomItem) == -1)
+							{
+								itemList.Push(randomItem);
+							}
+						}
+						
+						char itemName[64];
+						for (int i = 0; i < itemList.Length; i++)
+						{
+							randomItem = itemList.Get(i);
+							GetItemName(randomItem, itemName, sizeof(itemName));
+
+							RF2_PrintToChat(param1, "%t", "ReceivedCollectorItem", 
+							param1, GetPlayerItemCount(param1, randomItem), itemName);
+						}
+						
+						delete itemList;
+					}
+					else
+					{
+						GiveItem(param1, item, -1);
+						int randomItem = GetRandomCollectorItem(TF2_GetPlayerClass(param1));
+						GiveItem(param1, randomItem);
+						PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[randomItem]);
+						EmitSoundToClient(param1, SND_USE_SCRAPPER);
+						ShowScrapperMenu(param1, false);
+					}
 				}
-				
-				if (scrap > Item_Null)
+				else
 				{
-					GiveItem(param1, scrap, 1);
-					PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[scrap]);
+					GiveItem(param1, item, -1);
+					int quality = GetItemQuality(item);
+					int scrap;
+					
+					switch (quality)
+					{
+						case Quality_Normal: scrap = Item_ScrapMetal;
+						case Quality_Genuine: scrap = Item_ReclaimedMetal;
+						case Quality_Unusual: scrap = Item_RefinedMetal;
+					}
+					
+					if (scrap > Item_Null)
+					{
+						GiveItem(param1, scrap, 1);
+						PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[scrap]);
+					}
+					else // haunted item, give haunted key
+					{
+						g_iPlayerHauntedKeys[param1]++;
+						PrintCenterText(param1, "%t", "UsedScrapperHaunted", g_szItemName[item]);
+					}
+					
+					EmitSoundToClient(param1, SND_USE_SCRAPPER);
+					ShowScrapperMenu(param1, false);
 				}
-				else // haunted item, give haunted key
-				{
-					g_iPlayerHauntedKeys[param1]++;
-					PrintCenterText(param1, "%t", "UsedScrapperHaunted", g_szItemName[item]);
-				}
-				
-				EmitSoundToClient(param1, SND_USE_SCRAPPER);
-				ShowScrapperMenu(param1, false);
 			}
 		}
 		case MenuAction_End:

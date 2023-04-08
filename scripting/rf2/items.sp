@@ -215,7 +215,7 @@ int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, bool allowHaunted
 	quality = array.Get(GetRandomInt(0, array.Length-1));
 	array.Clear();
 	
-	for (int i = 1; i <= GetItemCount(); i++)
+	for (int i = 1; i <= GetTotalItems(); i++)
 	{
 		if (!g_bItemInDropPool[i] || GetItemQuality(i) == Quality_Collectors)
 			continue;
@@ -247,7 +247,7 @@ int GetRandomItemEx(int quality)
 	ArrayList array = CreateArray();
 	int item;
 	
-	for (int i = 1; i <= GetItemCount(); i++)
+	for (int i = 1; i <= GetTotalItems(); i++)
 	{
 		if (!g_bItemInDropPool[i])
 			continue;
@@ -276,7 +276,7 @@ int GetRandomCollectorItem(TFClassType class)
 	ArrayList array = CreateArray();
 	int item;
 	
-	for (int i = 0; i <= GetItemCount(); i++)
+	for (int i = 0; i <= GetTotalItems(); i++)
 	{
 		if (!g_bItemInDropPool[i])
 			continue;
@@ -554,7 +554,7 @@ int EquipItemAsWearable(int client, int item)
 		
 		index = GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex");
 
-		for (int i = 1; i <= GetItemCount(); i++)
+		for (int i = 1; i <= GetTotalItems(); i++)
 		{
 			if (PlayerHasItem(client, i) && index == g_iItemSchemaIndex[i])
 			{
@@ -884,7 +884,7 @@ void UpdatePlayerItem(int client, int item)
 		int qualityPriority = GetQualityEquipPriority(GetItemQuality(item));
 		while (qualityPriority >= 0)
 		{
-			for (int i = 1; i <= GetItemCount(); i++)
+			for (int i = 1; i <= GetTotalItems(); i++)
 			{
 				if (i != item && PlayerHasItem(client, i) && GetQualityEquipPriority(GetItemQuality(i)) >= qualityPriority)
 				{
@@ -1754,7 +1754,7 @@ bool IsEquipmentItem(int item)
 	return quality == Quality_Strange || quality == Quality_HauntedStrange;
 }
 
-int GetItemCount()
+int GetTotalItems()
 {
 	return g_iItemCount;
 }

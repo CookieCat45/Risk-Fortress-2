@@ -112,8 +112,8 @@
 	
 	"UsedWorkbench" // No color tags
 	{
-		"#format"	"{1:s},{2:s}"
-		"en"		"You traded 1 {1} for a {2}."
+		"#format"	"{1:s},{2:s},{3:d},{4:s}"
+		"en"		"You traded 1 {1} for a {2}. You have {3} {4} left."
 	}
 	
 	"NoExchange" // No color tags
@@ -121,7 +121,23 @@
 		"#format"	"{1:s}"
 		"en"		"You don't have any items to exchange! You need {1} quality items."
 	}
-	
+
+	"ScrapCollectors" // No color tags
+	{
+		"en"		"Swap out all Collectors items"
+	}
+
+	"NoCollectorItems" // No color tags
+	{
+		"en"		"You have no Collectors items!"
+	}
+
+	"ReceivedCollectorItem"
+	{
+		"#format"	"{1:d},{2:s}"
+		"en"		"You received {1} {2}"
+	}
+
 	"NothingToScrap" // No color tags
 	{
 		"en"		"You have no items to scrap!"
