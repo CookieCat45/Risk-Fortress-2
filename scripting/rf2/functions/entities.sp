@@ -58,8 +58,8 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 	int entity;
 	if ((entity = CreateEntityByName(classname)) == -1)
 	{
-		LogError("[ShootProjectile] Invalid entity classname: %s", classname);
-		return entity;
+		//LogError("[ShootProjectile] Invalid entity classname: %s", classname);
+		return -1;
 	}
 	
 	SetEntityOwner(entity, owner);

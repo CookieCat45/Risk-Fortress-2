@@ -35,6 +35,7 @@ static bool g_bEnemyBotHoldFireUntilReloaded[MAX_ENEMIES];
 // Weapons
 static bool g_bEnemyWeaponUseStaticAttributes[MAX_ENEMIES][TF_WEAPON_SLOTS];
 static bool g_bEnemyWeaponVisible[MAX_ENEMIES][TF_WEAPON_SLOTS];
+static bool g_bEnemyWeaponFirstActive[MAX_ENEMIES][TF_WEAPON_SLOTS];
 static int g_iEnemyWeaponIndex[MAX_ENEMIES][TF_WEAPON_SLOTS];
 static int g_iEnemyWeaponAmount[MAX_ENEMIES];
 static char g_szEnemyWeaponName[MAX_ENEMIES][TF_WEAPON_SLOTS][128];
@@ -211,6 +212,16 @@ methodmap Enemy
 		return g_bEnemyWeaponUseStaticAttributes[this.Index][slot];
 	}
 	
+	public bool WeaponIsFirstActive(int slot)
+	{
+		return g_bEnemyWeaponFirstActive[this.Index][slot];
+	}
+
+	public void SetWeaponIsFirstActive(int slot, bool value)
+	{
+		g_bEnemyWeaponFirstActive[this.Index][slot] = value;
+	}
+
 	public void SetWeaponUseStaticAtts(int slot, bool value)
 	{
 		g_bEnemyWeaponUseStaticAttributes[this.Index][slot] = value;
@@ -465,6 +476,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemy.SetWeaponIndex(w, enemyKey.GetNum("index", 5));
 			enemy.SetWeaponVisible(w, bool(enemyKey.GetNum("visible", true)));
 			enemy.SetWeaponUseStaticAtts(w, bool(enemyKey.GetNum("static_attributes", false)));
+			enemy.SetWeaponIsFirstActive(w, bool(enemyKey.GetNum("active_weapon", false)));
 			enemy.WeaponCount++;
 			
 			enemyKey.GoBack();
@@ -719,11 +731,23 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	
 	TF2_RemoveAllWeapons(client);
 	char name[128], attributes[MAX_ATTRIBUTE_STRING_LENGTH];
+	int activeWeapon = -1;
+	int weapon;
 	for (int i = 0; i < enemy.WeaponCount; i++)
 	{
 		enemy.GetWeaponName(i, name, sizeof(name));
 		enemy.GetWeaponAttributes(i, attributes, sizeof(attributes));
-		CreateWeapon(client, name, enemy.WeaponIndex(i), attributes, enemy.WeaponUseStaticAtts(i), enemy.WeaponVisible(i));
+		weapon = CreateWeapon(client, name, enemy.WeaponIndex(i), attributes, enemy.WeaponUseStaticAtts(i), enemy.WeaponVisible(i));
+		
+		if (activeWeapon == -1 && IsValidEntity(weapon) && enemy.WeaponIsFirstActive(i))
+		{
+			activeWeapon = weapon;
+		}
+	}
+	
+	if (activeWeapon != -1)
+	{
+		SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", activeWeapon);
 	}
 	
 	for (int i = 1; i < Item_MaxValid; i++)
