@@ -11,7 +11,9 @@
 #include <tf2items>
 #include <tf_ontakedamage>
 #include <morecolors>
+#undef REQUIRE_EXTENSIONS
 #tryinclude <SteamWorks>
+#define REQUIRE_EXTENSIONS
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -1234,7 +1236,7 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 		}
 		
 		if (IsPlayerAFK(i))
-			points[i] -= 99999;
+			points[i] -= 999;
 			
 		if (!g_bPlayerBecomeSurvivor[i])
 			points[i] -= 9999;
@@ -1572,7 +1574,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int victim = GetClientOfUserId(event.GetInt("userid"));
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	int inflictor = event.GetInt("inflictor_entindex");
-	int assister = GetClientOfUserId(event.GetInt("assister"));
+	//int assister = GetClientOfUserId(event.GetInt("assister"));
 	int damageType = event.GetInt("damagebits");
 	//int custom = event.GetInt("customkill");
 	CritType critType = view_as<CritType>(event.GetInt("crit_type"));
@@ -1686,14 +1688,14 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					xp *= 1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvEnemyXPDropScale.FloatValue);
 					UpdatePlayerXP(attacker, xp);
 					
-					// The killer, assister, and any medics healing the killer get full XP.
-					// Everyone else gets 60% of the XP (unless this is a boss kill)
-					int medigun;
+					//int medigun;
 					for (int i = 1; i <= MaxClients; i++)
 					{
 						if (!IsClientInGame(i) || attacker == i || !IsPlayerSurvivor(i))
 							continue;
-							
+						
+						UpdatePlayerXP(i, xp);
+						/*
 						if (IsBoss(victim) || i == assister 
 						|| TF2_GetPlayerClass(i) == TFClass_Medic && (medigun = GetPlayerWeaponSlot(i, WeaponSlot_Secondary)) > -1 
 						&& GetEntPropEnt(medigun, Prop_Send, "m_hHealingTarget") == attacker)
@@ -1704,6 +1706,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						{
 							UpdatePlayerXP(i, xp*0.6);
 						}
+						*/
 					}
 				}
 				
@@ -2269,12 +2272,12 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	int actualSurvivorCount = GetPlayersOnTeam(TEAM_SURVIVOR, true);
 	int humanCount = GetTotalHumans();
 	
-	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 2.0 * float(survivorCount-1);
+	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
-	duration -= 0.25 * float(imin(g_iRespawnWavesCompleted, 20));
+	duration -= 0.1 * float(imin(g_iRespawnWavesCompleted, 20));
 	
 	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
-		duration *= 0.75;
+		duration *= 0.8;
 	
 	CreateTimer(fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue), Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
 	

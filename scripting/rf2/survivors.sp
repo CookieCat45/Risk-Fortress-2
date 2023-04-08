@@ -74,7 +74,8 @@ bool CreateSurvivors()
 		{
 			if (!g_cvBotsCanBeSurvivor.BoolValue)
 			{
-				SilentlyKillPlayer(i);
+				ForcePlayerSuicide(i);
+				FakeClientCommand(i, "explode");
 				ChangeClientTeam(i, TEAM_ENEMY);
 				continue;
 			}
@@ -106,7 +107,12 @@ bool CreateSurvivors()
 		
 		if (GetClientTeam(i) != TEAM_ENEMY)
 		{
-			SilentlyKillPlayer(i);
+			if (IsPlayerAlive(i))
+			{
+				ForcePlayerSuicide(i);
+				FakeClientCommand(i, "explode");
+			}
+			
 			ChangeClientTeam(i, TEAM_ENEMY);
 		}
 	}

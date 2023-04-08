@@ -29,7 +29,7 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_set_difficulty", Command_SetDifficulty, ADMFLAG_SLAY, "Sets the difficulty level. 0 = Scrap, 1 = Iron, 2 = Steel, 3 = Titanium");
 	RegAdminCmd("rf2_setnextmap", Command_ForceMap, ADMFLAG_SLAY, "Forces the next map to be the map specified. This will not immediately change the map.");
 	RegAdminCmd("rf2_make_survivor", Command_MakeSurvivor, ADMFLAG_SLAY, "Force a player to become a Survivor.\nWill not work if the maximum survivor count has been reached.");
-
+	
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
 	RegConsoleCmd("rf2_afk", Command_AFK, "Puts you into AFK mode instantly.");
@@ -60,7 +60,7 @@ void LoadCommandsAndCvars()
 	g_cvSurvivorXpRequirementScale = CreateConVar("rf2_survivor_xp_requirement_scale", "1.5", "How much the XP requirement for a Survivor to level up will scale per level, in decimal percentage.", FCVAR_NOTIFY, true, 1.0);
 	g_cvCashBurnTime = CreateConVar("rf2_enemy_cash_burn_time", "30.0", "Time in seconds that dropped cash will disappear after spawning.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyHealthScale = CreateConVar("rf2_enemy_level_health_scale", "0.08", "How much the enemy team's health will increase per level, in decimal percentage. Includes neutral enemies, such as Monoculus.", FCVAR_NOTIFY, true, 0.0);
-	g_cvEnemyDamageScale = CreateConVar("rf2_enemy_level_damage_scale", "0.08", "How much the enemy team's damage will increase per level, in decimal percentage. Includes neutral enemies, such as Monoculus.", FCVAR_NOTIFY, true, 0.0);
+	g_cvEnemyDamageScale = CreateConVar("rf2_enemy_level_damage_scale", "0.04", "How much the enemy team's damage will increase per level, in decimal percentage. Includes neutral enemies, such as Monoculus.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyXPDropScale = CreateConVar("rf2_enemy_xp_drop_scale", "0.15", "How much enemy XP drops scale per level.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyCashDropScale = CreateConVar("rf2_enemy_cash_drop_scale", "0.15", "How much enemy cash drops scale per level.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyMinSpawnDistance = CreateConVar("rf2_enemy_spawn_min_distance", "1000.0", "The minimum distance an enemy can spawn in relation to Survivors.", FCVAR_NOTIFY, true, 0.0);
@@ -68,7 +68,7 @@ void LoadCommandsAndCvars()
 	g_cvEnemyMinSpawnWaveCount = CreateConVar("rf2_enemy_spawn_min_count", "3", "The absolute minimum number of enemies that can spawn in a single spawn wave.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyMaxSpawnWaveCount = CreateConVar("rf2_enemy_spawn_max_count", "10", "The absolute maximum amount of enemies that can spawn in a single spawn wave.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyMinSpawnWaveTime = CreateConVar("rf2_enemy_spawn_min_wave_time", "2.0", "The minimum amount of time that must pass between enemy spawn waves.", FCVAR_NOTIFY, true, 0.0);
-	g_cvEnemyBaseSpawnWaveTime = CreateConVar("rf2_enemy_spawn_base_wave_time", "25.0", "The base amount of time that passes between spawn waves. Affected by many different factors.", FCVAR_NOTIFY, true, 0.1);
+	g_cvEnemyBaseSpawnWaveTime = CreateConVar("rf2_enemy_spawn_base_wave_time", "30.0", "The base amount of time that passes between spawn waves. Affected by many different factors.", FCVAR_NOTIFY, true, 0.1);
 	g_cvBossStabDamageType = CreateConVar("rf2_boss_backstab_damage_type", "0", "Determines how bosses take backstab damage. 0 - raw damage. 1 - percentage.\nBoth benefit from any damage bonuses, excluding crits.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamagePercent = CreateConVar("rf2_boss_backstab_damage_percentage", "0.12", "If rf2_boss_backstab_damage_type is 1, how much health, in decimal percentage, is subtracted from the boss upon backstab.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamageAmount = CreateConVar("rf2_boss_backstab_damage_amount", "750.0", "If rf2_boss_backstab_damage_type is 0, the base damage that is dealt to a boss upon backstab.", FCVAR_NOTIFY, true, 0.0);

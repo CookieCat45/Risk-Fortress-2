@@ -141,6 +141,7 @@ void PrecacheFactoryAssets()
 	
 	AddModelToDownloadsTable(MODEL_TELEPORTER);
 	AddModelToDownloadsTable(MODEL_TELEPORTER_RADIUS);
+	AddModelToDownloadsTable(MODEL_CRATE);
 	AddMaterialToDownloadsTable("materials/rf2/objects/matteleporterclean");
 	AddMaterialToDownloadsTable("materials/rf2/objects/teleporterbumpmap");
 	AddMaterialToDownloadsTable("materials/rf2/objects/teleporterlightmap");

@@ -502,7 +502,7 @@ void ShowScrapperMenu(int client, bool message=true)
 	Menu menu = CreateMenu(Menu_ItemScrapper);
 	menu.SetTitle("What would you like to scrap?");
 	
-	int count, quality;
+	int count;
 	char info[8], display[128];
 	bool collector;
 	for (int i = 1; i <= GetTotalItems(); i++)
@@ -513,11 +513,12 @@ void ShowScrapperMenu(int client, bool message=true)
 		if (GetItemQuality(i) == Quality_Collectors)
 		{
 			if (GetCollectorItemClass(i) == TF2_GetPlayerClass(client))
-				continue;
-
-			if (!collector)
 			{
-				FormatEx(display, sizeof(display), "%t", "ScrapCollectors", client);
+				continue;
+			}
+			else if (!collector)
+			{
+				FormatEx(display, sizeof(display), "%T", "ScrapCollectors", client);
 				menu.InsertItem(0, "scrap_collectors", display);
 				collector = true;
 			}
@@ -549,17 +550,16 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 	{
 		case MenuAction_Select:
 		{
-			char info[8];
+			char info[32];
 			menu.GetItem(param2, info, sizeof(info));
 			int item = StringToInt(info);
 			bool scrapAllCollectors = strcmp2(info, "scrap_collectors");
 			
 			if (scrapAllCollectors || item != Item_Null && PlayerHasItem(param1, item))
 			{
-				if (scrapAllCollectors || GetItemQuality(item) == Quality_Collectors)
+				TFClassType class = TF2_GetPlayerClass(param1);
+				if (scrapAllCollectors || GetItemQuality(item) == Quality_Collectors && GetCollectorItemClass(item) != class)
 				{
-					TFClassType class = TF2_GetPlayerClass(param1);
-					
 					if (scrapAllCollectors)
 					{
 						int total, count;
@@ -579,17 +579,20 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 						if (total <= 0)
 						{
 							EmitSoundToClient(param1, SND_NOPE);
-							PrintCenterText(param1, "%t", "NoCollectorItems", param1);
+							PrintCenterText(param1, "%t", "NoCollectorItems");
 							return 0;
 						}
 						
 						ArrayList itemList = CreateArray();
 						int randomItem;
+						int itemCount[MAX_ITEMS];
 						
 						for (int i = 1; i <= total; i++)
 						{
 							randomItem = GetRandomCollectorItem(class);
 							GiveItem(param1, randomItem);
+							itemCount[randomItem]++;
+							
 							if (itemList.FindValue(randomItem) == -1)
 							{
 								itemList.Push(randomItem);
@@ -601,9 +604,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 						{
 							randomItem = itemList.Get(i);
 							GetItemName(randomItem, itemName, sizeof(itemName));
-
-							RF2_PrintToChat(param1, "%t", "ReceivedCollectorItem", 
-							param1, GetPlayerItemCount(param1, randomItem), itemName);
+							RF2_PrintToChat(param1, "%t", "ReceivedCollectorItem", itemCount[randomItem], itemName);
 						}
 						
 						EmitSoundToClient(param1, SND_USE_SCRAPPER);
@@ -620,7 +621,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 						ShowScrapperMenu(param1, false);
 					}
 				}
-				else
+				else if (GetItemQuality(item) != Quality_Collectors)
 				{
 					GiveItem(param1, item, -1);
 					int quality = GetItemQuality(item);
