@@ -312,7 +312,7 @@ bool CanUseCollectorItem(int client, int item)
 	return TF2_GetPlayerClass(client) == GetCollectorItemClass(item);
 }
 
-int SpawnItem(int index, const float pos[3], int spawner=-1, float ownTime=8.0)
+int SpawnItem(int index, const float pos[3], int spawner=-1, float ownTime=0.0)
 {
 	int item = CreateEntityByName("rf2_item");
 	if (!IsValidEntity(item))
@@ -326,8 +326,11 @@ int SpawnItem(int index, const float pos[3], int spawner=-1, float ownTime=8.0)
 	
 	if (spawner > 0) // We spawned this item, so we own it unless we don't pick it up, assuming we don't want it.
 	{
-		SetEntPropEnt(item, Prop_Data, "m_hSpawner", spawner);
-		CreateTimer(ownTime, Timer_ClearItemOwner, EntIndexToEntRef(item), TIMER_FLAG_NO_MAPCHANGE);
+		SetEntPropEnt(item, Prop_Data, "m_hItemOwner", spawner);
+		if (ownTime > 0.0)
+		{
+			CreateTimer(ownTime, Timer_ClearItemOwner, EntIndexToEntRef(item), TIMER_FLAG_NO_MAPCHANGE);
+		}
 	}
 	
 	if (GetItemQuality(index) == Quality_Unusual && g_iItemSpriteUnusualEffect[index] >= 0)
@@ -346,7 +349,7 @@ public Action Timer_ClearItemOwner(Handle timer, int entity)
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
 		return Plugin_Continue;
 		
-	SetEntPropEnt(entity, Prop_Data, "m_hSpawner", -1);
+	SetEntPropEnt(entity, Prop_Data, "m_hItemOwner", -1);
 	return Plugin_Continue;
 }
 
@@ -452,7 +455,8 @@ bool PickupItem(int client)
 		bool itemShare = g_cvItemShareEnabled.BoolValue;
 		int index = RF2_GetSurvivorIndex(client);
 		int itemIndex = GetEntProp(item, Prop_Data, "m_iIndex");
-		int spawner = GetEntPropEnt(item, Prop_Data, "m_hSpawner");
+		int spawner = GetEntPropEnt(item, Prop_Data, "m_hItemOwner");
+		int subject = GetEntPropEnt(item, Prop_Data, "m_hSubject");
 		bool dropped = bool(GetEntProp(item, Prop_Data, "m_bDropped"));
 		int quality = GetItemQuality(itemIndex);
 		
@@ -466,8 +470,8 @@ bool PickupItem(int client)
 			return false;
 		}
 		
-		int subject = GetEntPropEnt(item, Prop_Data, "m_hSubject");
-		if (IsValidClient(subject))
+		if (IsValidClient(subject) && IsPlayerSurvivor(subject)
+		|| IsValidClient(spawner) && IsPlayerSurvivor(spawner))
 		{
 			if (client != spawner && client != subject)
 			{

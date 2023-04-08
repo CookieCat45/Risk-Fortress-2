@@ -365,7 +365,7 @@ public Action Timer_SpawnItem(Handle timer, DataPack pack)
 	pos[1] = pack.ReadFloat();
 	pos[2] = pack.ReadFloat();
 	
-	SpawnItem(item, pos, client);
+	SpawnItem(item, pos, client, 8.0);
 	return Plugin_Continue;
 }
 

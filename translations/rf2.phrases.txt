@@ -126,7 +126,7 @@
 	{
 		"en"		"Swap out all Collectors items"
 	}
-
+	
 	"NoCollectorItems" // No color tags
 	{
 		"en"		"You have no Collectors items!"

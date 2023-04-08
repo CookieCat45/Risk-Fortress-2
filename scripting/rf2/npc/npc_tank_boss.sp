@@ -169,7 +169,7 @@ static int SpawnTanks()
 		{
 			CreateTankBoss(badass);
 		}
-		else // delay the rest of the spawns by a bit
+		else // delay the rest of the spawns
 		{
 			CreateTimer(time, Timer_CreateTankBoss, badass, TIMER_FLAG_NO_MAPCHANGE);
 			time += 15.0;

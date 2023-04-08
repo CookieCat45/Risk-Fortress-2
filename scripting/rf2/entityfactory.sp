@@ -65,7 +65,7 @@ void InstallEntities()
 	factory.BeginDataMapDesc()
 		.DefineIntField("m_iIndex", _, "type")
 		.DefineBoolField("m_bDropped")
-		.DefineEntityField("m_hSpawner")
+		.DefineEntityField("m_hItemOwner")
 		.DefineEntityField("m_hSubject")
 	.EndDataMapDesc();
 	factory.Install();
@@ -179,7 +179,7 @@ static void RF2GameRules_ForceStartTeleporter(int entity, int activator, int cal
 
 static void Item_OnCreate(int entity)
 {
-	SetEntPropEnt(entity, Prop_Data, "m_hSpawner", -1);
+	SetEntPropEnt(entity, Prop_Data, "m_hItemOwner", -1);
 	SetEntPropEnt(entity, Prop_Data, "m_hSubject", -1);
 	DispatchKeyValueInt(entity, "rendermode", 9);
 	SDKHook(entity, SDKHook_Spawn, Hook_ItemSpawn); // should wait for item index to be set

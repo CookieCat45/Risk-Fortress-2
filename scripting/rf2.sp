@@ -1759,7 +1759,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						float pos[3];
 						GetEntPos(victim, pos);
 						pos[2] += 30.0;
-						SpawnItem(item, pos, attacker);
+						SpawnItem(item, pos, attacker, 8.0);
 					}
 				}
 				
