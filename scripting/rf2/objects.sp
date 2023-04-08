@@ -606,6 +606,8 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 							param1, GetPlayerItemCount(param1, randomItem), itemName);
 						}
 						
+						EmitSoundToClient(param1, SND_USE_SCRAPPER);
+						ShowScrapperMenu(param1, false);
 						delete itemList;
 					}
 					else
