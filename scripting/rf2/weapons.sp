@@ -102,130 +102,179 @@ void LoadWeapons()
 	delete weaponKey;
 }
 
-bool g_bSetStringAttributes;
-int g_iStringAttributeClass;
-int g_iStringAttributeWeapon;
+static bool g_bSetStringAttributes;
+static TFClassType g_StringAttributeClass;
+static int g_iStringAttributeWeapon; // Not to be confused with entity indexes
+static bool g_bDisableGiveItemForward;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
 {
+	if (g_bDisableGiveItemForward || !IsPlayerSurvivor(client))
+		return Plugin_Continue;
+	
 	Action action = Plugin_Continue;
 	
-	if (IsPlayerSurvivor(client))
+	int flags = FORCE_GENERATION;
+	TFClassType class = TF2_GetPlayerClass(client);
+	char buffer[64];
+	IntToString(index, buffer, sizeof(buffer));
+	
+	for (int i = 0; i < g_iWeaponCount[class]; i++)
 	{
-		int flags;
-		int class = view_as<int>(TF2_GetPlayerClass(client));
-		char buffer[64];
-		IntToString(index, buffer, sizeof(buffer));
+		if (StrContainsEx(g_szWeaponIndexIdentifier[class][i], buffer) == -1)
+			continue;
 		
-		for (int i = 0; i < g_iWeaponCount[class]; i++)
+		item = TF2Items_CreateItem(flags);
+		int totalAttribs;
+		bool newWeapon;
+		
+		// Using the OVERRIDE_CLASSNAME flag in this forward does not work properly,
+		// we need to do this ugly workaround by creating an entirely new weapon.
+		if (g_szWeaponClassnameReplacement[class][i][0])
 		{
-			if (StrContainsEx(g_szWeaponIndexIdentifier[class][i], buffer) != -1)
+			newWeapon = true;
+			TF2Items_SetClassname(item, g_szWeaponClassnameReplacement[class][i]);
+		}
+		
+		// strip the static attributes for this weapon?
+		if (g_bWeaponStripAttributes[class][i])
+		{
+			action = Plugin_Changed;
+			flags |= OVERRIDE_ATTRIBUTES;
+			TF2Items_SetNumAttributes(item, 0);
+		}
+		else if (g_bWeaponStaticAttributes[class][i])
+		{
+			action = Plugin_Changed;
+			flags |= OVERRIDE_ATTRIBUTES;
+			
+			int attribArray[MAX_ATTRIBUTES];
+			float valueArray[MAX_ATTRIBUTES];
+			int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);
+			for (int n = 0; n < count; n++)
 			{
-				item = TF2Items_CreateItem(flags);
-				int totalAttribs;
-				
-				// strip the attributes for this weapon?
-				if (g_bWeaponStripAttributes[class][i])
+				if (!IsAttributeBlacklisted(attribArray[n]) && attribArray[n] > 0)
 				{
-					action = Plugin_Changed;
-					flags |= OVERRIDE_ATTRIBUTES;
-					TF2Items_SetNumAttributes(item, 0);
-				}
-				else if (g_bWeaponStaticAttributes[class][i])
-				{
-					action = Plugin_Changed;
-					flags |= OVERRIDE_ATTRIBUTES;
-					
-					int attribArray[MAX_ATTRIBUTES];
-					float valueArray[MAX_ATTRIBUTES];
-					int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);
-					for (int n = 0; n < count; n++)
+					totalAttribs++;
+					if (totalAttribs <= MAX_ATTRIBUTES)
 					{
-						if (!IsAttributeBlacklisted(attribArray[n]) && attribArray[n] > 0)
-						{
-							totalAttribs++;
-							if (totalAttribs <= MAX_ATTRIBUTES)
-							{
-								TF2Items_SetNumAttributes(item, totalAttribs);
-								TF2Items_SetAttribute(item, totalAttribs-1, attribArray[n], valueArray[n]);
-							}
-						}
+						TF2Items_SetNumAttributes(item, totalAttribs);
+						TF2Items_SetAttribute(item, totalAttribs-1, attribArray[n], valueArray[n]);
 					}
 				}
-				
-				if (g_iWeaponIndexReplacement[class][i] >= 0)
-				{
-					action = Plugin_Changed;
-					flags |= OVERRIDE_ITEM_DEF;
-					TF2Items_SetItemIndex(item, g_iWeaponIndexReplacement[class][i]);
-				}
-				
-				if (g_szWeaponClassnameReplacement[class][i][0])
-				{
-					action = Plugin_Changed;
-					flags |= OVERRIDE_CLASSNAME;
-					TF2Items_SetClassname(item, g_szWeaponClassnameReplacement[class][i]);
-				}
-				
-				if (g_szWeaponAttributes[class][i][0])
-				{
-					action = Plugin_Changed;
-					flags |= OVERRIDE_ATTRIBUTES;
-					
-					char attributes[MAX_ATTRIBUTE_STRING_LENGTH], attrs[32][32];
-					strcopy(attributes, sizeof(attributes), g_szWeaponAttributes[class][i]);
-					ReplaceString(attributes, MAX_ATTRIBUTE_STRING_LENGTH, " ; ", " = ");
-					int count = ExplodeString(attributes, " = ", attrs, 32, 32, true);
-					
-					if (count > 0)
-					{
-						int attrib;
-						float val;
-						for (int n = 0; n <= count+1; n+=2)
-						{
-							attrib = StringToInt(attrs[n]);
-							if (!IsAttributeBlacklisted(attrib) && attrib > 0)
-							{
-								val = StringToFloat(attrs[n+1]);
-								totalAttribs++;
-								
-								if (totalAttribs <= MAX_ATTRIBUTES)
-								{
-									TF2Items_SetNumAttributes(item, totalAttribs);
-									TF2Items_SetAttribute(item, totalAttribs-1, attrib, val);
-								}
-							}							
-						}
-					}
-				}
-				
-				if (g_bWeaponHasStringAttributes[class][i])
-				{
-					// we'll have to set these in Post because we don't have the weapon entity yet
-					g_bSetStringAttributes = true;
-					g_iStringAttributeClass = class;
-					g_iStringAttributeWeapon = i;
-				}
-				
-				if (totalAttribs > MAX_ATTRIBUTES)
-				{
-					LogError("[TF2Items_OnGiveNamedItem] Item %i (%s) reached attribute limit of %i", index, classname, MAX_ATTRIBUTES);
-				}
-				
-				TF2Items_SetFlags(item, flags|FORCE_GENERATION);
-				break;
 			}
 		}
+		
+		if (g_iWeaponIndexReplacement[class][i] >= 0)
+		{
+			action = Plugin_Changed;
+			flags |= OVERRIDE_ITEM_DEF;
+			TF2Items_SetItemIndex(item, g_iWeaponIndexReplacement[class][i]);
+		}
+		
+		if (g_szWeaponAttributes[class][i][0])
+		{
+			action = Plugin_Changed;
+			flags |= OVERRIDE_ATTRIBUTES;
+			
+			char attributes[MAX_ATTRIBUTE_STRING_LENGTH], attrs[32][32];
+			strcopy(attributes, sizeof(attributes), g_szWeaponAttributes[class][i]);
+			ReplaceString(attributes, MAX_ATTRIBUTE_STRING_LENGTH, " ; ", " = ");
+			int count = ExplodeString(attributes, " = ", attrs, 32, 32, true);
+			
+			if (count > 0)
+			{
+				int attrib;
+				float val;
+
+				for (int n = 0; n <= count+1; n+=2)
+				{
+					attrib = StringToInt(attrs[n]);
+					if (!IsAttributeBlacklisted(attrib) && attrib > 0)
+					{
+						val = StringToFloat(attrs[n+1]);
+						totalAttribs++;
+						
+						if (totalAttribs <= MAX_ATTRIBUTES)
+						{
+							TF2Items_SetNumAttributes(item, totalAttribs);
+							TF2Items_SetAttribute(item, totalAttribs-1, attrib, val);
+						}
+					}							
+				}
+			}
+		}
+		
+		if (g_bWeaponHasStringAttributes[class][i])
+		{
+			// we'll have to set these in Post because we don't have the weapon entity yet
+			g_bSetStringAttributes = true;
+			g_StringAttributeClass = class;
+			g_iStringAttributeWeapon = i;
+		}
+		
+		if (totalAttribs > MAX_ATTRIBUTES)
+		{
+			LogError("[TF2Items_OnGiveNamedItem] Item %i (%s) reached attribute limit of %i", index, classname, MAX_ATTRIBUTES);
+		}
+		
+		if (newWeapon)
+		{
+			// If we aren't changing the item index, we need to set the old one
+			if (!(flags & OVERRIDE_ITEM_DEF))
+			{
+				flags |= OVERRIDE_ITEM_DEF;
+				TF2Items_SetItemIndex(item, index);
+			}
+			
+			TF2Items_SetFlags(item, flags);
+			
+			DataPack pack = CreateDataPack();
+			pack.WriteCell(client);
+			pack.WriteCell(item);
+			RequestFrame(RF_ReplaceNewWeapon, pack);
+			action = Plugin_Handled;
+		}
+		else
+		{
+			TF2Items_SetFlags(item, flags);
+		}
+		
+		break;
 	}
 	
 	return action;
 }
 
+public void RF_ReplaceNewWeapon(DataPack pack)
+{
+	pack.Reset();
+	int client = pack.ReadCell();
+	Handle item = pack.ReadCell();
+	delete pack;
+	
+	g_bDisableGiveItemForward = true;
+	int weapon = TF2Items_GiveNamedItem(client, item);
+	g_bDisableGiveItemForward = false;
+	//char classname[64];
+	//TF2Items_GetClassname(item, classname, sizeof(classname));
+	
+	//TF2Items_OnGiveNamedItem_Post(client, 
+	//classname, TF2Items_GetItemIndex(item), TF2Items_GetLevel(item), TF2Items_GetQuality(item), weapon);
+	
+	delete item;
+	EquipPlayerWeapon(client, weapon);
+}
+
 public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index, int level, int quality, int entity)
 {
+	// Can be an invalid entity, somehow
+	if (!IsValidEntity(entity))
+		return;
+
 	if (g_bSetStringAttributes)
 	{
-		int class = g_iStringAttributeClass;
-		int weapon = g_iStringAttributeWeapon;
+		TFClassType class = g_StringAttributeClass;
+		int weapon = g_iStringAttributeWeapon; // Not to be confused with entity indexes
 		
 		for (int i = 0; i < MAX_STRING_ATTRIBUTES; i++)
 		{
@@ -247,6 +296,26 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int inde
 		
 		g_bSetStringAttributes = false;
 	}
+	
+	// These attributes need to be set with a neutral value on weapon creation,
+	// as adding or removing it while the weapon is recharging will break the recharge meter.
+	// This particular issue is caused by the Prinny Pouch.
+	// I'm not sure if this actually affects invis watches, but just to be safe I'll include them as well.
+	if (IsEffectBarWeapon(entity))
+	{
+		if (GetPlayerWeaponSlot(client, WeaponSlot_InvisWatch) == entity)
+		{
+			TF2Attrib_SetByDefIndex(entity, 35, 1.0); // "mult cloak meter regen rate"
+		}
+		else if (strcmp2(classname, "tf_wearable_demoshield"))
+		{
+			TF2Attrib_SetByDefIndex(entity, 249, 1.0); // "charge recharge rate increased"
+		}
+		else
+		{
+			TF2Attrib_SetByDefIndex(entity, 278, 1.0); // "effect bar recharge rate increased"
+		}
+	}
 }
 
 int CreateWeapon(int client, char[] classname, int index, const char[] attributes = "", bool staticAttributes=false, bool visible=true, int quality = TF2Quality_Unique)
@@ -254,7 +323,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 	Handle weapon = TF2Items_CreateItem(OVERRIDE_ALL|FORCE_GENERATION);
 	TF2Items_SetClassname(weapon, classname);
 	TF2Items_SetItemIndex(weapon, index);
-
+	
 	// now for the attributes:
 	if (attributes[0] || staticAttributes)
 	{
@@ -526,6 +595,22 @@ float GetWeaponProcCoefficient(int weapon)
 	}
 	
 	return 1.0;
+}
+
+bool IsEffectBarWeapon(int weapon)
+{
+	static char classname[32];
+	GetEntityClassname(weapon, classname, sizeof(classname));
+	
+	return (StrContains(classname, "tf_weapon_lunchbox") != -1
+	|| StrContains(classname, "tf_weapon_jar") != -1
+	|| strcmp2(classname, "tf_weapon_cleaver")
+	|| strcmp2(classname, "tf_weapon_bat_wood")
+	|| strcmp2(classname, "tf_weapon_bat_giftwrap")
+	|| strcmp2(classname, "tf_weapon_rocketpack")
+	|| strcmp2(classname, "tf_weapon_invis")
+	|| strcmp2(classname, "tf_wearable_demoshield")
+	|| strcmp2(classname, "tf_wearable_razorback"));
 }
 
 int SDK_GetWeaponClipSize(int entity)

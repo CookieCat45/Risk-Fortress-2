@@ -1271,7 +1271,7 @@ public Action Command_MakeSurvivor(int client, int args)
 			{
 				if (!IsSurvivorIndexValid(index))
 				{
-					SilentlyKillPlayer(clients[i], true);
+					SilentlyKillPlayer(clients[i]);
 					MakeSurvivor(clients[i], index, false);
 					RF2_ReplyToCommand(client, "%t", "MadeSurvivor", clients[i]);
 					if (redCount+1 > g_iSurvivorCount)

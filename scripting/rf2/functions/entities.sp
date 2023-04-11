@@ -174,7 +174,7 @@ void DoRadiusDamage(int attacker, int item=Item_Null, const float pos[3], float 
 	}
 }
 
-void SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]=NULL_VECTOR)
+int SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]=NULL_VECTOR)
 {
 	char classname[128];
 	switch (size)
@@ -195,6 +195,7 @@ void SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]=NULL_
 	
 	CreateTimer(0.25, Timer_CashMagnet, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	CreateTimer(g_cvCashBurnTime.FloatValue, Timer_DeleteCash, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+	return entity;
 }
 
 public Action Timer_DeleteCash(Handle timer, int entity)

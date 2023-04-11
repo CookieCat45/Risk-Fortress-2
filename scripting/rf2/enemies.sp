@@ -678,7 +678,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	float maxs[3] = PLAYER_MAXS;
 	ScaleVector(mins, enemy.ModelScale);
 	ScaleVector(maxs, enemy.ModelScale);
-	float zOffset = 25.0 * enemy.ModelScale;
+	float zOffset = 30.0 * enemy.ModelScale;
 	
 	float spawnPos[3];
 	float minSpawnDistance = minDist < 0.0 ? g_cvEnemyMinSpawnDistance.FloatValue : minDist;
@@ -747,7 +747,14 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	
 	if (activeWeapon != -1)
 	{
-		SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", activeWeapon);
+		for (int i = 0; i < TF_WEAPON_SLOTS; i++)
+		{
+			if (GetPlayerWeaponSlot(client, i) == activeWeapon)
+			{
+				ClientCommand(client, "slot%i", i+1);
+				break;
+			}
+		}
 	}
 	
 	for (int i = 1; i < Item_MaxValid; i++)

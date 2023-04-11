@@ -665,12 +665,12 @@ void UpdatePlayerItem(int client, int item)
 		{
 			CalculatePlayerMaxHealth(client);
 		}
-		case Item_RoundedRifleman, Item_WhaleBoneCharm:
+		case Item_RoundedRifleman, Item_WhaleBoneCharm, Item_PrinnyPouch:
 		{
 			float amount;
-			if (item == Item_RoundedRifleman)
+			if (item == Item_RoundedRifleman || item == Item_PrinnyPouch)
 			{
-				amount = CalcItemMod_HyperbolicInverted(client, Item_RoundedRifleman, 0);
+				amount = CalcItemMod_HyperbolicInverted(client, item, 0);
 			}
 			else
 			{
@@ -678,24 +678,68 @@ void UpdatePlayerItem(int client, int item)
 			}
 			
 			int weapon, ammoType;
-			for (int i = WeaponSlot_Primary; i <= WeaponSlot_Secondary; i++)
+			TFClassType class = TF2_GetPlayerClass(client);
+			
+			for (int i = WeaponSlot_Primary; i <= WeaponSlot_InvisWatch; i++)
 			{
 				weapon = GetPlayerWeaponSlot(client, i);
-				if (weapon > -1)
+				if (weapon <= 0)
+					continue;
+					
+				if (item == Item_PrinnyPouch)
+				{
+					if (IsEffectBarWeapon(weapon))
+					{
+						if (i == WeaponSlot_InvisWatch)
+						{
+							TF2Attrib_SetByDefIndex(weapon, 35, amount); // "mult cloak meter regen rate"
+						}
+						else
+						{
+							TF2Attrib_SetByDefIndex(weapon, 278, amount); // "effect bar recharge rate increased"
+						}
+					}
+				}
+				else
 				{
 					ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType"); // we may not need to waste an attribute slot here
-				
+					
 					if (ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetEntProp(weapon, Prop_Send, "m_iClip1") >= 0)
 					{
 						if (item == Item_RoundedRifleman)
 						{
 							TF2Attrib_SetByDefIndex(weapon, 548, amount); // "halloween reload time decreased"
 						}
-						else
+						else if (item == Item_WhaleBoneCharm)
 						{
 							TF2Attrib_SetByDefIndex(weapon, 424, amount); // "clip size penalty HIDDEN"
 						}
-					} 
+					}
+				}
+			}
+
+			int wearable = MaxClients+1;
+			if (class == TFClass_DemoMan)
+			{
+				while ((wearable = FindEntityByClassname(wearable, "tf_wearable_demoshield")) != -1)
+				{
+					if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
+						continue;
+					
+					// This is attribute is a regular percentage, yet attribute 278 is an inverted percentage. Okay Valve, whatever you say.
+					TF2Attrib_SetByDefIndex(wearable, 249, 1.0+CalcItemMod(client, Item_PrinnyPouch, 0)); // "charge recharge rate increased"
+					break;
+				}
+			}
+			else if (class == TFClass_Sniper)
+			{
+				while ((wearable = FindEntityByClassname(wearable, "tf_wearable_razorback")) != -1)
+				{
+					if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
+						continue;
+					
+					TF2Attrib_SetByDefIndex(wearable, 278, amount); // "effect bar recharge rate increased"
+					break;
 				}
 			}
 		}
@@ -820,25 +864,6 @@ void UpdatePlayerItem(int client, int item)
 						TF2Attrib_RemoveByDefIndex(medigun, 493);
 						TF2Attrib_RemoveByDefIndex(medigun, 11);
 					}
-				}
-			}
-		}
-		case ItemSpy_StealthScarf:
-		{
-			int watch = GetPlayerWeaponSlot(client, WeaponSlot_InvisWatch);
-			if (watch > -1)
-			{
-				if (PlayerHasItem(client, ItemSpy_StealthScarf) && CanUseCollectorItem(client, ItemSpy_StealthScarf))
-				{
-					float regenAmount = CalcItemMod(client, ItemSpy_StealthScarf, 0);
-					float decloakRate = CalcItemMod_HyperbolicInverted(client, ItemSpy_StealthScarf, 1);
-					TF2Attrib_SetByDefIndex(watch, 35, regenAmount); // "mult cloak meter regen rate"
-					TF2Attrib_SetByDefIndex(watch, 221, decloakRate); // "mult decloak rate"
-				}
-				else
-				{
-					TF2Attrib_RemoveByDefIndex(watch, 35);
-					TF2Attrib_RemoveByDefIndex(watch, 221);
 				}
 			}
 		}

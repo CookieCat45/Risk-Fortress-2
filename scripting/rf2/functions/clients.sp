@@ -33,7 +33,7 @@ void RefreshClient(int client)
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
 	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
-
+	
 	g_szObjectiveHud[client] = "";
 	
 	if (IsClientInGame(client) && !g_bMapChanging)
@@ -86,13 +86,9 @@ public Action Timer_ResetModel(Handle timer, int client)
 	return Plugin_Continue;
 }
 
-void SilentlyKillPlayer(int client, bool refresh=false)
+void SilentlyKillPlayer(int client)
 {
-	if (refresh)
-	{
-		RefreshClient(client);
-	}
-
+	RefreshClient(client);
 	int team = GetClientTeam(client);
 	ChangeClientTeam(client, 0);
 	ChangeClientTeam(client, team);
@@ -315,10 +311,13 @@ void PrintDeathMessage(int client)
 {
 	char message[256];
 	const int maxMessages = 10;
-	FormatEx(message, sizeof(message), "DeathMessage%i", GetRandomInt(1, maxMessages));
+	int randomMessage = GetRandomInt(1, maxMessages);
+	FormatEx(message, sizeof(message), "DeathMessage%i", randomMessage);
 	CPrintToChatAll("%t", message, client);
+	
+	Format(message, sizeof(message), "%T", message, LANG_SERVER, client);
 	CRemoveTags(message, sizeof(message));
-	PrintToServer("%T", message, LANG_SERVER, client);
+	PrintToServer(message);
 }
 
 int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=false)
@@ -327,7 +326,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	float healthScale = GetPlayerHealthMult(client);
 	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * healthScale);
 	
-	// Bosses have less health in single player, to avoid overly long fights
+	// Bosses have less health in single player (for now) to avoid overly long fights
 	if (IsSingleplayer(false) && IsBoss(client))
 	{
 		maxHealth = RoundToFloor(float(maxHealth) * 0.75);
@@ -673,13 +672,16 @@ bool IsPlayerAFK(int client)
 	return g_bPlayerIsAFK[client];
 }
 
-void ResetAFKTime(int client)
+void ResetAFKTime(int client, bool message=true)
 {
 	if (IsClientInGame(client) && IsPlayerAFK(client))
 	{
-		PrintCenterText(client, "%t", "NoLongerAFK");
+		if (message)
+		{
+			PrintCenterText(client, "%t", "NoLongerAFK");
+		}
 		
-		if (g_bRoundActive && !IsPlayerAlive(client))
+		if (g_bRoundActive && !IsPlayerSurvivor(client) && !IsPlayerAlive(client))
 		{
 			ChangeClientTeam(client, TEAM_ENEMY);
 		}

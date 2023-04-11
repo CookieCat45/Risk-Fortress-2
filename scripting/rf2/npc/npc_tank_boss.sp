@@ -239,6 +239,11 @@ static int CreateTankBoss(bool badass=false)
 		health = RoundToFloor(Pow(float(health), 1.0 + (float(level-49) * 0.005)));
 	}
 	
+	if (IsSingleplayer(false) && !badass)
+	{
+		health = RoundToFloor(float(health) * 0.75);
+	}
+	
 	SetEntProp(tankBoss, Prop_Data, "m_iHealth", health);
 	SetEntProp(tankBoss, Prop_Data, "m_iMaxHealth", health);
 	float speed = g_cvTankBaseSpeed.FloatValue;

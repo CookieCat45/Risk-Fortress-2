@@ -1206,7 +1206,7 @@ public void OnClientDisconnect_Post(int client)
 
 	g_TFBot[client] = null;
 	RefreshClient(client);
-	ResetAFKTime(client);
+	ResetAFKTime(client, false);
 }
 
 void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
@@ -1506,7 +1506,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		// Gatekeeping
 		if (!IsPlayerSurvivor(client))
 		{
-			SilentlyKillPlayer(client, true);
+			SilentlyKillPlayer(client);
 			ChangeClientTeam(client, TEAM_ENEMY);
 		}
 		else if (g_bPlayerAutomaticItemMenu[client])
@@ -1653,7 +1653,18 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				cashAmount *= 1.0 + CalcItemMod(attacker, Item_BanditsBoots, 0);
 			}
 			
-			SpawnCashDrop(cashAmount, pos, size);
+			int cashEntity = SpawnCashDrop(cashAmount, pos, size);
+			if (attacker > 0 && TF2_GetPlayerClass(attacker) == TFClass_Sniper)
+			{
+				int weaponId = event.GetInt("weaponid");
+
+				if (weaponId == TF_WEAPON_SNIPERRIFLE 
+				|| weaponId == TF_WEAPON_SNIPERRIFLE_DECAP 
+				|| weaponId == TF_WEAPON_SNIPERRIFLE_CLASSIC)
+				{
+					PickupCash(attacker, cashEntity);
+				}
+			}
 			
 			// For now, enemies have a chance to drop Haunted Keys, may implement a different way of obtaining them later
 			int max = g_cvHauntedKeyDropChanceMax.IntValue;
@@ -2274,7 +2285,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	
 	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
-	duration -= 0.1 * float(imin(g_iRespawnWavesCompleted, 20));
+	//duration -= 0.1 * float(imin(g_iRespawnWavesCompleted, 20));
 	
 	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
 		duration *= 0.8;
@@ -2345,14 +2356,14 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	int client;
 	float time = 0.1;
 	float bossChance;
-	const float max = 80.0;
+	const float max = 250.0;
 	
 	for (int i = 0; i < respawnArray.Length; i++)
 	{
 		client = respawnArray.Get(i);
 		
 		bossChance = subIncrement < max ? subIncrement : max;
-		if (RF2_GetSubDifficulty() >= SubDifficulty_Insane && RandChanceFloat(0.0, max, bossChance))
+		if (RF2_GetSubDifficulty() >= SubDifficulty_Impossible && RandChanceFloat(0.0, max, bossChance))
 		{
 			g_iPlayerBossSpawnType[client] = GetRandomBoss();
 		}
@@ -2878,6 +2889,7 @@ public Action OnChangeClass(int client, const char[] command, int args)
 		pack.WriteFloat(pos[1]);
 		pack.WriteFloat(pos[2]);
 	}
+
 	return Plugin_Continue;
 }
 

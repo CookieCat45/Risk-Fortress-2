@@ -98,6 +98,11 @@ bool CreateSurvivors()
 			removePoints[i] = false;
 		}
 		
+		if (IsPlayerAFK(i))
+		{
+			points[i] -= 999;
+		}
+		
 		if (GetClientTeam(i) <= 1)
 		{
 			points[i] -= 9999;
@@ -236,6 +241,15 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	if (resetPoints)
 		g_iPlayerSurvivorPoints[client] = 0;
 	
+	// Player is probably still on the class select screen, so we need to kick them out by giving them a random class.
+	if (TF2_GetPlayerClass(client) == TFClass_Unknown)
+	{
+		TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1, 9)));
+	}
+	
+	ResetAFKTime(client, false);
+	SetVariantString("");
+	AcceptEntityInput(client, "SetCustomModel"); // In case this was from the command or otherwise, clear our custom model
 	TFClassType class = TF2_GetPlayerClass(client);
 	g_iPlayerSurvivorIndex[client] = index;
 	g_iPlayerBaseHealth[client] = g_iSurvivorBaseHealth[class];
@@ -276,12 +290,6 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	}
 	
 	ChangeClientTeam(client, TEAM_SURVIVOR);
-	
-	// Player is probably still on the class select screen, so we need to kick them out by giving them a random class.
-	if (TF2_GetPlayerClass(client) == TFClass_Unknown)
-	{
-		TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1, 9)));
-	}
 	
 	// This is so weapons/wearables update properly on plugin reloads.
 	TF2_RemoveAllWeapons(client);

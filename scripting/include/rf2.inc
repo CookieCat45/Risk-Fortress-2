@@ -11,6 +11,7 @@
 #define TEAM_ENEMY view_as<int>(TFTeam_Blue)
 #define MAX_SURVIVORS 6
 
+// Items -------------------------------------------------------------------------------------------------------------------------------------
 enum
 {
 	Item_Null = 0,
@@ -54,7 +55,7 @@ enum
 	Item_UFO = 38,
 	Item_Goalkeeper = 39,
 	ItemSpy_CounterfeitBillycock = 40,
-	ItemSpy_StealthScarf = 41,
+	Item_PrinnyPouch = 41,
 	ItemStrange_HeartOfGold = 42,
 	ItemScout_MonarchWings = 43,
 	ItemMedic_BlightedBeak = 44,

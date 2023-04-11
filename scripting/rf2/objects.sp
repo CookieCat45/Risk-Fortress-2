@@ -507,7 +507,7 @@ void ShowScrapperMenu(int client, bool message=true)
 	bool collector;
 	for (int i = 1; i <= GetTotalItems(); i++)
 	{
-		if (IsScrapItem(i) || IsEquipmentItem(i))
+		if (IsScrapItem(i) || IsEquipmentItem(i) || !PlayerHasItem(client, i))
 			continue;
 		
 		if (GetItemQuality(i) == Quality_Collectors)
@@ -524,13 +524,10 @@ void ShowScrapperMenu(int client, bool message=true)
 			}
 		}
 		
-		if (PlayerHasItem(client, i))
-		{
-			IntToString(i, info, sizeof(info));
-			FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[i], GetPlayerItemCount(client, i));
-			menu.AddItem(info, display);
-			count++;
-		}
+		IntToString(i, info, sizeof(info));
+		FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[i], GetPlayerItemCount(client, i));
+		menu.AddItem(info, display);
+		count++;
 	}
 	
 	if (count > 0)
