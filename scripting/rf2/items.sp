@@ -594,7 +594,7 @@ int EquipItemAsWearable(int client, int item)
 			FormatEx(attribute, sizeof(attribute), "134 = %i", g_iItemUnusualEffect[item]);
 		}
 		
-		wearable = CreateWearable(client, "tf_wearable", g_iItemSchemaIndex[item], attribute, true, true, actualQuality, GetRandomInt(1, 128));
+		wearable = CreateWearable(client, "tf_wearable", g_iItemSchemaIndex[item], attribute, true, true, "", actualQuality, GetRandomInt(1, 128));
 		g_bItemWearable[wearable] = true;
 		
 		// Enemy item wearables have the flashing effect, so RED players can more easily tell what they have.

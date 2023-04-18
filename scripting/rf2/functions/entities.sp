@@ -53,12 +53,12 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 }
 
 // SPELL PROJECTILES WILL ONLY WORK IF THE OWNER ENTITY IS A PLAYER! DO NOT TRY THEM WITH ANYTHING ELSE!
-int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], const float angles[3], float speed, float damage=-1.0, float arc=0.0)
+int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], const float angles[3], 
+float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
 {
-	int entity;
-	if ((entity = CreateEntityByName(classname)) == -1)
+	int entity = CreateEntityByName(classname);
+	if (entity == -1)
 	{
-		//LogError("[ShootProjectile] Invalid entity classname: %s", classname);
 		return -1;
 	}
 	
@@ -88,19 +88,23 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 		else
 		{
 			g_flProjectileForcedDamage[entity] = damage;
-			if (strcmp2(classname, "tf_projectile_spellfireball")) // fireballs do 2 instances of damage for some reason
-			{
-				g_flProjectileForcedDamage[entity] *= 0.5;
-			}
-			
 			SDKHook(entity, SDKHook_StartTouch, Hook_ProjectileForceDamage);
 		}
 	}
 	
+	// no annoying server console message
 	if (strcmp2(classname, "tf_projectile_arrow"))
 	{
 		int offset = FindSendPropInfo("CTFProjectile_Arrow", "m_iProjectileType") + 32; // m_flInitTime
 		SetEntDataFloat(entity, offset, GetGameTime()+9999.0, true);
+	}
+	
+	if (allowCrit && IsValidClient(owner) && HasEntProp(entity, Prop_Send, "m_bCritical"))
+	{
+		if (RollAttackCrit(owner, critProc) || PlayerHasItem(owner, Item_Executioner) && IsPlayerMiniCritBuffed(owner))
+		{
+			SetEntProp(entity, Prop_Send, "m_bCritical", true);
+		}
 	}
 	
 	GetAngleVectors(projectileAngles, velocity, NULL_VECTOR, NULL_VECTOR);
@@ -112,6 +116,25 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 	TeleportEntity(entity, pos, projectileAngles, velocity);
 	SetEntPropVector(entity, Prop_Send, "m_vecForce", velocity);
 	
+	return entity;
+}
+
+// Shoots a fake fireball (tf_projectile_rocket)
+int ShootProjectile_Fireball(int owner=-1, const float pos[3], const float angles[3], 
+float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
+{
+	int entity = ShootProjectile(owner, "tf_projectile_rocket", pos, angles, speed, damage, arc, allowCrit, critProc);
+	SetEntityModel(entity, MODEL_INVISIBLE);
+	
+	switch (view_as<TFTeam>(GetEntProp(entity, Prop_Data, "m_iTeamNum")))
+	{
+		case TFTeam_Red:	TE_TFParticle("spell_fireball_small_red", pos, entity, PATTACH_ABSORIGIN_FOLLOW);
+		case TFTeam_Blue:	TE_TFParticle("spell_fireball_small_blue", pos, entity, PATTACH_ABSORIGIN_FOLLOW);
+		default:			TE_TFParticle("spellbook_major_fire", pos, entity, PATTACH_ABSORIGIN_FOLLOW);
+	}
+	
+	EmitSoundToAll(SND_SPELL_FIREBALL, entity);
+	g_bFakeFireball[entity] = true;
 	return entity;
 }
 

@@ -65,6 +65,15 @@ void RefreshClient(int client)
 		}
 	}
 	
+	if (g_bPlayerHasVampireSapper[client])
+	{
+		StopSound(client, SNDCHAN_AUTO, SND_SAPPER_DRAIN);
+	}
+	
+	g_bPlayerHasVampireSapper[client] = false;
+	g_flPlayerVampireSapperCooldown[client] = 0.0;
+	g_flPlayerVampireSapperDuration[client] = 0.0;
+	
 	g_TFBot[client].GoalArea = NULL_AREA;
 	g_TFBot[client].ForcedButtons = 0;
 	g_TFBot[client].Flags = 0;
@@ -217,7 +226,7 @@ int HealPlayer(int client, int amount, bool allowOverheal=false)
 	return amountHealed;
 }
 
-bool RollAttackCrit(int client, float proc, int damageType=DMG_GENERIC, int damageCustom=-1)
+bool RollAttackCrit(int client, float proc=1.0, int damageType=DMG_GENERIC, int damageCustom=-1)
 {
 	float critChance;
 	int rollTimes = 1;
@@ -261,9 +270,7 @@ bool RollAttackCrit(int client, float proc, int damageType=DMG_GENERIC, int dama
 	}
 	
 	critChance *= proc;
-	
-	if (critChance > 1.0)
-		critChance = 1.0;
+	critChance = fmin(critChance, 1.0);
 	
 	for (int i = 1; i <= rollTimes; i++)
 	{
@@ -494,6 +501,113 @@ int GetPlayerLuckStat(int client)
 	return luck;
 }
 
+void ApplyVampireSapper(int client, int attacker, float damage=10.0, float duration=8.0)
+{
+	if (!g_bPlayerHasVampireSapper[client])
+	{
+		CreateTimer(0.5, Timer_VampireSapper, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	}
+	
+	g_bPlayerHasVampireSapper[client] = true;
+	g_iPlayerVampireSapperAttacker[client] = GetClientUserId(attacker);
+	g_flPlayerVampireSapperDamage[client] = damage;
+	g_flPlayerVampireSapperDuration[client] = duration;
+	
+	EmitSoundToAll(SND_SAPPER_PLANT, client);
+	EmitSoundToAll(SND_SAPPER_PLANT, client);
+	StopSound(client, SNDCHAN_AUTO, SND_SAPPER_DRAIN);
+	EmitSoundToAll(SND_SAPPER_DRAIN, client);
+	
+	// spawn the sapper particle
+	float pos[3];
+	GetClientEyePosition(client, pos);
+	
+	int particle = CreateEntityByName("info_particle_system");
+	DispatchKeyValue(particle, "effect_name", "sapper_sentry1_fx");
+	TeleportEntity(particle, pos);
+	DispatchSpawn(particle);
+	ActivateEntity(particle);
+	AcceptEntityInput(particle, "Start");
+	
+	SetVariantString("!activator");
+	AcceptEntityInput(particle, "SetParent", client, particle);
+	SetVariantString("head");
+	AcceptEntityInput(particle, "SetParentAttachment");
+	CreateTimer(duration, Timer_DeleteEntity, EntIndexToEntRef(particle), TIMER_FLAG_NO_MAPCHANGE);
+	
+	if (!IsBoss(client))
+	{
+		TF2_StunPlayer(client, duration, 0.4, TF_STUNFLAG_SLOWDOWN, attacker);
+	}
+	
+	TF2_RemovePlayerDisguise(attacker);
+}
+
+public Action Timer_VampireSapper(Handle timer, int client)
+{
+	if ((client = GetClientOfUserId(client)) == 0 || !g_bPlayerHasVampireSapper[client] || !IsPlayerAlive(client))
+		return Plugin_Stop;
+	
+	int sapper = -1;
+	int attacker = GetClientOfUserId(g_iPlayerVampireSapperAttacker[client]);
+	if (IsValidClient(attacker))
+	{
+		sapper = GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary);
+	}
+	
+	SDKHooks_TakeDamage(client, attacker, attacker, g_flPlayerVampireSapperDamage[client], DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, sapper);
+
+	int totalHealing = RoundToFloor(g_flPlayerVampireSapperDamage[client]);
+	int team = GetClientTeam(client);
+	float pos[3], victimPos[3];
+	GetEntPos(client, pos);
+	const float range = 350.0;
+	int count;
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (i == client || !IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != team)
+			continue;
+	
+		GetEntPos(i, victimPos);
+		if (GetVectorDistance(pos, victimPos, true) <= Pow(range, 2.0))
+		{
+			SDKHooks_TakeDamage(i, attacker, attacker, g_flPlayerVampireSapperDamage[client]*0.5, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, sapper);
+
+			if (!IsBoss(i))
+			{
+				TF2_StunPlayer(i, 1.0, 0.4, TF_STUNFLAG_SLOWDOWN, attacker);
+			}
+			
+			totalHealing += RoundToFloor(g_flPlayerVampireSapperDamage[client]*0.5);
+			
+			pos[2] += 40.0;
+			victimPos[2] += 40.0;
+			TE_SetupBeamPoints(pos, victimPos, g_iBeamModel, 0, 0, 0, 0.3, 4.0, 4.0, 0, 0.0, {125, 125, 255, 255}, 30);
+			TE_SendToAll();
+			
+			count++;
+			if (count >= 5)
+				break;
+		}
+	}
+	
+	if (IsValidClient(attacker) && IsPlayerSurvivor(attacker) && IsPlayerAlive(attacker))
+	{
+		HealPlayer(attacker, totalHealing);
+	}
+	
+	g_flPlayerVampireSapperDuration[client] -= 0.5;
+	if (g_flPlayerVampireSapperDuration[client] <= 0.0)
+	{
+		g_bPlayerHasVampireSapper[client] = false;
+		StopSound(client, SNDCHAN_AUTO, SND_SAPPER_DRAIN);
+		return Plugin_Stop;
+	}
+	
+	return Plugin_Continue;
+}
+
 void TF2_OnPlayerAirDash(int client, int count)
 {
 	int airDashLimit = 1;
@@ -628,6 +742,14 @@ TFCond TF2_GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int si
 	return rune;
 }
 
+bool IsPlayerMiniCritBuffed(int client)
+{
+	return TF2_IsPlayerInCondition(client, TFCond_CritCola)
+	|| TF2_IsPlayerInCondition(client, TFCond_Buffed)
+	|| TF2_IsPlayerInCondition(client, TFCond_NoHealingDamageBuff)
+	|| TF2_IsPlayerInCondition(client, TFCond_MiniCritOnKill);
+}
+
 void SDK_ForceSpeedUpdate(int client)
 {
 	if (g_hSDKUpdateSpeed)
@@ -724,6 +846,14 @@ float GetPlayerDamageMult(int client)
 public bool TraceFilter_PlayerTeam(int entity, int mask, int client)
 {
 	if (entity <= MaxClients && entity != client && GetClientTeam(entity) == GetClientTeam(client))
+		return true;
+	
+	return false;
+}
+
+public bool TraceFilter_EnemyTeam(int entity, int mask, int client)
+{
+	if (entity <= MaxClients && entity != client && GetClientTeam(entity) != GetClientTeam(client))
 		return true;
 	
 	return false;

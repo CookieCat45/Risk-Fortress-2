@@ -177,6 +177,12 @@
 		"#format"	"{1:N},{2:s},{3:s},{4:N}"
 		"en"		"{yellow}{1}{default} gave item {2}{3}{default} to {yellow}{4}{default}."
 	}
+
+	"OneOfEveryItem"
+	{
+		"#format"	"{1:N},{2:d},{3:N}"
+		"en"		"{yellow}{1}{default} gave {lime}{2}{default} of every item to {yellow}{3}{default}."
+	}
 	
 	"GaveMoney"
 	{
@@ -513,6 +519,11 @@
 	"GiveItemUsage"
 	{
 		"en"		"Usage: /rf2_giveitem <player> <item name> <amount>\nNegative amounts will remove items from a player."
+	}
+
+	"GiveAllItemsUsage"
+	{
+		"en"		"Usage: /rf2_giveallitems <player> <amount>\nNegative amounts will remove items from a player."
 	}
 	
 	"GiveCashUsage"

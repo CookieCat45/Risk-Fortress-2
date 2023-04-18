@@ -16,6 +16,7 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_fullreload", Command_FullyReloadRF2, ADMFLAG_ROOT, "Reloads the plugin, restarts the game and changes the map to a Stage 1 map.");
 	RegAdminCmd("rf2_reloaditems", Command_ReloadItems, ADMFLAG_ROOT, "Reloads all items.");
 	RegAdminCmd("rf2_giveitem", Command_GiveItem, ADMFLAG_SLAY, "Give items to a player. /rf2_giveitem <player> <item name> <amount>\nNegative amounts will remove items from a player.");
+	RegAdminCmd("rf2_giveallitems", Command_GiveAllItems, ADMFLAG_ROOT, "Gives a player every item in the game! /rf2_giveallitems <player> <amount>");
 	RegAdminCmd("rf2_forcewin", Command_ForceWin, ADMFLAG_SLAY, "Forces a team to win. /rf2_forcewin <red|blue>");
 	RegAdminCmd("rf2_skipwait", Command_SkipWait, ADMFLAG_SLAY, "Skips the Waiting For Players sequence.");
 	RegAdminCmd("rf2_skipgrace", Command_SkipGracePeriod, ADMFLAG_SLAY, "Skip the grace period at the start of a round");
@@ -33,6 +34,7 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
 	RegConsoleCmd("rf2_afk", Command_AFK, "Puts you into AFK mode instantly.");
+	RegConsoleCmd("rf2_endlevel", Command_EndLevel, "Starts the vote to end the level in Tank Destruction mode.");
 	
 	char buffer[8];
 	IntToString(MaxClients, buffer, sizeof(buffer));
@@ -66,7 +68,7 @@ void LoadCommandsAndCvars()
 	g_cvEnemyMinSpawnDistance = CreateConVar("rf2_enemy_spawn_min_distance", "1000.0", "The minimum distance an enemy can spawn in relation to Survivors.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyMaxSpawnDistance = CreateConVar("rf2_enemy_spawn_max_distance", "3000.0", "The maximum distance an enemy can spawn in relation to Survivors.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyMinSpawnWaveCount = CreateConVar("rf2_enemy_spawn_min_count", "3", "The absolute minimum number of enemies that can spawn in a single spawn wave.", FCVAR_NOTIFY, true, 0.0);
-	g_cvEnemyMaxSpawnWaveCount = CreateConVar("rf2_enemy_spawn_max_count", "10", "The absolute maximum amount of enemies that can spawn in a single spawn wave.", FCVAR_NOTIFY, true, 0.0);
+	g_cvEnemyMaxSpawnWaveCount = CreateConVar("rf2_enemy_spawn_max_count", "7", "The absolute maximum amount of enemies that can spawn in a single spawn wave.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyMinSpawnWaveTime = CreateConVar("rf2_enemy_spawn_min_wave_time", "2.0", "The minimum amount of time that must pass between enemy spawn waves.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyBaseSpawnWaveTime = CreateConVar("rf2_enemy_spawn_base_wave_time", "30.0", "The base amount of time that passes between spawn waves. Affected by many different factors.", FCVAR_NOTIFY, true, 0.1);
 	g_cvBossStabDamageType = CreateConVar("rf2_boss_backstab_damage_type", "0", "Determines how bosses take backstab damage. 0 - raw damage. 1 - percentage.\nBoth benefit from any damage bonuses, excluding crits.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -230,6 +232,64 @@ public Action Command_GiveItem(int client, int args)
 		}
 	}
 	
+	return Plugin_Handled;
+}
+
+public Action Command_GiveAllItems(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (!g_bRoundActive)
+	{
+		RF2_ReplyToCommand(client, "%t", "WaitForRoundStart");
+		return Plugin_Handled;
+	}
+	
+	if (args < 1)
+	{
+		RF2_ReplyToCommand(client, "%t", "GiveAllItemsUsage");
+		return Plugin_Handled;
+	}
+	
+	char arg1[MAX_NAME_LENGTH];
+	GetCmdArg(1, arg1, sizeof(arg1)); // player(s)
+	int amount = GetCmdArgInt(2);
+	if (amount == 0)
+	{
+		amount = 1;
+	}
+	
+	char clientName[MAX_TARGET_LENGTH];
+	int clients[MAXTF2PLAYERS];
+	bool multiLanguage;
+	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
+	
+	if (matches < 1)
+	{
+		ReplyToTargetError(client, matches);
+		return Plugin_Handled;
+	}
+	else if (matches >= 1)
+	{
+		for (int i = 0; i < matches; i++)
+		{
+			for (int j = 1; j <= GetTotalItems(); j++)
+			{
+				// no equipment items, this will just create a mess
+				if (IsEquipmentItem(j))
+					continue;
+
+				GiveItem(clients[i], j, amount);
+			}
+			
+			RF2_PrintToChatAll("%t", "OneOfEveryItem", client, amount, clients[i]);
+		}
+	}
+
 	return Plugin_Handled;
 }
 
@@ -1036,15 +1096,7 @@ void ShowItemMenu(int client, int inspectTarget=-1)
 				FormatEx(buffer, sizeof(buffer), "%s [%i]", itemName, GetPlayerItemCount(target, i));
 			}
 			
-			if (IsScrapItem(i))
-			{
-				// Show metals at the top of the list
-				menu.InsertItem(0, info, buffer, flags);
-			}
-			else
-			{
-				menu.AddItem(info, buffer, flags);
-			}
+			menu.AddItem(info, buffer, flags);
 		}
 	}
 	
@@ -1055,7 +1107,7 @@ void ShowItemMenu(int client, int inspectTarget=-1)
 		menu.AddItem("no_items", noItems, flags);
 	}
 	
-	menu.Display(client, MENU_TIME_FOREVER);
+	menu.DisplayAt(client, g_iPlayerLastItemMenuItem[client], MENU_TIME_FOREVER);
 	g_bPlayerViewingItemMenu[client] = true;
 }
 
@@ -1069,6 +1121,8 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 		}
 		case MenuAction_Select:
 		{
+			g_iPlayerLastItemMenuItem[param1] = GetMenuSelectionPosition();
+
 			bool refresh = true;
 			char info[16];
 			GetMenuItem(menu, param2, info, sizeof(info));
@@ -1099,6 +1153,7 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 		}
 		case MenuAction_Cancel:
 		{
+			g_iPlayerLastItemMenuItem[param1] = 0;
 			g_bPlayerViewingItemMenu[param1] = false;
 		}
 		case MenuAction_End:
@@ -1136,7 +1191,7 @@ void ShowItemDropMenu(int client, int item)
 	menu.ExitButton = false;
 	menu.ExitBackButton = true;
 	CancelClientMenu(client);
-	menu.Display(client, MENU_TIME_FOREVER);
+	menu.DisplayAt(client, g_iPlayerLastDropMenuItem[client], MENU_TIME_FOREVER);
 }
 
 public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
@@ -1145,6 +1200,8 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 	{
 		case MenuAction_Select:
 		{
+			g_iPlayerLastDropMenuItem[param1] = GetMenuSelectionPosition();
+			
 			char info[64];
 			char itemIndex[8];
 			float pos[3];
@@ -1187,6 +1244,8 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 		}
 		case MenuAction_Cancel:
 		{
+			g_iPlayerLastDropMenuItem[param1] = 0;
+			
 			if (param2 == MenuCancel_ExitBack)
 			{
 				ShowItemMenu(param1);
@@ -1285,6 +1344,24 @@ public Action Command_MakeSurvivor(int client, int args)
 		}
 	}
 	
+	return Plugin_Handled;
+}
+
+public Action Command_EndLevel(int client, int args)
+{
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "OnlyInGame");
+		return Plugin_Handled;
+	}
+
+	if (!IsPlayerSurvivor(client) || !g_bTankBossMode || !IsStageCleared() || GameRules_GetRoundState() == RoundState_TeamWin)
+	{
+		RF2_ReplyToCommand(client, "%t", "CannotBeUsed");
+		return Plugin_Handled;
+	}
+	
+	StartTeleporterVote(client, true);
 	return Plugin_Handled;
 }
 

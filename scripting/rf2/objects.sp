@@ -532,7 +532,7 @@ void ShowScrapperMenu(int client, bool message=true)
 	
 	if (count > 0)
 	{
-		menu.Display(client, 12);
+		menu.DisplayAt(client, g_iPlayerLastScrapMenuItem[client], 12);
 	}
 	else if (message)
 	{
@@ -547,6 +547,8 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 	{
 		case MenuAction_Select:
 		{
+			g_iPlayerLastScrapMenuItem[param1] = GetMenuSelectionPosition();
+			
 			char info[32];
 			menu.GetItem(param2, info, sizeof(info));
 			int item = StringToInt(info);
@@ -646,6 +648,10 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 					ShowScrapperMenu(param1, false);
 				}
 			}
+		}
+		case MenuAction_Cancel:
+		{
+			g_iPlayerLastScrapMenuItem[param1] = 0;
 		}
 		case MenuAction_End:
 		{

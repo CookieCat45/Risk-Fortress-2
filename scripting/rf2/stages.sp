@@ -328,6 +328,11 @@ bool IsStageCleared()
 	{
 		return GetEntProp(teleporter, Prop_Data, "m_iEventState") == TELE_EVENT_COMPLETE;
 	}
+
+	if (g_bTankBossMode)
+	{
+		return g_iTanksKilledObjective >= g_iTankKillRequirement;
+	}
 	
-	return GameRules_GetProp("m_iRoundState") == GR_STATE_TEAM_WIN && GameRules_GetProp("m_iWinningTeam") == TEAM_SURVIVOR;
+	return GameRules_GetRoundState() == RoundState_TeamWin && GameRules_GetProp("m_iWinningTeam") == TEAM_SURVIVOR;
 }

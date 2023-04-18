@@ -136,14 +136,20 @@ void BeginTankDestructionMode()
 
 void EndTankDestructionMode()
 {
-	ForceTeamWin(TEAM_SURVIVOR);
 	RF2_PrintToChatAll("%t", "AllTanksDestroyed");
+	CreateTimer(30.0, Timer_CommandReminder, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	
 	int gamerules = GetRF2GameRules();
 	if (gamerules != INVALID_ENT_REFERENCE)
 	{
 		FireEntityOutput(gamerules, "OnTankDestructionComplete");
 	}
+}
+
+public Action Timer_CommandReminder(Handle timer)
+{
+	RF2_PrintToChatAll("%t", "EndLevelCommandReminder");
+	return Plugin_Continue;
 }
 
 static int SpawnTanks()

@@ -435,7 +435,8 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 	return wepEnt;
 }
 
-int CreateWearable(int client, const char[] classname, int index, const char[] attributes="", bool staticAttributes=false, bool visible = true, int quality=0, int level=0)
+int CreateWearable(int client, const char[] classname, int index, const char[] attributes="", bool staticAttributes=false, 
+bool visible = true, const char[] model="", int quality=0, int level=0)
 {
 	int wearable = CreateEntityByName(classname);
 	if (wearable == -1)
@@ -513,6 +514,11 @@ int CreateWearable(int client, const char[] classname, int index, const char[] a
 		SetEntityRenderMode(wearable, RENDER_NONE);
 	}
 	
+	if (model[0])
+	{
+		SetEntityModel(wearable, model);
+	}
+
 	DispatchSpawn(wearable);
 	SDK_EquipWearable(client, wearable);
 	SetEntProp(wearable, Prop_Send, "m_bValidatedAttachedEntity", true);
