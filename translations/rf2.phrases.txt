@@ -1,5 +1,61 @@
 "Phrases"
 {
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// GENERAL GAMEPLAY PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
+	"EnemyLevelUp"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"Enemy Level: {red}{1} -> {2}"
+	}
+	
+	"YouLevelUp"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"Your Level: {lime}{1} -> {2}"
+	}
+
+	"GracePeriodEnded"
+	{
+		"en"		"Grace period has ended. Death on RED will result in joining BLU."
+	}
+	
+	"HauntedKeyDrop"
+	{
+		"#format"	"{1:N}"
+		"en"		"{yellow}{1}{default} dropped a {haunted}Haunted Key!"
+	}
+
+	"NoChangeClass"
+	{
+		"en"		"You can't change your class at this time!"
+	}
+	
+	"NoChangeTeam"
+	{
+		"en"		"You can't change your team!"
+	}
+	
+	"NoSuicide"
+	{
+		"en"		"You are not allowed to suicide!"
+	}
+	
+	"AlreadyHasRune"
+	{
+		"en"		"You can't use this when you already have a rune active!"
+	}
+
+	"OnlyBuildExit" // No color tags
+	{
+		"en"		"You can't build a Teleporter entrance. You only need to build an exit!"
+	}
+	
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// AFK PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 	"AFKDetected" // No color tags
 	{
 		"en"		"You have been detected as AFK. Press any button or you will be kicked shortly."
@@ -10,71 +66,10 @@
 		"en"		"You are no longer marked as AFK."
 	}
 	
-	"LastMan" // No color tags
-	{
-		"en"		"You're the last one. Good luck..."
-	}
-	
-	"ExtraSentryHint" // No color tags
-	{
-		"en"		"Press ATTACK3 (Middle Mouse Button) to build extra sentries. TAB + ATTACK3 to detonate them."
-	}
-	
-	"PocketMedic" // No color tags
-	{
-		"en"		"Pocket Medic activated!"
-	}
-	
-	"OnlyBuildExit" // No color tags
-	{
-		"en"		"You can't build a Teleporter entrance. You only need to build an exit!"
-	}
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// ITEM PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	"DisconnectChosenAsSurvivor"
-	{
-		"#format"	"{1:N}"
-		"en"		"You've been chosen as a Survivor because {1} disconnected or went AFK. Enjoy!"
-	}
-	
-	"GainedSurvivorPoints"
-	{
-		"en"		"You gained {lime}10 {default}Survivor Points from this round."
-	}
-	
-	"TanksWillArrive"
-	{
-		"#format"	"{1:.0f}"
-		"en"		"Tanks will arrive in {1} seconds."
-	}
-	
-	"TanksHaveArrived"
-	{
-		"en"		"The Tank has arrived. Destroy it, RED Team!"
-	}
-	
-	"AllTanksDestroyed"
-	{
-		"en"		"{lime}Victory!{default} All Tanks have been destroyed."
-	}
-	
-	"DifficultySet"
-	{
-		"#format"	"{1:s}"
-		"en"		"The difficulty has been set to {1}."
-	}
-	
-	"DifficultySetBy"
-	{
-		"#format"	"{1:N},{2:s}"
-		"en"		"{1} set the difficulty to {2}."
-	}
-	
-	"DifficultySetDeadly"
-	{
-		"#format"	"{1:s}"
-		"en"		"The difficulty has been set to {1}! {red}Prepare to die..."
-	}
-	
 	"PickupItem"
 	{
 		"#format"	"{1:N},{2:s},{3:s},{4:d}"
@@ -93,11 +88,158 @@
 		"en"		"You've reached your item share limit of {1}.\nYou can no longer take items unless they are dropped for you."
 	}
 	
+	"YourItemsShareEnabled"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"Your Items (select to drop). Item Share Limit: {1}/{2}"
+	}
+	
+	"YourItems"
+	{
+		"en"		"Your Items (select to drop)."
+	}
+
+	"InspectTargetItems"
+	{
+		"#format"	"{1:N}"
+		"en"		"{1}'s items"
+	}
+	
+	"NoItems"
+	{
+		"en"		"No items."
+	}
+	
+	"DroppedItemForYou" // No color tags
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{1} dropped {2} for you!"
+	}
+	
+	"ItemDrop"
+	{
+		"#format"	"{1:N}"
+		"en"		"Dropped item for player {yellow}{1}{default}."
+	}
+
 	"NotForYou" // No color tags
 	{
 		"en"		"That item is not for you!"
 	}
 	
+	"ExtraSentryHint" // No color tags
+	{
+		"en"		"Press ATTACK3 (Middle Mouse Button) to build extra sentries. TAB + ATTACK3 to detonate them."
+	}
+	
+	"PocketMedic" // No color tags
+	{
+		"en"		"Pocket Medic activated!"
+	}
+	
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// SURVIVOR PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	"LastMan" // No color tags
+	{
+		"en"		"You're the last one. Good luck..."
+	}
+	
+	"DisconnectChosenAsSurvivor"
+	{
+		"#format"	"{1:N}"
+		"en"		"You've been chosen as a Survivor because {1} disconnected or went AFK. Enjoy!"
+	}
+	
+	"GainedSurvivorPoints"
+	{
+		"en"		"You gained {lime}10 {default}Survivor Points from this round."
+	}
+
+	"GivenInventory" // No color tags
+	{
+		"#format"	"{1:s}"
+		"en"		"You have been given {1}'s inventory."
+	}
+	
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// TELEPORTER EVENT PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
+	"TeleporterActivated"
+	{
+		"en"		"The Teleporter has been activated..."
+	}
+	
+	"TeleporterComplete"
+	{
+		"en"		"{lime}The Teleporter is charged! {default}Interact with it again to leave."
+	}
+	
+	"NoActivateTele"
+	{
+		"en"		"You can't activate the Teleporter right now."
+	}
+	
+	"TeleporterItemReward"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{yellow}{1}{default} was rewarded with one {genuine}{2}{default} for surviving the event."
+	}
+	
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// TANK DESTRUCTION PHRASES 
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	"TanksWillArrive"
+	{
+		"#format"	"{1:.0f}"
+		"en"		"Tanks will arrive in {1} seconds."
+	}
+	
+	"TanksHaveArrived"
+	{
+		"en"		"The Tank has arrived. Destroy it, RED Team!"
+	}
+	
+	"AllTanksDestroyed"
+	{
+		"en"		"{lime}Victory!{default} All Tanks have been destroyed. Type the {yellow}/rf2_endlevel{default} command when you're ready to leave."
+	}
+	
+	"EndLevelCommandReminder"
+	{
+		"en"		"Type the {yellow}/rf2_endlevel{default} command when you're ready to leave."
+	}
+	
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// DIFFICULTY PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	"DifficultySet"
+	{
+		"#format"	"{1:s}"
+		"en"		"The difficulty has been set to {1}."
+	}
+	
+	"DifficultySetBy"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{1} set the difficulty to {2}."
+	}
+	
+	"DifficultySetDeadly"
+	{
+		"#format"	"{1:s}"
+		"en"		"The difficulty has been set to {1}! {red}Prepare to die..."
+	}
+	
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// INTERACIBLE OBJECT PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
+	// General
 	"NotEnoughMoney" // No color tags
 	{
 		"#format"	"{1:.0f},{2:.0f}"
@@ -109,7 +251,13 @@
 		"#format"	"{1:.0f}"
 		"en"		"This costs ${1}."
 	}
+
+	"NoKeys" // No color tags
+	{
+		"en"		"You don't have any Haunted Keys to open this!"
+	}
 	
+	// Workbench
 	"UsedWorkbench" // No color tags
 	{
 		"#format"	"{1:s},{2:s},{3:d},{4:s}"
@@ -121,7 +269,8 @@
 		"#format"	"{1:s}"
 		"en"		"You don't have any items to exchange! You need {1} quality items."
 	}
-
+	
+	// Scrapper
 	"ScrapCollectors" // No color tags
 	{
 		"en"		"Swap out all Collectors items"
@@ -155,16 +304,143 @@
 		"en"		"You scrapped 1 {1} for 1 Haunted Key."
 	}
 	
-	"GivenInventory" // No color tags
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// OTHER PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
+	"WaitingStart"
 	{
-		"#format"	"{1:s}"
-		"en"		"You have been given {1}'s inventory."
+		"en"		"[RF2] Waiting For Players sequence started."
 	}
 	
-	"NoKeys" // No color tags
+	"WaitingEnd"
 	{
-		"en"		"You don't have any Haunted Keys to open this!"
+		"en"		"[RF2] Waiting For Players sequence ended."
 	}
+	
+	"VoteInProgress"
+	{
+		"en"		"There is already a vote in progress. Please wait until it finishes."
+	}
+
+	"NoSurvivorsSpawned"
+	{
+		"en"		"[RF2] No Survivors were spawned! Restarting the game..."
+	}
+	
+	"AllHumansDisconnected"
+	{
+		"en"		"[RF2] All human players have disconnected from the server. Restarting the game..."
+	}
+
+	"On"
+	{
+		"en"		"ON"
+	}
+	
+	"Off"
+	{
+		"en"		"OFF"
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// TIP PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
+	"TipSettings"
+	{
+		"en"		"Type {lightblue}/rf2_settings{default} to change your in-game preferences at any time."
+	}
+	
+	"TipAFK"
+	{
+		"#format"	"{1:d}"
+		"en"		"Need to AFK? No problem! Type {lightblue}/rf2_afk{default} into chat to enter AFK Mode. Only up to {yellow}{1}{default} players may use this at a time, however."
+	}
+	
+	"TipCredits"
+	{
+		"#format"	"{1:s}"
+		"en"		"{lightblue}Risk Fortress 2{default} version {pink}{1}{default} created by {indianred}CookieCat"
+	}
+	
+	"TipQueue"
+	{
+		"en"		"Don't want to be a Survivor or want to save up queue points? Toggle it off in {lightblue}/rf2_settings"
+	}
+	
+	"TipMenu"
+	{
+		"en"		"As a Survivor, you can press {yellow}TAB + E{default} to quickly open your inventory menu."
+	}
+	
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// SURVIVOR DEATH PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	"DeathMessage1"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1}'s family will never know how they died."
+	}
+	
+	"DeathMessage2"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1}'s death was extremely painful."
+	}
+	
+	"DeathMessage3"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} really messed up."
+	}
+	
+	"DeathMessage4"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}Try playing on \"Scrap\" mode for an easier time, {1}."
+	}
+	
+	"DeathMessage5"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}That was absolutely your fault, {1}."
+	}
+	
+	"DeathMessage6"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}They will surely feast on {1}'s flesh."
+	}
+	
+	"DeathMessage7"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} dies in a hilarious pose."
+	}
+	
+	"DeathMessage8"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} embraces the void."
+	}
+	
+	"DeathMessage9"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} had a lot more to live for."
+	}
+	
+	"DeathMessage10"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1}'s body was gone an hour later."
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// COMMAND PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	
 	"GaveItem"
 	{
@@ -181,7 +457,7 @@
 	"OneOfEveryItem"
 	{
 		"#format"	"{1:N},{2:d},{3:N}"
-		"en"		"{yellow}{1}{default} gave {lime}{2}{default} of every item to {yellow}{3}{default}."
+		"en"		"{yellow}{1}{default} gave {lime}{2}{default} of every item to {yellow}{3}{default}!"
 	}
 	
 	"GaveMoney"
@@ -220,26 +496,9 @@
 		"en"		"Made {yellow}{1}{default} into a Survivor."
 	}
 	
-	"EnemyLevelUp"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"Enemy Level: {red}{1} -> {2}"
-	}
-	
-	"YouLevelUp"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"Your Level: {lime}{1} -> {2}"
-	}
-	
 	"WaitingInactive"
 	{
 		"en"		"The Waiting For Players sequence is not active."
-	}
-	
-	"GracePeriodEnded"
-	{
-		"en"		"Grace period has ended. Death on RED will result in joining BLU."
 	}
 	
 	"GracePeriodNotActive"
@@ -250,79 +509,6 @@
 	"GracePeriodSkipped"
 	{
 		"en"		"The grace period has been skipped."
-	}
-	
-	"HauntedKeyDrop"
-	{
-		"#format"	"{1:N}"
-		"en"		"{yellow}{1}{default} dropped a {haunted}Haunted Key!"
-	}
-	
-	"VoteInProgress"
-	{
-		"en"		"There is already a vote in progress. Please wait until it finishes."
-	}
-	
-	"TeleporterActivated"
-	{
-		"en"		"The Teleporter has been activated..."
-	}
-	
-	"TeleporterComplete"
-	{
-		"en"		"{lime}The Teleporter is charged! {default}Interact with it again to leave."
-	}
-	
-	"NoActivateTele"
-	{
-		"en"		"You can't activate the Teleporter right now."
-	}
-	
-	"NoChangeClass"
-	{
-		"en"		"You can't change your class at this time!"
-	}
-	
-	"NoChangeTeam"
-	{
-		"en"		"You can't change your team!"
-	}
-	
-	"NoSuicide"
-	{
-		"en"		"You are not allowed to suicide!"
-	}
-	
-	"AlreadyHasRune"
-	{
-		"en"		"You can't use this when you already have a rune active!"
-	}
-	
-	"TipSettings"
-	{
-		"en"		"Type {lightblue}/rf2_settings{default} to change your in-game preferences at any time."
-	}
-	
-	"TipAFK"
-	{
-		"#format"	"{1:d}"
-		"en"		"Need to AFK? No problem! Type {lightblue}/rf2_afk{default} into chat to enter AFK Mode. Only up to {yellow}{1}{default} players may use this at a time, however."
-	}
-	
-	"TipCredits"
-	{
-		"#format"	"{1:s}"
-		"en"		"{lightblue}Risk Fortress 2{default} version {pink}{1}{default} created by {indianred}CookieCat"
-	}
-	
-	"TipQueue"
-	{
-		"en"		"Don't want to be a Survivor or want to save up queue points? Toggle it off in {lightblue}/rf2_settings"
-	}
-	
-	"TipMenu"
-	{
-		"en"		"As a Survivor, you can press {yellow}TAB + E{default} to quickly open your inventory menu."
 	}
 	
 	"PluginDisabled"
@@ -349,40 +535,6 @@
 	"YouAreNotSurvivor"
 	{
 		"en"		"You are not a Survivor."
-	}
-	
-	"YourItemsShareEnabled"
-	{
-		"#format"	"{1:d},{2:d}"
-		"en"		"Your Items (select to drop). Item Share Limit: {1}/{2}"
-	}
-	
-	"YourItems"
-	{
-		"en"		"Your Items (select to drop)."
-	}
-
-	"InspectTargetItems"
-	{
-		"#format"	"{1:N}"
-		"en"		"{1}'s items"
-	}
-	
-	"NoItems"
-	{
-		"en"		"No items."
-	}
-	
-	"DroppedItemForYou" // No color tags
-	{
-		"#format"	"{1:N},{2:s}"
-		"en"		"{1} dropped {2} for you!"
-	}
-	
-	"ItemDrop"
-	{
-		"#format"	"{1:N}"
-		"en"		"Dropped item for player {yellow}{1}{default}."
 	}
 	
 	"IsDead"
@@ -478,16 +630,6 @@
 		"en"		"Enable automatic item menu ({1})"
 	}
 	
-	"On"
-	{
-		"en"		"ON"
-	}
-	
-	"Off"
-	{
-		"en"		"OFF"
-	}
-	
 	"ItemsReloaded"
 	{
 		"en"		"All items reloaded successfully."
@@ -561,85 +703,5 @@
 	"AddPointsUsage"
 	{
 		"en"		"Usage: /rf2_addpoints <player> <amount>"
-	}
-	
-	"AllHumansDisconnected"
-	{
-		"en"		"[RF2] All human players have disconnected from the server. Restarting the game..."
-	}
-	
-	"NoSurvivorsSpawned"
-	{
-		"en"		"[RF2] No Survivors were spawned! Restarting the game..."
-	}
-	
-	"WaitingStart"
-	{
-		"en"		"[RF2] Waiting For Players sequence started."
-	}
-	
-	"WaitingEnd"
-	{
-		"en"		"[RF2] Waiting For Players sequence ended."
-	}
-	
-	"DeathMessage1"
-	{
-		"#format"	"{1:N}"
-		"en"		"{red}{1}'s family will never know how they died."
-	}
-	
-	"DeathMessage2"
-	{
-		"#format"	"{1:N}"
-		"en"		"{red}{1}'s death was extremely painful."
-	}
-	
-	"DeathMessage3"
-	{
-		"#format"	"{1:N}"
-		"en"		"{red}{1} really messed up."
-	}
-	
-	"DeathMessage4"
-	{
-		"#format"	"{1:N}"
-		"en"		"{red}Try playing on \"Scrap\" mode for an easier time, {1}."
-	}
-	
-	"DeathMessage5"
-	{
-		"#format"	"{1:N}"
-		"en"		"{red}That was absolutely your fault, {1}."
-	}
-	
-	"DeathMessage6"
-	{
-		"#format"	"{1:N}"
-		"en"		"{red}They will surely feast on {1}'s flesh."
-	}
-	
-	"DeathMessage7"
-	{
-		"#format"	"{1:N}"
-		"en"		"{red}{1} dies in a hilarious pose."
-	}
-	
-	"DeathMessage8"
-	{
-		"#format"	"{1:N}"
-		"en"		"{red}{1} embraces the void."
-	}
-	
-	"DeathMessage9"
-	{
-		"#format"	"{1:N}"
-		"en"		"{red}{1} had a lot more to live for."
-	}
-	
-	"DeathMessage10"
-	{
-		"#format"	"{1:N}"
-		"en"		"{red}{1}'s body was gone an hour later."
 	}
 }

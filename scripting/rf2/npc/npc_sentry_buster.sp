@@ -423,6 +423,9 @@ public bool SentryBusterPath_FilterIgnoreActors(int entity, int contentsMask, in
 	if ((entity > 0 && entity <= MaxClients) || !CBaseEntity(entity).IsCombatCharacter())
 		return false;
 	
+	if (IsObject(entity))
+		return false;
+	
 	return true;
 }
 

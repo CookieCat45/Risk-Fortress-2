@@ -557,7 +557,7 @@ int EquipItemAsWearable(int client, int item)
 			continue;
 		
 		index = GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex");
-
+		
 		for (int i = 1; i <= GetTotalItems(); i++)
 		{
 			if (PlayerHasItem(client, i) && index == g_iItemSchemaIndex[i])
@@ -635,7 +635,7 @@ void RemoveItemAsWearable(int client, int item)
 		// g_bDontRemoveWearable means this wearable is associated with an item
 		if (index == g_iItemSchemaIndex[item])
 		{
-			// TODO: This causes issues with cosmetics that toggle bodygroups. Not sure how to fix. Taunting corrects it for some reason?
+			// TODO: This causes issues with cosmetics that toggle bodygroups. Not sure how to fix. Taunting corrects it for some reason??
 			TF2_RemoveWearable(client, entity);
 			break;
 		}
@@ -726,7 +726,7 @@ void UpdatePlayerItem(int client, int item)
 					if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
 						continue;
 					
-					// This is attribute is a regular percentage, yet attribute 278 is an inverted percentage. Okay Valve, whatever you say.
+					// This attribute is a regular percentage, yet attribute 278 is an inverted percentage. Okay Valve, whatever you say.
 					TF2Attrib_SetByDefIndex(wearable, 249, 1.0+CalcItemMod(client, Item_PrinnyPouch, 0)); // "charge recharge rate increased"
 					break;
 				}

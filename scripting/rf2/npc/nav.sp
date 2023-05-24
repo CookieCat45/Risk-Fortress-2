@@ -18,7 +18,7 @@
  * @param doSpawnTrace		Do a trace to ensure that players and NPCs will not get stuck.
  * @param mins					Hull mins for the trace hull spawn check.
  * @param maxs					Hull maxs for the trace hull spawn check.
- * @param traceFlags				Trace flags. MASK_PLAYERSOLID for players, MASK_NPCSOLID for NPCs.
+ * @param traceFlags			Trace flags.
  * @param zOffset				Offset the Z position of the result spawn position by this much.
  * @return			CNavArea associated with the spawn point if found. NULL_AREA otherwise.
  */
@@ -256,9 +256,7 @@ public bool Path_FilterIgnoreObjects(int entity, int contentsMask, int desiredco
 {	
 	// don't worry about objects, most are non solid anyway
 	if (IsObject(entity))
-	{
 		return true;
-	}
 	
 	return !(contentsMask & MASK_SOLID);
 }

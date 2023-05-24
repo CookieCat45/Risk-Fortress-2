@@ -139,6 +139,19 @@ void EndTankDestructionMode()
 	RF2_PrintToChatAll("%t", "AllTanksDestroyed");
 	CreateTimer(30.0, Timer_CommandReminder, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	
+	int randomItem;
+	char name[MAX_NAME_LENGTH];
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+			continue;
+		
+		randomItem = GetRandomItemEx(Quality_Genuine);
+		GiveItem(i, randomItem);
+		GetItemName(randomItem, name, sizeof(name));
+		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, name);
+	}
+	
 	int gamerules = GetRF2GameRules();
 	if (gamerules != INVALID_ENT_REFERENCE)
 	{

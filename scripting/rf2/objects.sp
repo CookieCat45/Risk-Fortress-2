@@ -1002,6 +1002,19 @@ void EndTeleporterEvent(int teleporter)
 	RF2_PrintToChatAll("%t", "TeleporterComplete");
 	StopMusicTrackAll();
 	
+	int randomItem;
+	char name[MAX_NAME_LENGTH];
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+			continue;
+		
+		randomItem = GetRandomItemEx(Quality_Genuine);
+		GiveItem(i, randomItem);
+		GetItemName(randomItem, name, sizeof(name));
+		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, name);
+	}
+	
 	Call_StartForward(g_fwTeleEventEnd);
 	Call_Finish();
 	

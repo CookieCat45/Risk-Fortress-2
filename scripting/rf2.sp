@@ -18,7 +18,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1.2b"
+#define PLUGIN_VERSION "0.1.3b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
