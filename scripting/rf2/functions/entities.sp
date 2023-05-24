@@ -54,7 +54,7 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 
 // SPELL PROJECTILES WILL ONLY WORK IF THE OWNER ENTITY IS A PLAYER! DO NOT TRY THEM WITH ANYTHING ELSE!
 int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], const float angles[3], 
-float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
+	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
 {
 	int entity = CreateEntityByName(classname);
 	if (entity == -1)
@@ -121,16 +121,16 @@ float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critPr
 
 // Shoots a fake fireball (tf_projectile_rocket)
 int ShootProjectile_Fireball(int owner=-1, const float pos[3], const float angles[3], 
-float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
+	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
 {
 	int entity = ShootProjectile(owner, "tf_projectile_rocket", pos, angles, speed, damage, arc, allowCrit, critProc);
 	SetEntityModel(entity, MODEL_INVISIBLE);
 	
 	switch (view_as<TFTeam>(GetEntProp(entity, Prop_Data, "m_iTeamNum")))
 	{
-		case TFTeam_Red:	TE_TFParticle("spell_fireball_small_red", pos, entity, PATTACH_ABSORIGIN_FOLLOW);
-		case TFTeam_Blue:	TE_TFParticle("spell_fireball_small_blue", pos, entity, PATTACH_ABSORIGIN_FOLLOW);
-		default:			TE_TFParticle("spellbook_major_fire", pos, entity, PATTACH_ABSORIGIN_FOLLOW);
+		case TFTeam_Red:	SpawnInfoParticle("spell_fireball_small_red", pos, _, entity);
+		case TFTeam_Blue:	SpawnInfoParticle("spell_fireball_small_blue", pos, _, entity);
+		default:			SpawnInfoParticle("spellbook_major_fire", pos, _, entity);
 	}
 	
 	EmitSoundToAll(SND_SPELL_FIREBALL, entity);
@@ -140,7 +140,6 @@ float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critPr
 
 void DoRadiusDamage(int attacker, int item=Item_Null, const float pos[3], float baseDamage, int damageFlags, float radius, int weapon=-1, float minimumFalloffMultiplier=0.3, bool explosionEffect=false)
 {
-	Handle trace;
 	float enemyPos[3];
 	float distance, falloffMultiplier, calculatedDamage;
 	
@@ -163,9 +162,9 @@ void DoRadiusDamage(int attacker, int item=Item_Null, const float pos[3], float 
 		
 		if ((distance = GetVectorDistance(pos, enemyPos)) <= radius)
 		{
-			trace = TR_TraceRayFilterEx(pos, enemyPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
+			TR_TraceRayFilter(pos, enemyPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
 			
-			if (!TR_DidHit(trace))
+			if (!TR_DidHit())
 			{
 				falloffMultiplier = 1.0 - distance / radius;
 				if (falloffMultiplier < minimumFalloffMultiplier)
@@ -182,8 +181,6 @@ void DoRadiusDamage(int attacker, int item=Item_Null, const float pos[3], float 
 				
 				SDKHooks_TakeDamage(entity, attacker, attacker, calculatedDamage, damageFlags, weapon);
 			}
-			
-			delete trace;
 		}
 	}
 	
@@ -309,6 +306,119 @@ void PickupCash(int client, int entity)
 		delete clientArray;
 		RemoveEntity(entity);
 	}
+}
+
+int SpawnInfoParticle(const char[] effectName, const float pos[3], float duration=0.0, int parent=-1, const char[] attachment="")
+{
+	int particle = CreateEntityByName("info_particle_system");
+	DispatchKeyValue(particle, "effect_name", effectName);
+	TeleportEntity(particle, pos);
+	DispatchSpawn(particle);
+	ActivateEntity(particle);
+	AcceptEntityInput(particle, "start");
+
+	if (parent != -1)
+	{
+		SetVariantString("!activator");
+		AcceptEntityInput(particle, "SetParent", parent);
+		
+		if (attachment[0])
+		{
+			SetVariantString(attachment);
+			AcceptEntityInput(particle, "SetParentAttachment");
+		}
+	}
+	
+	if (duration > 0.0)
+	{
+		CreateTimer(duration, Timer_DeleteEntity, EntIndexToEntRef(particle), TIMER_FLAG_NO_MAPCHANGE);
+	}
+	
+	return particle;
+}
+
+void TE_TFParticle(const char[] effectName, const float pos[3], int entity=-1, int attachType=PATTACH_ABSORIGIN, const char[] attachmentName="",
+bool reset=false, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0)
+{
+	TE_Start("TFParticleEffect");
+	
+	int index = GetParticleEffectIndex(effectName);
+	if (index == -1)
+	{
+		// try to cache it
+		index = PrecacheParticleEffect(effectName);
+	}
+	
+	if (index > -1)
+	{
+		TE_WriteNum("m_iParticleSystemIndex", index);
+		
+		if (attachmentName[0])
+		{
+			int attachPoint = LookupEntityAttachment(entity, attachmentName);
+			if (attachPoint != 0)
+			{
+				TE_WriteNum("m_iAttachmentPointIndex", attachPoint);
+			}
+		}
+		
+		if (entity > -1)
+		{
+			TE_WriteNum("entindex", entity);
+		}
+
+		TE_WriteFloat("m_vecOrigin[0]", pos[0]);
+		TE_WriteFloat("m_vecOrigin[1]", pos[1]);
+		TE_WriteFloat("m_vecOrigin[2]", pos[2]);
+		TE_WriteFloat("m_vecStart[0]", pos[0]);
+		TE_WriteFloat("m_vecStart[1]", pos[1]);
+		TE_WriteFloat("m_vecStart[2]", pos[2]);
+		
+		TE_WriteNum("m_iAttachType", attachType);
+		TE_WriteNum("m_bResetParticles", bool(reset));
+		
+		if (clientAmount <= 0)
+		{
+			TE_SendToAll();
+		}
+		else
+		{
+			for (int i = 0; i < clientAmount; i++)
+				TE_SendToClient(clientArray[i]);
+		}
+	}
+}
+
+int PrecacheParticleEffect(const char[] name)
+{
+	int index;
+	int table = FindStringTable("ParticleEffectNames");
+	int count = GetStringTableNumStrings(table);
+	char buffer[128];
+	
+	for (int i = 0; i < count; i++)
+	{
+		ReadStringTable(table, i, buffer, sizeof(buffer));
+		if (strcmp2(buffer, name))
+		{
+			index = i;
+			g_hParticleEffectTable.Resize(i+1);
+			g_hParticleEffectTable.SetString(i, name);
+			break;
+		}
+	}
+	
+	if (index < 0)
+	{
+		LogError("[PrecacheParticleEffect] Couldn't find particle effect \"%s\".", name);
+	}
+	
+	return index;
+}
+
+int GetParticleEffectIndex(const char[] name)
+{
+	return g_hParticleEffectTable.FindString(name);
 }
 
 void SetEntItemDamageProc(int entity, int item)

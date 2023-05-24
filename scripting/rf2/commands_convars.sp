@@ -30,7 +30,8 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_set_difficulty", Command_SetDifficulty, ADMFLAG_SLAY, "Sets the difficulty level. 0 = Scrap, 1 = Iron, 2 = Steel, 3 = Titanium");
 	RegAdminCmd("rf2_setnextmap", Command_ForceMap, ADMFLAG_SLAY, "Forces the next map to be the map specified. This will not immediately change the map.");
 	RegAdminCmd("rf2_make_survivor", Command_MakeSurvivor, ADMFLAG_SLAY, "Force a player to become a Survivor.\nWill not work if the maximum survivor count has been reached.");
-	
+	RegAdminCmd("rf2_addseconds", Command_AddSeconds, ADMFLAG_SLAY, "Add seconds to the difficulty timer. /rf2_addseconds <seconds>");
+
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
 	RegConsoleCmd("rf2_afk", Command_AFK, "Puts you into AFK mode instantly.");
@@ -832,6 +833,26 @@ public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
 	}
 	
 	return 0;
+}
+
+public Action Command_AddSeconds(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (!g_bRoundActive)
+	{
+		RF2_ReplyToCommand(client, "%t", "WaitForRoundStart");
+		return Plugin_Handled;
+	}
+	
+	float seconds = GetCmdArgFloat(1);
+	g_flSecondsPassed += seconds - FloatFraction(seconds);
+	RF2_PrintToChatAll("%t", "AddSecondsCommand", client, RoundToFloor(seconds));
+	return Plugin_Handled;
 }
 
 public Action Command_AFK(int client, int args)

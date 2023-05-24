@@ -276,9 +276,8 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	}
 
 	float removeTime, particleRemoveTime;
-	
-	// Particle TEs seem to not work consistently with this, so we have to use info_particle_system
-	int particle = CreateEntityByName("info_particle_system");
+	char effectName[32];
+
 	switch (GetItemQuality(item))
 	{
 		case Quality_Unusual:
@@ -287,7 +286,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 			EmitAmbientSound(SND_DROP_UNUSUAL, pos);
 			EmitAmbientSound(SND_DROP_UNUSUAL, pos);
 			EmitAmbientSound(SND_DROP_UNUSUAL, pos);
-			DispatchKeyValue(particle, "effect_name", "mvm_pow_gold_seq");
+			effectName = "mvm_pow_gold_seq";
 			
 			removeTime = 2.9;
 			particleRemoveTime = 10.0;
@@ -296,7 +295,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 		case Quality_Haunted, Quality_HauntedStrange:
 		{
 			EmitAmbientSound(SND_DROP_HAUNTED, pos);
-			DispatchKeyValue(particle, "effect_name", "ghost_appearation");
+			effectName = "ghost_appearation";
 			
 			int shake = CreateEntityByName("env_shake");
 			DispatchKeyValueFloat(shake, "radius", 150.0);
@@ -314,18 +313,13 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 		default:
 		{
 			EmitSoundToAll(SND_DROP_DEFAULT, entity);
-			DispatchKeyValue(particle, "effect_name", "mvm_loot_explosion");
+			effectName = "mvm_loot_explosion";
 			removeTime = 0.0;
 			particleRemoveTime = 3.0;
 		}
 	}
 	
-	TeleportEntity(particle, pos);
-	DispatchSpawn(particle);
-	ActivateEntity(particle);
-	AcceptEntityInput(particle, "Start");
-	CreateTimer(particleRemoveTime, Timer_DeleteEntity, EntIndexToEntRef(particle), TIMER_FLAG_NO_MAPCHANGE);
-	
+	SpawnInfoParticle(effectName, pos, particleRemoveTime);
 	SetEntProp(entity, Prop_Data, "m_bActive", false);
 	
 	DataPack pack;
@@ -1013,6 +1007,7 @@ void EndTeleporterEvent(int teleporter)
 		GiveItem(i, randomItem);
 		GetItemName(randomItem, name, sizeof(name));
 		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, name);
+		PrintHintText(i, "%t", "GotItemReward", name);
 	}
 	
 	Call_StartForward(g_fwTeleEventEnd);

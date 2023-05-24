@@ -812,6 +812,7 @@ public void OnMapStart()
 		
 		// Entity output hooks
 		HookEntityOutput("tank_boss", "OnKilled", Output_OnTankKilled);
+		HookEntityOutput("rf2_tank_boss_badass", "OnKilled", Output_OnTankKilled);
 		
 		// UserMessage hooks
 		HookUserMessage(GetUserMessageId("SayText2"), UserMessageHook_SayText2, true);
@@ -2464,8 +2465,9 @@ public Action Timer_PlayerHud(Handle timer)
 			
 			SetHudTextParams(-1.0, -1.3, 0.15, 255, 100, 100, 255);
 			ShowSyncHudText(i, g_hMainHudSync, 
-			"\n\n\n\nGAME OVER\n\nEnemies slain: %i\nBosses slain: %i\nStages completed: %i\nItems found: %i\nTanks destroyed: %i\nTOTAL SCORE: %i points\nRANK: %s", 
-			g_iTotalEnemiesKilled, g_iTotalBossesKilled, g_iStagesCompleted, g_iTotalItemsFound, g_iTotalTanksKilled, score, rank);
+				"\n\n\n\nGAME OVER\n\nEnemies slain: %i\nBosses slain: %i\nStages completed: %i\nItems found: %i\nTanks destroyed: %i\nTOTAL SCORE: %i points\nRANK: %s", 
+				g_iTotalEnemiesKilled, g_iTotalBossesKilled, g_iStagesCompleted, g_iTotalItemsFound, g_iTotalTanksKilled, score, rank);
+
 			return Plugin_Continue;
 		}
 		
@@ -2481,25 +2483,25 @@ public Action Timer_PlayerHud(Handle timer)
 				if (g_flPlayerEquipmentItemCooldown[i] > 0.0) // multi-stack recharge?
 				{
 					Format(strangeItemInfo, sizeof(strangeItemInfo), "%s[%i] READY! RELOAD (R) [%.1f]", 
-					strangeItemInfo, g_iPlayerEquipmentItemCharges[i], g_flPlayerEquipmentItemCooldown[i]);
+						strangeItemInfo, g_iPlayerEquipmentItemCharges[i], g_flPlayerEquipmentItemCooldown[i]);
 				}
 				else
 				{
 					Format(strangeItemInfo, sizeof(strangeItemInfo), "%s[%i] READY! RELOAD (R)", 
-					strangeItemInfo, g_iPlayerEquipmentItemCharges[i]);
+						strangeItemInfo, g_iPlayerEquipmentItemCharges[i]);
 				}
 			}
 			else
 			{
 				Format(strangeItemInfo, sizeof(strangeItemInfo), "%s[0] [%.1f]", 
-				strangeItemInfo, g_flPlayerEquipmentItemCooldown[i]);
+					strangeItemInfo, g_flPlayerEquipmentItemCooldown[i]);
 			}
 		}
 		else
 		{
 			strangeItemInfo = "";
 		}
-
+		
 		miscText = "";
 		
 		if (IsPlayerSurvivor(i))
@@ -2508,38 +2510,66 @@ public Action Timer_PlayerHud(Handle timer)
 			{
 				if (IsValidEntity(g_iPlayerLastAttackedTank[i]))
 				{
+					static char classname[128], name[32];
+					int maxHealth;
 					int health = GetEntProp(g_iPlayerLastAttackedTank[i], Prop_Data, "m_iHealth");
-					int maxHealth = GetEntProp(g_iPlayerLastAttackedTank[i], Prop_Data, "m_iMaxHealth");
+					GetEntityClassname(g_iPlayerLastAttackedTank[i], classname, sizeof(classname));
 					
-					FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Tanks Destroyed: %i/%i\nTank Health: %i/%i", 
-					g_iTanksKilledObjective, g_iTankKillRequirement, health, maxHealth);
+					if (strcmp2(classname, "rf2_tank_boss_badass"))
+					{
+						name = "Badass Tank";
+						maxHealth = GetEntProp(g_iPlayerLastAttackedTank[i], Prop_Data, "m_iActualMaxHealth");
+					}
+					else
+					{
+						name = "Tank";
+						maxHealth = GetEntProp(g_iPlayerLastAttackedTank[i], Prop_Data, "m_iMaxHealth");
+					}
+					
+					FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Tanks Destroyed: %i/%i\n%s Health: %i/%i", 
+						g_iTanksKilledObjective, g_iTankKillRequirement, name, health, maxHealth);
 				}
 				else
 				{
 					g_iPlayerLastAttackedTank[i] = -1;
 					FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Tanks Destroyed: %i/%i", 
-					g_iTanksKilledObjective, g_iTankKillRequirement);
+						g_iTanksKilledObjective, g_iTankKillRequirement);
 				}
 			}
 			
 			if (g_flPlayerVampireSapperCooldown[i] > 0.0)
 			{
-				FormatEx(miscText, sizeof(miscText), "Sapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
+				if (g_bTankBossMode)
+				{
+					FormatEx(miscText, sizeof(miscText), "\nSapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
+				}
+				else
+				{
+					FormatEx(miscText, sizeof(miscText), "Sapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
+				}
 			}
 			
 			ShowSyncHudText(i, g_hMainHudSync, g_szSurvivorHudText, g_iStagesCompleted+1, g_iMinutesPassed, 
-			hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i], g_flPlayerNextLevelXP[i], g_flPlayerCash[i], g_iPlayerHauntedKeys[i],
-			g_szHudDifficulty, strangeItemInfo, miscText);
+				hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i], g_flPlayerNextLevelXP[i], 
+				g_flPlayerCash[i], g_iPlayerHauntedKeys[i], g_szHudDifficulty, strangeItemInfo, miscText);
 		}
 		else
 		{
 			ShowSyncHudText(i, g_hMainHudSync, g_szEnemyHudText, g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, 
-			g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo);
+				g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo);
 		}
 		
 		if (g_szObjectiveHud[i][0])
 		{
-			SetHudTextParams(-1.0, -0.7, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
+			if (GetPlayerEquipmentItem(i) != Item_Null)
+			{
+				SetHudTextParams(-1.0, -0.66, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
+			}
+			else
+			{
+				SetHudTextParams(-1.0, -0.7, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
+			}
+			
 			ShowSyncHudText(i, g_hObjectiveHudSync, g_szObjectiveHud[i]);
 		}
 	}
@@ -2561,7 +2591,8 @@ public Action Timer_Difficulty(Handle timer)
 	g_flSecondsPassed += 1.0;
 	if (g_flSecondsPassed >= 60.0 * (float(g_iMinutesPassed+1)))
 	{
-		g_iMinutesPassed++;
+		float seconds = g_flSecondsPassed - (float(g_iMinutesPassed) * 60.0);
+		g_iMinutesPassed += RoundToFloor(seconds/60.0);
 	}
 	
 	float timeFactor = g_flSecondsPassed / 10.0;
@@ -3106,7 +3137,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	// Set m_flNextPrimaryAttack on the next frame to modify attack speed
 	// Any of TF2's own firing speed modifications such as attributes will still go through
 	g_iLastFiredWeapon[client] = EntIndexToEntRef(weapon);
-	g_flWeaponFireTime[client] = GetGameTime(); // This is to (possibly) prevent a desync issue, see RF_NextPrimaryAttack
+	g_flWeaponFireTime[client] = GetGameTime(); // This is to prevent a desync issue, see RF_NextPrimaryAttack
 	RequestFrame(RF_NextPrimaryAttack, GetClientUserId(client));
 	
 	// Use our own crit logic
@@ -3118,6 +3149,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			result = true;
 			changed = true;
 		}
+		
 		if (TF2Attrib_HookValueInt(1, "mult_crit_chance", weapon) != 0)
 		{
 			float proc = GetWeaponProcCoefficient(weapon);
@@ -3188,16 +3220,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 				particleName = "drg_cow_rockettrail_fire_blue";
 			}
 			
-			int particle = CreateEntityByName("info_particle_system");
-			DispatchKeyValue(particle, "effect_name", particleName);
-			TeleportEntity(particle, eyePos);
-			DispatchSpawn(particle);
-			
-			ActivateEntity(particle);
-			AcceptEntityInput(particle, "Start");
-			SetVariantString("!activator");
-			AcceptEntityInput(particle, "SetParent", beam);
-			
+			SpawnInfoParticle(particleName, eyePos, _, beam);
 			EmitSoundToAll(SND_DEMO_BEAM, client);
 		}
 	}
@@ -3214,6 +3237,7 @@ public void RF_NextPrimaryAttack(int client)
 	if ((weapon = EntRefToEntIndex(g_iLastFiredWeapon[client])) == INVALID_ENT_REFERENCE)
 		return;
 	
+	// Calculate based on the time the weapon was fired at since that was in the last frame.
 	float gameTime = g_flWeaponFireTime[client];
 	float time = GetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack");
 	
@@ -3589,7 +3613,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				damage = fmax(damage, 1.0);
 			}
 		}
-		else if (attackerIsClient && IsPlayerSurvivor(attacker) && g_iPlayerLastAttackedTank[attacker] != victim && strcmp2(classname, "tank_boss"))
+		else if (attackerIsClient && IsPlayerSurvivor(attacker) && g_iPlayerLastAttackedTank[attacker] != victim 
+		&& StrContains(classname, "tank_boss") != -1)
 		{
 			g_iPlayerLastAttackedTank[attacker] = victim;
 		}

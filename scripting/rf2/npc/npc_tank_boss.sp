@@ -150,6 +150,9 @@ void EndTankDestructionMode()
 		GiveItem(i, randomItem);
 		GetItemName(randomItem, name, sizeof(name));
 		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, name);
+		PrintHintText(i, "%t", "GotItemReward", name);
+		
+		PrintCenterText(i, "%t", "EndLevelCommandReminder");
 	}
 	
 	int gamerules = GetRF2GameRules();
@@ -581,18 +584,8 @@ public void Hook_BadassTankThink(int entity)
 						const float damage = 80.0;
 						int laser = ShootProjectile(entity, "tf_projectile_rocket", pos, angles, speed, damage);
 						SetEntityModel(laser, MODEL_INVISIBLE);
-						
-						int particle = CreateEntityByName("info_particle_system");
-						DispatchKeyValue(particle, "effect_name", "drg_cow_rockettrail_fire_blue");
-						TeleportEntity(particle, pos);
-						DispatchSpawn(particle);
-						
-						ActivateEntity(particle);
-						AcceptEntityInput(particle, "Start");
-						SetVariantString("!activator");
-						AcceptEntityInput(particle, "SetParent", laser);
-						
 						EmitSoundToAll(SND_TANK_LASERSHOOT, entity, _, 120);
+						SpawnInfoParticle("drg_cow_rockettrail_fire_blue", pos, _, laser);
 						
 						float fireRate = float(GetEntProp(entity, Prop_Data, "m_iHealth")) / float(GetEntProp(entity, Prop_Data, "m_iActualMaxHealth"));
 						fireRate = fmax(fireRate, 0.25);

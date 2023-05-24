@@ -137,6 +137,12 @@
 		"en"		"Pocket Medic activated!"
 	}
 	
+	"GotItemReward" // No color tags
+	{
+		"#format" 	"{1:s}"
+		"en"		"You were rewarded with one {1}."
+	}
+	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// SURVIVOR PHRASES
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -703,5 +709,11 @@
 	"AddPointsUsage"
 	{
 		"en"		"Usage: /rf2_addpoints <player> <amount>"
+	}
+	
+	"AddSecondsCommand"
+	{
+		"#format"	"{1:N},{2:d}"
+		"en"		"{yellow}{1}{default} added {lime}{2}{default} seconds to the timer."
 	}
 }

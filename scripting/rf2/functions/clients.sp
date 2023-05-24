@@ -39,6 +39,7 @@ void RefreshClient(int client)
 	if (IsClientInGame(client) && !g_bMapChanging)
 	{
 		TF2Attrib_RemoveAll(client);
+		SetEntityGravity(client, 1.0);
 		SetEntProp(client, Prop_Send, "m_bGlowEnabled", false);
 		
 		// Clear our custom model on a timer so our ragdoll uses the correct model if we're dying.
@@ -521,19 +522,7 @@ void ApplyVampireSapper(int client, int attacker, float damage=10.0, float durat
 	// spawn the sapper particle
 	float pos[3];
 	GetClientEyePosition(client, pos);
-	
-	int particle = CreateEntityByName("info_particle_system");
-	DispatchKeyValue(particle, "effect_name", "sapper_sentry1_fx");
-	TeleportEntity(particle, pos);
-	DispatchSpawn(particle);
-	ActivateEntity(particle);
-	AcceptEntityInput(particle, "Start");
-	
-	SetVariantString("!activator");
-	AcceptEntityInput(particle, "SetParent", client, particle);
-	SetVariantString("head");
-	AcceptEntityInput(particle, "SetParentAttachment");
-	CreateTimer(duration, Timer_DeleteEntity, EntIndexToEntRef(particle), TIMER_FLAG_NO_MAPCHANGE);
+	SpawnInfoParticle("sapper_sentry1_fx", pos, duration, client, "head");
 	
 	if (!IsBoss(client))
 	{
