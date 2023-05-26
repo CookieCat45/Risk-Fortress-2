@@ -231,7 +231,6 @@ enum
 
 
 // Other -----------------------------------------------------------------------------------------------------------------------------------------
-#define EF_ITEM_BLINK 0x100
 #define OFF_THE_MAP {-16384.0, -16384.0, -16384.0}
 
 enum
@@ -2266,14 +2265,13 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	
 	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
-	//duration -= 0.1 * float(imin(g_iRespawnWavesCompleted, 20));
 	
 	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
 		duration *= 0.8;
 	
 	CreateTimer(fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue), Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
 	
-	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + ((survivorCount-1)/3) + RF2_GetSubDifficulty() / 2;
+	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + ((survivorCount-1)/3) + RF2_GetSubDifficulty() / 3;
 	spawnCount = imax(imin(spawnCount, g_cvEnemyMaxSpawnWaveCount.IntValue), g_cvEnemyMinSpawnWaveCount.IntValue);
 	
 	ArrayList respawnArray = CreateArray();

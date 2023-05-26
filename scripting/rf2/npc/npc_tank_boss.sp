@@ -261,7 +261,7 @@ static int CreateTankBoss(bool badass=false)
 		health = RoundToFloor(Pow(float(health), 1.0 + (float(level-49) * 0.005)));
 	}
 	
-	if (IsSingleplayer(false) && !badass)
+	if (IsSingleplayer(false))
 	{
 		health = RoundToFloor(float(health) * 0.75);
 	}

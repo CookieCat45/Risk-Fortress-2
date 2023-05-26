@@ -897,10 +897,21 @@ void UpdatePlayerItem(int client, int item)
 				int maxCharges = RoundToFloor(CalcItemMod(client, Item_BatteryCanteens, 1, 1));
 				if (g_iPlayerEquipmentItemCharges[client] < maxCharges)
 				{
-
 					g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
 					CreateTimer(0.1, Timer_EquipmentCooldown, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 				}
+			}
+		}
+		case Item_Marxman:
+		{
+			if (PlayerHasItem(client, Item_Marxman))
+			{
+				float amount = CalcItemMod_HyperbolicInverted(client, Item_Marxman, 0);
+				TF2Attrib_SetByDefIndex(client, 178, amount); // "deploy time decreased"
+			}
+			else
+			{
+				TF2Attrib_RemoveByDefIndex(client, 178);
 			}
 		}
 	}

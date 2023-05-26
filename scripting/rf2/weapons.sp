@@ -516,12 +516,18 @@ bool visible = true, const char[] model="", int quality=0, int level=0)
 	
 	if (model[0])
 	{
+		SetEntProp(wearable, Prop_Send, "m_bValidatedAttachedEntity", true);
+		int modelIndex = PrecacheModel(model);
 		SetEntityModel(wearable, model);
-	}
 
+		for (int i = 0; i <= 3; i++)
+		{
+			SetEntProp(wearable, Prop_Send, "m_nModelIndexOverrides", modelIndex, _, i);
+		}
+	}
+	
 	DispatchSpawn(wearable);
 	SDK_EquipWearable(client, wearable);
-	SetEntProp(wearable, Prop_Send, "m_bValidatedAttachedEntity", true);
 	return wearable;
 }
 

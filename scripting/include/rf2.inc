@@ -70,6 +70,7 @@ enum
 	ItemHeavy_ToughGuyToque = 53,
 	Item_BatteryCanteens = 54,
 	ItemStrange_NastyNorsemann = 55,
+	Item_Marxman = 56,
 	Item_MaxValid,
 };
 
