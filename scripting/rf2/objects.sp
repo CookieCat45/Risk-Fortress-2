@@ -101,20 +101,22 @@ int SpawnObjects()
 	float width = FloatAbs(worldMins[1]) + FloatAbs(worldMaxs[1]);
 	float distance = SquareRoot(length * width);
 	
-	ArrayList objectArray = CreateArray(64);
-	const int largeWeight = 3;
-	const int strangeWeight = 2;
-	const int hauntedWeight = 1;
-	const int collectorWeight = 3;
-	const int workbenchWeight = 4;
-	const int scrapperWeight = 3;
+	ArrayList objectArray = CreateArray(128);
+	const int crateWeight = 50;
+	const int largeWeight = 10;
+	const int strangeWeight = 8;
+	const int hauntedWeight = 5;
+	const int collectorWeight = 8;
+	const int workbenchWeight = 15;
+	const int scrapperWeight = 8;
 	char name[64];
 	int count;
 	
-	for (int i = 1; i <= 6; i++)
+	for (int i = 0; i <= 6; i++)
 	{
 		switch (i)
 		{
+			case 0: strcopy(name, sizeof(name), "rf2_object_crate"), count = crateWeight;
 			case 1: strcopy(name, sizeof(name), "rf2_object_crate_large"), count = largeWeight;
 			case 2: strcopy(name, sizeof(name), "rf2_object_crate_strange"), count = strangeWeight;
 			case 3: strcopy(name, sizeof(name), "rf2_object_crate_haunted"), count = hauntedWeight;
@@ -144,15 +146,8 @@ int SpawnObjects()
 			}
 		}
 		
-		if (RandChanceFloat(0.01, 100.0, g_cvObjectSpecialChance.FloatValue))
-		{
-			objectArray.GetString(GetRandomInt(0, objectArray.Length-1), name, sizeof(name));
-			CreateObject(name, spawnPos);
-		}
-		else
-		{
-			CreateObject("rf2_object_crate", spawnPos);
-		}
+		objectArray.GetString(GetRandomInt(0, objectArray.Length-1), name, sizeof(name));
+		CreateObject(name, spawnPos);
 		
 		spawns++;
 	}

@@ -474,7 +474,6 @@ ConVar g_cvTeleporterRadiusMultiplier;
 ConVar g_cvObjectSpreadDistance;
 ConVar g_cvObjectBaseCost;
 ConVar g_cvObjectBaseCount;
-ConVar g_cvObjectSpecialChance;
 ConVar g_cvItemShareEnabled;
 ConVar g_cvTankBaseHealth;
 ConVar g_cvTankHealthScale;
