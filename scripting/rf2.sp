@@ -3977,7 +3977,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	CritType originalCritType = critType;
 	float proc = g_flDamageProc;
 	
-	if (IsValidClient(attacker))
+	if (IsValidClient(attacker) && attacker != victim)
 	{
 		static char classname[64];
 		GetEntityClassname(inflictor, classname, sizeof(classname));	
