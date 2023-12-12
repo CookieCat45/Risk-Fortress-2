@@ -11,6 +11,7 @@
 #include <tf2items>
 #include <tf_ontakedamage>
 #include <morecolors>
+
 #undef REQUIRE_EXTENSIONS
 #tryinclude <SteamWorks>
 #define REQUIRE_EXTENSIONS
@@ -111,11 +112,14 @@ public Plugin myinfo =
 #define SND_RUNE_STRENGTH "items/powerup_pickup_strength.wav"
 #define SND_RUNE_VAMPIRE "items/powerup_pickup_vampire.wav"
 #define SND_RUNE_KING "items/powerup_pickup_king.wav"
+#define SND_THROW "weapons/cleaver_throw.wav"
+#define SND_BOMB_EXPLODE "weapons/loose_cannon_explode.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
 #define GSND_CRIT "TFPlayer.CritHit"
 #define GSND_MINICRIT "TFPlayer.CritHitMini"
+#define GSND_CLEAVER_HIT "Cleaver.ImpactFlesh"
 
 
 // Players ---------------------------------------------------------------------------------------------------------------------------------------
@@ -418,12 +422,15 @@ Handle g_hSDKUpdateSpeed;
 Handle g_hSDKDoQuickBuild;
 Handle g_hSDKGetMaxHealth;
 Handle g_hSDKComputeIncursion;
+Handle g_hSDKPlayGesture;
 DHookSetup g_hSDKCanBuild;
 DHookSetup g_hSDKDoSwingTrace;
 DHookSetup g_hSDKSentryAttack;
 DHookSetup g_hSDKComputeIncursionVoid;
+DHookSetup g_hSDKHandleRageGain;
 DynamicHook g_hSDKTakeHealth;
 DynamicHook g_hSDKStartUpgrading;
+DynamicHook g_hSDKVPhysicsCollision;
 
 // Forwards
 Handle g_fwTeleEventStart;
@@ -612,6 +619,17 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CTFPlayer::TeamFortress_SetSpeed");
 	}
 	
+	// CTFPlayer::PlayGesture ----------------------------------------------------------------------------------------------------------------
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFPlayer::PlayGesture");
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
+	g_hSDKPlayGesture = EndPrepSDKCall();
+	if (!g_hSDKPlayGesture)
+	{
+		LogError("Failed to create call for CTFPlayer::PlayGesture");
+	}
+	
 	// CBaseEntity::TakeHealth ---------------------------------------------------------------------------------------------------------------
 	offset = GameConfGetOffset(gamedata, "CBaseEntity::TakeHealth");
 	g_hSDKTakeHealth = DHookCreate(offset, HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity, DHook_TakeHealth);
@@ -623,6 +641,19 @@ void LoadGameData()
 	else
 	{
 		LogError("[DHooks] Failed to create virtual hook for CBaseEntity::TakeHealth");
+	}
+
+	// CPhysicsProp::VPhysicsCollision -------------------------------------------------------------------------------------------------------
+	offset = GameConfGetOffset(gamedata, "CPhysicsProp::VPhysicsCollision");
+	g_hSDKVPhysicsCollision = DHookCreate(offset, HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
+	if (g_hSDKVPhysicsCollision)
+	{
+		DHookAddParam(g_hSDKVPhysicsCollision, HookParamType_Int); 			// index
+		DHookAddParam(g_hSDKVPhysicsCollision, HookParamType_ObjectPtr); 	// gamevcollisionevent_t
+	}
+	else
+	{
+		LogError("[DHooks] Failed to create virtual hook for CPhysicsProp::VPhysicsCollision");
 	}
 	
 	// CTFWeaponBase::GetMaxClip1 ------------------------------------------------------------------------------------------------------------
@@ -665,6 +696,12 @@ void LoadGameData()
 	if (!g_hSDKSentryAttack || !DHookEnableDetour(g_hSDKSentryAttack, true, DHook_SentryGunAttack))
 	{
 		LogError("[DHooks] Failed to create detour for CObjectSentrygun::Attack");
+	}
+	
+	g_hSDKHandleRageGain = DHookCreateFromConf(gamedata, "HandleRageGain");
+	if (!g_hSDKHandleRageGain || !DHookEnableDetour(g_hSDKHandleRageGain, false, DHook_HandleRageGain))
+	{
+		LogError("[DHooks] Failed to create detour for HandleRageGain");
 	}
 	
 	// CTFNavMesh::ComputeIncursionDistances -------------------------------------------------------------------------------------------------
@@ -719,7 +756,7 @@ public void OnMapStart()
 	if (strcmp2(buffer, "rf2", false))
 	{
 		g_bPluginEnabled = true;
-		g_bWaitingForPlayers = bool(GameRules_GetProp("m_bInWaitingForPlayers"));
+		g_bWaitingForPlayers = asBool(GameRules_GetProp("m_bInWaitingForPlayers"));
 		
 		if (g_bLateLoad)
 		{
@@ -758,7 +795,6 @@ public void OnMapStart()
 		#endif
 		
 		LoadAssets();
-		
 		static bool entsInstalled;
 		if (!entsInstalled)
 		{
@@ -777,6 +813,7 @@ public void OnMapStart()
 		FindConVar("tf_use_fixed_weaponspreads").SetBool(true);
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
+		FindConVar("tf_bot_force_class").SetString("scout"); // prevent console spam
 		
 		// Why is this a development only ConVar Valve?
 		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
@@ -881,6 +918,7 @@ public void OnConfigsExecuted()
 		FindConVar("mp_forcecamera").SetBool(false);
 		FindConVar("mp_maxrounds").SetInt(9999);
 		FindConVar("mp_forceautoteam").SetBool(true);
+		FindConVar("mp_respawnwavetime").SetFloat(99999.0);
 		FindConVar("tf_dropped_weapon_lifetime").SetInt(0);
 		FindConVar("tf_weapon_criticals").SetBool(false);
 		FindConVar("tf_forced_holiday").SetInt(2);
@@ -891,12 +929,12 @@ public void OnConfigsExecuted()
 		InsertServerCommand("sv_pure 0");
 		
 		// TFBots
+		FindConVar("tf_bot_quota").SetInt(MaxClients-1);
+		FindConVar("tf_bot_quota_mode").SetString("fill");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
 		FindConVar("tf_bot_taunt_victim_chance").SetInt(0);
 		FindConVar("tf_bot_join_after_player").SetBool(true);
-		FindConVar("tf_bot_quota_mode").SetString("fill");
-		FindConVar("tf_bot_quota").SetInt(MaxClients-1);
 		
 		ConVar botConsiderClass = FindConVar("tf_bot_reevaluate_class_in_spawnroom");
 		botConsiderClass.Flags = botConsiderClass.Flags & ~FCVAR_CHEAT;
@@ -905,12 +943,11 @@ public void OnConfigsExecuted()
 		char team[8];
 		switch (TEAM_ENEMY)
 		{
-			case view_as<int>(TFTeam_Blue):	team = "blue";
-			case view_as<int>(TFTeam_Red):	team = "red";
+			case 3:	team = "blue";
+			case 2:	team = "red";
 		}
 		
 		FindConVar("mp_humans_must_join_team").SetString(team);
-		
 		g_bConVarsModified = true;
 	}
 }
@@ -1054,7 +1091,6 @@ void LoadAssets()
 	PrecacheSound(SND_SPELL_OVERHEAL, true);
 	PrecacheSound(SND_SPELL_JUMP, true);
 	PrecacheSound(SND_SPELL_STEALTH, true);
-	
 	PrecacheSound(SND_RUNE_AGILITY, true);
 	PrecacheSound(SND_RUNE_HASTE, true);
 	PrecacheSound(SND_RUNE_WARLOCK, true);
@@ -1065,9 +1101,15 @@ void LoadAssets()
 	PrecacheSound(SND_RUNE_STRENGTH, true);
 	PrecacheSound(SND_RUNE_VAMPIRE, true);
 	PrecacheSound(SND_RUNE_KING, true);
-	
+	PrecacheSound(SND_THROW, true);
+	PrecacheSound(SND_BOMB_EXPLODE, true);
+	PrecacheSound("vo/halloween_boss/knight_attack01.mp3", true);
+	PrecacheSound("vo/halloween_boss/knight_attack02.mp3", true);
+	PrecacheSound("vo/halloween_boss/knight_attack03.mp3", true);
+	PrecacheSound("vo/halloween_boss/knight_attack04.mp3", true);
 	PrecacheScriptSound(GSND_CRIT);
 	PrecacheScriptSound(GSND_MINICRIT);
+	PrecacheScriptSound(GSND_CLEAVER_HIT);
 	
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
@@ -1076,14 +1118,17 @@ void LoadAssets()
 void ResetConVars()
 {
 	ResetConVar(FindConVar("sv_alltalk"));
-	ResetConVar(FindConVar("tf_use_fixed_weaponspreads"));
-	ResetConVar(FindConVar("tf_avoidteammates_pushaway"));
+
 	ResetConVar(FindConVar("mp_waitingforplayers_time"));
-	
 	ResetConVar(FindConVar("mp_teams_unbalance_limit"));
 	ResetConVar(FindConVar("mp_forcecamera"));
 	ResetConVar(FindConVar("mp_maxrounds"));
 	ResetConVar(FindConVar("mp_forceautoteam"));
+	ResetConVar(FindConVar("mp_respawnwavetime"));
+	ResetConVar(FindConVar("mp_humans_must_join_team"));
+	
+	ResetConVar(FindConVar("tf_use_fixed_weaponspreads"));
+	ResetConVar(FindConVar("tf_avoidteammates_pushaway"));
 	ResetConVar(FindConVar("tf_dropped_weapon_lifetime"));
 	ResetConVar(FindConVar("tf_weapon_criticals"));
 	ResetConVar(FindConVar("tf_forced_holiday"));
@@ -1092,17 +1137,25 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_bot_defense_must_defend_time"));
 	ResetConVar(FindConVar("tf_bot_offense_must_push_time"));
 	ResetConVar(FindConVar("tf_bot_taunt_victim_chance"));
-	ResetConVar(FindConVar("tf_bot_quota_mode"));
-	ResetConVar(FindConVar("tf_bot_quota"));
 	ResetConVar(FindConVar("tf_bot_join_after_player"));
 	ResetConVar(FindConVar("tf_bot_reevaluate_class_in_spawnroom"));
+	ResetConVar(FindConVar("tf_bot_quota"));
+	ResetConVar(FindConVar("tf_bot_quota_mode"));
+	ResetConVar(FindConVar("tf_bot_pyro_shove_away_range"));
+	ResetConVar(FindConVar("tf_bot_force_class"));
 }
 
 public void OnClientConnected(int client)
 {
-	if (RF2_IsEnabled() && !IsFakeClient(client) && GetTotalHumans(false) > g_cvMaxHumanPlayers.IntValue)
+	if (RF2_IsEnabled())
 	{
-		KickClient(client, "Only %i humans are allowed in this server", g_cvMaxHumanPlayers.IntValue);
+		if (!IsFakeClient(client))
+		{
+			if (GetTotalHumans(false) > g_cvMaxHumanPlayers.IntValue)
+			{
+				KickClient(client, "Only %i humans are allowed in this server", g_cvMaxHumanPlayers.IntValue);
+			}
+		}
 	}
 }
 
@@ -1181,7 +1234,7 @@ public void OnClientDisconnect_Post(int client)
 		g_TFBot[client].Follower.Destroy();
 		g_TFBot[client].Follower = view_as<PathFollower>(0);
 	}
-
+	
 	g_TFBot[client] = null;
 	RefreshClient(client);
 	ResetAFKTime(client, false);
@@ -1521,6 +1574,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	}
 	
 	TF2Attrib_SetByDefIndex(client, 269, 1.0); // "mod see enemy health"
+	TF2Attrib_SetByDefIndex(client, 275, 1.0); // "cancel falling damage"
 	
 	// Initialize our stats (health, speed, kb resist) the next frame to ensure it's correct
 	RequestFrame(RF_InitStats, client);
@@ -1593,9 +1647,11 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		{
 			case ItemDemo_ConjurersCowl, ItemMedic_WeatherMaster: event.SetString("weapon", "spellbook_lightning");
 			
-			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter: event.SetString("weapon", "pumpkindeath");
+			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, ItemStrange_CroneDome: event.SetString("weapon", "pumpkindeath");
 			
-			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder: event.SetString("weapon", "merasmus_zap");		
+			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder: event.SetString("weapon", "merasmus_zap");
+			
+			case ItemStrange_LegendaryLid: event.SetString("weapon", "kunai");
 		}
 	}
 	
@@ -1942,8 +1998,7 @@ public Action OnPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 			radiusDamage *= 1.0 + CalcItemMod(attacker, ItemSniper_HolyHunter, 1, -1);
 			float radius = GetItemMod(ItemSniper_HolyHunter, 2);
 			radius *= 1.0 + CalcItemMod(attacker, ItemSniper_HolyHunter, 3, -1);
-			
-			DoRadiusDamage(attacker, ItemSniper_HolyHunter, pos, radiusDamage, DMG_BLAST, radius, GetPlayerWeaponSlot(attacker, WeaponSlot_Primary), _, true);
+			DoRadiusDamage(attacker, attacker, ItemSniper_HolyHunter, pos, radiusDamage, DMG_BLAST, radius, GetPlayerWeaponSlot(attacker, WeaponSlot_Primary), _, true);
 		}
 	}
 	
@@ -2144,7 +2199,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	int building = event.GetInt("index");
-	bool carryDeploy = bool(GetEntProp(building, Prop_Send, "m_bCarryDeploy"));
+	bool carryDeploy = asBool(GetEntProp(building, Prop_Send, "m_bCarryDeploy"));
 	
 	// For some reason, extra sentries built (by detouring CTFPlayer::CanBuild) always have this netprop set,
 	// so we'll use it to detect extra sentries built with the Head of Defense.
@@ -2191,6 +2246,12 @@ public Action Timer_KillEnemyTeam(Handle timer)
 		
 		SDKHooks_TakeDamage(i, 0, 0, 9999999.0, DMG_PREVENT_PHYSICS_FORCE);
 		ForcePlayerSuicide(i);
+		
+		if (IsFakeClient(i))
+		{
+			// hotfix
+			TF2_SetPlayerClass(i, TFClass_Scout);
+		}
 	}
 	
 	return Plugin_Continue;
@@ -2925,6 +2986,11 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
 	
+	if (IsFakeClient(client))
+	{
+		PrintToServer("TEST");
+	}
+
 	if (strcmp2(command, "spectate") || strcmp2(command, "autoteam") || view_as<TFTeam>(GetCmdArgInt(1)) <= TFTeam_Spectator)
 	{
 		RF2_PrintToChat(client, "%t", "NoChangeTeam");
@@ -3587,14 +3653,10 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (victimIsClient)
 	{
-		if (damageType == DMG_FALL)
+		// because there's no fall damage, red team takes increased self blast damage
+		if (selfDamage && rangedDamage && IsPlayerSurvivor(victim))
 		{
-			damage *= 0.5;
-			
-			if (PlayerHasItem(victim, Item_Tux))
-			{
-				damage *= CalcItemMod_HyperbolicInverted(victim, Item_Tux, 2);
-			}
+			damage *= 2.0;
 		}
 	}
 	else if (victimIsNpc)
@@ -3635,7 +3697,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 		else if (strcmp2(inflictorClassname, "tf_projectile_rocket") || strcmp2(inflictorClassname, "tf_projectile_energy_ball") || strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
 		{
-			int enemy = GetEntDataEnt2(inflictor, FindSendPropInfo("CTFProjectile_Rocket", "m_hLauncher") + 16); // m_hEnemy
+			int offset = FindSendPropInfo("CTFProjectile_Rocket", "m_hLauncher") + 16;
+			int enemy = GetEntDataEnt2(inflictor, offset); // m_hEnemy
 			if (enemy != victim) // enemy == victim means direct damage was dealt, otherwise this is splash
 			{
 				proc *= 0.5;
@@ -3643,7 +3706,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 		else if (strcmp2(inflictorClassname, "tf_projectile_pipe"))
 		{
-			float directDamage = GetEntDataFloat(inflictor, FindSendPropInfo("CTFGrenadePipebombProjectile", "m_bDefensiveBomb") - 4);
+			int offset = FindSendPropInfo("CTFGrenadePipebombProjectile", "m_bDefensiveBomb") - 4;
+			float directDamage = GetEntDataFloat(inflictor, offset);
 			if (originalDamage < directDamage) // non direct hit
 			{
 				proc *= 0.5;
@@ -3995,6 +4059,12 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			}
 		}
 		
+		int itemProc = GetEntItemDamageProc(inflictor);
+		if (itemProc == ItemStrange_HandsomeDevil && critType == CritType_MiniCrit)
+		{
+			critType = CritType_Crit;
+		}
+
 		// Executioner converts minicrits to full crits
 		if (!projectile && PlayerHasItem(attacker, Item_Executioner) && critType == CritType_MiniCrit)
 		{

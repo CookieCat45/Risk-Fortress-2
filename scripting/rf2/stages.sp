@@ -96,7 +96,7 @@ void LoadMapSettings(const char[] mapName)
 				PrintToServer("[RF2] Enemies/bosses loaded: %i", g_iEnemyCount);
 				
 				g_flGracePeriodTime = mapKey.GetFloat("grace_period_time", 30.0);
-				g_bTankBossMode = bool(mapKey.GetNum("tank_destruction", false));
+				g_bTankBossMode = asBool(mapKey.GetNum("tank_destruction", false));
 				
 				stageKv = 1;
 				break;

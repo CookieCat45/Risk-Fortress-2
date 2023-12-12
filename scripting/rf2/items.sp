@@ -115,7 +115,7 @@ void LoadItems()
 			itemKey.GetString("desc", g_szItemDesc[item], sizeof(g_szItemDesc[]), "(No description found...)");
 			itemKey.GetString("equip_regions", g_szItemEquipRegion[item], sizeof(g_szItemEquipRegion[]), "none");
 			itemKey.GetString("sprite", g_szItemSprite[item], sizeof(g_szItemSprite[]), MAT_DEBUGEMPTY);
-			g_bItemInDropPool[item] = bool(itemKey.GetNum("in_item_pool", true));
+			g_bItemInDropPool[item] = asBool(itemKey.GetNum("in_item_pool", true));
 			
 			if (FileExists(g_szItemSprite[item], true))
 			{
@@ -457,7 +457,7 @@ bool PickupItem(int client)
 		int itemIndex = GetEntProp(item, Prop_Data, "m_iIndex");
 		int spawner = GetEntPropEnt(item, Prop_Data, "m_hItemOwner");
 		int subject = GetEntPropEnt(item, Prop_Data, "m_hSubject");
-		bool dropped = bool(GetEntProp(item, Prop_Data, "m_bDropped"));
+		bool dropped = asBool(GetEntProp(item, Prop_Data, "m_bDropped"));
 		int quality = GetItemQuality(itemIndex);
 		
 		// Strange items do not count towards the limit.
@@ -1086,12 +1086,15 @@ public void RF_SaxtonRadiusDamage(DataPack pack)
 	float victimPos[3];
 	GetEntPos(victim, victimPos);
 	float damage = GetItemMod(Item_SaxtonHat, 2) + CalcItemMod(attacker, Item_SaxtonHat, 3, -1);
-	DoRadiusDamage(attacker, Item_SaxtonHat, victimPos, damage, DMG_BLAST, 180.0, _, 0.6, true);
+	DoRadiusDamage(attacker, attacker, Item_SaxtonHat, victimPos, damage, DMG_BLAST, 180.0, _, 0.6, true);
 }
 
 bool ActivateStrangeItem(int client)
 {
 	if (g_iPlayerEquipmentItemCharges[client] <= 0)
+		return false;
+	
+	if (GetPercentInvisible(client) > 0.0)
 		return false;
 	
 	switch (GetPlayerEquipmentItem(client))
@@ -1400,6 +1403,88 @@ bool ActivateStrangeItem(int client)
 			TFCond rune = TF2_GetRandomMannpowerRune(sound, sizeof(sound));
 			TF2_AddCondition(client, rune, GetItemMod(ItemStrange_NastyNorsemann, 0));
 			EmitSoundToAll(sound, client);
+		}
+		
+		case ItemStrange_ScaryMask:
+		{
+			float range = Pow(GetItemMod(ItemStrange_ScaryMask, 0), 2.0);
+			float stunDuration = GetItemMod(ItemStrange_ScaryMask, 1);
+			float buffDuration = GetItemMod(ItemStrange_ScaryMask, 2);
+			float pos[3], victimPos[3];
+			char sound[PLATFORM_MAX_PATH];
+			FormatEx(sound, sizeof(sound), "vo/halloween_boss/knight_attack0%i.mp3", GetRandomInt(1, 4));
+			EmitSoundToAll(sound, client);
+			
+			GetClientAbsOrigin(client, pos);
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (!IsValidClient(i) || !IsPlayerAlive(i) || GetClientTeam(i) == GetClientTeam(client))
+					continue;
+				
+				if (RF2_IsPlayerBoss(i))
+					continue;
+				
+				GetClientAbsOrigin(i, victimPos);
+				if (GetVectorDistance(pos, victimPos, true) > range)
+					continue;
+				
+				TF2_StunPlayer(i, stunDuration, 0.0, TF_STUNFLAGS_GHOSTSCARE, client);
+				TF2_AddCondition(i, TFCond_SpeedBuffAlly, buffDuration);
+				TF2_AddCondition(i, TFCond_Buffed, buffDuration);
+			}
+		}
+		
+		case ItemStrange_DarkHunter:
+		{
+			EmitSoundToAll(SND_SPELL_STEALTH, client);
+			TF2_AddCondition(client, TFCond_StealthedUserBuffFade, GetItemMod(ItemStrange_DarkHunter, 0));
+		}
+		
+		case ItemStrange_LegendaryLid:
+		{
+			float pos[3], angles[3];
+			GetClientEyePosition(client, pos);
+			GetClientEyeAngles(client, angles);
+			
+			ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
+				GetItemMod(ItemStrange_LegendaryLid, 2), GetItemMod(ItemStrange_LegendaryLid, 0), -2.0);
+			
+			angles[1] += 10.0;
+			ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
+				GetItemMod(ItemStrange_LegendaryLid, 2), GetItemMod(ItemStrange_LegendaryLid, 0), -2.0);
+			
+			angles[1] -= 20.0;
+			ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
+				GetItemMod(ItemStrange_LegendaryLid, 2), GetItemMod(ItemStrange_LegendaryLid, 0), -2.0);
+			
+			ClientPlayGesture(client, "ACT_MP_THROW");
+			EmitSoundToAll(SND_THROW, client);
+		}
+		
+		case ItemStrange_CroneDome:
+		{
+			float pos[3], angles[3];
+			GetClientEyePosition(client, pos);
+			GetClientEyeAngles(client, angles);
+			
+			ShootProjectile(client, "rf2_projectile_bomb", pos, angles, 
+				GetItemMod(ItemStrange_CroneDome, 3), GetItemMod(ItemStrange_CroneDome, 1), -2.0);
+			
+			ClientPlayGesture(client, "ACT_MP_THROW");
+			EmitSoundToAll(SND_THROW, client);
+		}
+		
+		case ItemStrange_HandsomeDevil:
+		{
+			float pos[3], angles[3];
+			GetClientEyePosition(client, pos);
+			GetClientEyeAngles(client, angles);
+			
+			ShootProjectile(client, "rf2_projectile_kunai", pos, angles, 
+				GetItemMod(ItemStrange_HandsomeDevil, 2), GetItemMod(ItemStrange_HandsomeDevil, 0), -2.0);
+			
+			ClientPlayGesture(client, "ACT_MP_THROW");
+			EmitSoundToAll(SND_THROW, client);
 		}
 	}
 	
@@ -1735,7 +1820,7 @@ int GetItemModInt(int item, int slot)
 /*
 bool GetItemModBool(int item, int slot)
 {
-	return bool((GetItemModInt(item, slot)));
+	return asBool((GetItemModInt(item, slot)));
 }
 */
 int GetPlayerItemCount(int client, int item)

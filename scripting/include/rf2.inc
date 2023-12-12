@@ -71,6 +71,11 @@ enum
 	Item_BatteryCanteens = 54,
 	ItemStrange_NastyNorsemann = 55,
 	Item_Marxman = 56,
+	ItemStrange_ScaryMask = 57,
+	ItemStrange_DarkHunter = 58,
+	ItemStrange_LegendaryLid = 59,
+	ItemStrange_CroneDome = 60,
+	ItemStrange_HandsomeDevil = 61,
 	Item_MaxValid,
 };
 

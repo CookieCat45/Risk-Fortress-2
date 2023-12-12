@@ -409,7 +409,7 @@ void SetAllInArray(any[] array, int size, any value)
 		array[i] = value;
 }
 
-stock bool bool(any value)
+stock bool asBool(any value)
 {
 	return view_as<bool>(value);
 }

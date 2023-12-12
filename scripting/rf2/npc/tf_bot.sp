@@ -54,7 +54,9 @@ methodmap TFBot < Handle
 	property int Client 
 	{
 		public get() 
+		{
 			return view_as<int>(this);
+		}
 	}
 	
 	// Pathing
@@ -165,7 +167,11 @@ methodmap TFBot < Handle
 	// NextBot
 	public INextBot GetNextBot() 
 	{
-		return CBaseEntity(this.Client).MyNextBotPointer();
+		INextBot bot = CBaseEntity(this.Client).MyNextBotPointer();
+		if (bot == view_as<INextBot>(0))
+			LogError("[WARNING] Invalid INextBot for client %N", this.Client);
+		
+		return bot;
 	}
 	
 	public IVision GetVision()
@@ -517,11 +523,40 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 		
 		switch (item)
 		{
-			case ItemStrange_VirtualViewfinder, ItemStrange_Spellbook: return threat > 0 && vision.IsLookingAtTarget(threat) && !invuln;
+			case ItemStrange_VirtualViewfinder, ItemStrange_Spellbook: return threat > 0 && !invuln && vision.IsLookingAtTarget(threat);
 			
 			case ItemStrange_RoBro: return threat > 0 && GetClientHealth(bot.Client) < RF2_GetCalculatedMaxHealth(bot.Client) / 2;
 			
 			case ItemStrange_HeartOfGold: return true; // we check when we use this item instead, so always try to use
+			
+			case ItemStrange_LegendaryLid:
+			{
+				if (threat > 0 && !invuln && vision.IsLookingAtTarget(threat))
+				{
+					return DistBetween(bot.Client, threat, true) <= 400000.0;
+				}
+			}
+			
+			case ItemStrange_DarkHunter, ItemStrange_NastyNorsemann:
+			{
+				if (threat <= 0)
+					return false;
+				
+				if (IsBuilding(threat))
+				{
+					return TF2_GetObjectType(threat) == TFObject_Sentry;
+				}
+				
+				return true;
+			}
+			
+			case ItemStrange_ScaryMask:
+			{
+				if (IsValidClient(threat) && !invuln)
+				{
+					return DistBetween(bot.Client, threat, true) < sq(GetItemMod(ItemStrange_ScaryMask, 0));
+				}
+			}
 		}
 	}
 	
@@ -875,20 +910,14 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			// Melee bots need to crouch to attack teleporters, they won't realize this by default
 			if (threat > -1 && threat > MaxClients && IsBuilding(threat) && TF2_GetObjectType(threat) == TFObject_Teleporter)
 			{
-				float myPos[3], threatPos[3];
-				bot.GetMyPos(myPos);
-				GetEntPos(threat, threatPos);
-				
-				if (GetVectorDistance(myPos, threatPos, true) <= sq(100.0))
-				{
+				if (DistBetween(bot.Client, threat, true) <= sq(100.0))
 					buttons |= IN_DUCK;
-				}
 			}
 		}
 	}
 	
 	bool rocketJumping;
-	bool onGround = bool((GetEntityFlags(client) & FL_ONGROUND));
+	bool onGround = asBool((GetEntityFlags(client) & FL_ONGROUND));
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Spy)
 	{
@@ -945,17 +974,16 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			
 			GetEntPos(entity, threatPos);
 			distance = GetVectorDistance(myPos, threatPos, true);
-			
-			if (distance <= Pow(maxDistance, 2.0))
+			if (distance <= sq(maxDistance))
 			{
 				bot.BuildingTarget = entity;
 				
 				if (bot.GetVision().GetKnown(entity) == NULL_KNOWN_ENTITY)
 					bot.GetVision().AddKnownEntity(entity);
 				
-				bool hasSapper = bool(GetEntProp(entity, Prop_Send, "m_bHasSapper"));
+				bool hasSapper = asBool(GetEntProp(entity, Prop_Send, "m_bHasSapper"));
 				
-				if (!hasSapper && !usingSapper && distance <= Pow(sapRange, 2.0))
+				if (!hasSapper && !usingSapper && distance <= sq(sapRange))
 				{
 					// Sap immediately if in range
 					if (sapper != -1)
@@ -993,7 +1021,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				}
 			}
 		}
-
+		
 		if (shootTarget > 0)
 		{
 			// make sure no other non-sapped sentries can see us

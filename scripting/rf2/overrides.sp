@@ -17,7 +17,10 @@ bool TF2_IsPlayerInCondition2(int client, TFCond condition)
 public void RemoveEntity2(int entity)
 {
 	if (entity == 0)
+	{
+		LogStackTrace("RemoveEntity with entity index 0, aborting to prevent crash!");
 		return;
+	}
 	
 	RemoveEntity(entity);
 }

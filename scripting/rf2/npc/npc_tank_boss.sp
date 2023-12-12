@@ -419,13 +419,12 @@ public void Hook_BadassTankThink(int entity)
 			}
 		}
 	}
-
+	
+	float nextLaserAttack = GetEntPropFloat(entity, Prop_Data, "m_flNextLaserAttack");
+	float nextBarrageAttack = GetEntPropFloat(entity, Prop_Data, "m_flNextBarrageAttack");
 	if (special == SPECIAL_NONE)
 	{
 		// decide our next special attack if we can use one
-		float nextLaserAttack = GetEntPropFloat(entity, Prop_Data, "m_flNextLaserAttack");
-		float nextBarrageAttack = GetEntPropFloat(entity, Prop_Data, "m_flNextBarrageAttack");
-
 		int newSpecial;
 		if (gameTime >= nextLaserAttack || gameTime >= nextBarrageAttack)
 		{
@@ -455,12 +454,17 @@ public void Hook_BadassTankThink(int entity)
 					{
 						special = newSpecial;
 						SetEntProp(entity, Prop_Data, "m_iSpecialAttack", special);
-						AddGesture(entity, "eye_rise", _, _, 0.25);
+						float duration = AddGesture(entity, "eye_rise", _, _, 0.25);
 						
 						int num = GetRandomInt(0, sizeof(g_szTankLaserVoices)-1);
 						EmitSoundToAll(g_szTankLaserVoices[num], entity, _, 120);
 						EmitSoundToAll(g_szTankLaserVoices[num], entity, _, 120);
 						EmitSoundToAll(SND_TANK_LASERRISE, entity, _, 120);
+						
+						if (nextBarrageAttack - GetGameTime() <= 10.0)
+						{
+							SetEntPropFloat(entity, Prop_Data, "m_flNextBarrageAttack", nextBarrageAttack + duration + 10.0);
+						}
 					}
 					
 					case SPECIAL_BARRAGE:
@@ -479,7 +483,12 @@ public void Hook_BadassTankThink(int entity)
 							EmitSoundToAll(g_szTankBarrageVoices[num], entity, _, 120);
 							EmitSoundToAll(g_szTankBarrageVoices[num], entity, _, 120);
 							EmitSoundToAll(SND_TANK_LASERRISE, entity, _, 120);
-							AddGesture(entity, "rocket_turn_up", _, _, 0.2, 2);
+							
+							float duration = AddGesture(entity, "rocket_turn_up", _, _, 0.2, 2);
+							if (nextLaserAttack - GetGameTime() <= 10.0)
+							{
+								SetEntPropFloat(entity, Prop_Data, "m_flNextLaserAttack", nextLaserAttack + duration + 10.0);
+							}
 						}
 					}
 				}
@@ -509,6 +518,7 @@ public void Hook_BadassTankThink(int entity)
 					StopSound(entity, SNDCHAN_AUTO, SND_TANK_LASERRISE);
 					EmitSoundToAll(SND_TANK_LASERRISE_END, entity, _, 120);
 					CreateTimer(duration, Timer_EndLaserAttack, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+					SetEntPropFloat(entity, Prop_Data, "m_flNextBarrageAttack", nextBarrageAttack+duration);
 				}
 				
 				static float nextShot[2048];
@@ -577,15 +587,23 @@ public void Hook_BadassTankThink(int entity)
 							value = -value + bound;
 						}
 						
-						//PrintCenterTextAll("%.1f", value);
 						CBaseAnimating(entity).SetPoseParameter(poseParam, value);
 						
 						const float speed = 1250.0;
 						const float damage = 80.0;
+						
+						float laserPos[3], dir[3];
+						GetAngleVectors(angles, dir, NULL_VECTOR, NULL_VECTOR);
+						NormalizeVector(dir, dir);
+						laserPos[0] = pos[0] + dir[0] * 15.0;
+						laserPos[1] = pos[1] + dir[1] * 15.0;
+						laserPos[2] = pos[2] + 10.0;
+						
 						int laser = ShootProjectile(entity, "tf_projectile_rocket", pos, angles, speed, damage);
 						SetEntityModel(laser, MODEL_INVISIBLE);
 						EmitSoundToAll(SND_TANK_LASERSHOOT, entity, _, 120);
 						SpawnInfoParticle("drg_cow_rockettrail_fire_blue", pos, _, laser);
+						SpawnInfoParticle("teleported_flash", laserPos, 0.1);
 						
 						float fireRate = float(GetEntProp(entity, Prop_Data, "m_iHealth")) / float(GetEntProp(entity, Prop_Data, "m_iActualMaxHealth"));
 						fireRate = fmax(fireRate, 0.25);
@@ -621,6 +639,7 @@ public void Hook_BadassTankThink(int entity)
 					}
 					
 					CreateTimer(time, Timer_EndBarrageAttack, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+					SetEntPropFloat(entity, Prop_Data, "m_flNextLaserAttack", nextLaserAttack+time);
 				}
 			}
 		}

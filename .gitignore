@@ -92,7 +92,10 @@ scripting/include/vector.inc
 scripting/include/version.inc
 scripting/include/version_auto.inc
 scripting/include/morecolors.inc
+scripting/include/websocket.inc
 plugins/rf2.smx
 scripting/rf2.smx
 scripting/include/SteamWorks.inc
 scripting/swag.sp
+scripting/include/socket.inc
+.vscode/settings.json

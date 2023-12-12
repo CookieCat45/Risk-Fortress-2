@@ -53,8 +53,8 @@ void LoadWeapons()
 				weaponKey.GetString("attributes", g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]));
 				weaponKey.GetString("classname", g_szWeaponClassnameReplacement[i][count], sizeof(g_szWeaponClassnameReplacement[][]));
 				g_iWeaponIndexReplacement[i][count] = weaponKey.GetNum("index", -1);
-				g_bWeaponStaticAttributes[i][count] = bool(weaponKey.GetNum("static_attributes", false));
-				g_bWeaponStripAttributes[i][count] = bool(weaponKey.GetNum("strip_attributes", false));
+				g_bWeaponStaticAttributes[i][count] = asBool(weaponKey.GetNum("static_attributes", false));
+				g_bWeaponStripAttributes[i][count] = asBool(weaponKey.GetNum("strip_attributes", false));
 				
 				// do we have any string attributes?
 				if (weaponKey.JumpToKey("string_attributes"))

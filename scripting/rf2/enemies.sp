@@ -84,7 +84,10 @@ methodmap Enemy
 	
 	property int Index
 	{
-		public get() return view_as<int>(this);
+		public get() 
+		{
+			return view_as<int>(this);
+		}
 	}
 	
 	property bool IsBoss
@@ -450,17 +453,17 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.BaseSpeed = enemyKey.GetFloat("speed", 300.0);
 		
 		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotDifficulty_Normal);
-		enemy.BotAggressive = bool(enemyKey.GetNum("tf_bot_aggressive", false));
-		enemy.BotRocketJump = bool(enemyKey.GetNum("tf_bot_rocketjump", false));
-		enemy.BotHoldFireReload = bool(enemyKey.GetNum("tf_bot_hold_fire_until_reload", false));
+		enemy.BotAggressive = asBool(enemyKey.GetNum("tf_bot_aggressive", false));
+		enemy.BotRocketJump = asBool(enemyKey.GetNum("tf_bot_rocketjump", false));
+		enemy.BotHoldFireReload = asBool(enemyKey.GetNum("tf_bot_hold_fire_until_reload", false));
 		
 		// XP and cash awards on death
 		enemy.XPAward = enemyKey.GetFloat("xp_award", 15.0);
 		enemy.CashAward = enemyKey.GetFloat("cash_award", 20.0);
 		enemy.Weight = imin(imax(enemyKey.GetNum("weight", 50), 1), 100);
 		
-		enemy.FullRage = bool(enemyKey.GetNum("full_rage", false));
-		enemy.NoBleeding = bool(enemyKey.GetNum("no_bleeding", true));
+		enemy.FullRage = asBool(enemyKey.GetNum("full_rage", false));
+		enemy.NoBleeding = asBool(enemyKey.GetNum("no_bleeding", true));
 		
 		enemy.WeaponCount = 0;
 		for (int w = 0; w < TF_WEAPON_SLOTS; w++)
@@ -474,9 +477,9 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemyKey.GetString("classname", g_szEnemyWeaponName[e][w], sizeof(g_szEnemyWeaponName[][]), "null");
 			enemyKey.GetString("attributes", g_szEnemyWeaponAttributes[e][w], sizeof(g_szEnemyWeaponAttributes[][]), "");
 			enemy.SetWeaponIndex(w, enemyKey.GetNum("index", 5));
-			enemy.SetWeaponVisible(w, bool(enemyKey.GetNum("visible", true)));
-			enemy.SetWeaponUseStaticAtts(w, bool(enemyKey.GetNum("static_attributes", false)));
-			enemy.SetWeaponIsFirstActive(w, bool(enemyKey.GetNum("active_weapon", false)));
+			enemy.SetWeaponVisible(w, asBool(enemyKey.GetNum("visible", true)));
+			enemy.SetWeaponUseStaticAtts(w, asBool(enemyKey.GetNum("static_attributes", false)));
+			enemy.SetWeaponIsFirstActive(w, asBool(enemyKey.GetNum("active_weapon", false)));
 			enemy.WeaponCount++;
 			
 			enemyKey.GoBack();
@@ -492,8 +495,8 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemyKey.GetString("classname", g_szEnemyWearableName[e][w], sizeof(g_szEnemyWearableName[][]), "tf_wearable");
 			enemyKey.GetString("attributes", g_szEnemyWearableAttributes[e][w], sizeof(g_szEnemyWearableAttributes[][]), "");
 			enemy.SetWearableIndex(w, enemyKey.GetNum("index", 5));
-			enemy.SetWearableVisible(w, bool(enemyKey.GetNum("visible", true)));
-			enemy.SetWearableUseStaticAtts(w, bool(enemyKey.GetNum("static_attributes", false)));
+			enemy.SetWearableVisible(w, asBool(enemyKey.GetNum("visible", true)));
+			enemy.SetWearableUseStaticAtts(w, asBool(enemyKey.GetNum("static_attributes", false)));
 			enemy.WearableCount++;
 			
 			enemyKey.GoBack();
@@ -526,7 +529,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.VoicePitch = enemyKey.GetNum("voice_pitch", SNDPITCH_NORMAL);
 		enemy.FootstepType = enemyKey.GetNum("footstep_type", enemy.IsBoss ? FootstepType_GiantRobot : FootstepType_Robot);
 		
-		enemy.AllowSelfDamage = bool(enemyKey.GetNum("allow_self_damage", enemy.IsBoss ? false : true));
+		enemy.AllowSelfDamage = asBool(enemyKey.GetNum("allow_self_damage", enemy.IsBoss ? false : true));
 		enemy.HeadScale = enemyKey.GetFloat("head_scale", enemy.IsBoss ? 1.5 : 1.0);
 		enemy.TorsoScale = enemyKey.GetFloat("torso_scale", 1.0);
 		enemy.HandScale = enemyKey.GetFloat("hand_scale", 1.0);
@@ -534,7 +537,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		
 		if (enemy.IsBoss)
 		{
-			enemy.BossGiantWeaponSounds = bool(enemyKey.GetNum("use_giant_weapon_sounds", true));
+			enemy.BossGiantWeaponSounds = asBool(enemyKey.GetNum("use_giant_weapon_sounds", true));
 			enemy.BossFootstepInterval = enemyKey.GetFloat("giant_footstep_interval", enemy.Class == TFClass_Scout ? 0.25 : 0.5);
 		}
 		
@@ -844,7 +847,6 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		TF2Attrib_SetByDefIndex(client, 252, 0.2); // "damage force reduction"
 		TF2Attrib_SetByDefIndex(client, 329, 0.2); // "airblast vulnerability multiplier"
 		TF2Attrib_SetByDefIndex(client, 326, 1.35); // "increased jump height"
-		TF2Attrib_SetByDefIndex(client, 275, 1.0); // "cancel falling damage"
 		
 		return true;
 	}

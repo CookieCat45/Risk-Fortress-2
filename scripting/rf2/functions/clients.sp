@@ -366,7 +366,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 				
 			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
 			{
-				carried = bool(GetEntProp(entity, Prop_Send, "m_bCarried"));
+				carried = asBool(GetEntProp(entity, Prop_Send, "m_bCarried"));
 				
 				if (GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
 				{
@@ -459,10 +459,6 @@ void CalculatePlayerMiscStats(int client)
 		
 		TF2Attrib_SetByDefIndex(client, 252, kbRes); // "damage force reduction"
 	}
-	
-	// Rage
-	float value = 1.0 / GetPlayerDamageMult(client);
-	TF2Attrib_SetByDefIndex(client, 478, value); // "rage giving scale"
 }
 
 // This is for items, NOT ATTRIBUTES
@@ -747,6 +743,31 @@ void SDK_ForceSpeedUpdate(int client)
 	}
 }
 
+public MRESReturn DHook_HandleRageGain(DHookParam params)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	// apparently this can be null
+	if (params.IsNull(1))
+		return MRES_Ignored;
+	
+	int client = params.Get(1);
+	float damage = params.Get(3);
+	float finalDamage;
+	
+	// Rage needs more damage as player's damage goes up
+	finalDamage = damage / GetPlayerDamageMult(client);
+	if (GetClientTeam(client) == TEAM_SURVIVOR)
+	{
+		// 50% additional penalty for survivors
+		finalDamage *= 0.5;
+	}
+	
+	params.Set(3, finalDamage);
+	return MRES_ChangedHandled;
+}
+
 bool TF2_IsInvuln(int client)
 {
 	return (TF2_IsPlayerInCondition(client, TFCond_Ubercharged) ||
@@ -830,6 +851,22 @@ float GetPlayerDamageMult(int client)
 	}
 	
 	return GetEnemyDamageMult();
+}
+
+bool ClientPlayGesture(int client, const char[] gesture)
+{
+	if (g_hSDKPlayGesture)
+	{
+		return SDKCall(g_hSDKPlayGesture, client, gesture);
+	}
+	
+	return false;
+}
+
+float GetPercentInvisible(int client)
+{
+    int offset = FindSendPropInfo("CTFPlayer", "m_flInvisChangeCompleteTime") - 8;
+    return GetEntDataFloat(client, offset);
 }
 
 public bool TraceFilter_PlayerTeam(int entity, int mask, int client)

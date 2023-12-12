@@ -52,6 +52,14 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 	return nearestEntity;
 }
 
+float DistBetween(int ent1, int ent2, bool squared=false)
+{
+	float pos1[3], pos2[3];
+	GetEntPropVector(ent1, Prop_Data, "m_vecAbsOrigin", pos1);
+	GetEntPropVector(ent2, Prop_Data, "m_vecAbsOrigin", pos2);
+	return GetVectorDistance(pos1, pos2, squared);
+}
+
 // SPELL PROJECTILES WILL ONLY WORK IF THE OWNER ENTITY IS A PLAYER! DO NOT TRY THEM WITH ANYTHING ELSE!
 int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], const float angles[3], 
 	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
@@ -83,7 +91,12 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 		}
 		else if (strcmp2(classname, "tf_projectile_rocket") || strcmp2(classname, "tf_projectile_sentryrocket"))
 		{
-			SetEntDataFloat(entity, FindSendPropInfo("CTFProjectile_Rocket", "m_iDeflected") + 4, damage, true);
+			int offset = FindSendPropInfo("CTFProjectile_Rocket", "m_iDeflected") + 4;
+			SetEntDataFloat(entity, offset, damage, true);
+		}
+		else if (IsEntityFromFactory(entity))
+		{
+			SetEntPropFloat(entity, Prop_Data, "m_flBaseDamage", damage);
 		}
 		else
 		{
@@ -138,23 +151,33 @@ int ShootProjectile_Fireball(int owner=-1, const float pos[3], const float angle
 	return entity;
 }
 
-void DoRadiusDamage(int attacker, int item=Item_Null, const float pos[3], float baseDamage, int damageFlags, float radius, int weapon=-1, float minimumFalloffMultiplier=0.3, bool explosionEffect=false)
+void DoRadiusDamage(int attacker, int inflictor, int item=Item_Null, const float pos[3], 
+	float baseDamage, int damageFlags, float radius, int weapon=-1, 
+	float minimumFalloffMultiplier=0.3, bool explosionEffect=false, bool sound=true, bool allowSelfDamage=false)
 {
 	float enemyPos[3];
 	float distance, falloffMultiplier, calculatedDamage;
-	
 	int attackerTeam = GetEntProp(attacker, Prop_Data, "m_iTeamNum");
 	int entity = -1;
+	int directTarget = -1;
+	if (inflictor > MaxClients && HasEntProp(inflictor, Prop_Data, "m_flExplodeRadius"))
+	{
+		directTarget = GetEntPropEnt(inflictor, Prop_Data, "m_hDirectTarget");
+	}
 	
 	while ((entity = FindEntityByClassname(entity, "*")) != -1)
 	{
 		if (entity < 1)
 			continue;
 		
-		if ((!IsValidClient(entity) || !IsPlayerAlive(entity)) && !IsNPC(entity) && !IsBuilding(entity) || entity == attacker)
+		// this is a bomb direct hit, don't deal damage to our direct target
+		if (directTarget > 0 && entity == directTarget)
 			continue;
 		
-		if (attackerTeam == GetEntProp(entity, Prop_Data, "m_iTeamNum"))
+		if ((!IsValidClient(entity) || !IsPlayerAlive(entity)) && !IsNPC(entity) && !IsBuilding(entity) || entity == attacker && !allowSelfDamage)
+			continue;
+		
+		if (attackerTeam == GetEntProp(entity, Prop_Data, "m_iTeamNum") && (entity != attacker || entity == attacker && !allowSelfDamage))
 			continue;
 		
 		GetEntPos(entity, enemyPos);
@@ -179,7 +202,7 @@ void DoRadiusDamage(int attacker, int item=Item_Null, const float pos[3], float 
 					SetEntItemDamageProc(attacker, item);
 				}
 				
-				SDKHooks_TakeDamage(entity, attacker, attacker, calculatedDamage, damageFlags, weapon);
+				SDKHooks_TakeDamage(entity, inflictor, attacker, calculatedDamage, damageFlags, weapon);
 			}
 		}
 	}
@@ -188,6 +211,11 @@ void DoRadiusDamage(int attacker, int item=Item_Null, const float pos[3], float 
 	{
 		int explosion = CreateEntityByName("env_explosion");
 		DispatchKeyValueFloat(explosion, "iMagnitude", 0.0);
+		if (!sound)
+		{
+			DispatchKeyValueInt(explosion, "spawnflags", 64);
+		}
+		
 		TeleportEntity(explosion, pos);
 		DispatchSpawn(explosion);
 		AcceptEntityInput(explosion, "Explode");
@@ -375,7 +403,7 @@ bool reset=false, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0
 		TE_WriteFloat("m_vecStart[2]", pos[2]);
 		
 		TE_WriteNum("m_iAttachType", attachType);
-		TE_WriteNum("m_bResetParticles", bool(reset));
+		TE_WriteNum("m_bResetParticles", asBool(reset));
 		
 		if (clientAmount <= 0)
 		{

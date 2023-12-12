@@ -31,7 +31,7 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_setnextmap", Command_ForceMap, ADMFLAG_SLAY, "Forces the next map to be the map specified. This will not immediately change the map.");
 	RegAdminCmd("rf2_make_survivor", Command_MakeSurvivor, ADMFLAG_SLAY, "Force a player to become a Survivor.\nWill not work if the maximum survivor count has been reached.");
 	RegAdminCmd("rf2_addseconds", Command_AddSeconds, ADMFLAG_SLAY, "Add seconds to the difficulty timer. /rf2_addseconds <seconds>");
-
+	
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
 	RegConsoleCmd("rf2_afk", Command_AFK, "Puts you into AFK mode instantly.");
@@ -95,6 +95,7 @@ void LoadCommandsAndCvars()
 	g_cvHauntedKeyDropChanceMax = CreateConVar("rf2_haunted_key_drop_chance_max", "135", "1 in N chance for a Haunted Key to drop each time an enemy is slain.", FCVAR_NOTIFY, true, 0.0);
 	
 	// Debug
+	RegAdminCmd("rf2_debug_playgesture", Command_PlayGesture, ADMFLAG_SLAY, "Plays a gesture animation on yourself");
 	RegAdminCmd("rf2_debug_entitycount", Command_EntityCount, ADMFLAG_SLAY, "Shows the total number of networked entities (edicts) in the server.");
 	RegAdminCmd("rf2_debug_thriller_test", Command_ThrillerTest, ADMFLAG_ROOT, "\"Darkness falls across the land, the dancing hour is close at hand...\"");
 	g_cvDebugNoMapChange = CreateConVar("rf2_debug_skip_map_change", "0", "If nonzero, prevents the map from changing on round end.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -1396,4 +1397,26 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 			g_bPlayerIsAFK[i] = false;
 		}
 	}
+}
+
+public Action Command_PlayGesture(int client, int args)
+{
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	char gesture[256];
+	GetCmdArg(1, gesture, sizeof(gesture));
+	if (ClientPlayGesture(client, gesture))
+	{
+		RF2_ReplyToCommand(client, "Playing gesture '%s'", gesture);
+	}
+	else
+	{
+		RF2_ReplyToCommand(client, "Couldn't find gesture '%s'", gesture);
+	}
+	
+	return Plugin_Handled;
 }
