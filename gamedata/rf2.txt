@@ -19,6 +19,11 @@
 				"linux"		"67"
 				"windows"	"66"
 			}
+			"CPhysicsProp::VPhysicsCollision"
+			{
+				"linux"		"168"
+				"windows"	"167"
+			}
 		}
 		"Signatures"
 		{
@@ -41,6 +46,16 @@
 			{
 				"linux"			"@_ZN9CTFPlayer21TeamFortress_SetSpeedEv"
 				"windows"		"\x55\x8B\xEC\xA1\x2A\x2A\x2A\x2A\x83\xEC\x1C\x53"
+			}
+			"CTFPlayer::PlayGesture"
+			{
+				"linux"		"@_ZN9CTFPlayer11PlayGestureEPKc"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x30\x53\x56\x8B\x75\x08\x57\x56\x8B\xF9\xE8\x2A\x2A\x2A\x2A\x8B\xD8"
+			}
+			"HandleRageGain"
+			{
+				"linux"		"@_Z14HandleRageGainP9CTFPlayerjff"
+				"windows"	"\x55\x8B\xEC\x56\x8B\x75\x08\x85\xF6\x0F\x84\x2A\x2A\x00\x00\x53\x57\x8D\xBE\x2A\x2A\x00\x00\x85\xFF\x0F\x84\x2A\x2A\x00\x00\x83\x7F\x04\x03"
 			}
 			"CBaseObject::DoQuickBuild"
 			{
@@ -124,6 +139,33 @@
 				"callconv"	"thiscall"
 				"return"	"void"
 				"this"		"address"
+			}
+			
+			"HandleRageGain"
+			{
+				"signature"	"HandleRageGain"
+				"callconv"	"cdecl"
+				"return"	"void"
+				
+				"arguments"
+				{
+					"player"
+					{
+						"type"	"cbaseentity"
+					}
+					"required_buff_flags"
+					{
+						"type"	"int"
+					}
+					"damage"
+					{
+						"type"	"float"
+					}
+					"inverse_rage_gain_scale"
+					{
+						"type"	"float"
+					}
+				}
 			}
         }
 	}
