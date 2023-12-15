@@ -152,7 +152,10 @@ void EndTankDestructionMode()
 		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, name);
 		PrintHintText(i, "%t", "GotItemReward", name);
 		
-		PrintCenterText(i, "%t", "EndLevelCommandReminder");
+		char text[256];
+		FormatEx(text, sizeof(text), "%T", "EndLevelCommandReminder", i);
+		CRemoveTags(text, sizeof(text));
+		PrintCenterText(i, text);
 	}
 	
 	int gamerules = GetRF2GameRules();
@@ -306,7 +309,15 @@ public void Hook_TankBossThink(int entity)
 		if (!g_bTankSpeedBoost[entity] && value > 1.0 && RF2_GetDifficulty() >= g_cvTankBoostDifficulty.IntValue)
 		{
 			int health = GetEntProp(entity, Prop_Data, "m_iHealth");
-			int maxHealth = GetEntProp(entity, Prop_Data, "m_iActualMaxHealth");
+			int maxHealth;
+			if (IsTankBadass(entity))
+			{
+				maxHealth = GetEntProp(entity, Prop_Data, "m_iActualMaxHealth");
+			}
+			else
+			{
+				maxHealth = GetEntProp(entity, Prop_Data, "m_iMaxHealth");
+			}			
 			
 			if (RoundToFloor(float(maxHealth) * g_cvTankBoostHealth.FloatValue) < health)
 			{
@@ -709,4 +720,11 @@ public Action Timer_TankRocketFixAngles(Handle timer, int entity)
 	GetVectorAngles(vel, angles);
 	TeleportEntity(entity, _, angles);
 	return Plugin_Continue;
+}
+
+bool IsTankBadass(int entity)
+{
+	static char classname[128];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	return strcmp2(classname, "rf2_tank_boss_badass");
 }

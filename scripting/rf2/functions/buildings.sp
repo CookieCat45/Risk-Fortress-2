@@ -18,7 +18,9 @@ enum
 
 bool IsBuilding(int entity)
 {
-	return entity > MaxClients && !CBaseEntity(entity).MyNextBotPointer() && CBaseEntity(entity).IsCombatCharacter();
+	static char classname[64];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	return StrContains(classname, "obj_") == 0;
 }
 
 bool CanTeamQuickBuild(int team)

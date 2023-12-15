@@ -349,7 +349,7 @@ public Action Timer_SpawnItem(Handle timer, DataPack pack)
 	pack.Reset();
 	
 	item = pack.ReadCell();
-	client = pack.ReadCell();
+	client = GetClientOfUserId(pack.ReadCell());
 	pos[0] = pack.ReadFloat();
 	pos[1] = pack.ReadFloat();
 	pos[2] = pack.ReadFloat();

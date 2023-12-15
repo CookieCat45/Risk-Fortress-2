@@ -19,7 +19,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1.3b"
+#define PLUGIN_VERSION "0.1.4b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -923,6 +923,7 @@ public void OnConfigsExecuted()
 		FindConVar("tf_weapon_criticals").SetBool(false);
 		FindConVar("tf_forced_holiday").SetInt(2);
 		FindConVar("tf_player_movement_restart_freeze").SetBool(false);
+		FindConVar("mp_bonusroundtime").SetInt(20);
 		
 		// For some reason, FindConVar() with sv_pure returns NULL
 		// So we will use this as a workaround. Custom servers should have sv_pure 0 anyways.
@@ -1002,11 +1003,8 @@ void CleanUp()
 	RemoveCommandListener(OnBuildCommand, "build");
 	
 	UnhookEntityOutput("tank_boss", "OnKilled", Output_OnTankKilled);
-	
 	UnhookUserMessage(GetUserMessageId("SayText2"), UserMessageHook_SayText2, true);
-	
 	RemoveNormalSoundHook(PlayerSoundHook);
-	
 	RemoveTempEntHook("TFBlood", TEHook_TFBlood);
 	
 	g_bRoundActive = false;
@@ -2314,15 +2312,13 @@ public Action UserMessageHook_SayText2(UserMsg msg, BfRead bf, const int[] clien
 	return Plugin_Continue;
 }
 
+int g_iEnemySpawnPoints[MAXTF2PLAYERS];
 public Action Timer_EnemySpawnWave(Handle timer)
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive || IsStageCleared())
 		return Plugin_Continue;
 	
 	int survivorCount = RF2_GetSurvivorCount();
-	int actualSurvivorCount = GetPlayersOnTeam(TEAM_SURVIVOR, true);
-	int humanCount = GetTotalHumans();
-	
 	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
 	
@@ -2333,74 +2329,49 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	
 	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + ((survivorCount-1)/3) + RF2_GetSubDifficulty() / 3;
 	spawnCount = imax(imin(spawnCount, g_cvEnemyMaxSpawnWaveCount.IntValue), g_cvEnemyMinSpawnWaveCount.IntValue);
-	
+	float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
 	ArrayList respawnArray = CreateArray();
-	bool finished, ignorePoints, chosen[MAXTF2PLAYERS], pointsGiven[MAXTF2PLAYERS];
-	static int spawnPoints[MAXTF2PLAYERS];
 	
 	// Reset everyone's points
 	if (g_iRespawnWavesCompleted <= 0)
 	{
 		for (int i = 1; i < MAXTF2PLAYERS; i++)
-			spawnPoints[i] = 0;
+			g_iEnemySpawnPoints[i] = 0;
 	}
-	
-	float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
 	
 	// grab our next players for the spawn (bots don't get points)
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (chosen[i] || g_bPlayerInSpawnQueue[i] || !IsClientInGame(i) || GetClientTeam(i) != TEAM_ENEMY)
+		if (g_bPlayerInSpawnQueue[i] || !IsClientInGame(i) || GetClientTeam(i) != TEAM_ENEMY)
 			continue;
 		
+		// humans always spawn before bots, alive players get less points
 		if (IsPlayerAlive(i))
-		{
-			if (!ignorePoints && !pointsGiven[i] && !IsFakeClient(i))
-			{
-				spawnPoints[i] += 3;
-				pointsGiven[i] = true;
-			}
-			
-			continue;
-		}
-		
-		if (ignorePoints && respawnArray.Length < spawnCount || !finished && spawnPoints[i] >= 0 && (humanCount <= actualSurvivorCount || !IsFakeClient(i)))
-		{
-			respawnArray.Push(i);
-			respawnArray.SwapAt(GetRandomInt(0, respawnArray.Length-1), GetRandomInt(0, respawnArray.Length-1));
-			spawnPoints[i] = 0;
-			chosen[i] = true;
-		}
-		else if (!pointsGiven[i])
 		{
 			if (!IsFakeClient(i))
 			{
-				spawnPoints[i] += 6;
+				g_iEnemySpawnPoints[i] += 5;
 			}
 			
-			pointsGiven[i] = true;
+			continue;
+		}
+		else if (!IsFakeClient(i))
+		{
+			g_iEnemySpawnPoints[i] += 10;
 		}
 		
-		if (respawnArray.Length >= spawnCount)
-		{
-			finished = true; // if we're finished, we're just setting everyone's points for next time around
-		}
-		else if (!ignorePoints)
-		{
-			ignorePoints = true; // not enough spawns, ignore the points system
-			i = 1;
-		}
+		respawnArray.Push(i);
 	}
 	
-	int client;
+	int client, spawns;
 	float time = 0.1;
 	float bossChance;
 	const float max = 250.0;
 	
+	respawnArray.SortCustom(SortEnemySpawnArray);
 	for (int i = 0; i < respawnArray.Length; i++)
 	{
 		client = respawnArray.Get(i);
-		
 		bossChance = subIncrement < max ? subIncrement : max;
 		if (RF2_GetSubDifficulty() >= SubDifficulty_Impossible && RandChanceFloat(0.0, max, bossChance))
 		{
@@ -2415,11 +2386,32 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		CreateTimer(time, Timer_SpawnEnemy, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		time += 0.1;
 		g_bPlayerInSpawnQueue[client] = true;
+
+		spawns++;
+		if (spawns >= spawnCount)
+			break;
 	}
 	
 	delete respawnArray;
 	g_iRespawnWavesCompleted++;
 	return Plugin_Continue;
+}
+
+public int SortEnemySpawnArray(int index1, int index2, ArrayList array, Handle hndl)
+{
+	int client1 = array.Get(index1);
+	int client2 = array.Get(index2);
+	
+	if (IsFakeClient(client1))
+		return 1;
+	
+	if (IsFakeClient(client2))
+		return -1;
+	
+	if (g_iEnemySpawnPoints[client1] == g_iEnemySpawnPoints[client2])
+		return 0;
+
+	return g_iEnemySpawnPoints[client1] < g_iEnemySpawnPoints[client2] ? 1 : -1;
 }
 
 public Action Timer_SpawnEnemy(Handle timer, int client)

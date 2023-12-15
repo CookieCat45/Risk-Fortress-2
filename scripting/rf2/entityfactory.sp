@@ -191,6 +191,9 @@ public void CEntityFactory_OnInstalled(const char[] classname, CEntityFactory in
 bool IsEntityFromFactory(int entity)
 {
 	CEntityFactory factory = CEntityFactory.GetFactoryOfEntity(entity);
+	if (!factory)
+		return false;
+		
 	char classname[128];
 	factory.GetClassname(classname, sizeof(classname));
 	return StrContains(classname, "rf2_") == 0;

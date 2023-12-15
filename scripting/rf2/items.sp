@@ -324,7 +324,7 @@ int SpawnItem(int index, const float pos[3], int spawner=-1, float ownTime=0.0)
 	TeleportEntity(item, pos);
 	DispatchSpawn(item);
 	
-	if (spawner > 0) // We spawned this item, so we own it unless we don't pick it up, assuming we don't want it.
+	if (IsValidEntity(spawner)) // We spawned this item, so we own it unless we don't pick it up, assuming we don't want it.
 	{
 		SetEntPropEnt(item, Prop_Data, "m_hItemOwner", spawner);
 		if (ownTime > 0.0)
