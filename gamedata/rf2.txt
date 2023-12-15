@@ -24,6 +24,11 @@
 				"linux"		"168"
 				"windows"	"167"
 			}
+			"CTFWeaponBase::InternalGetEffectBarRechargeTime"
+			{
+				"linux"		"470"
+				"windows"	"463"
+			}
 		}
 		"Signatures"
 		{

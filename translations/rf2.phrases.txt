@@ -58,7 +58,7 @@
 
 	"AFKDetected" // No color tags
 	{
-		"en"		"You have been detected as AFK. Press any button or you will be kicked shortly."
+		"en"		"You have been detected as AFK. Press any button to return."
 	}
 	
 	"NoLongerAFK" // No color tags
@@ -347,6 +347,22 @@
 	"Off"
 	{
 		"en"		"OFF"
+	}
+	"SurvivorTutorial"
+	{
+		"en"		"You're a Survivor! Break open crates with your melee weapon to obtain items.\nCrates cost money to open, kill robots on BLU to get some!"
+	}
+	"SurvivorTutorial2"
+	{
+		"en"		"You can interact with any flashing objects by looking at them and pressing [E].\nIf you want to see these tutorial messages again, use the /rf2_reset_tutorial command."
+	}
+	"ItemPickupTutorial"
+	{
+		"en"		"To pick up an item, look at it and press the [E] key."
+	}
+	"ItemPickupTutorial2"
+	{
+		"en"		"To drop an item, select it in your item menu. Open the item menu by pressing [TAB] + [E]."
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -715,5 +731,9 @@
 	{
 		"#format"	"{1:N},{2:d}"
 		"en"		"{yellow}{1}{default} added {lime}{2}{default} seconds to the timer."
+	}
+	"TutorialReset"
+	{
+		"en"		"The tutorial has been reset."
 	}
 }
