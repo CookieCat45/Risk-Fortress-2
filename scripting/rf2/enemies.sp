@@ -878,9 +878,15 @@ void SummonTeleporterBosses(int entity)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsFakeClient(i) && !g_bPlayerBecomeBoss[i] || g_bPlayerInSpawnQueue[i] || !IsClientInGame(i) || GetClientTeam(i) != TEAM_ENEMY)
+		if (!IsClientInGame(i))
 		{
 			bossPoints[i] = -9999999999;
+			continue;
+		}
+		
+		if (!IsFakeClient(i) && !g_bPlayerBecomeBoss[i] || g_bPlayerInSpawnQueue[i] || GetClientTeam(i) != TEAM_ENEMY)
+		{
+			bossPoints[i] = -999999999;
 			continue;
 		}
 		

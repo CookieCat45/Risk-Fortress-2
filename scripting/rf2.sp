@@ -431,6 +431,7 @@ DHookSetup g_hSDKHandleRageGain;
 DynamicHook g_hSDKTakeHealth;
 DynamicHook g_hSDKStartUpgrading;
 DynamicHook g_hSDKVPhysicsCollision;
+DynamicHook g_hSDKEffectBarRecharge;
 
 // Forwards
 Handle g_fwTeleEventStart;
@@ -501,6 +502,8 @@ Cookie g_coBecomeSurvivor;
 Cookie g_coBecomeBoss;
 Cookie g_coAutomaticItemMenu;
 Cookie g_coSurvivorPoints;
+Cookie g_coTutorialItemPickup;
+Cookie g_coTutorialSurvivor;
 
 bool g_bPlayerMusicEnabled[MAXTF2PLAYERS] = {true, ...};
 bool g_bPlayerBecomeSurvivor[MAXTF2PLAYERS] = {true, ...};
@@ -654,6 +657,14 @@ void LoadGameData()
 	else
 	{
 		LogError("[DHooks] Failed to create virtual hook for CPhysicsProp::VPhysicsCollision");
+	}
+	
+	// CTFWeaponBase::InternalGetEffectBarRechargeTime ---------------------------------------------------------------------------------------
+	offset = GameConfGetOffset(gamedata, "CTFWeaponBase::InternalGetEffectBarRechargeTime");
+	g_hSDKEffectBarRecharge = DHookCreate(offset, HookType_Entity, ReturnType_Float, ThisPointer_CBaseEntity, DHook_GetEffectBarRechargeTime);
+	if (!g_hSDKEffectBarRecharge)
+	{
+		LogError("[DHooks] Failed to create virtual hook for CTFWeaponBase::InternalGetEffectBarRechargeTime");
 	}
 	
 	// CTFWeaponBase::GetMaxClip1 ------------------------------------------------------------------------------------------------------------
@@ -914,6 +925,7 @@ public void OnConfigsExecuted()
 		}
 		
 		// Here are ConVars that we don't want changed by configs
+		FindConVar("sv_visiblemaxplayers").SetInt(g_cvMaxHumanPlayers.IntValue);
 		FindConVar("mp_teams_unbalance_limit").SetInt(0);
 		FindConVar("mp_forcecamera").SetBool(false);
 		FindConVar("mp_maxrounds").SetInt(9999);
@@ -1116,6 +1128,7 @@ void LoadAssets()
 void ResetConVars()
 {
 	ResetConVar(FindConVar("sv_alltalk"));
+	ResetConVar(FindConVar("sv_visiblemaxplayers"));
 
 	ResetConVar(FindConVar("mp_waitingforplayers_time"));
 	ResetConVar(FindConVar("mp_teams_unbalance_limit"));
@@ -1124,6 +1137,7 @@ void ResetConVars()
 	ResetConVar(FindConVar("mp_forceautoteam"));
 	ResetConVar(FindConVar("mp_respawnwavetime"));
 	ResetConVar(FindConVar("mp_humans_must_join_team"));
+	ResetConVar(FindConVar("mp_bonusroundtime"));
 	
 	ResetConVar(FindConVar("tf_use_fixed_weaponspreads"));
 	ResetConVar(FindConVar("tf_avoidteammates_pushaway"));
@@ -1178,7 +1192,9 @@ public void OnClientPutInServer(int client)
 		SDKHook(client, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamageAlive);
 		SDKHook(client, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
 		SDKHook(client, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
-		DHookEntity(g_hSDKTakeHealth, false, client);
+
+		if (g_hSDKTakeHealth)
+			DHookEntity(g_hSDKTakeHealth, false, client);
 		
 		g_hPlayerExtraSentryList[client] = CreateArray();
 	}
@@ -1923,15 +1939,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				
 				if (GetRandomInt(1, 3) == 1)
 				{
-					SetVariantString("randomnum:100");
-					AcceptEntityInput(lastMan, "AddContext");
-					
-					SetVariantString("IsMvMDefender:1");
-					AcceptEntityInput(lastMan, "AddContext");
-					
-					SetVariantString("TLK_MVM_LAST_MAN_STANDING");
-					AcceptEntityInput(lastMan, "SpeakResponseConcept");
-					AcceptEntityInput(lastMan, "ClearContext");
+					SpeakResponseConcept_MVM(lastMan, "TLK_MVM_LAST_MAN_STANDING");
 				}
 			}
 		}
@@ -2114,7 +2122,6 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 					enemyPos[2] -= 30.0;
 					TE_SetupBeamPoints(beamPos, enemyPos, g_iBeamModel, 0, 0, 0, 0.5, 8.0, 8.0, 0, 10.0, {255, 255, 255, 200}, 20);
 					TE_SendToAll();
-					
 					hitCount++;
 				}
 				
@@ -2152,15 +2159,12 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 				BfWriteByte(msg, 255);
 				BfWriteByte(msg, 255);
 				BfWriteByte(msg, 255);
-				
 				EndMessage();
 			}
 			
 			if (hitCount >= 5)
 			{
-				AcceptEntityInput(medic, "ClearContext");
-				SetVariantString("TLK_PLAYER_SPELL_PICKUP_RARE");
-				AcceptEntityInput(medic, "SpeakResponseConcept");
+				SpeakResponseConcept(medic, "TLK_PLAYER_SPELL_PICKUP_RARE");
 			}
 		}
 	}
@@ -2386,7 +2390,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		CreateTimer(time, Timer_SpawnEnemy, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		time += 0.1;
 		g_bPlayerInSpawnQueue[client] = true;
-
+		
 		spawns++;
 		if (spawns >= spawnCount)
 			break;
@@ -2410,7 +2414,7 @@ public int SortEnemySpawnArray(int index1, int index2, ArrayList array, Handle h
 	
 	if (g_iEnemySpawnPoints[client1] == g_iEnemySpawnPoints[client2])
 		return 0;
-
+	
 	return g_iEnemySpawnPoints[client1] < g_iEnemySpawnPoints[client2] ? 1 : -1;
 }
 
@@ -2752,13 +2756,17 @@ public Action Timer_PlayerTimer(Handle timer)
 					
 					if (IsPlayerSurvivor(i))
 					{
-						if (RF2_GetDifficulty() == DIFFICULTY_TITANIUM)
+						if (RF2_GetDifficulty() == DIFFICULTY_STEEL)
 						{
-							healAmount = RoundToFloor(float(healAmount) * 0.75);
+							g_flPlayerHealthRegenTime[i] += 0.2;
+						}
+						else if (RF2_GetDifficulty() == DIFFICULTY_TITANIUM)
+						{
+							g_flPlayerHealthRegenTime[i] += 0.4;
 						}
 						else if (RF2_GetDifficulty() == DIFFICULTY_SCRAP)
 						{
-							healAmount = RoundToFloor(float(healAmount) * 1.5);
+							healAmount = RoundFloat(float(healAmount) * 1.5);
 						}
 					}
 					
@@ -2859,14 +2867,6 @@ public Action Timer_AFKManager(Handle timer)
 		g_flPlayerAFKTime[i] += 1.0;
 		if (g_flPlayerAFKTime[i] >= afkKickTime * 0.5)
 		{
-			if (afkCount >= afkLimit && humanCount >= minHumans)
-			{
-				if (kickAdmins || GetUserAdmin(i) == INVALID_ADMIN_ID)
-				{
-					PrintCenterText(i, "%t", "AFKDetected");
-				}
-			}
-			
 			if (!IsPlayerAlive(i) && GetClientTeam(i) > 0)
 			{
 				ChangeClientTeam(i, 0);
@@ -2880,6 +2880,10 @@ public Action Timer_AFKManager(Handle timer)
 			{
 				g_bPlayerIsAFK[i] = true;
 				OnPlayerEnterAFK(i);
+			}
+			else
+			{
+				PrintCenterText(i, "%t", "AFKDetected");
 			}
 		}
 		
@@ -4051,12 +4055,25 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			}
 		}
 		
+		if (weapon > 0)
+		{
+			if (critType == CritType_Crit)
+			{
+				// Phlog/Backburner nerf
+				if (TF2Attrib_HookValueInt(0, "burn_damage_earns_rage", weapon)
+					|| TF2Attrib_HookValueInt(0, "set_flamethrower_back_crit", weapon))
+				{
+					critType = CritType_MiniCrit;
+				}
+			}
+		}
+		
 		int itemProc = GetEntItemDamageProc(inflictor);
 		if (itemProc == ItemStrange_HandsomeDevil && critType == CritType_MiniCrit)
 		{
 			critType = CritType_Crit;
 		}
-
+		
 		// Executioner converts minicrits to full crits
 		if (!projectile && PlayerHasItem(attacker, Item_Executioner) && critType == CritType_MiniCrit)
 		{

@@ -675,6 +675,18 @@ void SpawnSentryBuster(int target)
 	GetEntPropVector(entity, Prop_Send, "m_vecMaxs", maxs);
 	GetSpawnPoint(targetPos, pos, 2000.0, 6500.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID, 15.0);
 	TeleportEntity(entity, pos);
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerSurvivor(i) || !IsPlayerAlive(i))
+			continue;
+		
+		if (GetRandomInt(1, 5) == 1)
+		{
+			SpeakResponseConcept_MVM(i, "TLK_MVM_SENTRY_BUSTER");
+			break;
+		}
+	}
 }
 
 public Action Timer_SentryBusterIntroLoop(Handle timer)

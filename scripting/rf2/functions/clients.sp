@@ -794,6 +794,51 @@ bool TF2_IsInvis(int client, bool fullyInvis=true)
 }
 */
 
+void PrintKeyHintText(int client, const char[] format, any ...)
+{
+    BfWrite userMessage = view_as<BfWrite>(StartMessageOne("KeyHintText", client));
+    if (userMessage)
+    {
+        char buffer[256];
+        SetGlobalTransTarget(client);
+        VFormat(buffer, sizeof(buffer), format, 3);
+        
+        if (GetUserMessageType() == UM_Protobuf)
+        {
+            PbSetString(userMessage, "hints", buffer);
+        }
+        else
+        {
+            userMessage.WriteByte(1);
+            userMessage.WriteString(buffer);
+        }
+        
+        EndMessage();
+    }
+}
+
+void SpeakResponseConcept(int client, const char[] response)
+{
+	AcceptEntityInput(client, "ClearContext");
+	SetVariantString("randomnum:100");
+	AcceptEntityInput(client, "AddContext");
+	SetVariantString(response);
+	AcceptEntityInput(client, "SpeakResponseConcept");
+	AcceptEntityInput(client, "ClearContext");
+}
+
+void SpeakResponseConcept_MVM(int client, const char[] response)
+{
+	AcceptEntityInput(client, "ClearContext");
+	SetVariantString("randomnum:100");
+	AcceptEntityInput(client, "AddContext");
+	SetVariantString("IsMvMDefender:1");
+	AcceptEntityInput(client, "AddContext");
+	SetVariantString(response);
+	AcceptEntityInput(client, "SpeakResponseConcept");
+	AcceptEntityInput(client, "ClearContext");
+}
+
 void TF2_ForceWeaponSwitch(int client, int slot)
 {
 	ClientCommand(client, "slot%i", slot+1);

@@ -317,6 +317,31 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 			}
 		}
 	}
+	
+	if (!IsFakeClient(client) && !GetClientCookieInt(client, g_coTutorialSurvivor))
+	{
+		CreateTimer(1.0, Timer_SurvivorTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	}
+}
+
+public Action Timer_SurvivorTutorial(Handle timer, int client)
+{
+	if ((client = GetClientOfUserId(client)) == 0)
+		return Plugin_Continue;
+	
+	PrintKeyHintText(client, "%t", "SurvivorTutorial");
+	CreateTimer(13.0, Timer_SurvivorTutorial2, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	return Plugin_Continue;
+}
+
+public Action Timer_SurvivorTutorial2(Handle timer, int client)
+{
+	if ((client = GetClientOfUserId(client)) == 0)
+		return Plugin_Continue;
+	
+	PrintKeyHintText(client, "%t", "SurvivorTutorial2");
+	SetClientCookie(client, g_coTutorialSurvivor, "1");
+	return Plugin_Continue;
 }
 
 void LoadSurvivorInventory(int client, int index)

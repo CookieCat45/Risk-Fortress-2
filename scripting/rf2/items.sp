@@ -446,7 +446,7 @@ bool PickupItem(int client)
 	{
 		return false;
 	}
-	
+
 	float pos[3];
 	GetEntPos(item, pos);
 	
@@ -532,6 +532,12 @@ bool PickupItem(int client)
 		if (g_bPlayerAutomaticItemMenu[client] || g_bPlayerViewingItemMenu[client])
 		{
 			ShowItemMenu(client);
+		}
+		
+		if (!GetClientCookieInt(client, g_coTutorialItemPickup))
+		{
+			PrintKeyHintText(client, "%t", "ItemPickupTutorial2");
+			SetClientCookie(client, g_coTutorialItemPickup, "1");
 		}
 		
 		return true;
@@ -688,16 +694,9 @@ void UpdatePlayerItem(int client, int item)
 					
 				if (item == Item_PrinnyPouch)
 				{
-					if (IsEffectBarWeapon(weapon))
+					if (class == TFClass_Spy && i == WeaponSlot_InvisWatch)
 					{
-						if (i == WeaponSlot_InvisWatch)
-						{
-							TF2Attrib_SetByDefIndex(weapon, 35, amount); // "mult cloak meter regen rate"
-						}
-						else
-						{
-							TF2Attrib_SetByDefIndex(weapon, 278, amount); // "effect bar recharge rate increased"
-						}
+						TF2Attrib_SetByDefIndex(weapon, 35, amount); // "mult cloak meter regen rate"
 					}
 				}
 				else
@@ -1318,8 +1317,7 @@ bool ActivateStrangeItem(int client)
 				
 				if (response[0])
 				{
-					SetVariantString(response);
-					AcceptEntityInput(client, "SpeakResponseConcept");
+					SpeakResponseConcept(client, response);
 				}
 			}
 			else // Backfire!

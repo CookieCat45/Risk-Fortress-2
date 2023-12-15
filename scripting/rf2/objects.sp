@@ -335,9 +335,8 @@ public Action Timer_UltraRareResponse(Handle timer, int client)
 {
 	if ((client = GetClientOfUserId(client)) == 0)
 		return Plugin_Continue;
-		
-	SetVariantString("TLK_MVM_LOOT_ULTRARARE");
-	AcceptEntityInput(client, "SpeakResponseConcept");
+	
+	SpeakResponseConcept_MVM(client, "TLK_MVM_LOOT_ULTRARARE");
 	return Plugin_Continue;
 }
 
@@ -355,6 +354,11 @@ public Action Timer_SpawnItem(Handle timer, DataPack pack)
 	pos[2] = pack.ReadFloat();
 	
 	SpawnItem(item, pos, client, 8.0);
+	if (!GetClientCookieInt(client, g_coTutorialItemPickup))
+	{
+		PrintKeyHintText(client, "%t", "ItemPickupTutorial");
+	}
+	
 	return Plugin_Continue;
 }
 

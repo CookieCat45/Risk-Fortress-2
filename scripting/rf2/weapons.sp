@@ -270,7 +270,7 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int inde
 	// Can be an invalid entity, somehow
 	if (!IsValidEntity(entity))
 		return;
-
+	
 	if (g_bSetStringAttributes)
 	{
 		TFClassType class = g_StringAttributeClass;
@@ -303,18 +303,8 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int inde
 	// I'm not sure if this actually affects invis watches, but just to be safe I'll include them as well.
 	if (IsEffectBarWeapon(entity))
 	{
-		if (GetPlayerWeaponSlot(client, WeaponSlot_InvisWatch) == entity)
-		{
-			TF2Attrib_SetByDefIndex(entity, 35, 1.0); // "mult cloak meter regen rate"
-		}
-		else if (strcmp2(classname, "tf_wearable_demoshield"))
-		{
-			TF2Attrib_SetByDefIndex(entity, 249, 1.0); // "charge recharge rate increased"
-		}
-		else
-		{
-			TF2Attrib_SetByDefIndex(entity, 278, 1.0); // "effect bar recharge rate increased"
-		}
+		if (g_hSDKEffectBarRecharge)
+			DHookEntity(g_hSDKEffectBarRecharge, true, entity);
 	}
 }
 
@@ -641,6 +631,19 @@ void SDK_EquipWearable(int client, int entity)
 	{
 		SDKCall(g_hSDKEquipWearable, client, entity);
 	}
+}
+
+public MRESReturn DHook_GetEffectBarRechargeTime(int entity, DHookReturn returnVal)
+{
+	int client = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+	if (!IsValidClient(client))
+		return MRES_Ignored;
+	
+	float value = DHookGetReturn(returnVal);
+	value *= CalcItemMod_HyperbolicInverted(client, Item_PrinnyPouch, 0);
+	//value = TF2Attrib_HookValueFloat(value, "effectbar_recharge_rate", entity);
+	returnVal.Value = value;
+	return MRES_Override;
 }
 
 public MRESReturn DHook_DoSwingTrace(int entity, DHookReturn returnVal, DHookParam params)

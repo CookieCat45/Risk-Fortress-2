@@ -13,6 +13,8 @@ void BakeCookies()
 	g_coBecomeBoss = RegClientCookie("rf2_become_boss", "Enables or disables becoming the Teleporter boss.", CookieAccess_Protected);
 	g_coAutomaticItemMenu = RegClientCookie("rf2_auto_item_menu", "Enables or disables automatic item menu.", CookieAccess_Protected);
 	g_coSurvivorPoints = RegClientCookie("rf2_survivor_points", "Survivor queue points.", CookieAccess_Protected);
+	g_coTutorialItemPickup = RegClientCookie("rf2_tutorial_item_pickup", "Item pickup tutorial.", CookieAccess_Public);
+	g_coTutorialSurvivor = RegClientCookie("rf2_tutorial_survivor", "Survivor tutorial.", CookieAccess_Public);
 }
 
 public void OnClientCookiesCached(int client)
@@ -112,4 +114,11 @@ void SaveClientCookies(int client)
 	char buffer[256];
 	IntToString(g_iPlayerSurvivorPoints[client], buffer, sizeof(buffer));
 	SetClientCookie(client, g_coSurvivorPoints, buffer);
+}
+
+int GetClientCookieInt(int client, Cookie cookie)
+{
+	char buffer[16];
+	GetClientCookie(client, cookie, buffer, sizeof(buffer));
+	return StringToInt(buffer);
 }

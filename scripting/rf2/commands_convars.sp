@@ -36,6 +36,7 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
 	RegConsoleCmd("rf2_afk", Command_AFK, "Puts you into AFK mode instantly.");
 	RegConsoleCmd("rf2_endlevel", Command_EndLevel, "Starts the vote to end the level in Tank Destruction mode.");
+	RegConsoleCmd("rf2_reset_tutorial", Command_ResetTutorial, "Resets the tutorial.");
 	
 	char buffer[8];
 	IntToString(MaxClients, buffer, sizeof(buffer));
@@ -46,7 +47,7 @@ void LoadCommandsAndCvars()
 	
 	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvEnableAFKManager = CreateConVar("rf2_afk_manager_enabled", "1", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "120.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
+	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "300.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
 	g_cvAFKLimit = CreateConVar("rf2_afk_limit", "2", "How many players must be AFK before the AFK manager starts kicking.", FCVAR_NOTIFY, true, 0.0);
 	g_cvAFKMinHumans = CreateConVar("rf2_afk_min_humans", "8", "How many human players must be present in the server for the AFK manager to start kicking.", FCVAR_NOTIFY, true, 0.0);
 	g_cvAFKKickAdmins = CreateConVar("rf2_afk_kick_admins", "0", "Whether or not administrators of the server should be kicked by the AFK manager.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -104,6 +105,7 @@ void LoadCommandsAndCvars()
 	g_cvDebugShowDifficultyCoeff = CreateConVar("rf2_debug_show_difficulty_coeff", "0", "If nonzero, shows the value of the difficulty coefficient.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	
 	HookConVarChange(g_cvEnableAFKManager, ConVarHook_EnableAFKManager);
+	HookConVarChange(g_cvMaxHumanPlayers, ConVarHook_MaxHumanPlayers);
 }
 
 public Action Command_ReloadRF2(int client, int args)
@@ -631,7 +633,7 @@ public Action Command_ThrillerTest(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	if (client < 0)
+	if (client == 0)
 	{
 		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
 		return Plugin_Handled;
@@ -1372,7 +1374,7 @@ public Action Command_EndLevel(int client, int args)
 {
 	if (client == 0)
 	{
-		RF2_ReplyToCommand(client, "OnlyInGame");
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
 		return Plugin_Handled;
 	}
 
@@ -1383,6 +1385,42 @@ public Action Command_EndLevel(int client, int args)
 	}
 	
 	StartTeleporterVote(client, true);
+	return Plugin_Handled;
+}
+
+public Action Command_ResetTutorial(int client, int args)
+{
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	SetClientCookie(client, g_coTutorialSurvivor, "0");
+	SetClientCookie(client, g_coTutorialItemPickup, "0");
+	RF2_ReplyToCommand(client, "TutorialReset");
+	return Plugin_Handled;
+}
+
+public Action Command_PlayGesture(int client, int args)
+{
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	char gesture[256];
+	GetCmdArg(1, gesture, sizeof(gesture));
+	if (ClientPlayGesture(client, gesture))
+	{
+		RF2_ReplyToCommand(client, "Playing gesture '%s'", gesture);
+	}
+	else
+	{
+		RF2_ReplyToCommand(client, "Couldn't find gesture '%s'", gesture);
+	}
+	
 	return Plugin_Handled;
 }
 
@@ -1399,24 +1437,9 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 	}
 }
 
-public Action Command_PlayGesture(int client, int args)
+public void ConVarHook_MaxHumanPlayers(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	if (client == 0)
-	{
-		RF2_ReplyToCommand(client, "OnlyInGame");
-		return Plugin_Handled;
-	}
-	
-	char gesture[256];
-	GetCmdArg(1, gesture, sizeof(gesture));
-	if (ClientPlayGesture(client, gesture))
-	{
-		RF2_ReplyToCommand(client, "Playing gesture '%s'", gesture);
-	}
-	else
-	{
-		RF2_ReplyToCommand(client, "Couldn't find gesture '%s'", gesture);
-	}
-	
-	return Plugin_Handled;
+	int newVal = StringToInt(newValue);
+	ConVar visibleMax = FindConVar("sv_visiblemaxplayers");
+	visibleMax.IntValue = newVal;
 }

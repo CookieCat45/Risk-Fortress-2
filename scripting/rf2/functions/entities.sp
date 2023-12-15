@@ -319,15 +319,7 @@ void PickupCash(int client, int entity)
 		{
 			if (GetRandomInt(1, 20) == 1)
 			{
-				SetVariantString("randomnum:100");
-				AcceptEntityInput(client, "AddContext");
-				
-				SetVariantString("IsMvMDefender:1");
-				AcceptEntityInput(client, "AddContext");
-				
-				SetVariantString("TLK_MVM_MONEY_PICKUP");
-				AcceptEntityInput(client, "SpeakResponseConcept");
-				AcceptEntityInput(client, "ClearContext");
+				SpeakResponseConcept_MVM(client, "TLK_MVM_MONEY_PICKUP");
 			}
 		}
 		
