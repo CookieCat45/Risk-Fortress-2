@@ -181,7 +181,7 @@ static int SpawnTanks()
 	float time = 15.0;
 	
 	int badassTankCount;
-	if (subDifficulty >= SubDifficulty_Impossible)
+	if (subDifficulty >= SubDifficulty_Insane)
 	{
 		badassTankCount += subDifficulty/4;
 	}

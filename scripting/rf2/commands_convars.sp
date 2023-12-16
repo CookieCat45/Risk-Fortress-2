@@ -1398,7 +1398,7 @@ public Action Command_ResetTutorial(int client, int args)
 	
 	SetClientCookie(client, g_coTutorialSurvivor, "0");
 	SetClientCookie(client, g_coTutorialItemPickup, "0");
-	RF2_ReplyToCommand(client, "TutorialReset");
+	RF2_ReplyToCommand(client, "%t", "TutorialReset");
 	return Plugin_Handled;
 }
 

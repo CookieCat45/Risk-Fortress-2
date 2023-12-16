@@ -19,7 +19,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1.4b"
+#define PLUGIN_VERSION "0.1.5b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -350,6 +350,7 @@ bool g_bPlayerIsAFK[MAXTF2PLAYERS];
 bool g_bPlayerExtraSentryHint[MAXTF2PLAYERS];
 bool g_bPlayerInSpawnQueue[MAXTF2PLAYERS];
 bool g_bPlayerHasVampireSapper[MAXTF2PLAYERS];
+bool g_bEquipmentCooldownActive[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -1858,7 +1859,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						SDKHook(bomb, SDKHook_StartTouch, Hook_DisableTouch);
 						SDKHook(bomb, SDKHook_Touch, Hook_DisableTouch);
 						
-						g_bDontDamageOwner[bomb] = true;
+						SetShouldDamageOwner(bomb, false);
 						SetEntItemDamageProc(bomb, Item_Dangeresque);
 						
 						DispatchSpawn(bomb);
@@ -2593,14 +2594,7 @@ public Action Timer_PlayerHud(Handle timer)
 			
 			if (g_flPlayerVampireSapperCooldown[i] > 0.0)
 			{
-				if (g_bTankBossMode)
-				{
-					FormatEx(miscText, sizeof(miscText), "\nSapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
-				}
-				else
-				{
-					FormatEx(miscText, sizeof(miscText), "Sapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
-				}
+				FormatEx(miscText, sizeof(miscText), "\nSapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
 			}
 			
 			ShowSyncHudText(i, g_hMainHudSync, g_szSurvivorHudText, g_iStagesCompleted+1, g_iMinutesPassed, 
@@ -2786,6 +2780,13 @@ public Action Timer_PlayerTimer(Handle timer)
 		if (g_flPlayerVampireSapperCooldown[i] > 0.0)
 		{
 			g_flPlayerVampireSapperCooldown[i] -= 0.1;
+		}
+
+		// hotfix - start equipment cooldown if it stops for some reason?
+		if (!g_bEquipmentCooldownActive[i] && g_flPlayerEquipmentItemCooldown[i] > 0.0)
+		{
+			g_bEquipmentCooldownActive[i] = true;
+			CreateTimer(0.1, Timer_EquipmentCooldown, i, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 
@@ -2982,17 +2983,7 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
 	
-	if (IsFakeClient(client))
-	{
-		PrintToServer("TEST");
-	}
-
-	if (strcmp2(command, "spectate") || strcmp2(command, "autoteam") || view_as<TFTeam>(GetCmdArgInt(1)) <= TFTeam_Spectator)
-	{
-		RF2_PrintToChat(client, "%t", "NoChangeTeam");
-		return Plugin_Handled;
-	}
-	else if (g_bRoundActive)
+	if (g_bRoundActive)
 	{
 		int team = GetClientTeam(client);
 		if (team == TEAM_ENEMY || team == TEAM_SURVIVOR)
@@ -3226,7 +3217,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	if (melee)
 	{
 		if (PlayerHasItem(client, ItemPyro_PyromancerMask) && CanUseCollectorItem(client, ItemPyro_PyromancerMask)
-		&& GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemPyro_PyromancerMask, 5))
+			&& GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemPyro_PyromancerMask, 5))
 		{
 			float speed = GetItemMod(ItemPyro_PyromancerMask, 2) + CalcItemMod(client, ItemPyro_PyromancerMask, 3, -1);
 			if (speed > GetItemMod(ItemPyro_PyromancerMask, 4))
@@ -3240,11 +3231,12 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			
 			float damage = GetItemMod(ItemPyro_PyromancerMask, 0) + CalcItemMod(client, ItemPyro_PyromancerMask, 1, -1);
 			int fireball = ShootProjectile_Fireball(client, eyePos, eyeAng, speed, damage);
+			SetShouldDamageOwner(fireball, false);
 			SetEntItemDamageProc(fireball, ItemPyro_PyromancerMask);
 		}
 		
 		if (PlayerHasItem(client, ItemDemo_ConjurersCowl) && CanUseCollectorItem(client, ItemDemo_ConjurersCowl)
-		&& GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemDemo_ConjurersCowl, 5))
+			&& GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemDemo_ConjurersCowl, 5))
 		{
 			float eyePos[3], eyeAng[3];
 			GetClientEyePosition(client, eyePos);
@@ -3610,7 +3602,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		return Plugin_Continue;
 	}
 	
-	if (g_bDontDamageOwner[inflictor] && victim == GetEntPropEnt(inflictor, Prop_Send, "m_hOwnerEntity"))
+	if (!ShouldDamageOwner(inflictor) && victim == GetEntPropEnt(inflictor, Prop_Send, "m_hOwnerEntity"))
 	{
 		return Plugin_Handled;
 	}
@@ -4013,7 +4005,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					float dmg = GetItemMod(Item_Law, 1) + CalcItemMod(attacker, Item_Law, 2);
 					int rocket = ShootProjectile(attacker, "tf_projectile_sentryrocket", pos, angles, rocketSpeed, dmg);
 					
-					g_bDontDamageOwner[rocket] = true;
+					SetShouldDamageOwner(rocket, false);
 					SetEntItemDamageProc(rocket, Item_Law);
 					EmitSoundToAll(SND_LAW_FIRE, attacker, _, _, _, 0.6);
 				}

@@ -32,6 +32,7 @@ void RefreshClient(int client)
 	g_iPlayerBossSpawnType[client] = -1;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
+	g_bEquipmentCooldownActive[client] = false;
 	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
 	
 	g_szObjectiveHud[client] = "";

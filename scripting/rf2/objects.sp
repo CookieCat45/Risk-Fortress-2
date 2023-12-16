@@ -346,14 +346,13 @@ public Action Timer_SpawnItem(Handle timer, DataPack pack)
 	float pos[3];
 	
 	pack.Reset();
-	
 	item = pack.ReadCell();
 	client = GetClientOfUserId(pack.ReadCell());
 	pos[0] = pack.ReadFloat();
 	pos[1] = pack.ReadFloat();
 	pos[2] = pack.ReadFloat();
+	SpawnItem(item, pos, client, 5.0);
 	
-	SpawnItem(item, pos, client, 8.0);
 	if (!GetClientCookieInt(client, g_coTutorialItemPickup))
 	{
 		PrintKeyHintText(client, "%t", "ItemPickupTutorial");

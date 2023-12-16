@@ -8,7 +8,7 @@
 
 // Original Sentry Buster NPC plugin by Kenzzer: https://github.com/Kenzzer/sm_plugins/tree/master/sentrybuster
 #define MODEL_BUSTER "models/bots/demo/bot_sentry_buster.mdl"
-#define BUSTER_BASE_HEALTH 1500
+#define BUSTER_BASE_HEALTH 1500.0
 #define BUSTER_BASE_DAMAGE 1000.0
 
 #define FFADE_IN			0x0001		// Just here so we don't pass 0 into the function
@@ -148,10 +148,10 @@ methodmap SentryBuster < CBaseCombatCharacter
 		delete victims;
 		RequestFrame(RF_DeleteBuster, EntIndexToEntRef(this.index));
 	}
-
+	
 	public void OnCreate()
 	{
-		int health = RoundToFloor(float(BUSTER_BASE_HEALTH) * GetEnemyHealthMult());
+		int health = RoundToFloor(BUSTER_BASE_HEALTH * GetEnemyHealthMult());
 		this.SetProp(Prop_Data, "m_iHealth", health);
 		this.SetPropFloat(Prop_Data, "m_flModelScale", 1.75);
 		
@@ -159,7 +159,7 @@ methodmap SentryBuster < CBaseCombatCharacter
 		this.SetProp(Prop_Data, "m_bloodColor", -1);
 		// For triggers
 		this.AddFlag(FL_CLIENT);
-
+		
 		this.SetModel(MODEL_BUSTER);
 		this.SetProp(Prop_Data, "m_moveXPoseParameter", this.LookupPoseParameter("move_x"));
 		this.SetProp(Prop_Data, "m_moveYPoseParameter", this.LookupPoseParameter("move_y"));
@@ -167,11 +167,11 @@ methodmap SentryBuster < CBaseCombatCharacter
 		this.SetProp(Prop_Data, "m_runSequence", this.LookupSequence("Run_MELEE"));
 		this.SetProp(Prop_Data, "m_airSequence", this.LookupSequence("a_jumpfloat_ITEM1"));
 		this.hTarget = INVALID_ENT_REFERENCE;
-
+		
 		SDKHook(this.index, SDKHook_SpawnPost, SentryBuster_SpawnPost);
 		SDKHook(this.index, SDKHook_OnTakeDamageAlivePost, SentryBuster_OnTakeDamageAlivePost);
 		this.Hook_HandleAnimEvent(SentryBuster_HandleAnimEvent);
-
+		
 		CBaseNPC npc = TheNPCs.FindNPCByEntIndex(this.index);
 
 		npc.flStepSize = 18.0;

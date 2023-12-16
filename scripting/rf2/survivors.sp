@@ -19,9 +19,8 @@ float g_flSavedNextLevelXP[MAX_SURVIVORS] = {150.0, ...};
 
 char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
 char g_szLastInventoryOwner[MAX_SURVIVORS][MAX_NAME_LENGTH];
-
-bool g_bSurvivorIndexUsed[MAX_SURVIVORS];
-char g_szSurvivorIndexSteamID[MAX_SURVIVORS][32];
+ArrayList g_hSurvivorIndexSteamIDs[MAX_SURVIVORS];
+bool g_bSurvivorInventoryClaimed[MAX_SURVIVORS];
 
 void LoadSurvivorStats()
 {
@@ -124,32 +123,14 @@ bool CreateSurvivors()
 	
 	SortIntegers(points, sizeof(points), Sort_Descending); // sort all the points so we can find out who has the highest
 	int highestPoints = points[0];
-	int survivorCount;
 	bool selected[MAXTF2PLAYERS];
-	
-	// If the game has already started, prioritize an index that's already been used by a player previously so we can get that player's inventory.
-	int prioritizedIndex = -1;
 	bool indexTaken[MAX_SURVIVORS];
-	int oldPrioritizedIndex;
 	int maxSurvivors = g_cvMaxSurvivors.IntValue;
-	
-	if (g_bGameInitialized)
-	{
-		for (int i = 0; i < maxSurvivors; i++)
-		{
-			if (g_bSurvivorIndexUsed[i])
-			{
-				prioritizedIndex = i;
-				break;
-			}
-		}
-	}
-	
-	int attempts;
+	int survivorCount, attempts;
 	int i = 1;
-	char authId[64];
 	int steamIDIndex = -1;
-
+	char steamId[128];
+	
 	while (attempts < 500 && survivorCount < maxSurvivors)
 	{
 		attempts++;
@@ -171,47 +152,27 @@ bool CreateSurvivors()
 			if (g_bGameInitialized && !IsFakeClient(i))
 			{
 				// check to see if we can get our own inventory back
-				GetClientAuthId(i, AuthId_SteamID64, authId, sizeof(authId));
-				for (int s = 0; s < maxSurvivors; s++)
+				if (GetClientAuthId(i, AuthId_SteamID64, steamId, sizeof(steamId)))
 				{
-					if (indexTaken[s] || !g_szSurvivorIndexSteamID[s][0])
-						continue;
-					
-					if (strcmp2(authId, g_szSurvivorIndexSteamID[s]))
+					for (int s = 0; s < maxSurvivors; s++)
 					{
-						steamIDIndex = s;
-						break;
+						if (indexTaken[s])
+							continue;
+						
+						if (DoesClientOwnInventory(i, s))
+						{
+							steamIDIndex = s;
+							break;
+						}
 					}
 				}
 			}
 			
-			if (prioritizedIndex > -1 || steamIDIndex > -1)
+			if (steamIDIndex > -1)
 			{
-				g_iPlayerSurvivorIndex[i] = steamIDIndex > -1 ? steamIDIndex : prioritizedIndex;
+				g_iPlayerSurvivorIndex[i] = steamIDIndex;
 				steamIDIndex = -1;
 				indexTaken[g_iPlayerSurvivorIndex[i]] = true;
-				
-				if (g_iPlayerSurvivorIndex[i] == prioritizedIndex)
-				{
-					oldPrioritizedIndex = prioritizedIndex;
-					
-					for (int index = 0; index < maxSurvivors; index++)
-					{
-						if (indexTaken[index])
-							continue;
-						
-						if (g_bSurvivorIndexUsed[index])
-						{
-							prioritizedIndex = index;
-							break;
-						}
-					}
-					
-					if (prioritizedIndex == oldPrioritizedIndex) // no more used indexes were found, the rest are empty
-					{
-						prioritizedIndex = -1;
-					}
-				}
 			}
 			else
 			{
@@ -223,9 +184,9 @@ bool CreateSurvivors()
 				humanCount++;
 			
 			MakeSurvivor(i, g_iPlayerSurvivorIndex[i], removePoints[i]);
-			g_bSurvivorIndexUsed[g_iPlayerSurvivorIndex[i]] = true;
 			survivorCount++;
 			highestPoints = points[survivorCount];
+			g_bSurvivorInventoryClaimed[g_iPlayerSurvivorIndex[i]] = true;
 			i = 1;
 		}
 		
@@ -240,7 +201,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 {
 	if (resetPoints)
 		g_iPlayerSurvivorPoints[client] = 0;
-	
+
 	// Player is probably still on the class select screen, so we need to kick them out by giving them a random class.
 	if (TF2_GetPlayerClass(client) == TFClass_Unknown)
 	{
@@ -298,14 +259,22 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 5.0);
 	SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);
 	
-	if (!IsFakeClient(client))
-	{
-		GetClientAuthId(client, AuthId_SteamID64, g_szSurvivorIndexSteamID[index], sizeof(g_szSurvivorIndexSteamID[]));
-	}
-	
 	if (loadInventory)
 	{
-		LoadSurvivorInventory(client, index);
+		if (g_bGameInitialized && IsSurvivorInventoryEmpty(index))
+		{
+			// if we join in a game and our inventory is empty, get us up to speed
+			g_iPlayerLevel[client] = GetLowestSurvivorLevel();
+			int itemsToGive = GetTotalSurvivorItems() / GetTotalClaimedInventories();
+			for (int i = 1; i <= itemsToGive; i++)
+			{
+				GiveItem(client, GetRandomItem(79, 20, 1));
+			}
+		}
+		else
+		{
+			LoadSurvivorInventory(client, index);
+		}
 	}
 	else // we should still update our items in case this is a respawn
 	{
@@ -387,7 +356,7 @@ void LoadSurvivorInventory(int client, int index)
 	}
 }
 
-void SaveSurvivorInventory(int client, int index, bool saveName=true)
+void SaveSurvivorInventory(int client, int index, bool saveName=true, bool saveSteamId=true)
 {
 	if (index < 0)
 		return;
@@ -419,6 +388,79 @@ void SaveSurvivorInventory(int client, int index, bool saveName=true)
 			strcopy(g_szLastInventoryOwner[index], sizeof(g_szLastInventoryOwner[]), "[unknown]");
 		}
 	}
+	
+	char steamId[128];
+	if (saveSteamId && GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)))
+	{
+		if (!g_hSurvivorIndexSteamIDs[index])
+			g_hSurvivorIndexSteamIDs[index] = new ArrayList(128);
+		
+		if (g_hSurvivorIndexSteamIDs[index].FindString(steamId) == -1)
+			g_hSurvivorIndexSteamIDs[index].PushString(steamId);
+	}
+}
+
+// Checks if the client's SteamID is associated with the inventory for this survivor index
+bool DoesClientOwnInventory(int client, int index)
+{
+	if (!g_hSurvivorIndexSteamIDs[index])
+		return false;
+
+	char steamId[128];
+	if (GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)))
+	{
+		return g_hSurvivorIndexSteamIDs[index].FindString(steamId) != -1;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool IsSurvivorInventoryEmpty(int index)
+{
+	return !g_bSurvivorInventoryClaimed[index];
+}
+
+int GetLowestSurvivorLevel()
+{
+	int lowest = 1;
+	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
+	{
+		if (g_iSavedLevel[i] <= 1)
+			continue;
+	
+		if (lowest <= 1 || g_iSavedLevel[i] < lowest)
+			lowest = g_iSavedLevel[i];
+	}
+	
+	return lowest;
+}
+
+int GetTotalSurvivorItems()
+{
+	int total;
+	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
+	{
+		for (int j = 0; j < MAX_ITEMS; j++)
+		{
+			total += g_iSavedItem[i][j];
+		}
+	}
+
+	return total;
+}
+
+int GetTotalClaimedInventories()
+{
+	int total;
+	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
+	{
+		if (g_bSurvivorInventoryClaimed[i])
+			total++;
+	}
+
+	return total;
 }
 
 void CalculateSurvivorItemShare(bool recalculate=true)
@@ -490,8 +532,13 @@ bool IsSurvivorIndexValid(int index)
 
 void UpdatePlayerXP(int client, float xpAmount=0.0)
 {
+	if (IsSingleplayer(false))
+	{
+		// XP is increased in singleplayer
+		xpAmount *= 1.75;
+	}
+	
 	g_flPlayerXP[client] += xpAmount;
-		
 	if (g_flPlayerXP[client] >= g_flPlayerNextLevelXP[client])
 	{
 		PlayerLevelUp(client);

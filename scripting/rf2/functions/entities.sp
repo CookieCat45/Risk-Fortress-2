@@ -455,6 +455,23 @@ int GetEntItemDamageProc(int entity)
 	return g_iItemDamageProc[entity];
 }
 
+void SetShouldDamageOwner(int entity, bool value)
+{
+	if (value)
+	{
+		g_bDontDamageOwner[entity] = false;
+	}
+	else
+	{
+		g_bDontDamageOwner[entity] = true;
+	}
+}
+
+bool ShouldDamageOwner(int entity)
+{
+	return !g_bDontDamageOwner[entity];
+}
+
 bool IsNPC(int entity)
 {
 	if (entity <= MaxClients) // we don't want player bots

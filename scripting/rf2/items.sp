@@ -324,7 +324,7 @@ int SpawnItem(int index, const float pos[3], int spawner=-1, float ownTime=0.0)
 	TeleportEntity(item, pos);
 	DispatchSpawn(item);
 	
-	if (IsValidEntity(spawner)) // We spawned this item, so we own it unless we don't pick it up, assuming we don't want it.
+	if (IsValidClient(spawner)) // We spawned this item, so we own it unless we don't pick it up, assuming we don't want it.
 	{
 		SetEntPropEnt(item, Prop_Data, "m_hItemOwner", spawner);
 		if (ownTime > 0.0)
@@ -399,9 +399,13 @@ bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=
 	{
 		// Only the dropper or the one we dropped the item for can pick this up.
 		SetEntPropEnt(entity, Prop_Data, "m_hSubject", subject);
-		char itemName[64];
-		GetItemName(item, itemName, sizeof(itemName), false);
-		PrintHintText(subject, "%t", "DroppedItemForYou", client, itemName);
+		
+		if (subject != client)
+		{
+			char itemName[64];
+			GetItemName(item, itemName, sizeof(itemName), false);
+			PrintHintText(subject, "%t", "DroppedItemForYou", client, itemName);
+		}
 	}
 	
 	if (ownTime > 0.0) // If we own this item but the owner/subject takes too long to pick it up, it's free for taking
@@ -419,6 +423,7 @@ bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=
 	}
 	
 	UpdatePlayerItem(client, item);
+	g_iItemsTaken[client]--;
 	return true;
 }
 
@@ -456,20 +461,22 @@ bool PickupItem(int client)
 		int index = RF2_GetSurvivorIndex(client);
 		int itemIndex = GetEntProp(item, Prop_Data, "m_iIndex");
 		int spawner = GetEntPropEnt(item, Prop_Data, "m_hItemOwner");
-		int subject = GetEntPropEnt(item, Prop_Data, "m_hSubject");
+		//int subject = GetEntPropEnt(item, Prop_Data, "m_hSubject");
 		bool dropped = asBool(GetEntProp(item, Prop_Data, "m_bDropped"));
 		int quality = GetItemQuality(itemIndex);
 		
 		// Strange items do not count towards the limit.
 		if (itemShare && g_iItemLimit[index] > 0 && !IsEquipmentItem(itemIndex) 
-		&& !dropped && (!IsValidClient(spawner) || !IsPlayerSurvivor(spawner) || spawner == client)
-		&& g_iItemsTaken[index] >= g_iItemLimit[index])
+			&& !dropped && (!IsValidClient(spawner) || !IsPlayerSurvivor(spawner) || spawner == client)
+			&& g_iItemsTaken[index] >= g_iItemLimit[index])
 		{
 			EmitSoundToClient(client, SND_NOPE);
 			PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[index]);
 			return false;
 		}
 		
+		// disabled for now, too buggy
+		/*
 		if (IsValidClient(subject) && IsPlayerSurvivor(subject)
 		|| IsValidClient(spawner) && IsPlayerSurvivor(spawner))
 		{
@@ -480,6 +487,7 @@ bool PickupItem(int client)
 				return false;
 			}
 		}
+		*/
 		
 		GiveItem(client, itemIndex);
 		RemoveEntity(item);
@@ -897,6 +905,7 @@ void UpdatePlayerItem(int client, int item)
 				if (g_iPlayerEquipmentItemCharges[client] < maxCharges)
 				{
 					g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
+					g_bEquipmentCooldownActive[client] = true;
 					CreateTimer(0.1, Timer_EquipmentCooldown, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 				}
 			}
@@ -1492,6 +1501,7 @@ bool ActivateStrangeItem(int client)
 	{
 		if (g_flPlayerEquipmentItemCooldown[client] <= 0.0)
 		{
+			g_bEquipmentCooldownActive[client] = true;
 			CreateTimer(0.1, Timer_EquipmentCooldown, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 		
@@ -1524,6 +1534,7 @@ public Action Timer_EquipmentCooldown(Handle timer, int client)
 	if ((client = GetClientOfUserId(client)) == 0 || !IsPlayerAlive(client))
 		return Plugin_Stop;
 	
+	g_bEquipmentCooldownActive[client] = true;
 	g_flPlayerEquipmentItemCooldown[client] -= 0.1;
 	if (g_flPlayerEquipmentItemCooldown[client] <= 0.0)
 	{
@@ -1540,11 +1551,13 @@ public Action Timer_EquipmentCooldown(Handle timer, int client)
 			}
 			else
 			{
+				g_bEquipmentCooldownActive[client] = false;
 				return Plugin_Stop;
 			}
 		}
 		else
 		{
+			g_bEquipmentCooldownActive[client] = false;
 			return Plugin_Stop;
 		}
 	}
