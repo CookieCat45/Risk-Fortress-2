@@ -99,6 +99,7 @@ public Action Timer_ResetModel(Handle timer, int client)
 
 void SilentlyKillPlayer(int client)
 {
+	TF2_RemoveAllWearables(client);
 	RefreshClient(client);
 	int team = GetClientTeam(client);
 	ChangeClientTeam(client, 0);

@@ -19,8 +19,8 @@ float g_flSavedNextLevelXP[MAX_SURVIVORS] = {150.0, ...};
 
 char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
 char g_szLastInventoryOwner[MAX_SURVIVORS][MAX_NAME_LENGTH];
-ArrayList g_hSurvivorIndexSteamIDs[MAX_SURVIVORS];
 bool g_bSurvivorInventoryClaimed[MAX_SURVIVORS];
+ArrayList g_hSurvivorIndexSteamIDs[MAX_SURVIVORS];
 
 void LoadSurvivorStats()
 {
@@ -58,12 +58,7 @@ void LoadSurvivorStats()
 
 bool CreateSurvivors()
 {
-	int points[MAXTF2PLAYERS] = {-2140083648, ...};
-	int actualPoints[MAXTF2PLAYERS];
-	int humanCount;
-	bool valid[MAXTF2PLAYERS];
-	bool removePoints[MAXTF2PLAYERS] = {true, ...};
-	
+	ArrayList survivorList = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i))
@@ -73,8 +68,7 @@ bool CreateSurvivors()
 		{
 			if (!g_cvBotsCanBeSurvivor.BoolValue)
 			{
-				ForcePlayerSuicide(i);
-				FakeClientCommand(i, "explode");
+				SilentlyKillPlayer(i);
 				ChangeClientTeam(i, TEAM_ENEMY);
 				continue;
 			}
@@ -84,116 +78,70 @@ bool CreateSurvivors()
 			}
 		}
 		
-		points[i] = g_iPlayerSurvivorPoints[i];
-		valid[i] = true;
-		
-		if (IsFakeClient(i))
-		{
-			points[i] -= 99999;
-		}
-		else if (!g_bPlayerBecomeSurvivor[i])
-		{
-			points[i] -= 9999999;
-			removePoints[i] = false;
-		}
-		
-		if (IsPlayerAFK(i))
-		{
-			points[i] -= 999;
-		}
-		
-		if (GetClientTeam(i) <= 1)
-		{
-			points[i] -= 9999;
-		}
-		
-		actualPoints[i] = points[i];
-		
 		if (GetClientTeam(i) != TEAM_ENEMY)
 		{
 			if (IsPlayerAlive(i))
 			{
-				ForcePlayerSuicide(i);
-				FakeClientCommand(i, "explode");
+				SilentlyKillPlayer(i);
 			}
 			
 			ChangeClientTeam(i, TEAM_ENEMY);
 		}
+		
+		survivorList.Push(i);
 	}
 	
-	SortIntegers(points, sizeof(points), Sort_Descending); // sort all the points so we can find out who has the highest
-	int highestPoints = points[0];
-	bool selected[MAXTF2PLAYERS];
+	survivorList.SortCustom(SortSurvivorList);
 	bool indexTaken[MAX_SURVIVORS];
 	int maxSurvivors = g_cvMaxSurvivors.IntValue;
-	int survivorCount, attempts;
-	int i = 1;
+	int survivorCount, client;
 	int steamIDIndex = -1;
 	char steamId[128];
 	
-	while (attempts < 500 && survivorCount < maxSurvivors)
+	if (survivorList.Length > maxSurvivors)
+		survivorList.Resize(maxSurvivors);
+	
+	for (int i = 0; i < survivorList.Length; i++)
 	{
-		attempts++;
-		
-		if (!valid[i] || selected[i])
+		client = survivorList.Get(i);
+		if (g_bGameInitialized && !IsFakeClient(client))
 		{
-			i++;
-			
-			if (i >= MAXTF2PLAYERS)
-				i = 1;
-			
-			continue;
-		}
-		
-		if (highestPoints == actualPoints[i]) // if client owns these points, they are a survivor since it's the highest
-		{
-			selected[i] = true;
-			
-			if (g_bGameInitialized && !IsFakeClient(i))
+			// check to see if we can get our own inventory back
+			if (GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)))
 			{
-				// check to see if we can get our own inventory back
-				if (GetClientAuthId(i, AuthId_SteamID64, steamId, sizeof(steamId)))
+				for (int s = 0; s < maxSurvivors; s++)
 				{
-					for (int s = 0; s < maxSurvivors; s++)
+					if (indexTaken[s])
+						continue;
+					
+					if (DoesClientOwnInventory(client, s))
 					{
-						if (indexTaken[s])
-							continue;
-						
-						if (DoesClientOwnInventory(i, s))
-						{
-							steamIDIndex = s;
-							break;
-						}
+						steamIDIndex = s;
+						break;
 					}
 				}
 			}
+		}
 			
-			if (steamIDIndex > -1)
-			{
-				g_iPlayerSurvivorIndex[i] = steamIDIndex;
-				steamIDIndex = -1;
-				indexTaken[g_iPlayerSurvivorIndex[i]] = true;
-			}
-			else
-			{
-				g_iPlayerSurvivorIndex[i] = survivorCount;
-				indexTaken[survivorCount] = true;
-			}
-			
-			if (!IsFakeClient(i))
-				humanCount++;
-			
-			MakeSurvivor(i, g_iPlayerSurvivorIndex[i], removePoints[i]);
-			survivorCount++;
-			highestPoints = points[survivorCount];
-			g_bSurvivorInventoryClaimed[g_iPlayerSurvivorIndex[i]] = true;
-			i = 1;
+		if (steamIDIndex > -1)
+		{
+			g_iPlayerSurvivorIndex[client] = steamIDIndex;
+			steamIDIndex = -1;
+			indexTaken[g_iPlayerSurvivorIndex[client]] = true;
+		}
+		else
+		{
+			g_iPlayerSurvivorIndex[client] = survivorCount;
+			indexTaken[survivorCount] = true;
 		}
 		
-		i++;
+		MakeSurvivor(client, g_iPlayerSurvivorIndex[client]);
+		g_bSurvivorInventoryClaimed[g_iPlayerSurvivorIndex[client]] = true;
+		survivorCount++;
 	}
 	
 	g_iSurvivorCount = survivorCount;
+	delete survivorList;
 	return survivorCount > 0;
 }
 
@@ -291,6 +239,62 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	{
 		CreateTimer(1.0, Timer_SurvivorTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
+}
+
+public int SortSurvivorList(int index1, int index2, ArrayList array, Handle hndl)
+{
+	int client1 = array.Get(index1);
+	int client2 = array.Get(index2);
+	
+	// move bots, AFK people and those who don't want to be survivors to the end of the list
+	if (!g_bPlayerBecomeSurvivor[client1] && !g_bPlayerBecomeSurvivor[client2])
+	{
+		return 0;
+	}
+	else if (!g_bPlayerBecomeSurvivor[client1])
+	{
+		return 1;
+	}
+	else if (!g_bPlayerBecomeSurvivor[client2])
+	{
+		return -1;
+	}
+	
+	if (IsPlayerAFK(client1) && IsPlayerAFK(client2))
+	{
+		return 0;
+	}
+	else if (IsFakeClient(client1) || IsPlayerAFK(client1))
+	{
+		return 1;
+	}
+	else if (IsFakeClient(client2) || IsPlayerAFK(client2))
+	{
+		return -1;
+	}
+	
+	if (g_iPlayerSurvivorPoints[client1] > g_iPlayerSurvivorPoints[client2])
+	{
+		return -1;
+	}
+	
+	// whoever owns the lowest inventory index should be made a survivor first, so they can get their inventory back
+	int inv1 = GetClientOwnedInventory(client1);
+	int inv2 = GetClientOwnedInventory(client2);
+	if (inv1 == inv2)
+	{
+		return 0;
+	}
+	else if (inv1 < inv2)
+	{
+		return -1;
+	}
+	else if (inv2 < inv1)
+	{
+		return 1;
+	}
+	
+	return 0;
 }
 
 public Action Timer_SurvivorTutorial(Handle timer, int client)
@@ -415,6 +419,17 @@ bool DoesClientOwnInventory(int client, int index)
 	{
 		return false;
 	}
+}
+
+int GetClientOwnedInventory(int client)
+{
+	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
+	{
+		if (DoesClientOwnInventory(client, i))
+			return i;
+	}
+
+	return -1;
 }
 
 bool IsSurvivorInventoryEmpty(int index)

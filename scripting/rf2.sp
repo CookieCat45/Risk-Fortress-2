@@ -2247,8 +2247,7 @@ public Action Timer_KillEnemyTeam(Handle timer)
 		if (!IsClientInGame(i) || IsPlayerSurvivor(i))
 			continue;
 		
-		SDKHooks_TakeDamage(i, 0, 0, 9999999.0, DMG_PREVENT_PHYSICS_FORCE);
-		ForcePlayerSuicide(i);
+		SilentlyKillPlayer(i);
 		
 		if (IsFakeClient(i))
 		{

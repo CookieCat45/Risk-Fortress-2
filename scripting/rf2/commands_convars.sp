@@ -1377,7 +1377,7 @@ public Action Command_EndLevel(int client, int args)
 		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
 		return Plugin_Handled;
 	}
-
+	
 	if (!IsPlayerSurvivor(client) || !g_bTankBossMode || !IsStageCleared() || GameRules_GetRoundState() == RoundState_TeamWin)
 	{
 		RF2_ReplyToCommand(client, "%t", "CannotBeUsed");
