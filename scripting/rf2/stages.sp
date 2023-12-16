@@ -196,7 +196,7 @@ void SetNextStage(int stage)
 	}
 	
 	int randomMap = GetRandomInt(1, maps);
-
+	
 	FormatEx(mapId, sizeof(mapId), "map%i", randomMap);
 	mapKey.JumpToKey(mapId);
 	mapKey.GetString("name", mapName, sizeof(mapName));

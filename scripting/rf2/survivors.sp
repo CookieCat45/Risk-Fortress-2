@@ -285,11 +285,11 @@ public int SortSurvivorList(int index1, int index2, ArrayList array, Handle hndl
 	{
 		return 0;
 	}
-	else if (inv1 < inv2)
+	else if (inv1 >= 0 && inv1 < inv2)
 	{
 		return -1;
 	}
-	else if (inv2 < inv1)
+	else if (inv2 >= 0 && inv2 < inv1)
 	{
 		return 1;
 	}

@@ -751,6 +751,13 @@ void LoadGameData()
 
 public void OnMapStart()
 {
+	// Reset our ConVars if we've changed them
+	if (g_bConVarsModified)
+	{
+		ResetConVars();
+		g_bConVarsModified = false;
+	}
+	
 	// This was a reload map change
 	if (g_bPluginReloading)
 	{
@@ -857,20 +864,12 @@ public void OnMapStart()
 		AddCommandListener(OnChangeSpec, "spec_prev");
 		AddCommandListener(OnBuildCommand, "build");
 		
-		// Entity output hooks
 		HookEntityOutput("tank_boss", "OnKilled", Output_OnTankKilled);
 		HookEntityOutput("rf2_tank_boss_badass", "OnKilled", Output_OnTankKilled);
-		
-		// UserMessage hooks
 		HookUserMessage(GetUserMessageId("SayText2"), UserMessageHook_SayText2, true);
-		
-		// NormalSound hooks
 		AddNormalSoundHook(PlayerSoundHook);
-		
-		// TE hooks
 		AddTempEntHook("TFBlood", TEHook_TFBlood);
-		
-		// Everything else
+
 		g_hMainHudSync = CreateHudSynchronizer();
 		g_hObjectiveHudSync = CreateHudSynchronizer();
 		g_hCachedPlayerSounds = CreateArray(PLATFORM_MAX_PATH);
@@ -967,13 +966,7 @@ public void OnConfigsExecuted()
 }
 
 public void OnMapEnd()
-{
-	// Reset our ConVars if we've changed them
-	if (g_bConVarsModified)
-	{
-		ResetConVars();
-	}
-		
+{	
 	g_bMapChanging = true;
 
 	if (RF2_IsEnabled())
@@ -1130,7 +1123,7 @@ void ResetConVars()
 {
 	ResetConVar(FindConVar("sv_alltalk"));
 	ResetConVar(FindConVar("sv_visiblemaxplayers"));
-
+	
 	ResetConVar(FindConVar("mp_waitingforplayers_time"));
 	ResetConVar(FindConVar("mp_teams_unbalance_limit"));
 	ResetConVar(FindConVar("mp_forcecamera"));
