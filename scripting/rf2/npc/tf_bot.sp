@@ -423,6 +423,7 @@ void TFBot_Think(TFBot &bot)
 		bot.RemoveButtonFlag(IN_JUMP);
 	}
 	
+	/*
 	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
 	{
 		float teleporterPos[3];
@@ -447,6 +448,7 @@ void TFBot_Think(TFBot &bot)
 			bot.GetLocomotion().Stop();
 		}
 	}
+	*/
 	
 	// Only for bosses for now, as they are large.
 	if (IsBoss(bot.Client))

@@ -64,23 +64,27 @@ void GameOver()
 
 void ReloadPlugin(bool changeMap=true)
 {
-	for (int i = 1; i <= MaxClients; i++)
+	if (!g_bMapChanging)
 	{
-		if (!IsClientInGame(i))
-			continue;
-			
-		SetVariantString("");
-		AcceptEntityInput(i, "SetCustomModel");
-		
-		if (IsPlayerAlive(i))
+		for (int i = 1; i <= MaxClients; i++)
 		{
-			TF2_RemoveAllWeapons(i);
-			TF2_RemoveAllWearables(i);
-			SilentlyKillPlayer(i);
+			if (!IsClientInGame(i))
+				continue;
+				
+			SetVariantString("");
+			AcceptEntityInput(i, "SetCustomModel");
+			
+			if (IsPlayerAlive(i))
+			{
+				TF2_RemoveAllWeapons(i);
+				TF2_RemoveAllWearables(i);
+				SilentlyKillPlayer(i);
+			}
 		}
+		
+		StopMusicTrackAll();
 	}
 	
-	StopMusicTrackAll();
 	g_bPluginReloading = true;
 	
 	if (changeMap)
@@ -89,7 +93,7 @@ void ReloadPlugin(bool changeMap=true)
 	}
 	else
 	{
-		if (!g_bWaitingForPlayers)
+		if (!g_bWaitingForPlayers && !g_bMapChanging)
 		{
 			InsertServerCommand("mp_restartgame_immediate 2");
 		}

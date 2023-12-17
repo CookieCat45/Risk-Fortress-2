@@ -360,7 +360,7 @@ void GiveItem(int client, int item, int amount=1)
 	{
 		int strangeItem = GetPlayerEquipmentItem(client);
 		
-		if (strangeItem > Item_Null)
+		if (strangeItem > Item_Null && IsPlayerSurvivor(client))
 		{
 			float pos[3];
 			GetEntPos(client, pos);
@@ -423,7 +423,11 @@ bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=
 	}
 	
 	UpdatePlayerItem(client, item);
-	g_iItemsTaken[RF2_GetSurvivorIndex(client)]--;
+	if (IsPlayerSurvivor(client))
+	{
+		g_iItemsTaken[RF2_GetSurvivorIndex(client)]--;
+	}
+	
 	return true;
 }
 

@@ -19,7 +19,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1.5b"
+#define PLUGIN_VERSION "0.1.6b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -937,6 +937,17 @@ public void OnConfigsExecuted()
 		FindConVar("tf_player_movement_restart_freeze").SetBool(false);
 		FindConVar("mp_bonusroundtime").SetInt(20);
 		
+		// no SourceTV
+		FindConVar("tv_enable").SetBool(false);
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (IsClientConnected(i) && IsClientSourceTV(i))
+			{
+				KickClient(i, "GTFO");
+				break;
+			}
+		}
+		
 		// For some reason, FindConVar() with sv_pure returns NULL
 		// So we will use this as a workaround. Custom servers should have sv_pure 0 anyways.
 		InsertServerCommand("sv_pure 0");
@@ -968,7 +979,7 @@ public void OnConfigsExecuted()
 public void OnMapEnd()
 {	
 	g_bMapChanging = true;
-
+	
 	if (RF2_IsEnabled())
 	{
 		if (g_bGameOver)
@@ -1132,6 +1143,7 @@ void ResetConVars()
 	ResetConVar(FindConVar("mp_respawnwavetime"));
 	ResetConVar(FindConVar("mp_humans_must_join_team"));
 	ResetConVar(FindConVar("mp_bonusroundtime"));
+	ResetConVar(FindConVar("tv_enable"));
 	
 	ResetConVar(FindConVar("tf_use_fixed_weaponspreads"));
 	ResetConVar(FindConVar("tf_avoidteammates_pushaway"));
@@ -1170,7 +1182,7 @@ public void OnClientPutInServer(int client)
 	RefreshClient(client);
 	GetClientName(client, g_szPlayerOriginalName[client], sizeof(g_szPlayerOriginalName[]));
 	
-	if (RF2_IsEnabled())
+	if (RF2_IsEnabled() && !IsClientSourceTV(client) && !IsClientReplay(client))
 	{
 		if (IsFakeClient(client))
 		{
@@ -1218,7 +1230,7 @@ public void OnClientDisconnect(int client)
 		}
 	}
 	
-	if (IsPlayerSurvivor(client))
+	if (IsPlayerSurvivor(client) && !g_bPluginReloading)
 	{
 		SaveSurvivorInventory(client, RF2_GetSurvivorIndex(client));
 		
@@ -1528,6 +1540,9 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		return Plugin_Continue;
 	
 	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (!IsValidClient(client))
+		return Plugin_Continue;
+
 	int team = GetClientTeam(client);
 	
 	// If we're an enemy and spawn during the grace period, or somehow don't have a type, die
@@ -2366,6 +2381,9 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	const float max = 250.0;
 	
 	respawnArray.SortCustom(SortEnemySpawnArray);
+	if (respawnArray.Length > spawnCount)
+		respawnArray.Resize(spawnCount);
+	
 	for (int i = 0; i < respawnArray.Length; i++)
 	{
 		client = respawnArray.Get(i);
@@ -3184,7 +3202,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	
 	// Use our own crit logic
 	// we already do flamethrowers in our damage hook
-	if (!result && !strcmp2(weaponName, "tf_weapon_flamethrower"))
+	if (!result)
 	{
 		if (PlayerHasItem(client, Item_Executioner) && IsPlayerMiniCritBuffed(client))
 		{
@@ -3729,6 +3747,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		
 		if (inflictorIsBuilding)
 		{
+			/*
 			if (victimIsClient && PlayerHasItem(attacker, ItemEngi_HeadOfDefense) && CanUseCollectorItem(attacker, ItemEngi_HeadOfDefense))
 			{
 				if (GetEntProp(inflictor, Prop_Send, "m_bMiniBuilding"))
@@ -3736,10 +3755,12 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					TF2_AddCondition(victim, TFCond_MarkedForDeathSilent, GetItemMod(ItemEngi_HeadOfDefense, 1), attacker);
 				}
 			}
+			*/
 			
 			if (PlayerHasItem(attacker, ItemEngi_BrainiacHairpiece) && CanUseCollectorItem(attacker, ItemEngi_BrainiacHairpiece))
 			{
-				if (g_flSentryNextLaserTime[inflictor] <= GetTickedTime())
+				if (g_flSentryNextLaserTime[inflictor] <= GetTickedTime()
+					&& g_hPlayerExtraSentryList[attacker].FindValue(inflictor) == -1)
 				{
 					float pos[3], victimPos[3], angles[3];
 					GetEntPos(inflictor, pos);
@@ -4043,9 +4064,11 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		{
 			if (critType == CritType_Crit)
 			{
-				// Phlog/Backburner nerf
+				// Crit weapons nerf (Phlog, Backburner, Frontier Justice, Diamondback)
 				if (TF2Attrib_HookValueInt(0, "burn_damage_earns_rage", weapon)
-					|| TF2Attrib_HookValueInt(0, "set_flamethrower_back_crit", weapon))
+					|| TF2Attrib_HookValueInt(0, "set_flamethrower_back_crit", weapon)
+					|| TF2Attrib_HookValueInt(0, "sentry_killed_revenge", weapon)
+					|| TF2Attrib_HookValueInt(0, "sapper_kills_collect_crits", weapon))
 				{
 					critType = CritType_MiniCrit;
 				}
@@ -4101,7 +4124,6 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					}
 				}
 			}
-			
 			
 			// Bruiser's Bandana increases any damage that is a crit or mini-crit
 			if (PlayerHasItem(attacker, Item_BruiserBandana))

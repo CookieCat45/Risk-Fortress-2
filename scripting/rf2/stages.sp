@@ -281,7 +281,7 @@ void StopMusicTrack(int client)
 {
 	g_flLoopMusicAt[client] = -1.0;
 	
-	if (IsClientInGame(client) && !IsFakeClient(client))
+	if (!g_bMapChanging && IsClientInGame(client) && !IsFakeClient(client))
 	{
 		StopSound(client, SNDCHAN_AUTO, g_szClientBGM[client]);
 	}
