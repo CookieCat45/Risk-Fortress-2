@@ -423,7 +423,7 @@ bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=
 	}
 	
 	UpdatePlayerItem(client, item);
-	g_iItemsTaken[client]--;
+	g_iItemsTaken[RF2_GetSurvivorIndex(client)]--;
 	return true;
 }
 
