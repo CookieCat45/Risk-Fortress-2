@@ -563,9 +563,12 @@ int EquipItemAsWearable(int client, int item)
 	if (GetItemQuality(item) == Quality_Collectors && !CanUseCollectorItem(client, item))
 		return -1;
 	
-	if (GetPlayerWearableCount(client, true) >= MAX_ITEMS && GetItemQuality(item) != Quality_Strange && GetItemQuality(item) != Quality_Unusual)
+	if (GetPlayerWearableCount(client, true) >= MAX_ITEMS && GetItemQuality(item) != Quality_Strange)
 		return -1;
 	
+	if (HasItemAsWearable(client, item))
+		return -1;
+
 	int wearable = -1;
 	int entity = MaxClients+1;
 	int index;
@@ -640,6 +643,22 @@ int EquipItemAsWearable(int client, int item)
 	}
 	
 	return wearable;
+}
+
+bool HasItemAsWearable(int client, int item)
+{
+	int entity;
+	
+	while ((entity = FindEntityByClassname(entity, "tf_wearable")) != -1)
+	{
+		if (!g_bItemWearable[entity] || GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") != client)
+			continue;
+	
+		if (GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex") == g_iItemSchemaIndex[item])
+			return true;
+	}
+
+	return false;
 }
 
 void RemoveItemAsWearable(int client, int item)

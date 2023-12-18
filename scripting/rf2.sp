@@ -441,7 +441,7 @@ Handle g_fwGracePeriodStart;
 Handle g_fwGracePeriodEnded;
 
 // ConVars
-ConVar g_cvMaxHumanPlayers;
+//ConVar g_cvMaxHumanPlayers;
 ConVar g_cvMaxSurvivors;
 ConVar g_cvAlwaysSkipWait;
 ConVar g_cvDebugNoMapChange;

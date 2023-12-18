@@ -289,7 +289,7 @@ public Action Command_GiveAllItems(int client, int args)
 				// nah
 				if (j == Item_HorrificHeadsplitter)
 					continue;
-
+				
 				GiveItem(clients[i], j, amount);
 			}
 			
