@@ -40,14 +40,14 @@ void LoadCommandsAndCvars()
 	
 	char buffer[8];
 	IntToString(MaxClients, buffer, sizeof(buffer));
-	g_cvMaxHumanPlayers = CreateConVar("rf2_human_player_limit", buffer, "Max number of human players allowed in the server.", FCVAR_NOTIFY, true, 1.0, true, float(MaxClients));
+	//g_cvMaxHumanPlayers = CreateConVar("rf2_human_player_limit", buffer, "Max number of human players allowed in the server.", FCVAR_NOTIFY, true, 1.0, true, float(MaxClients));
 	
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
 	g_cvMaxSurvivors = CreateConVar("rf2_max_survivors", buffer, "Max number of Survivors that can be in the game.", FCVAR_NOTIFY, true, 1.0, true, float(MAX_SURVIVORS));
 	
 	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvEnableAFKManager = CreateConVar("rf2_afk_manager_enabled", "1", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "300.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
+	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "200.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
 	g_cvAFKLimit = CreateConVar("rf2_afk_limit", "2", "How many players must be AFK before the AFK manager starts kicking.", FCVAR_NOTIFY, true, 0.0);
 	g_cvAFKMinHumans = CreateConVar("rf2_afk_min_humans", "8", "How many human players must be present in the server for the AFK manager to start kicking.", FCVAR_NOTIFY, true, 0.0);
 	g_cvAFKKickAdmins = CreateConVar("rf2_afk_kick_admins", "0", "Whether or not administrators of the server should be kicked by the AFK manager.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -105,7 +105,7 @@ void LoadCommandsAndCvars()
 	g_cvDebugShowDifficultyCoeff = CreateConVar("rf2_debug_show_difficulty_coeff", "0", "If nonzero, shows the value of the difficulty coefficient.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	
 	HookConVarChange(g_cvEnableAFKManager, ConVarHook_EnableAFKManager);
-	HookConVarChange(g_cvMaxHumanPlayers, ConVarHook_MaxHumanPlayers);
+	//HookConVarChange(g_cvMaxHumanPlayers, ConVarHook_MaxHumanPlayers);
 }
 
 public Action Command_ReloadRF2(int client, int args)
@@ -284,6 +284,10 @@ public Action Command_GiveAllItems(int client, int args)
 			{
 				// no equipment items, this will just create a mess
 				if (IsEquipmentItem(j))
+					continue;
+				
+				// nah
+				if (j == Item_HorrificHeadsplitter)
 					continue;
 
 				GiveItem(clients[i], j, amount);
@@ -871,14 +875,6 @@ public Action Command_AFK(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	/*
-	if (IsSingleplayer())
-	{
-		RF2_ReplyToCommand(client, "%t", "OnlyMultiplayer");
-		return Plugin_Handled;
-	}
-	*/
-	
 	if (IsPlayerAFK(client))
 	{
 		ResetAFKTime(client);
@@ -911,6 +907,10 @@ public Action Command_AFK(int client, int args)
 			RF2_ReplyToCommand(client, "%t", "NotAsSurvivorAfterGrace");
 			return Plugin_Handled;
 		}
+	}
+	else
+	{
+		TF2_ChangeClientTeam(client, TFTeam_Spectator);
 	}
 	
 	g_bPlayerIsAFK[client] = true;

@@ -427,12 +427,12 @@ Handle g_hSDKPlayGesture;
 DHookSetup g_hSDKCanBuild;
 DHookSetup g_hSDKDoSwingTrace;
 DHookSetup g_hSDKSentryAttack;
-DHookSetup g_hSDKComputeIncursionVoid;
+//DHookSetup g_hSDKComputeIncursionVoid;
 DHookSetup g_hSDKHandleRageGain;
 DynamicHook g_hSDKTakeHealth;
 DynamicHook g_hSDKStartUpgrading;
 DynamicHook g_hSDKVPhysicsCollision;
-DynamicHook g_hSDKEffectBarRecharge;
+//DynamicHook g_hSDKEffectBarRecharge;
 
 // Forwards
 Handle g_fwTeleEventStart;
@@ -560,6 +560,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnPluginStart()
 {
+	InstallEntities();
 	LoadGameData();
 	LoadForwards();
 	LoadCommandsAndCvars();
@@ -582,7 +583,9 @@ public void OnPluginEnd()
 		
 		if (RF2_IsEnabled() && IsValidClient(i))
 		{
-			ChangeClientTeam(i, TEAM_ENEMY);
+			if (!IsPlayerSpectator(i))
+				ChangeClientTeam(i, TEAM_ENEMY);
+
 			SetClientName(i, g_szPlayerOriginalName[i]);
 		}
 	}
@@ -660,6 +663,7 @@ void LoadGameData()
 		LogError("[DHooks] Failed to create virtual hook for CPhysicsProp::VPhysicsCollision");
 	}
 	
+	/*
 	// CTFWeaponBase::InternalGetEffectBarRechargeTime ---------------------------------------------------------------------------------------
 	offset = GameConfGetOffset(gamedata, "CTFWeaponBase::InternalGetEffectBarRechargeTime");
 	g_hSDKEffectBarRecharge = DHookCreate(offset, HookType_Entity, ReturnType_Float, ThisPointer_CBaseEntity, DHook_GetEffectBarRechargeTime);
@@ -667,6 +671,7 @@ void LoadGameData()
 	{
 		LogError("[DHooks] Failed to create virtual hook for CTFWeaponBase::InternalGetEffectBarRechargeTime");
 	}
+	*/
 	
 	// CTFWeaponBase::GetMaxClip1 ------------------------------------------------------------------------------------------------------------
 	StartPrepSDKCall(SDKCall_Entity);
@@ -727,12 +732,14 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CTFNavMesh::ComputeIncursionDistances");
 	}
 	
+	/*
 	// CTFNavMesh::ComputeIncursionDistances(void) -------------------------------------------------------------------------------------------------
 	g_hSDKComputeIncursionVoid = DHookCreateFromConf(gamedata, "CTFNavMesh::ComputeIncursionDistances_Void");
 	if (!g_hSDKComputeIncursionVoid || !DHookEnableDetour(g_hSDKComputeIncursionVoid, true, DHook_ComputeIncursionVoid))
 	{
 		LogError("[DHooks] Failed to create detour for CTFNavMesh::ComputeIncursionDistances(void)");
 	}
+	*/
 	
 	delete gamedata;
 	
@@ -814,12 +821,6 @@ public void OnMapStart()
 		#endif
 		
 		LoadAssets();
-		static bool entsInstalled;
-		if (!entsInstalled)
-		{
-			InstallEntities();
-			entsInstalled = true;
-		}
 		
 		if (!g_bLateLoad)
 		{
@@ -925,10 +926,10 @@ public void OnConfigsExecuted()
 		}
 		
 		// Here are ConVars that we don't want changed by configs
-		FindConVar("sv_visiblemaxplayers").SetInt(g_cvMaxHumanPlayers.IntValue);
+		//FindConVar("sv_visiblemaxplayers").SetInt(g_cvMaxHumanPlayers.IntValue);
 		FindConVar("mp_teams_unbalance_limit").SetInt(0);
 		FindConVar("mp_forcecamera").SetBool(false);
-		FindConVar("mp_maxrounds").SetInt(9999);
+		FindConVar("mp_maxrounds").SetInt(1);
 		FindConVar("mp_forceautoteam").SetBool(true);
 		FindConVar("mp_respawnwavetime").SetFloat(99999.0);
 		FindConVar("tf_dropped_weapon_lifetime").SetInt(0);
@@ -1133,7 +1134,7 @@ void LoadAssets()
 void ResetConVars()
 {
 	ResetConVar(FindConVar("sv_alltalk"));
-	ResetConVar(FindConVar("sv_visiblemaxplayers"));
+	//ResetConVar(FindConVar("sv_visiblemaxplayers"));
 	
 	ResetConVar(FindConVar("mp_waitingforplayers_time"));
 	ResetConVar(FindConVar("mp_teams_unbalance_limit"));
@@ -1165,6 +1166,7 @@ void ResetConVars()
 
 public void OnClientConnected(int client)
 {
+	/*
 	if (RF2_IsEnabled())
 	{
 		if (!IsFakeClient(client))
@@ -1175,6 +1177,7 @@ public void OnClientConnected(int client)
 			}
 		}
 	}
+	*/
 }
 
 public void OnClientPutInServer(int client)
@@ -1312,7 +1315,7 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!valid[i])
+		if (!valid[i] || i == client)
 			continue;
 		
 		// We've found our winner

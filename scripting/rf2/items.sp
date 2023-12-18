@@ -563,6 +563,9 @@ int EquipItemAsWearable(int client, int item)
 	if (GetItemQuality(item) == Quality_Collectors && !CanUseCollectorItem(client, item))
 		return -1;
 	
+	if (GetPlayerWearableCount(client, true) >= MAX_ITEMS && GetItemQuality(item) != Quality_Strange && GetItemQuality(item) != Quality_Unusual)
+		return -1;
+	
 	int wearable = -1;
 	int entity = MaxClients+1;
 	int index;

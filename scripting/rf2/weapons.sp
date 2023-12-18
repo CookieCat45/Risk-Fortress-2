@@ -303,8 +303,8 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int inde
 	// I'm not sure if this actually affects invis watches, but just to be safe I'll include them as well.
 	if (IsEffectBarWeapon(entity))
 	{
-		if (g_hSDKEffectBarRecharge)
-			DHookEntity(g_hSDKEffectBarRecharge, true, entity);
+		//if (g_hSDKEffectBarRecharge)
+		//	DHookEntity(g_hSDKEffectBarRecharge, true, entity);
 	}
 }
 

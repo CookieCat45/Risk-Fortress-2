@@ -61,7 +61,7 @@ bool CreateSurvivors()
 	ArrayList survivorList = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i))
+		if (!IsClientInGame(i) || IsPlayerSpectator(i))
 			continue;
 			
 		if (IsFakeClient(i))

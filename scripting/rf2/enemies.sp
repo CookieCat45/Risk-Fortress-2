@@ -878,7 +878,7 @@ void SummonTeleporterBosses(int entity)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i))
+		if (!IsClientInGame(i) || IsPlayerSpectator(i))
 		{
 			bossPoints[i] = -9999999999;
 			continue;
@@ -928,7 +928,7 @@ void SummonTeleporterBosses(int entity)
 	float time;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (g_bPlayerInSpawnQueue[i] || !valid[i] || g_bPlayerIsTeleporterBoss[i])
+		if (g_bPlayerInSpawnQueue[i] || !valid[i] || g_bPlayerIsTeleporterBoss[i] || !IsClientInGame(i) || IsPlayerSpectator(i))
 			continue;
 		
 		if (playerPoints[i] == highestPoints)

@@ -859,11 +859,6 @@ void ResetAFKTime(int client, bool message=true)
 		{
 			PrintCenterText(client, "%t", "NoLongerAFK");
 		}
-		
-		if (g_bRoundActive && !IsPlayerSurvivor(client) && !IsPlayerAlive(client))
-		{
-			ChangeClientTeam(client, TEAM_ENEMY);
-		}
 	}
 	
 	g_flPlayerAFKTime[client] = 0.0;
@@ -910,10 +905,33 @@ bool ClientPlayGesture(int client, const char[] gesture)
 	return false;
 }
 
+bool IsPlayerSpectator(int client)
+{
+	return GetClientTeam(client) <= 1;
+}
+
 float GetPercentInvisible(int client)
 {
     int offset = FindSendPropInfo("CTFPlayer", "m_flInvisChangeCompleteTime") - 8;
     return GetEntDataFloat(client, offset);
+}
+
+int GetPlayerWearableCount(int client, bool itemOnly=false)
+{
+	int count;
+	int entity = -1;
+	while ((entity = FindEntityByClassname(entity, "tf_wearable*")) != -1)
+	{
+		if (itemOnly && !g_bItemWearable[entity])
+			continue;
+		
+		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") != client)
+			continue;
+		
+		count++;
+	}
+	
+	return count;
 }
 
 public bool TraceFilter_PlayerTeam(int entity, int mask, int client)
