@@ -2850,7 +2850,7 @@ public Action Timer_PluginMessage(Handle timer)
 		return Plugin_Stop;
 		
 	static int message;
-	const int maxMessages = 4;
+	const int maxMessages = 5;
 	
 	switch (message)
 	{
@@ -2859,6 +2859,7 @@ public Action Timer_PluginMessage(Handle timer)
 		case 2: RF2_PrintToChatAll("%t", "TipCredits", PLUGIN_VERSION);
 		case 3: RF2_PrintToChatAll("%t", "TipQueue");
 		case 4: RF2_PrintToChatAll("%t", "TipMenu");
+		case 5:	RF2_PrintToChatAll("%t", "TipDiscord");
 	}
 	
 	message++;
@@ -3870,6 +3871,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.35;
 				}
 			}
+			else if (StrContains(inflictorClassname, "tf_projectile_rocket") != -1
+				|| strcmp2(inflictorClassname, "tf_projectile_energy_ball"))
+			{
+				if (PlayerHasItem(attacker, ItemSoldier_WarPig) && CanUseCollectorItem(attacker, ItemSoldier_WarPig))
+				{
+					damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_WarPig, 1);
+				}
+			}
 		}
 		
 		// Horrific Headsplitter
@@ -3956,7 +3965,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			damage = 350.0 * GetEnemyDamageMult();
 		}
-		else if (strcmp2(inflictorClassname, "eyeball_boss"))
+		else
 		{
 			damage *= GetEnemyDamageMult();
 		}

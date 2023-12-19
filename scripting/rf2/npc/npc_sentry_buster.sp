@@ -126,7 +126,7 @@ methodmap SentryBuster < CBaseCombatCharacter
 				}
 				else
 				{
-					damage = BUSTER_BASE_DAMAGE * GetEnemyDamageMult();
+					damage = BUSTER_BASE_DAMAGE;
 					
 					if (boss)
 						damage *= 0.1;

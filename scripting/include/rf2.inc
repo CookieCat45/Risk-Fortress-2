@@ -76,6 +76,7 @@ enum
 	ItemStrange_LegendaryLid = 59,
 	ItemStrange_CroneDome = 60,
 	ItemStrange_HandsomeDevil = 61,
+	ItemSoldier_WarPig = 62,
 	Item_MaxValid,
 };
 

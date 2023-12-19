@@ -848,7 +848,7 @@ void UpdatePlayerItem(int client, int item)
 			if (CanUseCollectorItem(client, ItemEngi_Teddy))
 			{
 				int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-				if (wrench > -1)
+				if (wrench > 0)
 				{
 					if (PlayerHasItem(client, ItemEngi_Teddy))
 					{
@@ -868,7 +868,7 @@ void UpdatePlayerItem(int client, int item)
 		case ItemMedic_BlightedBeak, ItemMedic_ProcedureMask:
 		{
 			int medigun = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-			if (medigun > -1)
+			if (medigun > 0)
 			{
 				if (item == ItemMedic_BlightedBeak && PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
 				{
@@ -918,7 +918,7 @@ void UpdatePlayerItem(int client, int item)
 			if (CanUseCollectorItem(client, ItemHeavy_ToughGuyToque))
 			{
 				int minigun = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-				if (minigun > -1)
+				if (minigun > 0)
 				{
 					if (PlayerHasItem(client, ItemHeavy_ToughGuyToque))
 					{
@@ -959,6 +959,22 @@ void UpdatePlayerItem(int client, int item)
 			else
 			{
 				TF2Attrib_RemoveByDefIndex(client, 178);
+			}
+		}
+		case ItemSoldier_WarPig:
+		{
+			if (CanUseCollectorItem(client, ItemSoldier_WarPig))
+			{
+				int launcher = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+				if (launcher > 0 && PlayerHasItem(client, ItemSoldier_WarPig))
+				{
+					float projSpeed = 1.0 + CalcItemMod(client, ItemSoldier_WarPig, 0);
+					TF2Attrib_SetByDefIndex(launcher, 103, projSpeed); // "Projectile speed increased"
+				}
+				else
+				{
+					TF2Attrib_RemoveByDefIndex(launcher, 103);
+				}
 			}
 		}
 	}
