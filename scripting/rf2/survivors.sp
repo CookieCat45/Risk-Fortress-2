@@ -285,6 +285,14 @@ public int SortSurvivorList(int index1, int index2, ArrayList array, Handle hndl
 	{
 		return 0;
 	}
+	else if (inv1 == -1)
+	{
+		return 1;
+	}
+	else if (inv2 == -1)
+	{
+		return -1;
+	}
 	else if (inv1 >= 0 && inv1 < inv2)
 	{
 		return -1;
@@ -428,7 +436,7 @@ int GetClientOwnedInventory(int client)
 		if (DoesClientOwnInventory(client, i))
 			return i;
 	}
-
+	
 	return -1;
 }
 

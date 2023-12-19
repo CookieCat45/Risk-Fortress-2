@@ -268,6 +268,10 @@ static int CreateTankBoss(bool badass=false)
 	{
 		health = RoundToFloor(float(health) * 0.75);
 	}
+	else
+	{
+		health = RoundToFloor(float(health) * (1.0 + 0.15*float(RF2_GetSurvivorCount()-1)));
+	}
 	
 	SetEntProp(tankBoss, Prop_Data, "m_iHealth", health);
 	SetEntProp(tankBoss, Prop_Data, "m_iMaxHealth", health);
