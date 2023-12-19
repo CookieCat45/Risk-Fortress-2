@@ -180,6 +180,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 	return area;
 }
 
+/*
 CNavArea GetIncursionArea(TFTeam team)
 {
 	int entity = -1;
@@ -209,7 +210,9 @@ CNavArea GetIncursionArea(TFTeam team)
 
 	return area;
 }
+*/
 
+/*
 void SDK_ComputeIncursionDistances(CNavArea spawnArea, TFTeam team)
 {
 	if (g_hSDKComputeIncursion)
@@ -234,6 +237,7 @@ public MRESReturn DHook_ComputeIncursionVoid(Address navMesh)
 	
 	return MRES_Ignored;
 }
+*/
 
 public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 {

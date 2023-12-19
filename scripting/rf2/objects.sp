@@ -222,7 +222,7 @@ int CreateObject(const char[] classname, float pos[3])
 
 public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, float damageForce[3], float damagePosition[3], int damageCustom)
 {
-	if (attacker < 1 || attacker > MaxClients || !IsPlayerSurvivor(attacker) || !(damageType & DMG_MELEE))
+	if (!IsValidClient(attacker) || !IsPlayerSurvivor(attacker) || !(damageType & DMG_MELEE))
 		return Plugin_Continue;
 		
 	if (!GetEntProp(entity, Prop_Data, "m_bActive"))
@@ -351,7 +351,7 @@ public Action Timer_SpawnItem(Handle timer, DataPack pack)
 	pos[0] = pack.ReadFloat();
 	pos[1] = pack.ReadFloat();
 	pos[2] = pack.ReadFloat();
-	SpawnItem(item, pos, client, 5.0);
+	SpawnItem(item, pos, client, 6.0);
 	
 	if (!GetClientCookieInt(client, g_coTutorialItemPickup))
 	{

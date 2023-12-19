@@ -33,6 +33,7 @@ void RefreshClient(int client)
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
 	g_bEquipmentCooldownActive[client] = false;
+	g_bItemPickupCooldown[client] = false;
 	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
 	
 	g_szObjectiveHud[client] = "";
@@ -255,11 +256,6 @@ bool RollAttackCrit(int client, float proc=1.0, int damageType=DMG_GENERIC, int 
 		if (PlayerHasItem(client, Item_SaxtonHat) && melee)
 		{
 			critChance += CalcItemMod(client, Item_SaxtonHat, 1);
-		}
-		
-		if (PlayerHasItem(client, Item_BruiserBandana))
-		{
-			critChance += GetItemMod(Item_BruiserBandana, 1);
 		}
 	}
 	else

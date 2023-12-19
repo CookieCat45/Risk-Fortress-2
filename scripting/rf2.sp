@@ -351,6 +351,7 @@ bool g_bPlayerExtraSentryHint[MAXTF2PLAYERS];
 bool g_bPlayerInSpawnQueue[MAXTF2PLAYERS];
 bool g_bPlayerHasVampireSapper[MAXTF2PLAYERS];
 bool g_bEquipmentCooldownActive[MAXTF2PLAYERS];
+bool g_bItemPickupCooldown[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -422,7 +423,7 @@ Handle g_hSDKGetMaxClip1;
 Handle g_hSDKUpdateSpeed;
 Handle g_hSDKDoQuickBuild;
 Handle g_hSDKGetMaxHealth;
-Handle g_hSDKComputeIncursion;
+//Handle g_hSDKComputeIncursion;
 Handle g_hSDKPlayGesture;
 DHookSetup g_hSDKCanBuild;
 DHookSetup g_hSDKDoSwingTrace;
@@ -721,6 +722,7 @@ void LoadGameData()
 		LogError("[DHooks] Failed to create detour for HandleRageGain");
 	}
 	
+	/*
 	// CTFNavMesh::ComputeIncursionDistances -------------------------------------------------------------------------------------------------
 	StartPrepSDKCall(SDKCall_Raw);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFNavMesh::ComputeIncursionDistances");
@@ -732,7 +734,6 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CTFNavMesh::ComputeIncursionDistances");
 	}
 	
-	/*
 	// CTFNavMesh::ComputeIncursionDistances(void) -------------------------------------------------------------------------------------------------
 	g_hSDKComputeIncursionVoid = DHookCreateFromConf(gamedata, "CTFNavMesh::ComputeIncursionDistances_Void");
 	if (!g_hSDKComputeIncursionVoid || !DHookEnableDetour(g_hSDKComputeIncursionVoid, true, DHook_ComputeIncursionVoid))
@@ -1453,7 +1454,18 @@ void StartDifficultyVote()
 		menu.AddItem("3", "Titanium");
 	}
 	
-	menu.DisplayVoteToAll(30);
+	int clients[MAXTF2PLAYERS] = {-1, ...};
+	int clientCount;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || IsPlayerSpectator(i) || IsFakeClient(i))
+			continue;
+		
+		clients[clientCount] = i;
+		clientCount++;
+	}
+	
+	menu.DisplayVote(clients, clientCount, 30);
 }
 
 public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int param2)
@@ -1626,14 +1638,25 @@ public void RF_InitStats(int client)
 
 public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
-	if (!RF2_IsEnabled() || g_bWaitingForPlayers || !g_bRoundActive)
+	if (!RF2_IsEnabled())
 		return Plugin_Continue;
+	
+	int victim = GetClientOfUserId(event.GetInt("userid"));
+	if (g_bWaitingForPlayers)
+	{
+		CreateTimer(0.1, Timer_RespawnPlayerPreRound, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
+		TF2_RespawnPlayer(victim);
+		return Plugin_Continue;
+	}
+	else if (!g_bRoundActive)
+	{
+		return Plugin_Continue;
+	}
 	
 	int deathFlags = event.GetInt("death_flags");
 	if (deathFlags & TF_DEATHFLAG_DEADRINGER)
 		return Plugin_Continue;
-
-	int victim = GetClientOfUserId(event.GetInt("userid"));
+	
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	int inflictor = event.GetInt("inflictor_entindex");
 	//int assister = GetClientOfUserId(event.GetInt("assister"));
@@ -1880,6 +1903,12 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						TE_TFParticle("mvm_cash_embers_red", pos, bomb, PATTACH_ABSORIGIN_FOLLOW);
 					}
 				}
+				
+				if (PlayerHasItem(attacker, Item_BruiserBandana))
+				{
+					int heal = RoundToFloor(GetItemMod(Item_BruiserBandana, 0)) * GetPlayerItemCount(attacker, Item_BruiserBandana);
+					HealPlayer(attacker, heal);
+				}
 			}
 		}
 	}
@@ -1990,6 +2019,15 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	
 	RefreshClient(victim);
 	return action;
+}
+
+public Action Timer_RespawnPlayerPreRound(Handle timer, int client)
+{
+	if (!g_bWaitingForPlayers || (client = GetClientOfUserId(client)) <= 0)
+		return Plugin_Continue;
+	
+	TF2_RespawnPlayer(client);
+	return Plugin_Continue;
 }
 
 public void RF_ResetKillfeedItem(int client)
@@ -4108,11 +4146,6 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 						{
 							damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 1);
 						}
-						
-						if (PlayerHasItem(attacker, Item_BruiserBandana))
-						{
-							damage *= 1.0 + GetItemMod(Item_BruiserBandana, 1);
-						}
 					}
 					
 					// Executioner has a chance to cause bleeding on crit damage
@@ -4126,12 +4159,6 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 						}
 					}
 				}
-			}
-			
-			// Bruiser's Bandana increases any damage that is a crit or mini-crit
-			if (PlayerHasItem(attacker, Item_BruiserBandana))
-			{
-				damage *= 1.0 + CalcItemMod(attacker, Item_BruiserBandana, 0);
 			}
 		}
 	}

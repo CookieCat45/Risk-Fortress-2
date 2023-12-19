@@ -422,6 +422,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 		SetEntProp(wepEnt, Prop_Data, "m_iSubType", 3);
 	}
 	
+	SetEntProp(wepEnt, Prop_Send, "m_bValidatedAttachedEntity", true);
 	return wepEnt;
 }
 
@@ -506,7 +507,6 @@ bool visible = true, const char[] model="", int quality=0, int level=0)
 	
 	if (model[0])
 	{
-		SetEntProp(wearable, Prop_Send, "m_bValidatedAttachedEntity", true);
 		int modelIndex = PrecacheModel(model);
 		SetEntityModel(wearable, model);
 
@@ -518,6 +518,7 @@ bool visible = true, const char[] model="", int quality=0, int level=0)
 	
 	DispatchSpawn(wearable);
 	SDK_EquipWearable(client, wearable);
+	SetEntProp(wearable, Prop_Send, "m_bValidatedAttachedEntity", true);
 	return wearable;
 }
 

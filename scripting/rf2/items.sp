@@ -350,6 +350,7 @@ public Action Timer_ClearItemOwner(Handle timer, int entity)
 		return Plugin_Continue;
 		
 	SetEntPropEnt(entity, Prop_Data, "m_hItemOwner", -1);
+	SetEntPropEnt(entity, Prop_Data, "m_hSubject", -1);
 	return Plugin_Continue;
 }
 
@@ -365,7 +366,7 @@ void GiveItem(int client, int item, int amount=1)
 			float pos[3];
 			GetEntPos(client, pos);
 			pos[2] += 30.0;
-			DropItem(client, strangeItem, pos, client, 5.0);
+			DropItem(client, strangeItem, pos, _, 6.0);
 		}
 		
 		g_iPlayerEquipmentItem[client] = item;
@@ -423,9 +424,11 @@ bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=
 	}
 	
 	UpdatePlayerItem(client, item);
-	if (IsPlayerSurvivor(client))
+	if (IsPlayerSurvivor(client) && GetItemQuality(item) != Quality_Strange)
 	{
-		g_iItemsTaken[RF2_GetSurvivorIndex(client)]--;
+		int index = RF2_GetSurvivorIndex(client);
+		if (g_iItemsTaken[index] > 0)
+			g_iItemsTaken[index]--;
 	}
 	
 	return true;
@@ -433,6 +436,9 @@ bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=
 
 bool PickupItem(int client)
 {
+	if (g_bItemPickupCooldown[client])
+		return false;
+	
 	const float range = 90.0;
 	
 	float eyePos[3], endPos[3], eyeAng[3], direction[3];
@@ -465,7 +471,6 @@ bool PickupItem(int client)
 		int index = RF2_GetSurvivorIndex(client);
 		int itemIndex = GetEntProp(item, Prop_Data, "m_iIndex");
 		int spawner = GetEntPropEnt(item, Prop_Data, "m_hItemOwner");
-		//int subject = GetEntPropEnt(item, Prop_Data, "m_hSubject");
 		bool dropped = asBool(GetEntProp(item, Prop_Data, "m_bDropped"));
 		int quality = GetItemQuality(itemIndex);
 		
@@ -479,19 +484,16 @@ bool PickupItem(int client)
 			return false;
 		}
 		
-		// disabled for now, too buggy
-		/*
-		if (IsValidClient(subject) && IsPlayerSurvivor(subject)
-		|| IsValidClient(spawner) && IsPlayerSurvivor(spawner))
+		if (dropped)
 		{
-			if (client != spawner && client != subject)
+			if (IsValidClient(spawner) && IsPlayerSurvivor(spawner) 
+				&& client != spawner && client != GetEntPropEnt(item, Prop_Data, "m_hSubject"))
 			{
 				EmitSoundToClient(client, SND_NOPE);
 				PrintCenterText(client, "%t", "NotForYou");
 				return false;
 			}
 		}
-		*/
 		
 		GiveItem(client, itemIndex);
 		RemoveEntity(item);
@@ -509,7 +511,6 @@ bool PickupItem(int client)
 				
 				RF2_PrintToChat(i, "%t", "PickupItemStrange", client, qualityTag, itemName);
 			}
-			
 		}
 		else
 		{
@@ -525,9 +526,10 @@ bool PickupItem(int client)
 		RF2_PrintToChat(client, "%s%s{default}: %s", qualityTag, itemName, g_szItemDesc[itemIndex]);
 		EmitSoundToAll(SND_ITEM_PICKUP, client);
 		
-		if (!dropped)
+		if (!dropped || spawner == client)
 		{
-			g_iTotalItemsFound++;
+			if (!dropped)
+				g_iTotalItemsFound++;
 			
 			if (!IsEquipmentItem(itemIndex))
 			{
@@ -552,10 +554,21 @@ bool PickupItem(int client)
 			SetClientCookie(client, g_coTutorialItemPickup, "1");
 		}
 		
+		g_bItemPickupCooldown[client] = true;
+		CreateTimer(0.2, Timer_ItemPickupCooldown, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		return true;
 	}
 	
 	return false;
+}
+
+public Action Timer_ItemPickupCooldown(Handle timer, int client)
+{
+	if ((client = GetClientOfUserId(client)) == 0)
+		return Plugin_Continue;
+
+	g_bItemPickupCooldown[client] = false;
+	return Plugin_Continue;
 }
 
 int EquipItemAsWearable(int client, int item)
@@ -1860,6 +1873,7 @@ bool GetItemModBool(int item, int slot)
 	return asBool((GetItemModInt(item, slot)));
 }
 */
+
 int GetPlayerItemCount(int client, int item)
 {
 	return g_iPlayerItem[client][item];
