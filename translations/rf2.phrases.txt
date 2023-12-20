@@ -165,8 +165,8 @@
 
 	"GivenInventory" // No color tags
 	{
-		"#format"	"{1:s}"
-		"en"		"You have been given {1}'s inventory."
+		"#format"	"{1:d}"
+		"en"		"You have been given inventory slot {1}."
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -380,8 +380,7 @@
 	
 	"TipAFK"
 	{
-		"#format"	"{1:d}"
-		"en"		"Need to AFK? No problem! Type {lightblue}/rf2_afk{default} into chat to enter AFK Mode. Only up to {yellow}{1}{default} players may use this at a time, however."
+		"en"		"Need to AFK? No problem! Type {lightblue}/rf2_afk{default} into chat to enter AFK Mode."
 	}
 	
 	"TipCredits"
