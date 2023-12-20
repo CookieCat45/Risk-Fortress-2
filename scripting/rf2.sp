@@ -19,7 +19,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1.6b"
+#define PLUGIN_VERSION "0.1.7b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -2855,7 +2855,7 @@ public Action Timer_PluginMessage(Handle timer)
 	switch (message)
 	{
 		case 0: RF2_PrintToChatAll("%t", "TipSettings");
-		case 1: RF2_PrintToChatAll("%t", "TipAFK", g_cvAFKLimit.IntValue);
+		case 1: RF2_PrintToChatAll("%t", "TipAFK");
 		case 2: RF2_PrintToChatAll("%t", "TipCredits", PLUGIN_VERSION);
 		case 3: RF2_PrintToChatAll("%t", "TipQueue");
 		case 4: RF2_PrintToChatAll("%t", "TipMenu");
@@ -2888,7 +2888,6 @@ public Action Timer_AFKManager(Handle timer)
 	int highestKickPriority = -1;
 	int afkCount;
 	int humanCount = GetTotalHumans();
-	
 	int afkLimit = g_cvAFKLimit.IntValue;
 	int minHumans = g_cvAFKMinHumans.IntValue;
 	float afkKickTime = g_cvAFKManagerKickTime.FloatValue;
@@ -3052,8 +3051,21 @@ public Action OnChangeSpec(int client, const char[] command, int args)
 {
 	if (!IsSingleplayer(false))
 		ResetAFKTime(client);
-
+	
+	RequestFrame(RF_CheckSpecTarget, GetClientUserId(client));
 	return Plugin_Continue;
+}
+
+public void RF_CheckSpecTarget(int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return;
+	
+	int specTarget = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
+	if (IsValidClient(specTarget) && IsPlayerSurvivor(specTarget))
+	{
+		ShowItemMenu(client, specTarget);
+	}
 }
 
 public Action OnBuildCommand(int client, const char[] command, int args)

@@ -1145,7 +1145,7 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 		case MenuAction_Select:
 		{
 			g_iPlayerLastItemMenuItem[param1] = GetMenuSelectionPosition();
-
+			
 			bool refresh = true;
 			char info[16];
 			GetMenuItem(menu, param2, info, sizeof(info));

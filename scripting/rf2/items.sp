@@ -403,7 +403,7 @@ bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=
 		
 		if (subject != client)
 		{
-			char itemName[64];
+			char itemName[128];
 			GetItemName(item, itemName, sizeof(itemName), false);
 			PrintHintText(subject, "%t", "DroppedItemForYou", client, itemName);
 		}
@@ -412,6 +412,10 @@ bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=
 	if (ownTime > 0.0) // If we own this item but the owner/subject takes too long to pick it up, it's free for taking
 	{
 		CreateTimer(ownTime, Timer_ClearItemOwner, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+	}
+	else
+	{
+		SetEntPropEnt(entity, Prop_Data, "m_hItemOwner", -1);
 	}
 	
 	if (IsEquipmentItem(item))
@@ -498,7 +502,7 @@ bool PickupItem(int client)
 		GiveItem(client, itemIndex);
 		RemoveEntity(item);
 		
-		char qualityTag[32], itemName[32];
+		char qualityTag[32], itemName[128];
 		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
 		GetItemName(itemIndex, itemName, sizeof(itemName));
 		
@@ -1006,6 +1010,19 @@ void UpdatePlayerItem(int client, int item)
 	else
 	{
 		EquipItemAsWearable(client, item);
+	}
+	
+	if (IsPlayerSurvivor(client))
+	{
+		// update for spectators
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (!IsClientInGame(i) || IsFakeClient(i) || IsPlayerAlive(i))
+				continue;
+			
+			if (GetEntPropEnt(i, Prop_Send, "m_hObserverTarget") == client)
+				ShowItemMenu(i, client);
+		}
 	}
 }
 

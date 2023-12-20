@@ -18,7 +18,6 @@ float g_flSavedXP[MAX_SURVIVORS];
 float g_flSavedNextLevelXP[MAX_SURVIVORS] = {150.0, ...};
 
 char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
-char g_szLastInventoryOwner[MAX_SURVIVORS][MAX_NAME_LENGTH];
 bool g_bSurvivorInventoryClaimed[MAX_SURVIVORS];
 ArrayList g_hSurvivorIndexSteamIDs[MAX_SURVIVORS];
 
@@ -91,15 +90,18 @@ bool CreateSurvivors()
 		survivorList.Push(i);
 	}
 	
-	survivorList.SortCustom(SortSurvivorList);
-	bool indexTaken[MAX_SURVIVORS];
+	// sort by queue points
+	survivorList.SortCustom(SortSurvivorListByPoints);
 	int maxSurvivors = g_cvMaxSurvivors.IntValue;
+	if (survivorList.Length > maxSurvivors)
+		survivorList.Resize(maxSurvivors);
+	
+	// sort by inventory index, so people who own inventories can get their stuff back first
+	survivorList.SortCustom(SortSurvivorListByInventory);
+	bool indexTaken[MAX_SURVIVORS];
 	int survivorCount, client;
 	int steamIDIndex = -1;
 	char steamId[128];
-	
-	if (survivorList.Length > maxSurvivors)
-		survivorList.Resize(maxSurvivors);
 	
 	for (int i = 0; i < survivorList.Length; i++)
 	{
@@ -241,7 +243,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	}
 }
 
-public int SortSurvivorList(int index1, int index2, ArrayList array, Handle hndl)
+public int SortSurvivorListByPoints(int index1, int index2, ArrayList array, Handle hndl)
 {
 	int client1 = array.Get(index1);
 	int client2 = array.Get(index2);
@@ -273,14 +275,20 @@ public int SortSurvivorList(int index1, int index2, ArrayList array, Handle hndl
 		return -1;
 	}
 	
-	if (g_iPlayerSurvivorPoints[client1] > g_iPlayerSurvivorPoints[client2])
-	{
-		return -1;
-	}
+	if (g_iPlayerSurvivorPoints[client1] == g_iPlayerSurvivorPoints[client2])
+		return 0;
 	
-	// whoever owns the lowest inventory index should be made a survivor first, so they can get their inventory back
+	return g_iPlayerSurvivorPoints[client1] > g_iPlayerSurvivorPoints[client2] ? -1 : 1;
+}
+
+public int SortSurvivorListByInventory(int index1, int index2, ArrayList array, Handle hndl)
+{
+	int client1 = array.Get(index1);
+	int client2 = array.Get(index2);
 	int inv1 = GetClientOwnedInventory(client1);
 	int inv2 = GetClientOwnedInventory(client2);
+	
+	// whoever owns the lowest inventory index should be made a survivor first, so they can get their inventory back
 	if (inv1 == inv2)
 	{
 		return 0;
@@ -362,13 +370,10 @@ void LoadSurvivorInventory(int client, int index)
 		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
 	}
 	
-	if (g_szLastInventoryOwner[index][0])
-	{
-		PrintCenterText(client, "%t", "GivenInventory", g_szLastInventoryOwner[index]);
-	}
+	PrintCenterText(client, "%t", "GivenInventory", index+1);
 }
 
-void SaveSurvivorInventory(int client, int index, bool saveName=true, bool saveSteamId=true)
+void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 {
 	if (index < 0)
 		return;
@@ -386,20 +391,6 @@ void SaveSurvivorInventory(int client, int index, bool saveName=true, bool saveS
 	g_flSavedNextLevelXP[index] = g_flPlayerNextLevelXP[client];
 	g_iSavedEquipmentItem[index] = GetPlayerEquipmentItem(client);
 	g_iSavedHauntedKeys[index] = g_iPlayerHauntedKeys[client];
-	
-	if (saveName)
-	{
-		if (IsValidClient(client))
-		{
-			char clientName[128];
-			GetClientName(client, clientName, sizeof(clientName));
-			strcopy(g_szLastInventoryOwner[index], sizeof(g_szLastInventoryOwner[]), clientName);
-		}
-		else
-		{
-			strcopy(g_szLastInventoryOwner[index], sizeof(g_szLastInventoryOwner[]), "[unknown]");
-		}
-	}
 	
 	char steamId[128];
 	if (saveSteamId && GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)))
