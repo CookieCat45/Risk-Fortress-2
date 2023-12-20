@@ -19,7 +19,7 @@ float g_flSavedNextLevelXP[MAX_SURVIVORS] = {150.0, ...};
 
 char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
 bool g_bSurvivorInventoryClaimed[MAX_SURVIVORS];
-ArrayList g_hSurvivorIndexSteamIDs[MAX_SURVIVORS];
+StringMap g_hPlayerSteamIDToInventoryIndex;
 
 void LoadSurvivorStats()
 {
@@ -57,6 +57,9 @@ void LoadSurvivorStats()
 
 bool CreateSurvivors()
 {
+	if (!g_hPlayerSteamIDToInventoryIndex)
+		g_hPlayerSteamIDToInventoryIndex = new StringMap();
+	
 	ArrayList survivorList = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -99,8 +102,7 @@ bool CreateSurvivors()
 	// sort by inventory index, so people who own inventories can get their stuff back first
 	survivorList.SortCustom(SortSurvivorListByInventory);
 	bool indexTaken[MAX_SURVIVORS];
-	int survivorCount, client;
-	int steamIDIndex = -1;
+	int survivorCount, client, index;
 	char steamId[128];
 	
 	for (int i = 0; i < survivorList.Length; i++)
@@ -108,38 +110,56 @@ bool CreateSurvivors()
 		client = survivorList.Get(i);
 		if (g_bGameInitialized && !IsFakeClient(client))
 		{
+			int steamIDIndex;
 			// check to see if we can get our own inventory back
-			if (GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)))
+			if (GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)) 
+				&& g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, steamIDIndex) && !indexTaken[steamIDIndex])
 			{
+				index = steamIDIndex;
+			}
+			else
+			{
+				// if we can't do that, try to find an empty inventory
+				int index2 = -1;
 				for (int s = 0; s < maxSurvivors; s++)
 				{
 					if (indexTaken[s])
 						continue;
 					
-					if (DoesClientOwnInventory(client, s))
+					if (!g_bSurvivorInventoryClaimed[s])
 					{
-						steamIDIndex = s;
+						index2 = s;
 						break;
 					}
 				}
+
+				if (index2 == -1)
+				{
+					// if we can't find an empty inventory, just find the next inventory that hasn't been taken by someone else
+					for (int s = 0; s < maxSurvivors; s++)
+					{
+						if (!indexTaken[s])
+						{
+							index2 = s;
+							break;
+						}
+					}
+				}
+				
+				index = index2;
 			}
-		}
-			
-		if (steamIDIndex > -1)
-		{
-			g_iPlayerSurvivorIndex[client] = steamIDIndex;
-			steamIDIndex = -1;
-			indexTaken[g_iPlayerSurvivorIndex[client]] = true;
 		}
 		else
 		{
-			g_iPlayerSurvivorIndex[client] = survivorCount;
-			indexTaken[survivorCount] = true;
+			index = survivorCount;
 		}
 		
-		MakeSurvivor(client, g_iPlayerSurvivorIndex[client]);
-		g_bSurvivorInventoryClaimed[g_iPlayerSurvivorIndex[client]] = true;
+		g_iPlayerSurvivorIndex[client] = index;
+		indexTaken[index] = true;
+		MakeSurvivor(client, index);
+		g_bSurvivorInventoryClaimed[index] = true;
 		survivorCount++;
+		index = -1;
 	}
 	
 	g_iSurvivorCount = survivorCount;
@@ -285,9 +305,19 @@ public int SortSurvivorListByInventory(int index1, int index2, ArrayList array, 
 {
 	int client1 = array.Get(index1);
 	int client2 = array.Get(index2);
+
+	if (IsFakeClient(client1))
+	{
+		return 1;
+	}
+	else if (IsFakeClient(client2))
+	{
+		return -1;
+	}
+
 	int inv1 = GetClientOwnedInventory(client1);
 	int inv2 = GetClientOwnedInventory(client2);
-	
+
 	// whoever owns the lowest inventory index should be made a survivor first, so they can get their inventory back
 	if (inv1 == inv2)
 	{
@@ -395,29 +425,21 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 	char steamId[128];
 	if (saveSteamId && GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)))
 	{
-		if (!g_hSurvivorIndexSteamIDs[index])
-			g_hSurvivorIndexSteamIDs[index] = new ArrayList(128);
-		
-		if (g_hSurvivorIndexSteamIDs[index].FindString(steamId) == -1)
-			g_hSurvivorIndexSteamIDs[index].PushString(steamId);
+		g_hPlayerSteamIDToInventoryIndex.SetValue(steamId, index, false);
 	}
 }
 
 // Checks if the client's SteamID is associated with the inventory for this survivor index
 bool DoesClientOwnInventory(int client, int index)
 {
-	if (!g_hSurvivorIndexSteamIDs[index])
+	if (!g_hPlayerSteamIDToInventoryIndex)
 		return false;
-
+	
 	char steamId[128];
-	if (GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)))
-	{
-		return g_hSurvivorIndexSteamIDs[index].FindString(steamId) != -1;
-	}
-	else
-	{
-		return false;
-	}
+	int index2;
+	
+	return GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)) 
+		&& g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, index2) && index2 == index;
 }
 
 int GetClientOwnedInventory(int client)

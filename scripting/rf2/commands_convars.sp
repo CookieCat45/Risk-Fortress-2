@@ -1073,7 +1073,7 @@ public Action Command_Items(int client, int args)
 
 void ShowItemMenu(int client, int inspectTarget=-1)
 {
-	if (!IsPlayerSurvivor(client))
+	if (!IsPlayerSurvivor(client) && inspectTarget == -1)
 		return;
 	
 	int target = IsValidClient(inspectTarget) ? inspectTarget : client;

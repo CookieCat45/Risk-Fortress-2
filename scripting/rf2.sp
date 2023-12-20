@@ -4124,7 +4124,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		
 		if (weapon > 0)
 		{
-			if (critType == CritType_Crit)
+			if (critType == CritType_Crit && IsValidClient(attacker) && IsPlayerSurvivor(attacker))
 			{
 				// Crit weapons nerf (Phlog, Backburner, Frontier Justice, Diamondback)
 				if (TF2Attrib_HookValueInt(0, "burn_damage_earns_rage", weapon)
