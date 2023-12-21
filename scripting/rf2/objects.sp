@@ -991,7 +991,6 @@ void EndTeleporterEvent(int teleporter)
 	
 	EmitSoundToAll(SND_TELEPORTER_CHARGED);
 	SetEntProp(teleporter, Prop_Send, "m_fEffects", EF_ITEM_BLINK);
-	RF2_PrintToChatAll("%t", "TeleporterComplete");
 	StopMusicTrackAll();
 	
 	int randomItem;
@@ -1008,6 +1007,7 @@ void EndTeleporterEvent(int teleporter)
 		PrintHintText(i, "%t", "GotItemReward", name);
 	}
 	
+	RF2_PrintToChatAll("%t", "TeleporterComplete");
 	Call_StartForward(g_fwTeleEventEnd);
 	Call_Finish();
 	

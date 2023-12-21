@@ -132,7 +132,7 @@ bool CreateSurvivors()
 						break;
 					}
 				}
-
+				
 				if (index2 == -1)
 				{
 					// if we can't find an empty inventory, just find the next inventory that hasn't been taken by someone else

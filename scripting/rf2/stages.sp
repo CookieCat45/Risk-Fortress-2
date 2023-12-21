@@ -328,7 +328,7 @@ bool IsStageCleared()
 	{
 		return GetEntProp(teleporter, Prop_Data, "m_iEventState") == TELE_EVENT_COMPLETE;
 	}
-
+	
 	if (g_bTankBossMode)
 	{
 		return g_iTanksKilledObjective >= g_iTankKillRequirement;

@@ -178,7 +178,7 @@ static int SpawnTanks()
 	const int maxTanks = 15;
 	spawnCount += subDifficulty;
 	spawnCount = imin(spawnCount, maxTanks);
-	float time = 15.0;
+	float time = 10.0;
 	
 	int badassTankCount;
 	if (subDifficulty >= SubDifficulty_Insane)
@@ -197,7 +197,7 @@ static int SpawnTanks()
 		else // delay the rest of the spawns
 		{
 			CreateTimer(time, Timer_CreateTankBoss, badass, TIMER_FLAG_NO_MAPCHANGE);
-			time += 15.0;
+			time += 10.0;
 		}
 	}
 	

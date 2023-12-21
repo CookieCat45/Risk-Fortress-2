@@ -891,8 +891,6 @@ public Action Command_AFK(int client, int args)
 	{
 		if (g_bGracePeriod)
 		{
-			FakeClientCommand(client, "explode");
-			
 			if (!IsSingleplayer())
 			{
 				ReshuffleSurvivor(client, view_as<int>(TFTeam_Spectator));
@@ -901,6 +899,8 @@ public Action Command_AFK(int client, int args)
 			{
 				TF2_ChangeClientTeam(client, TFTeam_Spectator);
 			}
+			
+			RefreshClient(client);
 		}
 		else
 		{
@@ -911,6 +911,7 @@ public Action Command_AFK(int client, int args)
 	else
 	{
 		TF2_ChangeClientTeam(client, TFTeam_Spectator);
+		RefreshClient(client);
 	}
 	
 	g_bPlayerIsAFK[client] = true;

@@ -585,7 +585,7 @@ int EquipItemAsWearable(int client, int item)
 	
 	if (HasItemAsWearable(client, item))
 		return -1;
-
+	
 	int wearable = -1;
 	int entity = MaxClients+1;
 	int index;
@@ -1591,13 +1591,14 @@ float GetPlayerEquipmentItemCooldown(int client)
 		return 0.0;
 	
 	float cooldown = g_flEquipmentItemCooldown[item] * CalcItemMod_HyperbolicInverted(client, Item_BatteryCanteens, 0);
+	
 	bool cooldownActive = g_flPlayerEquipmentItemCooldown[client] > 0.0;
 	if (cooldownActive)
 	{
 		float remainingCooldown = cooldown - g_flPlayerEquipmentItemCooldown[client];
 		cooldown -= remainingCooldown;
 	}
-
+	
 	return cooldown;
 }
 

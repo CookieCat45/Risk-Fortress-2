@@ -1222,14 +1222,22 @@ public void OnClientDisconnect(int client)
 		SaveClientCookies(client);
 	}
 	
-	if (!g_bWaitingForPlayers && !g_bGameOver && g_bGameInitialized && !g_bMapChanging && !IsFakeClient(client) && !IsStageCleared())
+	if (g_bRoundActive && !g_bGameOver && !g_bMapChanging)
 	{
-		int humanCount = GetTotalHumans(false)-1; // minus ourselves
-		
-		if (humanCount == 0 && !g_bPluginReloading) // Everybody left. Time to start over!
+		int count;
+		for (int i = 1; i <= MaxClients; i++)
 		{
-			PrintToServer("%T", "AllHumansDisconnected", LANG_SERVER);
-			ReloadPlugin(true);
+			if (i == client || !IsClientInGame(i))
+				continue;
+		
+			if (IsPlayerSurvivor(i))
+				count++;
+		}
+		
+		if (count <= 0) // Everybody on RED is gone, game over
+		{
+			RF2_PrintToChatAll("%t", "AllHumansDisconnected");
+			GameOver();
 			return;
 		}
 	}
