@@ -897,10 +897,11 @@ public Action Command_AFK(int client, int args)
 			}
 			else
 			{
-				TF2_ChangeClientTeam(client, TFTeam_Spectator);
+				return Plugin_Handled;
 			}
 			
-			RefreshClient(client);
+			RefreshClient(client, true);
+			CheckRedTeam(client);
 		}
 		else
 		{
@@ -911,7 +912,7 @@ public Action Command_AFK(int client, int args)
 	else
 	{
 		TF2_ChangeClientTeam(client, TFTeam_Spectator);
-		RefreshClient(client);
+		RefreshClient(client, true);
 	}
 	
 	g_bPlayerIsAFK[client] = true;

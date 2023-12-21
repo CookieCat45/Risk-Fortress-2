@@ -1224,22 +1224,7 @@ public void OnClientDisconnect(int client)
 	
 	if (g_bRoundActive && !g_bGameOver && !g_bMapChanging)
 	{
-		int count;
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (i == client || !IsClientInGame(i))
-				continue;
-		
-			if (IsPlayerSurvivor(i))
-				count++;
-		}
-		
-		if (count <= 0) // Everybody on RED is gone, game over
-		{
-			RF2_PrintToChatAll("%t", "AllHumansDisconnected");
-			GameOver();
-			return;
-		}
+		CheckRedTeam(client);
 	}
 	
 	if (IsPlayerSurvivor(client) && !g_bPluginReloading)
@@ -1270,6 +1255,25 @@ public void OnClientDisconnect_Post(int client)
 	g_TFBot[client] = null;
 	RefreshClient(client);
 	ResetAFKTime(client, false);
+}
+
+void CheckRedTeam(int client)
+{
+	int count;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (i == client || !IsClientInGame(i))
+			continue;
+	
+		if (IsPlayerSurvivor(i))
+			count++;
+	}
+	
+	if (count <= 0) // Everybody on RED is gone, game over
+	{
+		RF2_PrintToChatAll("%t", "AllHumansDisconnected");
+		GameOver();
+	}
 }
 
 void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
@@ -1333,17 +1337,11 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 			// Lucky you - your points won't be getting reset.
 			MakeSurvivor(i, RF2_GetSurvivorIndex(client), false);
 			
-			float pos[3];
-			float angles[3];
+			float pos[3], angles[3];
 			GetEntPos(client, pos);
 			GetClientEyeAngles(client, angles);
 			TeleportEntity(i, pos, angles, NULL_VECTOR);
-			
-			if (IsClientInGame(client))
-			{
-				RF2_PrintToChat(i, "%t", "DisconnectChosenAsSurvivor", client);
-			}
-			
+			RF2_PrintToChat(i, "%t", "DisconnectChosenAsSurvivor", client);
 			break;
 		}
 	}
@@ -3004,10 +3002,12 @@ public Action OnChangeClass(int client, const char[] command, int args)
 	char arg1[32];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	TFClassType desiredClass = TF2_GetClass(arg1);
-
+	
 	if (g_bRoundActive && !g_bGracePeriod || GetClientTeam(client) == TEAM_ENEMY)
 	{
-		RF2_PrintToChat(client, "%t", "NoChangeClass");
+		// don't nag dead players for trying to change class
+		if (IsPlayerAlive(client))
+			RF2_PrintToChat(client, "%t", "NoChangeClass");
 		
 		if (desiredClass != TFClass_Unknown)
 		{
@@ -3033,7 +3033,7 @@ public Action OnChangeClass(int client, const char[] command, int args)
 		pack.WriteFloat(pos[1]);
 		pack.WriteFloat(pos[2]);
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -3044,11 +3044,48 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 	
 	if (g_bRoundActive)
 	{
-		int team = GetClientTeam(client);
-		if (team == TEAM_ENEMY || team == TEAM_SURVIVOR)
+		if (IsPlayerSurvivor(client) && IsSingleplayer())
 		{
 			RF2_PrintToChat(client, "%t", "NoChangeTeam");
 			return Plugin_Handled;
+		}
+
+		if (strcmp2(command, "autoteam"))
+		{
+			return Plugin_Handled;
+		}
+		
+		int team = GetClientTeam(client);
+		int newTeam;
+		if (strcmp2(command, "spectate"))
+		{
+			newTeam = 1;
+		}
+		else
+		{
+			char teamName[16];
+			GetCmdArg(1, teamName, sizeof(teamName));
+			if (strcmp2(teamName, "random"))
+			{
+				return Plugin_Handled;
+			}
+			
+			newTeam = FindTeamByName(teamName);
+			if (newTeam < 0)
+			{
+				return Plugin_Continue;
+			}
+		}
+		
+		if (team == TEAM_ENEMY && newTeam > 1 || IsTeleporterBoss(client) 
+			|| team == TEAM_SURVIVOR && IsPlayerAlive(client) && !g_bGracePeriod)
+		{
+			RF2_PrintToChat(client, "%t", "NoChangeTeam");
+			return Plugin_Handled;
+		}
+		else if (IsPlayerSurvivor(client))
+		{
+			ReshuffleSurvivor(client, newTeam);
 		}
 	}
 	

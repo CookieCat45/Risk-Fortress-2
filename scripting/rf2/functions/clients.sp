@@ -20,7 +20,7 @@ public const TFCond g_MannpowerRunes[] =
 	TFCond_KingRune,
 };
 
-void RefreshClient(int client)
+void RefreshClient(int client, bool force=false)
 {
 	g_bPlayerViewingItemMenu[client] = false;
 	g_bPlayerIsTeleporterBoss[client] = false;
@@ -49,7 +49,7 @@ void RefreshClient(int client)
 	}
 	
 	// Do not reset our Survivor stats if we die in the grace period.
-	if (!g_bGracePeriod && IsPlayerSurvivor(client) || g_bMapChanging)
+	if (force || !g_bGracePeriod && IsPlayerSurvivor(client) || g_bMapChanging)
 	{
 		g_iPlayerLevel[client] = 1;
 		g_flPlayerXP[client] = 0.0;
