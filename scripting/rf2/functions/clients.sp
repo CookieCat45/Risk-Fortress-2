@@ -478,7 +478,7 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	{
 		static char classname[32];
 		GetEntityClassname(weapon, classname, sizeof(classname));
-		if (strcmp2(classname, "tf_weapon_minigun"))
+		if (strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_syringegun_medic"))
 		{
 			const float penalty = 0.5;
 			multiplier = Pow(multiplier, penalty);

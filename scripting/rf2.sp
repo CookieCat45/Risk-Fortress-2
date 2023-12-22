@@ -199,7 +199,7 @@ enum
 
 
 // Items -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_ITEMS 64
+#define MAX_ITEMS 80
 #define MAX_ITEM_MODIFIERS 8
 
 enum
@@ -3103,7 +3103,10 @@ public Action OnChangeSpec(int client, const char[] command, int args)
 
 public void RF_CheckSpecTarget(int client)
 {
-	if (!(client = GetClientOfUserId(client)))
+	client = GetClientOfUserId(client);
+	
+	// apparently can be invalid?
+	if (!IsValidClient(client))
 		return;
 	
 	int specTarget = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
@@ -3311,8 +3314,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 		
 		if (TF2Attrib_HookValueInt(1, "mult_crit_chance", weapon) != 0)
 		{
-			float proc = GetWeaponProcCoefficient(weapon);
-			if (RollAttackCrit(client, proc, melee ? DMG_MELEE : DMG_GENERIC))
+			if (RollAttackCrit(client, 1.0, melee ? DMG_MELEE : DMG_GENERIC))
 			{
 				result = true;
 				changed = true;
@@ -3326,7 +3328,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	if (melee)
 	{
 		if (PlayerHasItem(client, ItemPyro_PyromancerMask) && CanUseCollectorItem(client, ItemPyro_PyromancerMask)
-			&& GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemPyro_PyromancerMask, 5))
+			&& (!IsPlayerSurvivor(client) || GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemPyro_PyromancerMask, 5)))
 		{
 			float speed = GetItemMod(ItemPyro_PyromancerMask, 2) + CalcItemMod(client, ItemPyro_PyromancerMask, 3, -1);
 			if (speed > GetItemMod(ItemPyro_PyromancerMask, 4))
@@ -3345,7 +3347,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 		}
 		
 		if (PlayerHasItem(client, ItemDemo_ConjurersCowl) && CanUseCollectorItem(client, ItemDemo_ConjurersCowl)
-			&& GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemDemo_ConjurersCowl, 5))
+			&& (!IsPlayerSurvivor(client) || GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemDemo_ConjurersCowl, 5)))
 		{
 			float eyePos[3], eyeAng[3];
 			GetClientEyePosition(client, eyePos);

@@ -588,7 +588,7 @@ float GetWeaponProcCoefficient(int weapon)
 	char classname[128];
 	GetEntityClassname(weapon, classname, sizeof(classname));
 	
-	if (strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_flamethrower"))
+	if (strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_flamethrower") || strcmp2(classname, "tf_weapon_syringegun_medic"))
 	{
 		return 0.2;
 	}
