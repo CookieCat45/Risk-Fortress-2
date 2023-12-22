@@ -1104,27 +1104,32 @@ void ShowItemMenu(int client, int inspectTarget=-1)
 	int flags = target == inspectTarget ? ITEMDRAW_DISABLED : ITEMDRAW_DEFAULT;
 	char qualityName[32];
 	GetQualityName(Quality_Strange, qualityName, sizeof(qualityName));
-	for (int i = 1; i < Item_MaxValid; i++)
+	ArrayList items = GetSortedItemList();
+	int item;
+	for (int i = 0; i < items.Length; i++)
 	{
-		if (GetPlayerItemCount(target, i) > 0 || IsEquipmentItem(i) && GetPlayerEquipmentItem(target) == i)
+		item = items.Get(i);
+		
+		if (GetPlayerItemCount(target, item) > 0 || IsEquipmentItem(item) && GetPlayerEquipmentItem(target) == item)
 		{
 			itemCount++;
-			GetItemName(i, itemName, sizeof(itemName));
-			IntToString(i, info, sizeof(info));
+			GetItemName(item, itemName, sizeof(itemName));
+			IntToString(item, info, sizeof(info));
 			
-			if (IsEquipmentItem(i))
+			if (IsEquipmentItem(item))
 			{
 				FormatEx(buffer, sizeof(buffer), "%s [%s]", itemName, qualityName);
 			}
 			else
 			{
-				FormatEx(buffer, sizeof(buffer), "%s [%i]", itemName, GetPlayerItemCount(target, i));
+				FormatEx(buffer, sizeof(buffer), "%s [%i]", itemName, GetPlayerItemCount(target, item));
 			}
 			
 			menu.AddItem(info, buffer, flags);
 		}
 	}
 	
+	delete items;
 	if (itemCount == 0)
 	{
 		char noItems[64];

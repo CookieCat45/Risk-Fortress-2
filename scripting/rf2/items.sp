@@ -1233,74 +1233,23 @@ bool ActivateStrangeItem(int client)
 
 		case ItemStrange_HeartOfGold:
 		{
-			// check for teammate
-			const float range = 150.0;
-			int healTarget = -1;
+			const float range = 250.0;
+			int team = GetClientTeam(client);
 			
-			if (IsFakeClient(client))
+			// Heal me and teammates around me
+			for (int i = 1; i <= MaxClients; i++)
 			{
-				IVision vision = g_TFBot[client].GetVision();
-				int team = GetClientTeam(client);
-				float pos[3], allyPos[3];
-				GetEntPos(client, pos);
+				if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != team)
+					continue;
 				
-				// if we're a bot, simply check for weakened allies in our FOV
-				int lowestHealth, health;
-				for (int i = 1; i <= MaxClients; i++)
-				{
-					if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != team)
-						continue;
-					
-					if (GetClientHealth(i) > RF2_GetCalculatedMaxHealth(i) / 2)
-						continue;
-					
-					GetEntPos(i, allyPos);
-					if (GetVectorDistance(pos, allyPos, true) > Pow(range, 2.0))
-						continue;
-					
-					if (!vision.IsAbleToSeeTarget(i, USE_FOV))
-						continue;
-					
-					health = GetClientHealth(i);
-					if (lowestHealth <= 0 || health < lowestHealth)
-					{
-						lowestHealth = health;
-						healTarget = i;
-					}
-				}
+				if (client != i && DistBetween(client, i) > range)
+					continue;
 				
-				// no teammate? check if we should heal ourselves
-				if (healTarget <= 0 && GetClientHealth(client) < RF2_GetCalculatedMaxHealth(client) / 2)
-				{
-					healTarget = client;
-				}
-			}
-			else
-			{
-				float eyePos[3], endPos[3], angles[3], dir[3];
-				GetClientEyePosition(client, eyePos);
-				GetClientEyeAngles(client, angles);
-				GetAngleVectors(angles, dir, NULL_VECTOR, NULL_VECTOR);
-				NormalizeVector(dir, dir);
-				endPos[0] = eyePos[0] + dir[0] * range;
-				endPos[1] = eyePos[1] + dir[1] * range;
-				endPos[2] = eyePos[2] + dir[2] * range;
-				
-				TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID, RayType_EndPoint, TraceFilter_PlayerTeam, client);
-				healTarget = TR_GetEntityIndex();
-				if (!IsValidClient(healTarget))
-				{
-					// no heal target, heal ourselves
-					healTarget = client;
-				}
+				int heal = RoundToFloor(RF2_GetCalculatedMaxHealth(i) * GetItemMod(ItemStrange_HeartOfGold, 0));
+				HealPlayer(i, heal, true);
 			}
 			
-			if (healTarget > 0)
-			{
-				int heal = RoundToFloor(RF2_GetCalculatedMaxHealth(healTarget) * GetItemMod(ItemStrange_HeartOfGold, 0));
-				EmitSoundToAll(SND_SPELL_OVERHEAL, healTarget);
-				HealPlayer(healTarget, heal, true);
-			}
+			EmitSoundToAll(SND_SPELL_OVERHEAL, client);
 		}
 		
 		case ItemStrange_Spellbook:
@@ -2026,6 +1975,45 @@ float GetItemProcCoefficient(int item)
 	}
 	
 	return 1.0;
+}
+
+// Returns a list of items sorted by quality
+ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true)
+{
+	ArrayList items = new ArrayList();
+	for (int i = 1; i < Item_MaxValid; i++)
+	{
+		if (poolOnly && !g_bItemInDropPool[i] && (!allowMetals || !IsScrapItem(i)))
+			continue;
+		
+		items.Push(i);
+	}
+	
+	items.SortCustom(SortItemList);
+	return items;
+}
+
+public int SortItemList(int index1, int index2, ArrayList array, Handle hndl)
+{
+	int item1 = array.Get(index1);
+	int item2 = array.Get(index2);
+	
+	if (IsScrapItem(item1) && !IsScrapItem(item2))
+	{
+		return -1;
+	}
+	else if (IsScrapItem(item2) && !IsScrapItem(item1))
+	{
+		return 1;
+	}
+	
+	int quality1 = GetItemQuality(item1);
+	int quality2 = GetItemQuality(item2);
+	
+	if (quality1 == quality2)
+		return 0;
+	
+	return quality1 > quality2 ? -1 : 1;
 }
 
 bool PlayerHasItem(int client, int item)

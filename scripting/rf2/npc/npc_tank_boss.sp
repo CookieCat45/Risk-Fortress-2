@@ -158,6 +158,21 @@ void EndTankDestructionMode()
 		PrintCenterText(i, text);
 	}
 	
+	bool aliveEnemies;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ENEMY)
+		{
+			TF2_StunPlayer(i, 20.0, _, TF_STUNFLAG_BONKSTUCK);
+			aliveEnemies = true;
+		}
+	}
+	
+	if (aliveEnemies)
+	{
+		EmitSoundToAll(SND_ENEMY_STUN);
+	}
+	
 	int gamerules = GetRF2GameRules();
 	if (gamerules != INVALID_ENT_REFERENCE)
 	{
