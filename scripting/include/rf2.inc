@@ -79,6 +79,7 @@ enum
 	ItemSoldier_WarPig = 62,
 	ItemHeavy_Pugilist = 63,
 	ItemPyro_LastBreath = 64,
+	Item_SaintMark = 65,
 	Item_MaxValid,
 };
 

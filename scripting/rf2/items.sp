@@ -767,7 +767,7 @@ void UpdatePlayerItem(int client, int item)
 					}
 				}
 			}
-
+			
 			int wearable = MaxClients+1;
 			if (class == TFClass_DemoMan)
 			{
@@ -1610,8 +1610,63 @@ bool ActivateStrangeItem(int client)
 		g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
 	}
 	
+	if (PlayerHasItem(client, Item_SaintMark))
+	{
+		float buff = GetItemMod(Item_SaintMark, 0);
+		float duration = GetItemMod(Item_SaintMark, 1) + CalcItemMod(client, Item_SaintMark, 2, -1);
+		if (g_flPlayerReloadBuffDuration[client] <= 0.0)
+		{
+			int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+			int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
+			
+			if (primary > 0)
+			{
+				TF2Attrib_SetByDefIndex(primary, 318, buff); // "faster reload rate"
+			}
+			
+			if (secondary > 0)
+			{
+				TF2Attrib_SetByDefIndex(secondary, 318, buff);
+			}
+			
+			g_flPlayerReloadBuffDuration[client] = duration;
+			CreateTimer(0.1, Timer_ReloadBuffEnd, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		}
+		else
+		{
+			g_flPlayerReloadBuffDuration[client] = duration;
+		}
+	}
+	
 	g_iPlayerEquipmentItemCharges[client]--;
 	return true;
+}
+
+public Action Timer_ReloadBuffEnd(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Stop;
+	
+	g_flPlayerReloadBuffDuration[client] -= 0.1;
+	if (g_flPlayerReloadBuffDuration[client] <= 0.0)
+	{
+		int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+		int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
+		
+		if (primary > 0)
+		{
+			TF2Attrib_RemoveByDefIndex(primary, 318);
+		}
+		
+		if (secondary > 0)
+		{
+			TF2Attrib_RemoveByDefIndex(secondary, 318);
+		}
+		
+		return Plugin_Stop;
+	}
+	
+	return Plugin_Continue;
 }
 
 float GetPlayerEquipmentItemCooldown(int client)

@@ -366,6 +366,7 @@ float g_flPlayerAFKTime[MAXTF2PLAYERS];
 float g_flPlayerVampireSapperCooldown[MAXTF2PLAYERS];
 float g_flPlayerVampireSapperDamage[MAXTF2PLAYERS];
 float g_flPlayerVampireSapperDuration[MAXTF2PLAYERS];
+float g_flPlayerReloadBuffDuration[MAXTF2PLAYERS];
 
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
 int g_iPlayerHauntedKeys[MAXTF2PLAYERS];

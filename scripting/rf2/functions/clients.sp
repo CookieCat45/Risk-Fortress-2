@@ -76,6 +76,7 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerHasVampireSapper[client] = false;
 	g_flPlayerVampireSapperCooldown[client] = 0.0;
 	g_flPlayerVampireSapperDuration[client] = 0.0;
+	g_flPlayerReloadBuffDuration[client] = 0.0;
 	
 	g_TFBot[client].GoalArea = NULL_AREA;
 	g_TFBot[client].ForcedButtons = 0;
