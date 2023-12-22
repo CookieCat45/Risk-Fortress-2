@@ -3824,7 +3824,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			case TF_CUSTOM_SPELL_FIREBALL: proc *= 0.5;
 			case TF_CUSTOM_BURNING, TF_CUSTOM_BLEEDING: proc *= 0.75;
 		}
-		
+
 		damage *= GetPlayerDamageMult(attacker);
 		
 		if (g_bFiredWhileRocketJumping[inflictor] && PlayerHasItem(attacker, ItemSoldier_Compatriot) && CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
@@ -3842,6 +3842,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		if (GetEntItemDamageProc(inflictor) != Item_Null)
 		{
 			proc *= GetItemProcCoefficient(GetEntItemDamageProc(inflictor));
+		}
+		
+		if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
+		{
+			if (victimIsClient && damageType & DMG_MELEE && (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro)))
+			{
+				TF2_AddCondition(victim, TFCond_MarkedForDeathSilent, CalcItemMod(attacker, ItemPyro_LastBreath, 0), attacker);
+			}
 		}
 		
 		if (inflictorIsBuilding)
@@ -4042,6 +4050,15 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			if (TF2_IsPlayerInCondition(victim, TFCond_Disguised) && !TF2_IsPlayerInCondition(victim, TFCond_Cloaked))
 			{
 				damage *= CalcItemMod_HyperbolicInverted(victim, ItemSpy_CounterfeitBillycock, 1);
+			}
+		}
+		
+		if (PlayerHasItem(victim, ItemHeavy_Pugilist) && CanUseCollectorItem(victim, ItemHeavy_Pugilist))
+		{
+			// Resist while spun up
+			if (TF2_IsPlayerInCondition(victim, TFCond_Slowed))
+			{
+				damage *= CalcItemMod_HyperbolicInverted(victim, ItemHeavy_Pugilist, 0);
 			}
 		}
 	}

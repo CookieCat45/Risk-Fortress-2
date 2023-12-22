@@ -267,14 +267,24 @@ void PlayMusicTrack(int client)
 	
 	if ((!IsBossEventActive() || !g_szBossBGM[0]) && g_flStageBGMDuration > 0.0)
 	{
-		g_flLoopMusicAt[client] = GetEngineTime() + g_flStageBGMDuration;
+		g_flLoopMusicAt[client] = GetEngineTime() + g_flStageBGMDuration+0.1;
 	}
 	else if (g_flBossBGMDuration > 0.0)
 	{
-		g_flLoopMusicAt[client] = GetEngineTime() + g_flBossBGMDuration;
+		g_flLoopMusicAt[client] = GetEngineTime() + g_flBossBGMDuration+0.1;
 	}
 	
+	// delay because stopping the sound in the same frame or client lagging can sometimes end up with it not playing
+	CreateTimer(0.1, Timer_PlayMusicDelaySingle, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public Action Timer_PlayMusicDelaySingle(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Continue;
+	
 	EmitSoundToClient(client, g_szClientBGM[client]);
+	return Plugin_Continue;
 }
 
 void StopMusicTrack(int client)

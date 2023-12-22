@@ -959,10 +959,40 @@ void UpdatePlayerItem(int client, int item)
 			{
 				float amount = CalcItemMod_HyperbolicInverted(client, Item_Marxman, 0);
 				TF2Attrib_SetByDefIndex(client, 178, amount); // "deploy time decreased"
+				
+				// These classes don't have weapons that benefit from accuracy bonuses (at least afaik)
+				TFClassType class = TF2_GetPlayerClass(client);
+				if (class != TFClass_Medic && class != TFClass_DemoMan)
+				{
+					int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+					int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
+					amount = CalcItemMod_HyperbolicInverted(client, Item_Marxman, 1);
+					
+					if (primary > 0)
+					{
+						TF2Attrib_SetByDefIndex(primary, 106, amount); // "weapon spread bonus"
+					}
+					
+					if (secondary > 0)
+					{
+						TF2Attrib_SetByDefIndex(secondary, 106, amount);
+					}
+				}
 			}
 			else
 			{
 				TF2Attrib_RemoveByDefIndex(client, 178);
+				int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+				int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
+				if (primary > 0)
+				{
+					TF2Attrib_RemoveByDefIndex(primary, 106);
+				}
+				
+				if (secondary > 0)
+				{
+					TF2Attrib_RemoveByDefIndex(secondary, 106);
+				}
 			}
 		}
 		case ItemSoldier_WarPig:
