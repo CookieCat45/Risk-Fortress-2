@@ -34,6 +34,8 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerInSpawnQueue[client] = false;
 	g_bEquipmentCooldownActive[client] = false;
 	g_bItemPickupCooldown[client] = false;
+	g_bPlayerLawCooldown[client] = false;
+	g_bPlayerTookCollectorItem[client] = false;
 	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
 	
 	g_szObjectiveHud[client] = "";
@@ -208,13 +210,14 @@ int GetTotalHumans(bool inGameOnly=true)
 	return count;
 }
 
-int HealPlayer(int client, int amount, bool allowOverheal=false)
+int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverheal=1.5)
 {
 	int health = GetClientHealth(client);
 	int maxHealth = RF2_GetCalculatedMaxHealth(client);
+	bool capOverheal = maxOverheal > 0.0;
 	
 	// we're already overhealed or at max health, don't do anything if we don't allow overheal
-	if (!allowOverheal && health >= maxHealth)
+	if (!allowOverheal && health >= maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
 	{
 		return 0;
 	}
@@ -222,10 +225,10 @@ int HealPlayer(int client, int amount, bool allowOverheal=false)
 	int amountHealed = amount;
 	SetEntityHealth(client, health+amount);
 	
-	if (!allowOverheal && GetClientHealth(client) > maxHealth)
+	if (!allowOverheal && GetClientHealth(client) > maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
 	{
-		SetEntityHealth(client, maxHealth);
-		amountHealed = maxHealth - health;
+		SetEntityHealth(client, allowOverheal ? RoundToFloor(float(maxHealth)*maxOverheal) : maxHealth);
+		amountHealed = allowOverheal ? RoundToFloor(float(maxHealth)*maxOverheal) - health : maxHealth - health;
 	}
 	
 	return amountHealed;
@@ -338,7 +341,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	{
 		maxHealth = RoundToFloor(float(maxHealth) * 0.75);
 	}
-
+	
 	if (PlayerHasItem(client, Item_PrideScarf))
 	{
 		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_PrideScarf, 0))) - maxHealth;
@@ -439,9 +442,9 @@ float CalculatePlayerMaxSpeed(int client)
 	}
 	
 	float mult = speed / classMaxSpeed;
+	TF2Attrib_RemoveByDefIndex(client, 107); // possible fix for BLU players sometimes being extremely sluggish
 	TF2Attrib_SetByDefIndex(client, 107, mult); // "move speed bonus"
 	SDK_ForceSpeedUpdate(client);
-
 	return GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
 }
 

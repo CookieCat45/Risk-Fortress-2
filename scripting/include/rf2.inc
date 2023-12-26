@@ -80,6 +80,7 @@ enum
 	ItemHeavy_Pugilist = 63,
 	ItemPyro_LastBreath = 64,
 	Item_SaintMark = 65,
+	ItemDemo_ScotchBonnet = 66,
 	Item_MaxValid,
 };
 

@@ -499,6 +499,11 @@ bool PickupItem(int client)
 			}
 		}
 		
+		if (quality == Quality_Collectors)
+		{
+			g_bPlayerTookCollectorItem[client] = true;
+		}
+
 		GiveItem(client, itemIndex);
 		RemoveEntity(item);
 		
@@ -1000,14 +1005,50 @@ void UpdatePlayerItem(int client, int item)
 			if (CanUseCollectorItem(client, ItemSoldier_WarPig))
 			{
 				int launcher = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-				if (launcher > 0 && PlayerHasItem(client, ItemSoldier_WarPig))
+				if (launcher > 0)
 				{
-					float projSpeed = 1.0 + CalcItemMod(client, ItemSoldier_WarPig, 0);
-					TF2Attrib_SetByDefIndex(launcher, 103, projSpeed); // "Projectile speed increased"
+					if (PlayerHasItem(client, ItemSoldier_WarPig))
+					{
+						float projSpeed = 1.0 + CalcItemMod(client, ItemSoldier_WarPig, 0);
+						TF2Attrib_SetByDefIndex(launcher, 103, projSpeed); // "Projectile speed increased"
+					}
+					else
+					{
+						TF2Attrib_RemoveByDefIndex(launcher, 103);
+					}
 				}
-				else
+			}
+		}
+		case ItemDemo_ScotchBonnet:
+		{
+			if (CanUseCollectorItem(client, ItemDemo_ScotchBonnet))
+			{
+				int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+				int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
+				if (primary > 0)
 				{
-					TF2Attrib_RemoveByDefIndex(launcher, 103);
+					if (PlayerHasItem(client, ItemDemo_ScotchBonnet))
+					{
+						float projSpeed = 1.0 + CalcItemMod(client, ItemDemo_ScotchBonnet, 0);
+						TF2Attrib_SetByDefIndex(primary, 103, projSpeed); // "Projectile speed increased"
+					}
+					else
+					{
+						TF2Attrib_RemoveByDefIndex(primary, 103);
+					}
+				}
+				
+				if (secondary > 0)
+				{
+					if (PlayerHasItem(client, ItemDemo_ScotchBonnet))
+					{
+						float chargeRate = CalcItemMod_HyperbolicInverted(client, ItemDemo_ScotchBonnet, 1);
+						TF2Attrib_SetByDefIndex(secondary, 670, chargeRate); // "stickybomb charge rate"
+					}
+					else
+					{
+						TF2Attrib_RemoveByDefIndex(secondary, 670);
+					}
 				}
 			}
 		}
@@ -1245,7 +1286,8 @@ bool ActivateStrangeItem(int client)
 				if (client != i && DistBetween(client, i) > range)
 					continue;
 				
-				int heal = RoundToFloor(RF2_GetCalculatedMaxHealth(i) * GetItemMod(ItemStrange_HeartOfGold, 0));
+				int maxHealth = RF2_GetCalculatedMaxHealth(i);
+				int heal = RoundToFloor(maxHealth * GetItemMod(ItemStrange_HeartOfGold, 0));
 				HealPlayer(i, heal, true);
 			}
 			

@@ -19,7 +19,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1.8b"
+#define PLUGIN_VERSION "0.1.9b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -313,6 +313,7 @@ int g_iTanksKilledObjective;
 int g_iTankKillRequirement;
 int g_iTanksSpawned;
 int g_iWorldCenterEntity = -1;
+int g_iMetalItemsDropped;
 
 // Difficulty
 float g_flSecondsPassed;
@@ -352,6 +353,8 @@ bool g_bPlayerInSpawnQueue[MAXTF2PLAYERS];
 bool g_bPlayerHasVampireSapper[MAXTF2PLAYERS];
 bool g_bEquipmentCooldownActive[MAXTF2PLAYERS];
 bool g_bItemPickupCooldown[MAXTF2PLAYERS];
+bool g_bPlayerLawCooldown[MAXTF2PLAYERS];
+bool g_bPlayerTookCollectorItem[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -408,6 +411,7 @@ bool g_bDontRemoveWearable[MAX_EDICTS];
 bool g_bItemWearable[MAX_EDICTS];
 bool g_bFakeFireball[MAX_EDICTS];
 
+float g_flBusterSpawnTime;
 float g_flProjectileForcedDamage[MAX_EDICTS];
 float g_flSentryNextLaserTime[MAX_EDICTS];
 float g_flCashBombAmount[MAX_EDICTS];
@@ -931,7 +935,7 @@ public void OnConfigsExecuted()
 		//FindConVar("sv_visiblemaxplayers").SetInt(g_cvMaxHumanPlayers.IntValue);
 		FindConVar("mp_teams_unbalance_limit").SetInt(0);
 		FindConVar("mp_forcecamera").SetBool(false);
-		FindConVar("mp_maxrounds").SetInt(1);
+		FindConVar("mp_maxrounds").SetInt(9999);
 		FindConVar("mp_forceautoteam").SetBool(true);
 		FindConVar("mp_respawnwavetime").SetFloat(99999.0);
 		FindConVar("tf_dropped_weapon_lifetime").SetInt(0);
@@ -1035,7 +1039,6 @@ void CleanUp()
 	g_hDifficultyTimer = null;
 	g_iRF2GameRulesEntRef = -1;
 	g_iRespawnWavesCompleted = 0;
-	g_iSentryKillCounter = 0;
 	g_szEnemyPackName = "";
 	g_szBossPackName = "";
 	g_iTeleporterEntRef = -1;
@@ -1046,6 +1049,7 @@ void CleanUp()
 	g_iTanksSpawned = 0;
 	g_bThrillerActive = false;
 	g_iThrillerRepeatCount = 0;
+	g_iMetalItemsDropped = 0;
 	
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
@@ -1329,7 +1333,7 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!valid[i] || i == client)
+		if (!valid[i] || i == client || !IsClientInGame(i) || IsFakeClient(i) && !allowBots)
 			continue;
 		
 		// We've found our winner
@@ -1337,7 +1341,6 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 		{
 			// Lucky you - your points won't be getting reset.
 			MakeSurvivor(i, RF2_GetSurvivorIndex(client), false);
-			
 			float pos[3], angles[3];
 			GetEntPos(client, pos);
 			GetClientEyeAngles(client, angles);
@@ -1428,9 +1431,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	
 	Call_StartForward(g_fwGracePeriodStart);
 	Call_Finish();
-	
 	GameRules_SetProp("m_nGameType", -1);
-	
 	return Plugin_Continue;
 }
 
@@ -1812,17 +1813,8 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					}
 				}
 				
-				if (inflictor > MaxClients && g_cvBusterSpawnKillThreshold.IntValue > 0 && IsBuilding(inflictor) && !IsSentryBusterActive())
-				{
-					g_iSentryKillCounter++;
-					if (g_iSentryKillCounter >= g_cvBusterSpawnKillThreshold.IntValue + RF2_GetEnemyLevel()-1 * g_cvBusterSpawnKillRatio.IntValue)
-					{
-						g_iSentryKillCounter = 0;
-						DoSentryBusterWave();
-					}
-				}
-				
 				int total;
+				int limit = RoundToFloor(GetItemMod(Item_PillarOfHats, 3));
 				for (int i = 1; i <= MaxClients; i++)
 				{
 					if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
@@ -1830,11 +1822,16 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						
 					if (PlayerHasItem(i, Item_PillarOfHats))
 					{
+						if (total >= 1)
+						{
+							limit += RoundToFloor(CalcItemMod(i, Item_PillarOfHats, 4));
+						}
+						
 						total++;
 					}
 				}
 				
-				if (total > 0)
+				if (total > 0 && g_iMetalItemsDropped < limit)
 				{
 					float scrapChance = CalcItemMod(0, Item_PillarOfHats, 0, total);
 					float recChance = CalcItemMod(0, Item_PillarOfHats, 1, total);
@@ -1861,7 +1858,9 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						float pos[3];
 						GetEntPos(victim, pos);
 						pos[2] += 30.0;
-						SpawnItem(item, pos, attacker, 8.0);
+						int metal = SpawnItem(item, pos, attacker, 8.0);
+						SetEntProp(metal, Prop_Data, "m_bDropped", true);
+						g_iMetalItemsDropped++;
 					}
 				}
 				
@@ -2345,6 +2344,9 @@ void EndGracePeriod()
 	// Begin our enemy spawning
 	CreateTimer(5.0, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
 	
+	g_flBusterSpawnTime = g_cvBusterSpawnInterval.FloatValue;
+	CreateTimer(1.0, Timer_BusterSpawnWave, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	
 	Call_StartForward(g_fwGracePeriodEnded);
 	Call_Finish();
 	
@@ -2493,6 +2495,48 @@ public Action Timer_SpawnEnemy(Handle timer, int client)
 	
 	g_iPlayerEnemySpawnType[client] = -1;
 	g_iPlayerBossSpawnType[client] = -1;
+	
+	return Plugin_Continue;
+}
+
+public Action Timer_BusterSpawnWave(Handle timer)
+{
+	if (!g_bRoundActive || IsStageCleared())
+		return Plugin_Stop;
+	
+	if (IsSentryBusterActive())
+		return Plugin_Continue;
+	
+	bool sentryActive;
+	int entity = -1;
+	int owner;
+	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != -1)
+	{
+		owner = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
+		if (IsValidClient(owner) && IsPlayerSurvivor(owner))
+		{
+			// don't count disposable sentries because we don't care about them
+			if (g_hPlayerExtraSentryList[owner] && g_hPlayerExtraSentryList[owner].FindValue(entity) != -1)
+				continue;
+			
+			sentryActive = true;
+			break;
+		}
+	}
+	
+	if (sentryActive)
+	{
+		g_flBusterSpawnTime -= 1.0;
+		if (g_flBusterSpawnTime <= 0.0)
+		{
+			DoSentryBusterWave();
+			g_flBusterSpawnTime = g_cvBusterSpawnInterval.FloatValue;
+		}
+	}
+	else
+	{
+		g_flBusterSpawnTime = fmin(g_flBusterSpawnTime+8.0, g_cvBusterSpawnInterval.FloatValue);
+	}
 	
 	return Plugin_Continue;
 }
@@ -3365,12 +3409,6 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			SetEntityMoveType(beam, MOVETYPE_FLYGRAVITY);
 			SetEntProp(beam, Prop_Send, "m_iProjectileType", 18); // prevent headshots (TF_PROJECTILE_BUILDING_REPAIR_BOLT)
 			SetEntItemDamageProc(beam, ItemDemo_ConjurersCowl);
-			
-			if (result)
-			{
-				SetEntProp(beam, Prop_Send, "m_bCritical", true);
-			}
-			
 			SetEntityModel(beam, MODEL_INVISIBLE);
 			
 			char particleName[64];
@@ -4127,7 +4165,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		if (!selfDamage && !invuln)
 		{
-			if (PlayerHasItem(attacker, Item_Law) && GetEntItemDamageProc(inflictor) != Item_Law)
+			if (PlayerHasItem(attacker, Item_Law) && GetEntItemDamageProc(inflictor) != Item_Law && !g_bPlayerLawCooldown[attacker])
 			{
 				float random = GetItemMod(Item_Law, 0);
 				random *= proc;
@@ -4142,12 +4180,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					enemyPos[2] += 30.0;
 					GetVectorAnglesTwoPoints(pos, enemyPos, angles);
 					
-					float dmg = GetItemMod(Item_Law, 1) + CalcItemMod(attacker, Item_Law, 2);
+					float dmg = GetItemMod(Item_Law, 1) + CalcItemMod(attacker, Item_Law, 2, -1);
 					int rocket = ShootProjectile(attacker, "tf_projectile_sentryrocket", pos, angles, rocketSpeed, dmg);
 					
 					SetShouldDamageOwner(rocket, false);
 					SetEntItemDamageProc(rocket, Item_Law);
 					EmitSoundToAll(SND_LAW_FIRE, attacker, _, _, _, 0.6);
+					g_bPlayerLawCooldown[attacker] = true;
+					CreateTimer(0.4, Timer_LawCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 				}
 			}
 			
@@ -4369,6 +4409,15 @@ public Action Timer_DecayFireRateBuff(Handle timer, int client)
 		g_iPlayerFireRateStacks[client]--;
 	}
 	
+	return Plugin_Continue;
+}
+
+public Action Timer_LawCooldown(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Continue;
+
+	g_bPlayerLawCooldown[client] = false;
 	return Plugin_Continue;
 }
 

@@ -146,7 +146,7 @@ void EndTankDestructionMode()
 		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
 			continue;
 		
-		randomItem = GetRandomItemEx(Quality_Genuine);
+		randomItem = g_bPlayerTookCollectorItem[i] ? GetRandomItemEx(Quality_Genuine) : GetRandomCollectorItem(TF2_GetPlayerClass(i));
 		GiveItem(i, randomItem);
 		GetItemName(randomItem, name, sizeof(name));
 		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, name);
