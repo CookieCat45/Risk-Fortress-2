@@ -103,7 +103,7 @@ bool CreateSurvivors()
 	survivorList.SortCustom(SortSurvivorListByInventory);
 	bool indexTaken[MAX_SURVIVORS];
 	int survivorCount, client, index;
-	char steamId[128];
+	char steamId[MAX_AUTHID_LENGTH];
 	
 	for (int i = 0; i < survivorList.Length; i++)
 	{
@@ -422,7 +422,7 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 	g_iSavedEquipmentItem[index] = GetPlayerEquipmentItem(client);
 	g_iSavedHauntedKeys[index] = g_iPlayerHauntedKeys[client];
 	
-	char steamId[128];
+	char steamId[MAX_AUTHID_LENGTH];
 	if (saveSteamId && GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)))
 	{
 		g_hPlayerSteamIDToInventoryIndex.SetValue(steamId, index, false);
@@ -435,7 +435,7 @@ bool DoesClientOwnInventory(int client, int index)
 	if (!g_hPlayerSteamIDToInventoryIndex)
 		return false;
 	
-	char steamId[128];
+	char steamId[MAX_AUTHID_LENGTH];
 	int index2;
 	
 	return GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)) 

@@ -180,65 +180,6 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 	return area;
 }
 
-/*
-CNavArea GetIncursionArea(TFTeam team)
-{
-	int entity = -1;
-	float pos[3];
-	CNavArea area;
-	
-	while (!area && (entity = FindEntityByClassname(entity, "rf2_bot_incursion_point")) != -1)
-	{
-		if (view_as<TFTeam>(GetEntProp(entity, Prop_Send, "m_iTeamNum")) == team)
-		{
-			GetEntPos(entity, pos);
-			area = TheNavMesh.GetNearestNavArea(pos, true, _, _, false);
-		}
-	}
-	
-	if (!area)
-	{
-		char teamName[8];
-		switch (team)
-		{
-			case TFTeam_Red: teamName = "RED";
-			case TFTeam_Blue: teamName = "BLU";
-		}
-		
-		LogError("[GetIncursionAreas] Could not locate incursion point for %s team. Bots may perform poorly.", teamName);
-	}
-
-	return area;
-}
-*/
-
-/*
-void SDK_ComputeIncursionDistances(CNavArea spawnArea, TFTeam team)
-{
-	if (g_hSDKComputeIncursion)
-	{
-		SDKCall(g_hSDKComputeIncursion, TheNavMesh.Address, spawnArea, team);
-	}
-}
-
-public MRESReturn DHook_ComputeIncursionVoid(Address navMesh)
-{
-	if (RF2_IsEnabled())
-	{
-		CNavArea redArea = GetIncursionArea(TFTeam_Red);
-		CNavArea blueArea = GetIncursionArea(TFTeam_Blue);
-		
-		if (redArea)
-			SDK_ComputeIncursionDistances(redArea, TFTeam_Red);
-		
-		if (blueArea)
-			SDK_ComputeIncursionDistances(blueArea, TFTeam_Blue);
-	}
-	
-	return MRES_Ignored;
-}
-*/
-
 public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 {
 	if (IsObject(entity) && GetEntProp(entity, Prop_Send, "m_CollisionGroup") == COLLISION_GROUP_CRATE)

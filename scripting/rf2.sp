@@ -428,17 +428,14 @@ Handle g_hSDKGetMaxClip1;
 Handle g_hSDKUpdateSpeed;
 Handle g_hSDKDoQuickBuild;
 Handle g_hSDKGetMaxHealth;
-//Handle g_hSDKComputeIncursion;
 Handle g_hSDKPlayGesture;
 DHookSetup g_hSDKCanBuild;
 DHookSetup g_hSDKDoSwingTrace;
 DHookSetup g_hSDKSentryAttack;
-//DHookSetup g_hSDKComputeIncursionVoid;
 DHookSetup g_hSDKHandleRageGain;
 DynamicHook g_hSDKTakeHealth;
 DynamicHook g_hSDKStartUpgrading;
 DynamicHook g_hSDKVPhysicsCollision;
-//DynamicHook g_hSDKEffectBarRecharge;
 
 // Forwards
 Handle g_fwTeleEventStart;
@@ -447,7 +444,7 @@ Handle g_fwGracePeriodStart;
 Handle g_fwGracePeriodEnded;
 
 // ConVars
-//ConVar g_cvMaxHumanPlayers;
+ConVar g_cvMaxHumanPlayers;
 ConVar g_cvMaxSurvivors;
 ConVar g_cvAlwaysSkipWait;
 ConVar g_cvDebugNoMapChange;
@@ -727,28 +724,7 @@ void LoadGameData()
 		LogError("[DHooks] Failed to create detour for HandleRageGain");
 	}
 	
-	/*
-	// CTFNavMesh::ComputeIncursionDistances -------------------------------------------------------------------------------------------------
-	StartPrepSDKCall(SDKCall_Raw);
-	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFNavMesh::ComputeIncursionDistances");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // spawnArea
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // team
-	g_hSDKComputeIncursion = EndPrepSDKCall();
-	if (!g_hSDKComputeIncursion)
-	{
-		LogError("[SDK] Failed to create call for CTFNavMesh::ComputeIncursionDistances");
-	}
-	
-	// CTFNavMesh::ComputeIncursionDistances(void) -------------------------------------------------------------------------------------------------
-	g_hSDKComputeIncursionVoid = DHookCreateFromConf(gamedata, "CTFNavMesh::ComputeIncursionDistances_Void");
-	if (!g_hSDKComputeIncursionVoid || !DHookEnableDetour(g_hSDKComputeIncursionVoid, true, DHook_ComputeIncursionVoid))
-	{
-		LogError("[DHooks] Failed to create detour for CTFNavMesh::ComputeIncursionDistances(void)");
-	}
-	*/
-	
 	delete gamedata;
-	
 	gamedata = LoadGameConfigFile("sdkhooks.games");
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "GetMaxHealth");
@@ -756,7 +732,7 @@ void LoadGameData()
 	g_hSDKGetMaxHealth = EndPrepSDKCall();
 	if (!g_hSDKGetMaxHealth)
 	{
-		SetFailState("[SDK] Failed to create call for CBasePlayer::GetMaxHealth from SDKHooks gamedata");
+		LogError("[SDK] Failed to create call for CBasePlayer::GetMaxHealth from SDKHooks gamedata");
 	}
 	
 	delete gamedata;
@@ -830,7 +806,7 @@ public void OnMapStart()
 		
 		if (!g_bLateLoad)
 		{
-			AutoExecConfig(true, "RiskFortress2");
+			//AutoExecConfig(true, "RiskFortress2");
 		}
 		
 		// These are ConVars we're OK with being set by server.cfg, but we'll set our personal defaults.
@@ -932,7 +908,6 @@ public void OnConfigsExecuted()
 		}
 		
 		// Here are ConVars that we don't want changed by configs
-		//FindConVar("sv_visiblemaxplayers").SetInt(g_cvMaxHumanPlayers.IntValue);
 		FindConVar("mp_teams_unbalance_limit").SetInt(0);
 		FindConVar("mp_forcecamera").SetBool(false);
 		FindConVar("mp_maxrounds").SetInt(9999);
@@ -960,12 +935,13 @@ public void OnConfigsExecuted()
 		InsertServerCommand("sv_pure 0");
 		
 		// TFBots
-		FindConVar("tf_bot_quota").SetInt(MaxClients-1);
+		FindConVar("tf_bot_quota").SetInt(MaxClients);
 		FindConVar("tf_bot_quota_mode").SetString("fill");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
 		FindConVar("tf_bot_taunt_victim_chance").SetInt(0);
 		FindConVar("tf_bot_join_after_player").SetBool(true);
+		FindConVar("tf_bot_auto_vacate").SetBool(true);
 		
 		ConVar botConsiderClass = FindConVar("tf_bot_reevaluate_class_in_spawnroom");
 		botConsiderClass.Flags = botConsiderClass.Flags & ~FCVAR_CHEAT;
@@ -1170,20 +1146,23 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_bot_force_class"));
 }
 
+public bool OnClientConnect(int client, char[] rejectmsg, int maxlen)
+{
+	if (RF2_IsEnabled() && GetClientCount(false)-1 >= g_cvMaxHumanPlayers.IntValue)
+	{
+		FormatEx(rejectmsg, maxlen, "Max human player limit of %i has been reached", g_cvMaxHumanPlayers.IntValue);
+		return false;
+	}
+	
+	return true;
+}
+
 public void OnClientConnected(int client)
 {
-	/*
-	if (RF2_IsEnabled())
+	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		if (!IsFakeClient(client))
-		{
-			if (GetTotalHumans(false) > g_cvMaxHumanPlayers.IntValue)
-			{
-				KickClient(client, "Only %i humans are allowed in this server", g_cvMaxHumanPlayers.IntValue);
-			}
-		}
+		FindConVar("tf_bot_auto_vacate").SetBool(!(GetClientCount(false) >= g_cvMaxHumanPlayers.IntValue));
 	}
-	*/
 }
 
 public void OnClientPutInServer(int client)
@@ -1385,17 +1364,6 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	AcceptEntityInput(gamerules, "SetRedTeamRespawnWaveTime");
 	SetVariantInt(9999);
 	AcceptEntityInput(gamerules, "SetBlueTeamRespawnWaveTime");
-	
-	/*
-	CNavArea redArea = GetIncursionArea(TFTeam_Red);
-	CNavArea blueArea = GetIncursionArea(TFTeam_Blue);
-	
-	if (redArea)
-		SDK_ComputeIncursionDistances(redArea, TFTeam_Red);
-	
-	if (blueArea)
-		SDK_ComputeIncursionDistances(blueArea, TFTeam_Blue);
-	*/
 	
 	SpawnObjects();
 	

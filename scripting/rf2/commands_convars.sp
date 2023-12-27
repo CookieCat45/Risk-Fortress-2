@@ -40,7 +40,7 @@ void LoadCommandsAndCvars()
 	
 	char buffer[8];
 	IntToString(MaxClients, buffer, sizeof(buffer));
-	//g_cvMaxHumanPlayers = CreateConVar("rf2_human_player_limit", buffer, "Max number of human players allowed in the server.", FCVAR_NOTIFY, true, 1.0, true, float(MaxClients));
+	g_cvMaxHumanPlayers = CreateConVar("rf2_human_player_limit", buffer, "Max number of human players allowed in the server.", FCVAR_NOTIFY, true, 1.0, true, float(MaxClients));
 	
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
 	g_cvMaxSurvivors = CreateConVar("rf2_max_survivors", buffer, "Max number of Survivors that can be in the game.", FCVAR_NOTIFY, true, 1.0, true, float(MAX_SURVIVORS));
@@ -105,7 +105,6 @@ void LoadCommandsAndCvars()
 	g_cvDebugShowDifficultyCoeff = CreateConVar("rf2_debug_show_difficulty_coeff", "0", "If nonzero, shows the value of the difficulty coefficient.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	
 	HookConVarChange(g_cvEnableAFKManager, ConVarHook_EnableAFKManager);
-	//HookConVarChange(g_cvMaxHumanPlayers, ConVarHook_MaxHumanPlayers);
 }
 
 public Action Command_ReloadRF2(int client, int args)
@@ -1444,9 +1443,3 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 	}
 }
 
-public void ConVarHook_MaxHumanPlayers(ConVar convar, const char[] oldValue, const char[] newValue)
-{
-	int newVal = StringToInt(newValue);
-	ConVar visibleMax = FindConVar("sv_visiblemaxplayers");
-	visibleMax.IntValue = newVal;
-}
