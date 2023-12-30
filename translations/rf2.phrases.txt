@@ -190,8 +190,8 @@
 	
 	"TeleporterItemReward"
 	{
-		"#format"	"{1:N},{2:s}"
-		"en"		"{yellow}{1}{default} was rewarded with one {genuine}{2}{default} for surviving the event."
+		"#format"	"{1:N},{2:s},{3:s}"
+		"en"		"{yellow}{1}{default} was rewarded with one {2}{3}{default} for surviving the event."
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -743,5 +743,9 @@
 	"TutorialReset"
 	{
 		"en"		"The tutorial has been reset."
+	}
+	"WaitForOthers"
+	{
+		"en"		"Wait for connecting players to join."
 	}
 }

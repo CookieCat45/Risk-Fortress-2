@@ -76,6 +76,7 @@ void RefreshClient(int client, bool force=false)
 	}
 	
 	g_bPlayerHasVampireSapper[client] = false;
+	g_bPlayerSpawnedByTeleporter[client] = false;
 	g_flPlayerVampireSapperCooldown[client] = 0.0;
 	g_flPlayerVampireSapperDuration[client] = 0.0;
 	g_flPlayerReloadBuffDuration[client] = 0.0;
@@ -84,11 +85,16 @@ void RefreshClient(int client, bool force=false)
 	g_TFBot[client].ForcedButtons = 0;
 	g_TFBot[client].Flags = 0;
 	g_TFBot[client].Mission = MISSION_NONE;
-	
 	g_TFBot[client].HasBuilt = false;
-	g_TFBot[client].IsBuilding = false;
 	g_TFBot[client].SentryArea = view_as<CTFNavArea>(NULL_AREA);
 	g_TFBot[client].BuildingTarget = -1;
+	g_TFBot[client].RepairTarget = -1;
+	
+	if (g_hTFBotEngineerBuildings[client])
+	{
+		delete g_hTFBotEngineerBuildings[client];
+		g_hTFBotEngineerBuildings[client] = null;
+	}
 }
 
 public Action Timer_ResetModel(Handle timer, int client)
@@ -442,9 +448,13 @@ float CalculatePlayerMaxSpeed(int client)
 	}
 	
 	float mult = speed / classMaxSpeed;
-	TF2Attrib_RemoveByDefIndex(client, 107); // possible fix for BLU players sometimes being extremely sluggish
-	TF2Attrib_SetByDefIndex(client, 107, mult); // "move speed bonus"
+	TF2Attrib_RemoveByDefIndex(client, 107);
+	
+	if (mult != 1.0)
+		TF2Attrib_SetByDefIndex(client, 107, mult); // "move speed bonus"
+	
 	SDK_ForceSpeedUpdate(client);
+	g_flPlayerCalculatedMaxSpeed[client] = speed;
 	return GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
 }
 

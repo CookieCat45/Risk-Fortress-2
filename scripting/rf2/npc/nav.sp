@@ -103,7 +103,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 			{
 				area = NULL_AREA;
 				validAreaCount--;
-
+				
 				if (areaArray.FindValue(randomArea) != -1)
 				{
 					areaArray.Erase(randomCell);
@@ -150,7 +150,6 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 						if (canSpawn)
 						{
 							GetEntPos(i, playerPos);
-							
 							if (GetVectorDistance(spawnPos, playerPos, true) <= sq(minDist))
 							{
 								area = NULL_AREA;

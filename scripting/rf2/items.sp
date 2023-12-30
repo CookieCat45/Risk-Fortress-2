@@ -485,7 +485,7 @@ bool PickupItem(int client)
 		{
 			EmitSoundToClient(client, SND_NOPE);
 			PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[index]);
-			return false;
+			return true;
 		}
 		
 		if (dropped)
@@ -495,7 +495,7 @@ bool PickupItem(int client)
 			{
 				EmitSoundToClient(client, SND_NOPE);
 				PrintCenterText(client, "%t", "NotForYou");
-				return false;
+				return true;
 			}
 		}
 		
@@ -503,13 +503,16 @@ bool PickupItem(int client)
 		{
 			g_bPlayerTookCollectorItem[client] = true;
 		}
-
+		
 		GiveItem(client, itemIndex);
 		RemoveEntity(item);
-		
-		char qualityTag[32], itemName[128];
+		char qualityTag[32], itemName[128], qualityName[32], desc[256];
 		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
 		GetItemName(itemIndex, itemName, sizeof(itemName));
+		GetQualityName(quality, qualityName, sizeof(qualityName));
+		strcopy(desc, sizeof(desc), g_szItemDesc[itemIndex]);
+		CRemoveTags(desc, sizeof(desc));
+		PrintKeyHintText(client, "%s (%s): %s", itemName, qualityName, desc);
 		
 		if (IsEquipmentItem(itemIndex))
 		{

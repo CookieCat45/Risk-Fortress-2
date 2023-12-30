@@ -658,12 +658,14 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	}
 	
 	float checkPos[3];
+	bool player;
 	if (CompareVectors(pos, OFF_THE_MAP))
 	{
 		int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
 		if (IsValidClient(randomSurvivor))
 		{
 			GetEntPos(randomSurvivor, checkPos);
+			player = true;
 		}
 		else
 		{
@@ -684,8 +686,10 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	float zOffset = 30.0 * enemy.ModelScale;
 	
 	float spawnPos[3];
-	float minSpawnDistance = minDist < 0.0 ? g_cvEnemyMinSpawnDistance.FloatValue : minDist;
-	float maxSpawnDistance = maxDist < 0.0 ? g_cvEnemyMaxSpawnDistance.FloatValue : maxDist;
+	// Engineers spawn further away from players
+	float extraDist = player && enemy.Class == TFClass_Engineer ? 2000.0 : 0.0;
+	float minSpawnDistance = minDist < 0.0 ? g_cvEnemyMinSpawnDistance.FloatValue + extraDist : minDist;
+	float maxSpawnDistance = maxDist < 0.0 ? g_cvEnemyMaxSpawnDistance.FloatValue + extraDist : maxDist;
 	CNavArea area = GetSpawnPoint(checkPos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
 	
 	if (!area)
@@ -701,7 +705,6 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 			pack.WriteFloat(pos[2]);
 			pack.WriteFloat(minDist);
 			pack.WriteFloat(maxDist);
-			
 			RequestFrame(RF_SpawnEnemyRecursive, pack);
 		}
 		
@@ -807,6 +810,12 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	SetEntPropFloat(client, Prop_Send, "m_flTorsoScale", enemy.TorsoScale);
 	SetEntPropFloat(client, Prop_Send, "m_flHandScale", enemy.HandScale);
 	
+	if (g_bPlayerSpawnedByTeleporter[client])
+	{
+		TE_TFParticle("eyeboss_tp_player", spawnPos);
+		g_bPlayerSpawnedByTeleporter[client] = false;
+	}
+
 	return true;
 }
 

@@ -19,7 +19,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.1.9b"
+#define PLUGIN_VERSION "0.2b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -114,6 +114,7 @@ public Plugin myinfo =
 #define SND_RUNE_KING "items/powerup_pickup_king.wav"
 #define SND_THROW "weapons/cleaver_throw.wav"
 #define SND_BOMB_EXPLODE "weapons/loose_cannon_explode.wav"
+#define SND_TELEPORTER_BLU "mvm/mvm_tele_deliver.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
@@ -355,6 +356,7 @@ bool g_bEquipmentCooldownActive[MAXTF2PLAYERS];
 bool g_bItemPickupCooldown[MAXTF2PLAYERS];
 bool g_bPlayerLawCooldown[MAXTF2PLAYERS];
 bool g_bPlayerTookCollectorItem[MAXTF2PLAYERS];
+bool g_bPlayerSpawnedByTeleporter[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -416,6 +418,7 @@ float g_flProjectileForcedDamage[MAX_EDICTS];
 float g_flSentryNextLaserTime[MAX_EDICTS];
 float g_flCashBombAmount[MAX_EDICTS];
 float g_flCashValue[MAX_EDICTS];
+float g_flTeleporterNextSpawnTime[MAX_EDICTS];
 
 // Timers
 Handle g_hPlayerTimer;
@@ -517,6 +520,7 @@ int g_iPlayerSurvivorPoints[MAXTF2PLAYERS];
 
 // TFBots
 TFBot g_TFBot[MAXTF2PLAYERS];
+ArrayList g_hTFBotEngineerBuildings[MAXTF2PLAYERS];
 
 #define TFBOTFLAG_AGGRESSIVE (1 << 0) // Bot should always act aggressive (relentlessly chase target)
 #define TFBOTFLAG_ROCKETJUMP (1 << 1) // Bot should rocket jump
@@ -603,7 +607,6 @@ void LoadGameData()
 	}
 	
 	int offset;
-	
 	// CBasePlayer::EquipWearable ------------------------------------------------------------------------------------------------------------
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "CBasePlayer::EquipWearable");
@@ -888,6 +891,12 @@ public void OnMapStart()
 				SetEntProp(entity, Prop_Data, "m_bMapPlaced", true);
 			}
 		}
+		
+		// If the game has already started, restart if we wait too long for players
+		if (g_bGameInitialized)
+		{
+			CreateTimer(600.0, Timer_RestartGameWait, _, TIMER_FLAG_NO_MAPCHANGE);
+		}
 	}
 	else
 	{
@@ -908,6 +917,7 @@ public void OnConfigsExecuted()
 		}
 		
 		// Here are ConVars that we don't want changed by configs
+		FindConVar("sv_quota_stringcmdspersecond").SetInt(5000); // So Engie bots don't get kicked
 		FindConVar("mp_teams_unbalance_limit").SetInt(0);
 		FindConVar("mp_forcecamera").SetBool(false);
 		FindConVar("mp_maxrounds").SetInt(9999);
@@ -1101,6 +1111,7 @@ void LoadAssets()
 	PrecacheSound(SND_RUNE_KING, true);
 	PrecacheSound(SND_THROW, true);
 	PrecacheSound(SND_BOMB_EXPLODE, true);
+	PrecacheSound(SND_TELEPORTER_BLU, true);
 	PrecacheSound("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound("vo/halloween_boss/knight_attack02.mp3", true);
 	PrecacheSound("vo/halloween_boss/knight_attack03.mp3", true);
@@ -1116,7 +1127,7 @@ void LoadAssets()
 void ResetConVars()
 {
 	ResetConVar(FindConVar("sv_alltalk"));
-	//ResetConVar(FindConVar("sv_visiblemaxplayers"));
+	ResetConVar(FindConVar("sv_quota_stringcmdspersecond"));
 	
 	ResetConVar(FindConVar("mp_waitingforplayers_time"));
 	ResetConVar(FindConVar("mp_teams_unbalance_limit"));
@@ -1419,7 +1430,7 @@ public Action Timer_DifficultyVote(Handle timer)
 
 void StartDifficultyVote()
 {
-	Menu menu = CreateMenu(Menu_DifficultyVote);
+	Menu menu = new Menu(Menu_DifficultyVote);
 	menu.SetTitle("Vote for the game's difficulty level!");
 	menu.AddItem("0", "Scrap");
 	menu.AddItem("1", "Iron");
@@ -1579,6 +1590,16 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		}
 	}
 	
+	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+	{
+		int entity = -1;
+		while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+		{
+			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
+				SDKHooks_TakeDamage(entity, 0, 0, 999999.0, DMG_PREVENT_PHYSICS_FORCE);
+		}
+	}
+
 	if (IsFakeClient(client))
 	{
         if (g_TFBot[client].Follower.IsValid())
@@ -1592,6 +1613,10 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	
 	// Initialize our stats (health, speed, kb resist) the next frame to ensure it's correct
 	RequestFrame(RF_InitStats, client);
+	
+	// Calculate max speed on a timer again to fix a... weird issue with players spawning in and being REALLY slow.
+	// I don't know why it happens, but this fixes it, so, cool I guess?
+	CreateTimer(0.1, Timer_FixSpeedIssue, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	
 	TF2_AddCondition(client, TFCond_UberchargedHidden, 0.2);
 	if (g_bThrillerActive)
@@ -1610,6 +1635,15 @@ public void RF_InitStats(int client)
 		CalculatePlayerMaxSpeed(client);
 		CalculatePlayerMiscStats(client);
 	}
+}
+
+public Action Timer_FixSpeedIssue(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
+		return Plugin_Continue;
+
+	CalculatePlayerMaxSpeed(client);
+	return Plugin_Continue;
 }
 
 public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
@@ -1642,10 +1676,8 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	CritType critType = view_as<CritType>(event.GetInt("crit_type"));
 	
 	// No dominations
-	deathFlags &= ~(TF_DEATHFLAG_KILLERDOMINATION | TF_DEATHFLAG_ASSISTERDOMINATION | 
-	TF_DEATHFLAG_KILLERREVENGE | TF_DEATHFLAG_ASSISTERREVENGE);
+	deathFlags &= ~(TF_DEATHFLAG_KILLERDOMINATION | TF_DEATHFLAG_ASSISTERDOMINATION | TF_DEATHFLAG_KILLERREVENGE | TF_DEATHFLAG_ASSISTERREVENGE);
 	event.SetInt("death_flags", deathFlags);
-	
 	int victimTeam = GetClientTeam(victim);
 	Action action = Plugin_Continue;
 	
@@ -1677,6 +1709,20 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder: event.SetString("weapon", "merasmus_zap");
 			
 			case ItemStrange_LegendaryLid: event.SetString("weapon", "kunai");
+		}
+	}
+	
+	if (TF2_GetPlayerClass(victim) == TFClass_Engineer && IsPlayerSurvivor(victim))
+	{
+		int entity = -1;
+		while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+		{
+			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") != victim)
+				continue;
+			
+			SetVariantInt(10);
+			AcceptEntityInput(entity, "SetHealth");
+			SDKHooks_TakeDamage(entity, attacker, attacker, 99999.0, DMG_PREVENT_PHYSICS_FORCE);
 		}
 	}
 	
@@ -1965,27 +2011,6 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		}
 	}
 	
-	if (TF2_GetPlayerClass(victim) == TFClass_Engineer)
-	{
-		int entity = -1;
-		while ((entity = FindEntityByClassname(entity, "*")) != -1)
-		{
-			if (entity <= MaxClients || !IsBuilding(entity) || GetEntPropEnt(entity, Prop_Send, "m_hBuilder") != victim)
-				continue;
-				
-			if (TF2_GetObjectType(entity) == TFObject_Sentry || GetEntProp(entity, Prop_Data, "m_iTeamNum") == TEAM_SURVIVOR)
-			{
-				SetVariantInt(10);
-				AcceptEntityInput(entity, "SetHealth");
-				SDKHooks_TakeDamage(entity, attacker, attacker, 99999.0, DMG_PREVENT_PHYSICS_FORCE);
-			}
-			else
-			{
-				AcceptEntityInput(entity, "SetBuilder", -1);
-			}
-		}
-	}
-
 	if (victimTeam == TEAM_ENEMY)
 	{
 		SetClientName(victim, g_szPlayerOriginalName[victim]);
@@ -2111,20 +2136,18 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 		int team = GetClientTeam(medic);
 		float eyePos[3], enemyPos[3], beamPos[3];
 		GetClientEyePosition(medic, eyePos);
-		
 		float damage = CalcItemMod(medic, ItemMedic_WeatherMaster, 0) + CalcItemMod(medic, ItemMedic_WeatherMaster, 2);
 		float range = sq(CalcItemMod(medic, ItemMedic_WeatherMaster, 1) + CalcItemMod(medic, ItemMedic_WeatherMaster, 3, -1));
-		
 		Handle trace;
 		int hitCount;
-		
 		int entity = -1;
+
 		while ((entity = FindEntityByClassname(entity, "*")) != -1)
 		{
-			if (entity < 1)
+			if (entity < 1 || entity == medic)
 				continue;
 			
-			if (!IsValidClient(entity) && !IsBuilding(entity) && !IsNPC(entity) || entity == medic)
+			if (!IsValidClient(entity) && !IsBuilding(entity) && !IsNPC(entity))
 				continue;
 				
 			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
@@ -2139,8 +2162,7 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 				if (!TR_DidHit(trace))
 				{
 					SetEntItemDamageProc(medic, ItemMedic_WeatherMaster);
-					SDKHooks_TakeDamage(entity, medic, medic, damage, DMG_SHOCK);
-					
+					SDKHooks_TakeDamage(entity, medic, medic, damage, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE);
 					CopyVectors(enemyPos, beamPos);
 					beamPos[2]+=1500.0;
 					enemyPos[2] -= 30.0;
@@ -2229,7 +2251,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	
 	// For some reason, extra sentries built (by detouring CTFPlayer::CanBuild) always have this netprop set,
 	// so we'll use it to detect extra sentries built with the Head of Defense.
-	if (GetEntProp(building, Prop_Send, "m_bDisposableBuilding"))
+	if (GetEntProp(building, Prop_Send, "m_bDisposableBuilding") && !carryDeploy)
 	{
 		SetEntProp(building, Prop_Send, "m_bDisposableBuilding", false);
 		SetEntProp(building, Prop_Send, "m_bMiniBuilding", true);
@@ -2247,10 +2269,121 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 			AcceptEntityInput(building, "SetHealth");
 		}
 	}
+	else if (GetClientTeam(client) == TEAM_ENEMY && TF2_GetObjectType(building) == TFObject_Teleporter)
+	{
+		if (g_flTeleporterNextSpawnTime[building] < 0.0)
+			g_flTeleporterNextSpawnTime[building] = GetTickedTime()+(36.0/float(GetEntProp(building, Prop_Send, "m_iUpgradeLevel")));
+		
+		RequestFrame(RF_TeleporterThink, EntIndexToEntRef(building));
+	}
 	
 	if (!carryDeploy && GameRules_GetProp("m_bInSetup"))
 	{
 		SDK_DoQuickBuild(building, true);
+	}
+	
+	return Plugin_Continue;
+}
+
+public void RF_TeleporterThink(int building)
+{
+	if ((building = EntRefToEntIndex(building)) == INVALID_ENT_REFERENCE || GetEntProp(building, Prop_Send, "m_bCarried"))
+		return; 
+	
+	if (GetEntProp(building, Prop_Send, "m_bBuilding"))
+	{
+		RequestFrame(RF_TeleporterThink, EntIndexToEntRef(building));
+		return;
+	}
+	
+	// can we spawn enemies?
+	float tickedTime = GetTickedTime();
+	if (tickedTime >= g_flTeleporterNextSpawnTime[building])
+	{
+		ArrayList enemies = new ArrayList();
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (g_bPlayerInSpawnQueue[i] || !IsClientInGame(i) || IsPlayerAlive(i) || GetClientTeam(i) != TEAM_ENEMY)
+				continue;
+			
+			enemies.Push(i);
+		}
+		
+		enemies.SortCustom(SortEnemySpawnArray);
+		int spawns, client;
+		float time;
+		const int maxSpawns = 3;
+		const float max = 250.0;
+		float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
+		float bossChance = subIncrement < max ? subIncrement : max;
+		
+		for (int i = 0; i < enemies.Length; i++)
+		{
+			client = enemies.Get(i);
+			if (RF2_GetSubDifficulty() >= SubDifficulty_Impossible && RandChanceFloat(0.0, max, bossChance))
+			{
+				g_iPlayerBossSpawnType[client] = GetRandomBoss();
+			}
+			else
+			{
+				g_iPlayerEnemySpawnType[client] = GetRandomEnemy();
+			}
+			
+			// Don't spawn everyone on the same frame to reduce lag
+			DataPack pack;
+			CreateDataTimer(time, Timer_SpawnEnemyTeleporter, pack, TIMER_FLAG_NO_MAPCHANGE);
+			pack.WriteCell(GetClientUserId(client));
+			pack.WriteCell(EntIndexToEntRef(building));
+			time += 0.1;
+			g_bPlayerInSpawnQueue[client] = true;
+			
+			spawns++;
+			if (spawns >= maxSpawns)
+				break;
+		}
+		
+		if (spawns > 0)
+		{
+			EmitSoundToAll(SND_TELEPORTER_BLU, building, _, SNDLEVEL_TRAIN);
+		}
+		
+		g_flTeleporterNextSpawnTime[building] = spawns > 0 ? tickedTime+(36.0/float(GetEntProp(building, Prop_Send, "m_iUpgradeLevel"))) : tickedTime+2.0;
+		delete enemies;
+	}
+	
+	// force spin animation for BLU teleporters (it's a bit choppy, but that's fine)
+	SetEntPropFloat(building, Prop_Send, "m_flPlaybackRate", 1.0);
+	SetEntProp(building, Prop_Send, "m_nBody", 1);
+	RequestFrame(RF_TeleporterThink, EntIndexToEntRef(building));
+}
+
+public Action Timer_SpawnEnemyTeleporter(Handle timer, DataPack pack)
+{
+	pack.Reset();
+	int client = pack.ReadCell();
+	if ((client = GetClientOfUserId(client)) == 0)
+		return Plugin_Continue;
+	
+	int teleporter = EntRefToEntIndex(pack.ReadCell());
+	if (teleporter == INVALID_ENT_REFERENCE)
+	{
+		g_iPlayerEnemySpawnType[client] = -1;
+		g_iPlayerBossSpawnType[client] = -1;
+		return Plugin_Continue;
+	}
+	
+	float pos[3];
+	GetEntPos(teleporter, pos);
+	pos[2] += 25.0;
+	
+	g_bPlayerSpawnedByTeleporter[client] = true;
+	if (g_iPlayerEnemySpawnType[client] > -1)
+	{
+		SpawnEnemy(client, g_iPlayerEnemySpawnType[client], pos, 0.0, 500.0);
+	}
+	else if (g_iPlayerBossSpawnType[client] > -1)
+	{
+		SpawnBoss(client, g_iPlayerBossSpawnType[client], pos, false, 0.0, 700.0);
 	}
 	
 	return Plugin_Continue;
@@ -2999,7 +3132,10 @@ public Action OnVoiceCommand(int client, const char[] command, int args)
 				}
 			}
 			
-			if (PickupItem(client) || ObjectInteract(client))
+			if (PickupItem(client))
+				return Plugin_Handled;
+			
+			if (ObjectInteract(client))
 				return Plugin_Handled;
 		}
 	}
@@ -3131,6 +3267,9 @@ public void RF_CheckSpecTarget(int client)
 
 public Action OnBuildCommand(int client, const char[] command, int args)
 {
+	if (g_bWaitingForPlayers)
+		return Plugin_Continue;
+	
 	if (GetClientTeam(client) == TEAM_ENEMY && GetCmdArgInt(1) == view_as<int>(TFObject_Teleporter))
 	{
 		if (args == 1 || GetCmdArgInt(2) == view_as<int>(TFObjectMode_Entrance))
@@ -3222,7 +3361,16 @@ public void Hook_PreThink(int client)
 		float tickedTime = GetTickedTime();
 		if (tickedTime >= g_flPlayerNextMetalRegen[client])
 		{
-			int metal = RoundToFloor(float(g_cvEngiMetalRegenAmount.IntValue) * (1.0 + float(GetPlayerLevel(client)) * 0.12));
+			int metal;
+			if (GetClientTeam(client) == TEAM_ENEMY)
+			{
+				metal = 999999;
+			}
+			else
+			{
+				metal = RoundToFloor(float(g_cvEngiMetalRegenAmount.IntValue) * (1.0 + float(GetPlayerLevel(client)) * 0.12));
+			}
+			
 			GivePlayerAmmo(client, metal, TFAmmoType_Metal, true);
 			float time = g_bGracePeriod ? 0.2 : g_cvEngiMetalRegenInterval.FloatValue;
 			g_flPlayerNextMetalRegen[client] = tickedTime + time;
@@ -3498,6 +3646,16 @@ public void TF2_OnWaitingForPlayersEnd()
 	PrintToServer("%T", "WaitingEnd", LANG_SERVER);
 }
 
+public Action Timer_RestartGameWait(Handle timer)
+{
+	if (!g_bWaitingForPlayers)
+		return Plugin_Continue;
+	
+	PrintToServer("[RF2] Waited too long for players to join. Restarting game...");
+	ReloadPlugin(true);
+	return Plugin_Continue;
+}
+
 public void OnEntityCreated(int entity, const char[] classname)
 {
 	if (!RF2_IsEnabled() || entity < 0 || entity >= MAX_EDICTS)
@@ -3511,6 +3669,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bCashBomb[entity] = false;
 	g_bFiredWhileRocketJumping[entity] = false;
 	g_bFakeFireball[entity] = false;
+	g_flTeleporterNextSpawnTime[entity] = -1.0;
 	
 	if (strcmp2(classname, "tf_projectile_rocket") || strcmp2(classname, "tf_projectile_flare") || strcmp2(classname, "tf_projectile_arrow"))
 	{
@@ -4041,6 +4200,13 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 		else
 		{
+			// Monoculus insta-kills players who touch his portal when he is spawning, prevent this
+			if (strcmp2(inflictorClassname, "eyeball_boss") && damageCustom == TF_CUSTOM_PLASMA)
+			{
+				damage = 0.0;
+				return Plugin_Changed;
+			}
+			
 			damage *= GetEnemyDamageMult();
 		}
 	}
@@ -4391,22 +4557,25 @@ public Action Timer_LawCooldown(Handle timer, int client)
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float velocity[3], float angles[3])
 {
-	if (!RF2_IsEnabled() || g_bWaitingForPlayers || !IsPlayerAlive(client))
+	if (!RF2_IsEnabled() || g_bWaitingForPlayers)
 		return Plugin_Continue;
 		
-	Action action = Plugin_Continue;
 	bool bot = IsFakeClient(client);
-	
-	if (bot)
-	{
-		action = TFBot_OnPlayerRunCmd(client, buttons, impulse);
-	}
-	else
+	if (!bot)
 	{
 		if (buttons && !IsSingleplayer(false))
 		{
 			ResetAFKTime(client);
 		}
+	}
+	
+	if (!IsPlayerAlive(client))
+		return Plugin_Continue;
+	
+	Action action = Plugin_Continue;
+	if (bot)
+	{
+		action = TFBot_OnPlayerRunCmd(client, buttons, impulse);
 	}
 	
 	if (!bot && buttons & IN_ATTACK)
@@ -4534,8 +4703,8 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			GetAngleVectors(angles, NULL_VECTOR, sideVel, NULL_VECTOR);
 			NormalizeVector(fwdVel, fwdVel);
 			NormalizeVector(sideVel, sideVel);
+			CopyVectors(velocity, vel);
 			NormalizeVector(vel, vel);
-			
 			if (GetVectorDotProduct(fwdVel, vel) != 0.0 || GetVectorDotProduct(sideVel, vel) != 0.0)
 			{
 				TFClassType class = TF2_GetPlayerClass(client);

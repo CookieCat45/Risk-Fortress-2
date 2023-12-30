@@ -319,15 +319,12 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	
 	DataPack pack;
 	CreateDataTimer(removeTime, Timer_SpawnItem, pack, TIMER_FLAG_NO_MAPCHANGE);
-	
 	pack.WriteCell(item);
 	pack.WriteCell(GetClientUserId(attacker));
 	pack.WriteFloat(pos[0]);
 	pack.WriteFloat(pos[1]);
 	pack.WriteFloat(pos[2]);
-	
 	CreateTimer(removeTime, Timer_DeleteEntity, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
-	
 	return Plugin_Continue;
 }
 
@@ -372,10 +369,8 @@ bool ObjectInteract(int client)
 	float eyePos[3], eyeAng[3], endPos[3], direction[3];
 	GetClientEyePosition(client, eyePos);
 	GetClientEyeAngles(client, eyeAng);
-	
 	GetAngleVectors(eyeAng, direction, NULL_VECTOR, NULL_VECTOR);
 	NormalizeVector(direction, direction);
-	
 	const float range = 100.0;
 	CopyVectors(eyePos, endPos);
 	endPos[0] += direction[0] * range;
@@ -392,7 +387,6 @@ bool ObjectInteract(int client)
 		char classname[128];
 		GetEntPos(entity, pos);
 		GetEntityClassname(entity, classname, sizeof(classname));
-		
 		if (GetVectorDistance(endPos, pos, true) <= sq(range))
 		{
 			return ActivateObject(client, entity);
@@ -478,7 +472,7 @@ bool ActivateObject(int client, int entity)
 			GetQualityName(quality, qualityName, sizeof(qualityName));
 			EmitSoundToClient(client, SND_NOPE);
 			PrintCenterText(client, "%t", "NoExchange", qualityName);
-			return false;
+			return true;
 		}
 	}
 	else if (strcmp2(classname, "rf2_object_scrapper"))
@@ -491,7 +485,7 @@ bool ActivateObject(int client, int entity)
 
 void ShowScrapperMenu(int client, bool message=true)
 {
-	Menu menu = CreateMenu(Menu_ItemScrapper);
+	Menu menu = new Menu(Menu_ItemScrapper);
 	menu.SetTitle("What would you like to scrap?");
 	
 	int count;
@@ -681,22 +675,22 @@ void StartTeleporterVote(int client, bool nextStageVote=false)
 		}
 	}
 	
-	Menu menu;
+	Menu vote;
 	if (nextStageVote)
 	{
-		menu = CreateMenu(Menu_NextStageVote);
-		menu.SetTitle("Depart now? (%N)", client);
+		vote = new Menu(Menu_NextStageVote);
+		vote.SetTitle("Depart now? (%N)", client);
 	}
 	else
 	{
-		menu = CreateMenu(Menu_TeleporterVote);
-		menu.SetTitle("Start the Teleporter event? (%N)", client);
+		vote = new Menu(Menu_TeleporterVote);
+		vote.SetTitle("Start the Teleporter event? (%N)", client);
 	}
-		
-	menu.AddItem("Yes", "Yes");
-	menu.AddItem("No", "No");
-	menu.ExitButton = false;
-	VoteMenu(menu, clients, clientCount, 12);
+	
+	vote.AddItem("Yes", "Yes");
+	vote.AddItem("No", "No");
+	vote.ExitButton = false;
+	vote.DisplayVote(clients, clientCount, 12);
 }
 
 public int Menu_TeleporterVote(Menu menu, MenuAction action, int param1, int param2)
@@ -741,7 +735,6 @@ void PrepareTeleporterEvent(int teleporter)
 {
 	SetEntProp(teleporter, Prop_Data, "m_iEventState", TELE_EVENT_PREPARING);
 	RF2_PrintToChatAll("%t", "TeleporterActivated");
-	
 	StopMusicTrackAll();
 	
 	float pos[3];
@@ -989,12 +982,21 @@ void EndTeleporterEvent(int teleporter)
 		EmitSoundToAll(SND_ENEMY_STUN);
 	}
 	
+	int entity = -1;
+	while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+	{
+		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+		{
+			SDKHooks_TakeDamage(entity, 0, 0, 9999999.0, DMG_PREVENT_PHYSICS_FORCE);
+		}
+	}
+	
 	EmitSoundToAll(SND_TELEPORTER_CHARGED);
 	SetEntProp(teleporter, Prop_Send, "m_fEffects", EF_ITEM_BLINK);
 	StopMusicTrackAll();
 	
 	int randomItem;
-	char name[MAX_NAME_LENGTH];
+	char name[MAX_NAME_LENGTH], quality[32];
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
@@ -1003,7 +1005,8 @@ void EndTeleporterEvent(int teleporter)
 		randomItem = g_bPlayerTookCollectorItem[i] ? GetRandomItemEx(Quality_Genuine) : GetRandomCollectorItem(TF2_GetPlayerClass(i));
 		GiveItem(i, randomItem);
 		GetItemName(randomItem, name, sizeof(name));
-		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, name);
+		GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
+		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
 		PrintHintText(i, "%t", "GotItemReward", name);
 	}
 	

@@ -229,6 +229,9 @@ bool RF2_IsMapValid(char[] mapName)
 		for (int map = 0; map <= MAX_STAGE_MAPS; map++)
 		{
 			FormatEx(mapId, sizeof(mapId), "map%i", map+1);
+			if (map > 0)
+				mapKey.GoBack();
+			
 			if (mapKey.JumpToKey(mapId))
 			{
 				mapKey.GetString("name", mapKvName, sizeof(mapKvName), "map_unknown");

@@ -23,6 +23,28 @@ bool IsBuilding(int entity)
 	return StrContains(classname, "obj_") == 0;
 }
 
+int GetBuiltObject(int client, TFObjectType type, TFObjectMode mode=TFObjectMode_Entrance)
+{
+	int entity = -1;
+	while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+	{
+		if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client && TF2_GetObjectType(entity) == type)
+		{
+			if (type == TFObject_Teleporter)
+			{
+				if (TF2_GetObjectMode(entity) == mode)
+					return entity;
+			}
+			else
+			{
+				return entity;
+			}
+		}
+	}
+	
+	return -1;
+}
+
 bool CanTeamQuickBuild(int team)
 {
 	return team == TEAM_SURVIVOR && g_cvSurvivorQuickBuild.BoolValue || team == TEAM_ENEMY && g_cvEnemyQuickBuild.BoolValue;
@@ -85,12 +107,16 @@ public MRESReturn DHook_SentryGunAttack(int entity)
 
 public MRESReturn DHook_CanBuild(int client, DHookReturn returnVal, DHookParam params)
 {
-	if (RF2_IsEnabled() && PlayerHasItem(client, ItemEngi_HeadOfDefense) && DHookGetParam(params, 1) == view_as<int>(TFObject_Sentry))
+	if (RF2_IsEnabled())
 	{
-		if (TF2_GetPlayerBuildingCount(client, TFObject_Sentry) <= RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0))+1)
+		TFObjectType type = view_as<TFObjectType>(DHookGetParam(params, 1));
+		if (type == TFObject_Sentry && PlayerHasItem(client, ItemEngi_HeadOfDefense))
 		{
-			DHookSetReturn(returnVal, CB_CAN_BUILD);
-			return MRES_Supercede;
+			if (TF2_GetPlayerBuildingCount(client, TFObject_Sentry) <= RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0))+1)
+			{
+				DHookSetReturn(returnVal, CB_CAN_BUILD);
+				return MRES_Supercede;
+			}
 		}
 	}
 	

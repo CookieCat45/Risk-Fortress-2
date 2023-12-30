@@ -117,7 +117,6 @@ public void Hook_BadassTankSpawnPost(int entity)
 	int maxHealth = GetEntProp(entity, Prop_Data, "m_iMaxHealth");
 	SetEntProp(entity, Prop_Data, "m_iActualMaxHealth", maxHealth);
 	SetEntProp(entity, Prop_Data, "m_iMaxHealth", 0);
-	
 	SetSequence(entity, "movement");
 }
 
@@ -140,7 +139,7 @@ void EndTankDestructionMode()
 	CreateTimer(30.0, Timer_CommandReminder, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	
 	int randomItem;
-	char name[MAX_NAME_LENGTH];
+	char name[MAX_NAME_LENGTH], quality[32];
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
@@ -149,7 +148,8 @@ void EndTankDestructionMode()
 		randomItem = g_bPlayerTookCollectorItem[i] ? GetRandomItemEx(Quality_Genuine) : GetRandomCollectorItem(TF2_GetPlayerClass(i));
 		GiveItem(i, randomItem);
 		GetItemName(randomItem, name, sizeof(name));
-		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, name);
+		GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
+		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
 		PrintHintText(i, "%t", "GotItemReward", name);
 		
 		char text[256];
@@ -173,6 +173,15 @@ void EndTankDestructionMode()
 		EmitSoundToAll(SND_ENEMY_STUN);
 	}
 	
+	int entity = -1;
+	while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+	{
+		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+		{
+			SDKHooks_TakeDamage(entity, 0, 0, 9999999.0, DMG_PREVENT_PHYSICS_FORCE);
+		}
+	}
+	
 	int gamerules = GetRF2GameRules();
 	if (gamerules != INVALID_ENT_REFERENCE)
 	{
@@ -183,6 +192,17 @@ void EndTankDestructionMode()
 public Action Timer_CommandReminder(Handle timer)
 {
 	RF2_PrintToChatAll("%t", "EndLevelCommandReminder");
+	char text[256];
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerSurvivor(i) || IsFakeClient(i))
+			continue;
+		
+		FormatEx(text, sizeof(text), "%T", "EndLevelCommandReminder", i);
+		CRemoveTags(text, sizeof(text));
+		PrintCenterText(i, text);
+	}
+
 	return Plugin_Continue;
 }
 
@@ -620,7 +640,7 @@ public void Hook_BadassTankThink(int entity)
 						CBaseAnimating(entity).SetPoseParameter(poseParam, value);
 						
 						const float speed = 1250.0;
-						const float damage = 80.0;
+						const float damage = 50.0;
 						
 						float laserPos[3], dir[3];
 						GetAngleVectors(angles, dir, NULL_VECTOR, NULL_VECTOR);
@@ -636,8 +656,8 @@ public void Hook_BadassTankThink(int entity)
 						SpawnInfoParticle("teleported_flash", laserPos, 0.1);
 						
 						float fireRate = float(GetEntProp(entity, Prop_Data, "m_iHealth")) / float(GetEntProp(entity, Prop_Data, "m_iActualMaxHealth"));
-						fireRate = fmax(fireRate, 0.25);
-						nextShot[entity] = tickedTime + (0.15 * fireRate);
+						fireRate = fmax(fireRate, 0.3);
+						nextShot[entity] = tickedTime + (0.2 * fireRate);
 					}
 				}
 			}

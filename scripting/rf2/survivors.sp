@@ -616,5 +616,5 @@ bool IsPlayerSurvivor(int client)
 
 bool IsSingleplayer(bool fullCheck=true)
 {
-	return g_iSurvivorCount == 1 || fullCheck && GetTotalHumans() == 1;
+	return g_iSurvivorCount == 1 || fullCheck && GetTotalHumans(false) == 1;
 }

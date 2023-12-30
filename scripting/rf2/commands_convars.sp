@@ -18,7 +18,7 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_giveitem", Command_GiveItem, ADMFLAG_SLAY, "Give items to a player. /rf2_giveitem <player> <item name> <amount>\nNegative amounts will remove items from a player.");
 	RegAdminCmd("rf2_giveallitems", Command_GiveAllItems, ADMFLAG_ROOT, "Gives a player every item in the game! /rf2_giveallitems <player> <amount>");
 	RegAdminCmd("rf2_forcewin", Command_ForceWin, ADMFLAG_SLAY, "Forces a team to win. /rf2_forcewin <red|blue>");
-	RegAdminCmd("rf2_skipwait", Command_SkipWait, ADMFLAG_SLAY, "Skips the Waiting For Players sequence.");
+	RegAdminCmd("rf2_forceskipwait", Command_SkipWait, ADMFLAG_SLAY, "Skips the Waiting For Players sequence forcefully.");
 	RegAdminCmd("rf2_skipgrace", Command_SkipGracePeriod, ADMFLAG_SLAY, "Skip the grace period at the start of a round");
 	RegAdminCmd("rf2_skipgraceperiod", Command_SkipGracePeriod, ADMFLAG_SLAY, "Skip the grace period at the start of a round");
 	RegAdminCmd("rf2_addpoints", Command_AddPoints, ADMFLAG_SLAY, "Add queue points to a player. /rf2_addpoints <player> <amount>");
@@ -37,6 +37,8 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_afk", Command_AFK, "Puts you into AFK mode instantly.");
 	RegConsoleCmd("rf2_endlevel", Command_EndLevel, "Starts the vote to end the level in Tank Destruction mode.");
 	RegConsoleCmd("rf2_reset_tutorial", Command_ResetTutorial, "Resets the tutorial.");
+	RegConsoleCmd("rf2_skipwait", Command_VoteSkipWait, "Starts a vote to skip the Waiting for Players sequence.");
+	RegConsoleCmd("rf2_survivorqueue", Command_SurvivorQueue, "Shows the Survivor queue list.");
 	
 	char buffer[8];
 	IntToString(MaxClients, buffer, sizeof(buffer));
@@ -528,6 +530,142 @@ public Action Command_SkipWait(int client, int args)
 	return Plugin_Handled;
 }
 
+public Action Command_VoteSkipWait(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (g_bWaitingForPlayers)
+	{
+		// wait until all human players are connected, unless singleplayer
+		if (IsSingleplayer(true))
+		{
+			InsertServerCommand("mp_restartgame_immediate 1");
+		}
+		else
+		{
+			int totalHumans = GetTotalHumans(false);
+			int inGameHumans = GetTotalHumans(true);
+			if (inGameHumans >= totalHumans)
+			{
+				Menu vote = new Menu(Menu_SkipWaitVote);
+				vote.SetTitle("Skip waiting for players? (%N)", client);
+				vote.AddItem("Yes", "Yes");
+				vote.AddItem("No", "No");
+				vote.ExitButton = false;
+				vote.DisplayVoteToAll(10);
+			}
+			else
+			{
+				RF2_ReplyToCommand(client, "%t", "WaitForOthers");
+			}
+		}
+	}
+	else
+	{
+		RF2_ReplyToCommand(client, "%t", "WaitingInactive");
+	}
+	
+	return Plugin_Handled;
+}
+
+public int Menu_SkipWaitVote(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_VoteEnd:
+		{
+			if (param1 == 0 && g_bWaitingForPlayers)
+			{
+				InsertServerCommand("mp_restartgame_immediate 1");
+			}
+		}
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+	
+	return 0;
+}
+
+public Action Command_SurvivorQueue(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	ArrayList players = new ArrayList();
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || IsFakeClient(i))
+			continue;
+		
+		players.Push(i);
+	}
+	
+	players.SortCustom(SortSurvivorListByPoints2);
+	int player;
+	char info[16], display[256];
+	Menu menu = new Menu(Menu_SurvivorQueue);
+	menu.SetTitle("Survivor Queue List");
+	for (int i = 0; i < players.Length; i++)
+	{
+		player = players.Get(i);
+		FormatEx(info, sizeof(info), "player_%i", player);
+		FormatEx(display, sizeof(display), "%N [%i]", player, RF2_GetSurvivorPoints(player));
+		menu.AddItem(info, display, ITEMDRAW_DISABLED);
+	}
+	
+	menu.Display(client, MENU_TIME_FOREVER);
+	delete players;
+	return Plugin_Handled;
+}
+
+public int SortSurvivorListByPoints2(int index1, int index2, ArrayList array, Handle hndl)
+{
+	int client1 = array.Get(index1);
+	int client2 = array.Get(index2);
+	if (!g_bPlayerBecomeSurvivor[client1] && !g_bPlayerBecomeSurvivor[client2])
+	{
+		return 0;
+	}
+	else if (!g_bPlayerBecomeSurvivor[client1])
+	{
+		return 1;
+	}
+	else if (!g_bPlayerBecomeSurvivor[client2])
+	{
+		return -1;
+	}
+	
+	return g_iPlayerSurvivorPoints[client1] > g_iPlayerSurvivorPoints[client2] ? -1 : 1;
+}
+
+public int Menu_SurvivorQueue(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+
+	return 0;
+}
+
 public Action Command_SkipGracePeriod(int client, int args)
 {
 	if (!RF2_IsEnabled())
@@ -718,22 +856,22 @@ public Action Command_ForceEnemy(int client, int args)
 
 void ShowBossSpawnMenu(int client, int target)
 {
-	Menu menu = CreateMenu(Menu_SpawnBoss);
+	Menu menu = new Menu(Menu_SpawnBoss);
 	char buffer[128], info[16], bossName[256];
 	
-	SetMenuTitle(menu, "%T", "SpawnAs", LANG_SERVER, target);
+	menu.SetTitle("%T", "SpawnAs", LANG_SERVER, target);
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
 		if (!EnemyByIndex(i).IsBoss)
 			continue;
-
+		
 		EnemyByIndex(i).GetName(bossName, sizeof(bossName));
 		strcopy(buffer, sizeof(buffer), bossName);
 		FormatEx(info, sizeof(info), "%i;%i_", target, i);
-		AddMenuItem(menu, info, buffer);
+		menu.AddItem(info, buffer);
 	}
 	
-	DisplayMenu(menu, client, MENU_TIME_FOREVER);
+	menu.Display(client, MENU_TIME_FOREVER);
 }
 
 public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
@@ -743,7 +881,7 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 		case MenuAction_Select:
 		{
 			char info[32], buffer[32];
-			GetMenuItem(menu, param2, info, sizeof(info));
+			menu.GetItem(param2, info, sizeof(info));
 			SplitString(info, ";", buffer, sizeof(buffer));
 			
 			int client = StringToInt(buffer);
@@ -780,10 +918,10 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 
 void ShowEnemySpawnMenu(int client, int target)
 {
-	Menu menu = CreateMenu(Menu_SpawnEnemy);
+	Menu menu = new Menu(Menu_SpawnEnemy);
 	char buffer[128], info[16], enemyName[256];
 	
-	SetMenuTitle(menu, "%T", "SpawnAs", LANG_SERVER, target);
+	menu.SetTitle("%T", "SpawnAs", LANG_SERVER, target);
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
 		if (EnemyByIndex(i).IsBoss)
@@ -792,10 +930,10 @@ void ShowEnemySpawnMenu(int client, int target)
 		EnemyByIndex(i).GetName(enemyName, sizeof(enemyName));
 		strcopy(buffer, sizeof(buffer), enemyName);
 		FormatEx(info, sizeof(info), "%i;%i_", target, i);
-		AddMenuItem(menu, info, buffer);
+		menu.AddItem(info, buffer);
 	}
 	
-	DisplayMenu(menu, client, MENU_TIME_FOREVER);	
+	menu.Display(client, MENU_TIME_FOREVER);	
 }
 
 public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
@@ -805,7 +943,7 @@ public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
 		case MenuAction_Select:
 		{
 			char info[32], buffer[32];
-			GetMenuItem(menu, param2, info, sizeof(info));
+			menu.GetItem(param2, info, sizeof(info));
 			SplitString(info, ";", buffer, sizeof(buffer));
 			
 			int client = StringToInt(buffer);
@@ -939,7 +1077,7 @@ public Action Command_ClientSettings(int client, int args)
 
 void ShowClientSettingsMenu(int client)
 {
-	Menu menu = CreateMenu(Menu_ClientSettings);
+	Menu menu = new Menu(Menu_ClientSettings);
 	char buffer[128];
 	menu.SetTitle("Risk Fortress 2 Settings");
 	
@@ -1078,7 +1216,7 @@ void ShowItemMenu(int client, int inspectTarget=-1)
 		return;
 	
 	int target = IsValidClient(inspectTarget) ? inspectTarget : client;
-	Menu menu = CreateMenu(Menu_Items);
+	Menu menu = new Menu(Menu_Items);
 	char buffer[128], info[16], itemName[MAX_NAME_LENGTH];
 	int itemCount;
 	int lang = GetClientLanguage(client);
@@ -1151,31 +1289,19 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 		case MenuAction_Select:
 		{
 			g_iPlayerLastItemMenuItem[param1] = GetMenuSelectionPosition();
-			
-			bool refresh = true;
 			char info[16];
 			GetMenuItem(menu, param2, info, sizeof(info));
 			if (!strcmp2(info, "no_items"))
 			{
-				int humanCount = GetPlayersOnTeam(TEAM_SURVIVOR, true, true);
 				int item = StringToInt(info);
-				
-				// Drop the item if there are no other human players on our team.
-				if (humanCount == 1)
-				{
-					float pos[3];
-					GetEntPos(param1, pos);
-					pos[2] += 25.0;
-					DropItem(param1, item, pos);
-				}
-				else // We ask the client who to drop the item for, so others don't swoop in and steal it.
-				{
-					refresh = false;
-					ShowItemDropMenu(param1, item);
-				}
+				char quality[32], desc[256];
+				GetQualityName(GetItemQuality(item), quality, sizeof(quality));
+				strcopy(desc, sizeof(desc), g_szItemDesc[item]);
+				CRemoveTags(desc, sizeof(desc));
+				PrintKeyHintText(param1, "%s (%s): %s", g_szItemName[item], quality, desc);
+				ShowItemDropMenu(param1, item);
 			}
-			
-			if (refresh)
+			else
 			{
 				ShowItemMenu(param1);
 			}
@@ -1196,7 +1322,7 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 
 void ShowItemDropMenu(int client, int item)
 {
-	Menu menu = CreateMenu(Menu_ItemDrop);
+	Menu menu = new Menu(Menu_ItemDrop);
 	char info[64], itemName[MAX_NAME_LENGTH], clientName[MAX_NAME_LENGTH];
 	
 	GetItemName(item, itemName, sizeof(itemName));
@@ -1217,7 +1343,6 @@ void ShowItemDropMenu(int client, int item)
 		}
 	}
 	
-	menu.ExitButton = false;
 	menu.ExitBackButton = true;
 	CancelClientMenu(client);
 	menu.DisplayAt(client, g_iPlayerLastDropMenuItem[client], MENU_TIME_FOREVER);
@@ -1257,7 +1382,7 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 				}
 				else
 				{
-					DropItem(param1, item, pos, client);
+					DropItem(param1, item, pos, client, 60.0);
 					RF2_PrintToChat(param1, "%t", "ItemDrop", client);
 				}
 			}

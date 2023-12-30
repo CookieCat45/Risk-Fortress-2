@@ -321,6 +321,11 @@ void PickupCash(int client, int entity)
 			{
 				SpeakResponseConcept_MVM(client, "TLK_MVM_MONEY_PICKUP");
 			}
+
+			if (PlayerHasItem(client, Item_BanditsBoots))
+			{
+				HealPlayer(client, RoundToFloor(CalcItemMod(client, Item_BanditsBoots, 1)));
+			}
 		}
 		
 		delete clientArray;
