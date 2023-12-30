@@ -1002,7 +1002,7 @@ void EndTeleporterEvent(int teleporter)
 		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
 			continue;
 		
-		randomItem = g_bPlayerTookCollectorItem[i] ? GetRandomItemEx(Quality_Genuine) : GetRandomCollectorItem(TF2_GetPlayerClass(i));
+		randomItem = GetRandomInt(1, 10) > 2 ? GetRandomItemEx(Quality_Genuine) : GetRandomCollectorItem(TF2_GetPlayerClass(i));
 		GiveItem(i, randomItem);
 		GetItemName(randomItem, name, sizeof(name));
 		GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));

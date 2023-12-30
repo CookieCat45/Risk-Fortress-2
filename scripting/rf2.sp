@@ -945,7 +945,7 @@ public void OnConfigsExecuted()
 		InsertServerCommand("sv_pure 0");
 		
 		// TFBots
-		FindConVar("tf_bot_quota").SetInt(MaxClients-1);
+		FindConVar("tf_bot_quota").SetInt(MaxClients);
 		FindConVar("tf_bot_quota_mode").SetString("fill");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
@@ -1172,7 +1172,13 @@ public void OnClientConnected(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		FindConVar("tf_bot_auto_vacate").SetBool(!(GetClientCount(false) >= g_cvMaxHumanPlayers.IntValue));
+		int count;
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (IsClientConnected(i) && !IsFakeClient(i))
+				count++;
+		}
+		FindConVar("tf_bot_auto_vacate").SetBool(!(count >= g_cvMaxHumanPlayers.IntValue));
 	}
 }
 
@@ -1651,21 +1657,20 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
 	
+	int deathFlags = event.GetInt("death_flags");
+	if (deathFlags & TF_DEATHFLAG_DEADRINGER)
+		return Plugin_Continue;
+	
 	int victim = GetClientOfUserId(event.GetInt("userid"));
 	if (g_bWaitingForPlayers)
 	{
 		CreateTimer(0.1, Timer_RespawnPlayerPreRound, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
-		TF2_RespawnPlayer(victim);
 		return Plugin_Continue;
 	}
 	else if (!g_bRoundActive)
 	{
 		return Plugin_Continue;
 	}
-	
-	int deathFlags = event.GetInt("death_flags");
-	if (deathFlags & TF_DEATHFLAG_DEADRINGER)
-		return Plugin_Continue;
 	
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	int inflictor = event.GetInt("inflictor_entindex");
@@ -2131,6 +2136,8 @@ public void RF_DeleteRagdoll(int client)
 public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBroadcast)
 {
 	int medic = GetClientOfUserId(event.GetInt("userid"));
+	int medigun = GetPlayerWeaponSlot(medic, WeaponSlot_Secondary);
+	bool vaccinator = (TF2Attrib_HookValueInt(0, "set_charge_type", medigun) == 3);
 	if (PlayerHasItem(medic, ItemMedic_WeatherMaster))
 	{
 		int team = GetClientTeam(medic);
@@ -2138,6 +2145,13 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 		GetClientEyePosition(medic, eyePos);
 		float damage = CalcItemMod(medic, ItemMedic_WeatherMaster, 0) + CalcItemMod(medic, ItemMedic_WeatherMaster, 2);
 		float range = sq(CalcItemMod(medic, ItemMedic_WeatherMaster, 1) + CalcItemMod(medic, ItemMedic_WeatherMaster, 3, -1));
+		
+		if (vaccinator)
+		{
+			damage *= 0.25;
+			range *= 0.75;
+		}
+
 		Handle trace;
 		int hitCount;
 		int entity = -1;
@@ -4343,7 +4357,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	CritType originalCritType = critType;
 	float proc = g_flDamageProc;
 	
-	if (IsValidClient(attacker) && attacker != victim)
+	if (IsValidClient(attacker) && attacker != victim && inflictor != -1)
 	{
 		static char classname[64];
 		GetEntityClassname(inflictor, classname, sizeof(classname));	
