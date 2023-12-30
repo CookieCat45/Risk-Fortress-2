@@ -945,7 +945,7 @@ public void OnConfigsExecuted()
 		InsertServerCommand("sv_pure 0");
 		
 		// TFBots
-		FindConVar("tf_bot_quota").SetInt(MaxClients);
+		FindConVar("tf_bot_quota").SetInt(MaxClients-1);
 		FindConVar("tf_bot_quota_mode").SetString("fill");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
