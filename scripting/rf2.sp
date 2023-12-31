@@ -2205,21 +2205,24 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 			DispatchSpawn(shake);
 			CreateTimer(8.0, Timer_DeleteEntity, EntIndexToEntRef(shake), TIMER_FLAG_NO_MAPCHANGE);
 			
-			Handle msg;
-			for (int i = 1; i <= MaxClients; i++)
+			if (!vaccinator)
 			{
-				if (!IsClientInGame(i))
-					continue;
-					
-				msg = StartMessageOne("Fade", i);
-				BfWriteShort(msg, 100);
-				BfWriteShort(msg, 0);
-				BfWriteShort(msg, (0x0002));
-				BfWriteByte(msg, 255);
-				BfWriteByte(msg, 255);
-				BfWriteByte(msg, 255);
-				BfWriteByte(msg, 255);
-				EndMessage();
+				Handle msg;
+				for (int i = 1; i <= MaxClients; i++)
+				{
+					if (!IsClientInGame(i))
+						continue;
+						
+					msg = StartMessageOne("Fade", i);
+					BfWriteShort(msg, 100);
+					BfWriteShort(msg, 0);
+					BfWriteShort(msg, (0x0002));
+					BfWriteByte(msg, 255);
+					BfWriteByte(msg, 255);
+					BfWriteByte(msg, 255);
+					BfWriteByte(msg, 255);
+					EndMessage();
+				}
 			}
 			
 			if (hitCount >= 5)
@@ -2304,7 +2307,7 @@ public void RF_TeleporterThink(int building)
 	if ((building = EntRefToEntIndex(building)) == INVALID_ENT_REFERENCE || GetEntProp(building, Prop_Send, "m_bCarried"))
 		return; 
 	
-	if (GetEntProp(building, Prop_Send, "m_bBuilding"))
+	if (GetEntProp(building, Prop_Send, "m_bBuilding") || GetEntProp(building, Prop_Send, "m_bHasSapper"))
 	{
 		RequestFrame(RF_TeleporterThink, EntIndexToEntRef(building));
 		return;
@@ -4571,9 +4574,9 @@ public Action Timer_LawCooldown(Handle timer, int client)
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float velocity[3], float angles[3])
 {
-	if (!RF2_IsEnabled() || g_bWaitingForPlayers)
+	if (!RF2_IsEnabled())
 		return Plugin_Continue;
-		
+
 	bool bot = IsFakeClient(client);
 	if (!bot)
 	{
@@ -4583,7 +4586,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		}
 	}
 	
-	if (!IsPlayerAlive(client))
+	if (g_bWaitingForPlayers || !IsPlayerAlive(client))
 		return Plugin_Continue;
 	
 	Action action = Plugin_Continue;

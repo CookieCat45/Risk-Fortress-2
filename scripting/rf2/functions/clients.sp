@@ -30,6 +30,7 @@ void RefreshClient(int client, bool force=false)
 	g_iPlayerAirDashCounter[client] = 0;
 	g_iPlayerEnemySpawnType[client] = -1;
 	g_iPlayerBossSpawnType[client] = -1;
+	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
 	g_bEquipmentCooldownActive[client] = false;

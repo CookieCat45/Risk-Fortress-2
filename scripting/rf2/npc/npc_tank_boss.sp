@@ -296,7 +296,7 @@ static int CreateTankBoss(bool badass=false)
 	int level = RF2_GetEnemyLevel();
 	if (level >= 50)
 	{
-		health = RoundToFloor(Pow(float(health), 1.0 + (float(level-49) * 0.005)));
+		health = RoundToFloor(Pow(float(health), 1.0 + (float(level-49) * 0.0025)));
 	}
 	
 	if (IsSingleplayer(false))
