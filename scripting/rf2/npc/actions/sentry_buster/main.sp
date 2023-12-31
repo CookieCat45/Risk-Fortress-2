@@ -1,0 +1,149 @@
+#pragma semicolon 1
+
+static NextBotActionFactory g_Factory;
+
+methodmap RF2_SentryBusterMainAction < NextBotAction
+{
+	public RF2_SentryBusterMainAction()
+	{
+		return view_as<RF2_SentryBusterMainAction>(g_Factory.Create());
+	}
+
+	public static NextBotActionFactory GetFactory()
+	{
+		if (g_Factory == null)
+		{
+			g_Factory = new NextBotActionFactory("RF2_SentryBusterMain");
+			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_Factory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
+			g_Factory.BeginDataMapDesc()
+				.DefineFloatField("m_Talker")
+				.EndDataMapDesc();
+		}
+		return g_Factory;
+	}
+
+	property float TalkerTime
+	{
+		public get()
+		{
+			return this.GetDataFloat("m_Talker");
+		}
+		public set(float value)
+		{
+			this.SetDataFloat("m_Talker", value);
+		}
+	}
+}
+
+static int OnStart(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, NextBotAction prevAction)
+{
+	float worldSpace[3];
+	actor.WorldSpaceCenter(worldSpace);
+	actor.Target = CBaseEntity(GetNearestEntity(worldSpace, "obj_sentrygun", _, _, TEAM_SURVIVOR));
+	action.TalkerTime = GetGameTime() + 4.0;
+	return action.Continue();
+}
+
+static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, float interval)
+{
+	float worldSpace[3], pos[3];
+	actor.GetAbsOrigin(pos);
+	actor.WorldSpaceCenter(worldSpace);
+	CBaseEntity target = actor.Target;
+	if (!target.IsValid())
+	{
+		actor.Target = CBaseEntity(GetNearestEntity(worldSpace, "obj_sentrygun", _, _, TEAM_SURVIVOR));
+		if (!actor.Target.IsValid())
+		{
+			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "No sentry what?");
+		}
+	}
+
+	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(actor.index);
+	NextBotGroundLocomotion loco = npc.GetLocomotion();
+
+	if (loco.IsStuck())
+	{
+		return action.ChangeTo(RF2_SentryBusterDetonateAction(), "Fuck we're stuck!");
+	}
+
+	float targetPos[3];
+	if (target.GetProp(Prop_Send, "m_bCarried"))
+	{
+		int owner = target.GetPropEnt(Prop_Send, "m_hBuilder");
+		if (IsValidEntity(owner))
+		{
+			target = CBaseEntity(owner);
+		}
+	}
+	target.GetAbsOrigin(targetPos);
+
+	if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) && actor.IsLOSClearFromTarget(target))
+	{
+		return action.ChangeTo(RF2_SentryBusterDetonateAction(), "KABOOM");
+	}
+
+	INextBot bot = actor.MyNextBotPointer();
+	PathFollower path = actor.Path;
+	path.ComputeToPos(bot, targetPos);
+	path.Update(bot);
+	loco.Run();
+
+	if (action.TalkerTime < GetGameTime())
+	{
+		action.TalkerTime = GetGameTime() + 4.0;
+		EmitGameSoundToAll("MVM.SentryBusterIntro", actor.index);
+	}
+
+	bool onGround = (actor.GetFlags() & FL_ONGROUND) != 0;
+	float speed = loco.GetGroundSpeed();
+
+	int sequence = actor.GetProp(Prop_Send, "m_nSequence");
+
+	if (speed < 0.01)
+	{
+		int idleSequence = actor.GetProp(Prop_Data, "m_idleSequence");
+		if (idleSequence != -1 && sequence != idleSequence)
+		{
+			actor.ResetSequence(idleSequence);
+		}
+	}
+	else
+	{
+		int runSequence = actor.GetProp(Prop_Data, "m_runSequence");
+		int airSequence = actor.GetProp(Prop_Data, "m_airSequence");
+
+		if (!onGround)
+		{
+			if (airSequence != -1 && sequence != airSequence)
+			{
+				actor.ResetSequence(airSequence);
+			}
+		}
+		else
+		{
+			if (runSequence != -1 && sequence != runSequence)
+			{
+				actor.ResetSequence(runSequence);
+			}
+
+			float fwd[3], right[3];
+			actor.GetVectors(fwd, right, NULL_VECTOR);
+
+			float motion[3];
+			loco.GetGroundMotionVector(motion);
+
+			actor.SetPoseParameter(actor.GetProp(Prop_Data, "m_moveXPoseParameter"), GetVectorDotProduct(motion, fwd));
+			actor.SetPoseParameter(actor.GetProp(Prop_Data, "m_moveYPoseParameter"), GetVectorDotProduct(motion, right));
+		}
+	}
+
+	return action.Continue();
+}
+
+static int OnKilled(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, CBaseEntity attacker, CBaseEntity inflictor, float damage, int damageType, CBaseEntity weapon, const float damageForce[3], const float damagePosition[3], int damageCustom)
+{
+	return action.TryChangeTo(RF2_SentryBusterDetonateAction(), RESULT_CRITICAL);
+}
