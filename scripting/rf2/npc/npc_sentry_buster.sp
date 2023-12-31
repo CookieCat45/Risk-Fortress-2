@@ -128,17 +128,23 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 		npc.flRunSpeed = 440.0;
 		npc.flDeathDropHeight = 2000.0;
 
+		ArrayList playerList = new ArrayList();
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (IsValidClient(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR)
+			if (IsValidClient(i) && IsPlayerAlive(i) && IsPlayerSurvivor(i))
 			{
-				SpeakResponseConcept_MVM(i, "TLK_MVM_SENTRY_BUSTER");
+				playerList.Push(i);
 			}
 		}
 
+		if (playerList.Length > 0)
+		{
+			SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER");
+		}
+
+		delete playerList;
 		buster.Spawn();
 		buster.Activate();
-
 		return buster;
 	}
 
@@ -267,14 +273,21 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 		}
 
 		delete victims;
-
+		ArrayList playerList = new ArrayList();
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (IsValidClient(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_SURVIVOR)
+			if (IsValidClient(i) && IsPlayerAlive(i) && IsPlayerSurvivor(i))
 			{
-				SpeakResponseConcept_MVM(i, "TLK_MVM_SENTRY_BUSTER_DOWN");
+				playerList.Push(i);
 			}
 		}
+
+		if (playerList.Length > 0)
+		{
+			SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER_DOWN");
+		}
+
+		delete playerList;
 		RemoveEntity(this.index);
 	}
 
