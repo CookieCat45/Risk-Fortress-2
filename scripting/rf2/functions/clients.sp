@@ -886,6 +886,12 @@ bool IsValidClient(int client)
 	return (client > 0 && client <= MaxClients && IsClientInGame(client));
 }
 
+bool IsPlayerStunned(int client)
+{
+	int stunFlags = GetEntProp(client, Prop_Send, "m_iStunFlags");
+	return TF2_IsPlayerInCondition(client, TFCond_Dazed) && (stunFlags & TF_STUNFLAG_THIRDPERSON || stunFlags & TF_STUNFLAG_BONKSTUCK);
+}
+
 float GetPlayerHealthMult(int client)
 {
 	if (IsPlayerSurvivor(client))

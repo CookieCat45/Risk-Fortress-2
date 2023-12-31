@@ -1172,13 +1172,7 @@ public void OnClientConnected(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		int count;
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (IsClientConnected(i) && !IsFakeClient(i))
-				count++;
-		}
-		FindConVar("tf_bot_auto_vacate").SetBool(!(count >= g_cvMaxHumanPlayers.IntValue));
+		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
 	}
 }
 
@@ -2329,7 +2323,7 @@ public void RF_TeleporterThink(int building)
 		enemies.SortCustom(SortEnemySpawnArray);
 		int spawns, client;
 		float time;
-		const int maxSpawns = 3;
+		const int maxSpawns = 2;
 		const float max = 250.0;
 		float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
 		float bossChance = subIncrement < max ? subIncrement : max;
@@ -3410,30 +3404,25 @@ public void Hook_PreThink(int client)
 public void TF2_OnConditionAdded(int client, TFCond condition)
 {
 	g_bPlayerInCondition[client][condition] = true;
-	
 	if (!RF2_IsEnabled())
 		return;
 	
 	if (condition == TFCond_Dazed)
 	{
-		if (!RF2_CanBeStunned(client))
+		if (!RF2_CanBeStunned(client) && IsPlayerStunned(client))
 		{
-			int stunFlags = GetEntProp(client, Prop_Send, "m_iStunFlags");
-			if (stunFlags & TF_STUNFLAG_THIRDPERSON || stunFlags & TF_STUNFLAG_BONKSTUCK)
-			{
-				TF2_RemoveCondition(client, TFCond_Dazed);
-				return;
-			}
+			TF2_RemoveCondition(client, TFCond_Dazed);
+			return;
 		}
 	}
 	else if (condition == TFCond_RuneVampire || condition == TFCond_RuneWarlock 
-	|| condition == TFCond_RuneKnockout || condition == TFCond_KingRune)
+		|| condition == TFCond_RuneKnockout || condition == TFCond_KingRune)
 	{
 		// These runes modify max health
 		CalculatePlayerMaxHealth(client);
 	}
 	else if (condition == TFCond_RuneHaste || condition == TFCond_RuneAgility || condition == TFCond_SpeedBuffAlly
-	|| condition == TFCond_RegenBuffed || condition == TFCond_HalloweenSpeedBoost || condition == TFCond_Slowed || condition == TFCond_Dazed)
+		|| condition == TFCond_RegenBuffed || condition == TFCond_HalloweenSpeedBoost || condition == TFCond_Slowed || condition == TFCond_Dazed)
 	{
 		CalculatePlayerMaxSpeed(client);
 	}

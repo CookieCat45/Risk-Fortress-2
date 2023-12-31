@@ -326,8 +326,6 @@ methodmap TFBot < Handle
 void TFBot_Think(TFBot &bot)
 {
 	float tickedTime = GetTickedTime();
-	//bool survivor = IsPlayerSurvivor(bot.Client);
-	
 	ILocomotion locomotion = bot.GetLocomotion();
 	CKnownEntity known = bot.GetTarget();
 	
@@ -337,9 +335,9 @@ void TFBot_Think(TFBot &bot)
 		
 	float botPos[3];
 	bot.GetMyPos(botPos);
-	
 	bool aggressiveMode;
 	TFClassType class = TF2_GetPlayerClass(bot.Client);
+
 	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer)
 	{
 		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon") == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
@@ -411,7 +409,7 @@ void TFBot_Think(TFBot &bot)
 			}
 		}
 	}
-	else if (TF2_GetPlayerClass(bot.Client) == TFClass_Engineer)
+	else if (TF2_GetPlayerClass(bot.Client) == TFClass_Engineer && !IsPlayerStunned(bot.Client))
 	{
 		bot.HasBuilt = bot.BuiltEverything();
 		if (bot.Mission == MISSION_NONE && bot.HasBuilt && threat > 0)
@@ -428,15 +426,14 @@ void TFBot_Think(TFBot &bot)
 		if (!bot.HasBuilt && tickedTime >= bot.EngiSearchRetryTime && !bot.SentryArea) // Do we have an area to build in?
 		{
 			bot.EngiSearchRetryTime = -1.0;
-			
 			float navPos[3], areaPos[3];
+			CTFNavArea tfArea;
 			CopyVectors(botPos, navPos);
 			navPos[2] += 30.0;
 			CNavArea area = TheNavMesh.GetNearestNavArea(navPos, true, 1000.0, false, true);
-			CTFNavArea tfArea;
-			
 			SurroundingAreasCollector collector = TheNavMesh.CollectSurroundingAreas(area, 10000.0);
 			int areaCount = collector.Count();
+			
 			for (int i = 0; i < areaCount; i++)
 			{
 				tfArea = view_as<CTFNavArea>(collector.Get(i));
@@ -451,7 +448,10 @@ void TFBot_Think(TFBot &bot)
 							continue;
 							
 						if (g_TFBot[b].SentryArea == tfArea)
+						{
 							owned = true;
+							break;
+						}
 					}
 					
 					tfArea.GetCenter(areaPos);
@@ -551,16 +551,16 @@ void TFBot_Think(TFBot &bot)
 					{
 						type = view_as<TFObjectType>(i);
 						building = bot.GetBuilding(type);
-						if (building != -1)
+						if (building == -1)
+							continue;
+
+						// does this building need to be repaired/upgraded?
+						if (GetEntProp(building, Prop_Send, "m_iHealth") < GetEntProp(building, Prop_Send, "m_iMaxHealth")
+							|| GetEntProp(building, Prop_Send, "m_iUpgradeLevel") < 3)
 						{
-							// does this building need to be repaired/upgraded?
-							if (GetEntProp(building, Prop_Send, "m_iHealth") < GetEntProp(building, Prop_Send, "m_iMaxHealth")
-								|| GetEntProp(building, Prop_Send, "m_iUpgradeLevel") < 3)
-							{
-								bot.RepairTarget = EntIndexToEntRef(building);
-								bot.Mission = MISSION_REPAIR;
-								break;
-							}
+							bot.RepairTarget = EntIndexToEntRef(building);
+							bot.Mission = MISSION_REPAIR;
+							break;
 						}
 					}
 				}

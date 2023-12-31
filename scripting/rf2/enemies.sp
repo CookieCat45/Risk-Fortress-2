@@ -825,7 +825,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	{
 		if (teleporterBoss)
 		{
-			maxDist = GetEntPropFloat(GetTeleporterEntity(), Prop_Data, "m_flRadius");
+			maxDist = GetEntPropFloat(GetTeleporterEntity(), Prop_Data, "m_flRadius")*1.5;
 		}
 		else
 		{
@@ -852,11 +852,9 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		}
 		
 		g_flPlayerGiantFootstepInterval[client] = EnemyByIndex(type).BossFootstepInterval;
-		
 		TF2Attrib_SetByDefIndex(client, 252, 0.2); // "damage force reduction"
 		TF2Attrib_SetByDefIndex(client, 329, 0.2); // "airblast vulnerability multiplier"
 		TF2Attrib_SetByDefIndex(client, 326, 1.35); // "increased jump height"
-		
 		return true;
 	}
 	else if (recursive)
@@ -871,7 +869,6 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		pack.WriteCell(teleporterBoss);
 		pack.WriteFloat(minDist);
 		pack.WriteFloat(maxDist);
-		
 		RequestFrame(RF_SpawnBossRecursive, pack);
 	}
 
@@ -880,89 +877,73 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 
 void SummonTeleporterBosses(int entity)
 {
-	// First, we need to find the best candidates for bosses.
-	int playerPoints[MAXTF2PLAYERS];
-	int bossPoints[MAXTF2PLAYERS];
-	bool valid[MAXTF2PLAYERS];
-	
+	ArrayList players = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || IsPlayerSpectator(i))
-		{
-			bossPoints[i] = -9999999999;
+		if (!IsClientInGame(i) || g_bPlayerInSpawnQueue[i] || g_bPlayerIsTeleporterBoss[i] || GetClientTeam(i) != TEAM_ENEMY)
 			continue;
-		}
 		
-		if (!IsFakeClient(i) && !g_bPlayerBecomeBoss[i] || g_bPlayerInSpawnQueue[i] || GetClientTeam(i) != TEAM_ENEMY)
-		{
-			bossPoints[i] = -999999999;
-			continue;
-		}
-		
-		valid[i] = true;
-		if (!IsPlayerAlive(i)) // Dead enemies have the biggest priority, obviously.
-			bossPoints[i] += 9999;	
-		
-		/**
-		* We'll randomly decide whether or not this player's points factor in to their priority.
-		* If you do well, you have a higher chance of becoming the boss, but not always -
-		* to give other players a chance even if they aren't scoring as high as their peers. 
-		*/
-		
-		if (!IsFakeClient(i))
-		{
-			bossPoints[i] += 250; // Players are prioritized over bots, so have a free 250 points.
-			if (GetRandomInt(1, 4) == 1)
-			{
-				bossPoints[i] += GetEntProp(GetPlayerResourceEntity(), Prop_Send, "m_iScore", _, i);
-			}
-		}
-		
-		// Non-bosses are obviously prioritized as well.
-		if (!IsBoss(i))
-			bossPoints[i] += 2000;
-			
-		if (IsPlayerAFK(i))
-			bossPoints[i] -= 5000;
-			
-		playerPoints[i] = bossPoints[i];
+		players.Push(i);
 	}
 	
-	SortIntegers(bossPoints, sizeof(bossPoints), Sort_Descending);
-	int highestPoints = bossPoints[0];
-	int count;
+	players.SortCustom(SortBossSpawnList);
+	int count, client;
 	int bossCount = 1 + ((GetPlayersOnTeam(TEAM_SURVIVOR, true)-1)/2) + ((RF2_GetSubDifficulty()-1)/2);
-	imax(bossCount, 1);
-	
+	bossCount = imax(bossCount, 1);
 	float time;
-	for (int i = 1; i <= MaxClients; i++)
+	
+	for (int i = 0; i < players.Length; i++)
 	{
-		if (g_bPlayerInSpawnQueue[i] || !valid[i] || g_bPlayerIsTeleporterBoss[i] || !IsClientInGame(i) || IsPlayerSpectator(i))
-			continue;
+		client = players.Get(i);
+		g_bPlayerInSpawnQueue[client] = true;
 		
-		if (playerPoints[i] == highestPoints)
-		{
-			g_bPlayerInSpawnQueue[i] = true;
-			
-			// don't spawn all the bosses at once, as it will cause client crashes if there are too many
-			DataPack pack;
-			CreateDataTimer(time, Timer_SpawnTeleporterBoss, pack, TIMER_FLAG_NO_MAPCHANGE);
-			pack.WriteCell(GetClientUserId(i));
-			pack.WriteCell(GetRandomBoss());
-			pack.WriteCell(entity);
-			time += 0.1;
-			valid[i] = false;
-			
-			count++;
-			if (count >= bossCount)
-				break;
-				
-			highestPoints = bossPoints[count];
-			i = 0; // reset our loop
-		}
+		// don't spawn all the bosses at once, as it will cause client crashes if there are too many
+		DataPack pack;
+		CreateDataTimer(time, Timer_SpawnTeleporterBoss, pack, TIMER_FLAG_NO_MAPCHANGE);
+		pack.WriteCell(GetClientUserId(client));
+		pack.WriteCell(GetRandomBoss());
+		pack.WriteCell(entity);
+		time += 0.1;
+		
+		count++;
+		if (count >= bossCount)
+			break;
 	}
 	
+	delete players;
 	EmitSoundToAll(SND_BOSS_SPAWN);
+}
+
+public int SortBossSpawnList(int index1, int index2, ArrayList array, Handle hndl)
+{
+	int client1 = array.Get(index1);
+	int client2 = array.Get(index2);
+
+	if (!g_bPlayerBecomeBoss[client1])
+		return 1;
+	
+	if (!g_bPlayerBecomeBoss[client2])
+		return -1;
+	
+	if (IsPlayerAlive(client1))
+		return 1;
+	
+	if (IsPlayerAlive(client2))
+		return -1;
+	
+	if (IsBoss(client1))
+		return 1;
+	
+	if (IsBoss(client2))
+		return -1;
+
+	if (IsFakeClient(client1))
+		return 1;
+	
+	if (IsFakeClient(client2))
+		return -1;
+	
+	return 0;
 }
 
 public Action Timer_SpawnTeleporterBoss(Handle time, DataPack pack)
