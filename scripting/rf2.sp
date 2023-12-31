@@ -339,10 +339,10 @@ char g_szObjectiveHud[MAXTF2PLAYERS][64];
 
 // g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i], 
 // g_flPlayerNextLevelXP[i], g_flPlayerCash[i], g_iPlayerHauntedKeys[i], g_szHudDifficulty, strangeItemInfo, miscText
-char g_szSurvivorHudText[2048] = "\n\nStage %i | %02d:%02d\nEnemy Level: %i | Your Level: %i\n%.0f/%.0f XP | Cash: $%.0f | Haunted Keys: %i\n%s\n%s\n\n%s";
+char g_szSurvivorHudText[2048] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i | Your Level: %i\n%.0f/%.0f XP | Cash: $%.0f | Haunted Keys: %i\n%s\n%s\n\n%s";
 
 // g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo
-char g_szEnemyHudText[1024] = "\n\nStage %i | %02d:%02d\nEnemy Level: %i\n%s\n%s";
+char g_szEnemyHudText[1024] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i\n%s\n%s";
 
 // Players
 bool g_bPlayerViewingItemMenu[MAXTF2PLAYERS];
@@ -800,7 +800,9 @@ public void OnMapStart()
 		if (GetExtensionFileStatus("SteamWorks.ext") == 1)
 		{
 			char desc[64];
-			FormatEx(desc, sizeof(desc), "Risk Fortress 2 - %s (Stage %d)", PLUGIN_VERSION, g_iStagesCompleted+1);
+			char difficultyName[16];
+			GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName));
+			FormatEx(desc, sizeof(desc), "Risk Fortress 2 - %s (Stage %d - %s Difficulty)", PLUGIN_VERSION, g_iStagesCompleted+1, difficultyName);
 			SteamWorks_SetGameDescription(desc);
 		}
 		#endif
@@ -2772,6 +2774,8 @@ public Action Timer_PlayerHud(Handle timer)
 		}
 		
 		miscText = "";
+		char difficultyName[16];
+		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName));
 		
 		if (IsPlayerSurvivor(i))
 		{
@@ -2811,13 +2815,13 @@ public Action Timer_PlayerHud(Handle timer)
 				FormatEx(miscText, sizeof(miscText), "\nSapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
 			}
 			
-			ShowSyncHudText(i, g_hMainHudSync, g_szSurvivorHudText, g_iStagesCompleted+1, g_iMinutesPassed, 
+			ShowSyncHudText(i, g_hMainHudSync, g_szSurvivorHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed, 
 				hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i], g_flPlayerNextLevelXP[i], 
 				g_flPlayerCash[i], g_iPlayerHauntedKeys[i], g_szHudDifficulty, strangeItemInfo, miscText);
 		}
 		else
 		{
-			ShowSyncHudText(i, g_hMainHudSync, g_szEnemyHudText, g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, 
+			ShowSyncHudText(i, g_hMainHudSync, g_szEnemyHudText, difficultyName, g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, 
 				g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo);
 		}
 		
@@ -3509,6 +3513,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			
 			float damage = GetItemMod(ItemPyro_PyromancerMask, 0) + CalcItemMod(client, ItemPyro_PyromancerMask, 1, -1);
 			int fireball = ShootProjectile_Fireball(client, eyePos, eyeAng, speed, damage);
+			SetEntityFlags(fireball, GetEntityFlags(fireball) & FL_NOTARGET);
 			SetShouldDamageOwner(fireball, false);
 			SetEntItemDamageProc(fireball, ItemPyro_PyromancerMask);
 		}
@@ -3528,6 +3533,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			
 			float damage = GetItemMod(ItemDemo_ConjurersCowl, 0) + CalcItemMod(client, ItemDemo_ConjurersCowl, 1, -1);
 			int beam = ShootProjectile(client, "tf_projectile_arrow", eyePos, eyeAng, speed, damage, -4.0);
+			SetEntityFlags(beam, GetEntityFlags(beam) & FL_NOTARGET);
 			SetEntityMoveType(beam, MOVETYPE_FLYGRAVITY);
 			SetEntProp(beam, Prop_Send, "m_iProjectileType", 18); // prevent headshots (TF_PROJECTILE_BUILDING_REPAIR_BOLT)
 			SetEntItemDamageProc(beam, ItemDemo_ConjurersCowl);

@@ -418,7 +418,6 @@ void TFBot_Think(TFBot &bot)
 			int primary = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Primary);
 			if (primary != -1)
 			{
-				SetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon", primary);
 				TF2_ForceWeaponSwitch(bot.Client, WeaponSlot_Primary);
 			}
 		}
