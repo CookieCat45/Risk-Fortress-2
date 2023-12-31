@@ -12,7 +12,7 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 	float pos[3];
 	float distance;
 	float nearestDist = -1.0;
-	
+
 	int entity = -1;
 	float minDistSq = sq(minDist);
 	float maxDistSq = sq(maxDist);
@@ -21,7 +21,7 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 	{
 		if (team > -1 && GetEntProp(entity, Prop_Data, "m_iTeamNum") != team)
 			continue;
-		
+
 		GetEntPos(entity, pos);
 		if (trace)
 		{
@@ -38,7 +38,7 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 		}
 
 		distance = GetVectorDistance(origin, pos, true);
-		
+
 		if ((minDist <= 0.0 || distance >= minDistSq) && (maxDist <= 0.0 || distance <= maxDistSq))
 		{
 			if (distance < nearestDist || nearestDist == -1.0)
@@ -48,7 +48,7 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 			}
 		}
 	}
-	
+
 	return nearestEntity;
 }
 
@@ -61,7 +61,7 @@ float DistBetween(int ent1, int ent2, bool squared=false)
 }
 
 // SPELL PROJECTILES WILL ONLY WORK IF THE OWNER ENTITY IS A PLAYER! DO NOT TRY THEM WITH ANYTHING ELSE!
-int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], const float angles[3], 
+int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], const float angles[3],
 	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
 {
 	int entity = CreateEntityByName(classname);
@@ -69,21 +69,21 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 	{
 		return -1;
 	}
-	
+
 	SetEntityOwner(entity, owner);
 	if (owner > 0)
 	{
 		int team = GetEntProp(owner, Prop_Data, "m_iTeamNum");
 		SetEntProp(entity, Prop_Data, "m_iTeamNum", team);
 	}
-	
+
 	float projectileAngles[3], velocity[3];
 	CopyVectors(angles, projectileAngles);
 	projectileAngles[0] += arc;
-	
+
 	if (damage >= 0.0)
 	{
-		if (strcmp2(classname, "tf_projectile_pipebomb") || 
+		if (strcmp2(classname, "tf_projectile_pipebomb") ||
 		strcmp2(classname, "tf_projectile_spellbats") ||
 		strcmp2(classname, "tf_projectile_spelltransposeteleport"))
 		{
@@ -104,14 +104,14 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 			SDKHook(entity, SDKHook_StartTouch, Hook_ProjectileForceDamage);
 		}
 	}
-	
+
 	// no annoying server console message
 	if (strcmp2(classname, "tf_projectile_arrow"))
 	{
 		int offset = FindSendPropInfo("CTFProjectile_Arrow", "m_iProjectileType") + 32; // m_flInitTime
 		SetEntDataFloat(entity, offset, GetGameTime()+9999.0, true);
 	}
-	
+
 	if (allowCrit && IsValidClient(owner) && HasEntProp(entity, Prop_Send, "m_bCritical"))
 	{
 		if (RollAttackCrit(owner, critProc) || PlayerHasItem(owner, Item_Executioner) && IsPlayerMiniCritBuffed(owner))
@@ -119,40 +119,40 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 			SetEntProp(entity, Prop_Send, "m_bCritical", true);
 		}
 	}
-	
+
 	GetAngleVectors(projectileAngles, velocity, NULL_VECTOR, NULL_VECTOR);
 	NormalizeVector(velocity, velocity);
 	ScaleVector(velocity, speed);
-	
+
 	DispatchSpawn(entity);
 	ActivateEntity(entity);
 	TeleportEntity(entity, pos, projectileAngles, velocity);
 	SetEntPropVector(entity, Prop_Send, "m_vecForce", velocity);
-	
+
 	return entity;
 }
 
 // Shoots a fake fireball (tf_projectile_rocket)
-int ShootProjectile_Fireball(int owner=-1, const float pos[3], const float angles[3], 
+int ShootProjectile_Fireball(int owner=-1, const float pos[3], const float angles[3],
 	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
 {
 	int entity = ShootProjectile(owner, "tf_projectile_rocket", pos, angles, speed, damage, arc, allowCrit, critProc);
 	SetEntityModel(entity, MODEL_INVISIBLE);
-	
+
 	switch (view_as<TFTeam>(GetEntProp(entity, Prop_Data, "m_iTeamNum")))
 	{
 		case TFTeam_Red:	SpawnInfoParticle("spell_fireball_small_red", pos, _, entity);
 		case TFTeam_Blue:	SpawnInfoParticle("spell_fireball_small_blue", pos, _, entity);
 		default:			SpawnInfoParticle("spellbook_major_fire", pos, _, entity);
 	}
-	
+
 	EmitSoundToAll(SND_SPELL_FIREBALL, entity);
 	g_bFakeFireball[entity] = true;
 	return entity;
 }
 
-void DoRadiusDamage(int attacker, int inflictor, int item=Item_Null, const float pos[3], 
-	float baseDamage, int damageFlags, float radius, int weapon=-1, 
+void DoRadiusDamage(int attacker, int inflictor, int item=Item_Null, const float pos[3],
+	float baseDamage, int damageFlags, float radius, int weapon=-1,
 	float minimumFalloffMultiplier=0.3, bool explosionEffect=false, bool sound=true, bool allowSelfDamage=false)
 {
 	float enemyPos[3];
@@ -164,29 +164,29 @@ void DoRadiusDamage(int attacker, int inflictor, int item=Item_Null, const float
 	{
 		directTarget = GetEntPropEnt(inflictor, Prop_Data, "m_hDirectTarget");
 	}
-	
+
 	while ((entity = FindEntityByClassname(entity, "*")) != -1)
 	{
 		if (entity < 1)
 			continue;
-		
+
 		// this is a bomb direct hit, don't deal damage to our direct target
 		if (directTarget > 0 && entity == directTarget)
 			continue;
-		
+
 		if ((!IsValidClient(entity) || !IsPlayerAlive(entity)) && !IsNPC(entity) && !IsBuilding(entity) || entity == attacker && !allowSelfDamage)
 			continue;
-		
+
 		if (attackerTeam == GetEntProp(entity, Prop_Data, "m_iTeamNum") && (entity != attacker || entity == attacker && !allowSelfDamage))
 			continue;
-		
+
 		GetEntPos(entity, enemyPos);
 		enemyPos[2] += 30.0;
-		
+
 		if ((distance = GetVectorDistance(pos, enemyPos)) <= radius)
 		{
 			TR_TraceRayFilter(pos, enemyPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
-			
+
 			if (!TR_DidHit())
 			{
 				falloffMultiplier = 1.0 - distance / radius;
@@ -194,19 +194,19 @@ void DoRadiusDamage(int attacker, int inflictor, int item=Item_Null, const float
 				{
 					falloffMultiplier = minimumFalloffMultiplier;
 				}
-				
+
 				calculatedDamage = baseDamage * falloffMultiplier;
-				
+
 				if (IsValidClient(attacker) && item > Item_Null)
 				{
 					SetEntItemDamageProc(attacker, item);
 				}
-				
+
 				SDKHooks_TakeDamage(entity, inflictor, attacker, calculatedDamage, damageFlags, weapon);
 			}
 		}
 	}
-	
+
 	if (explosionEffect)
 	{
 		int explosion = CreateEntityByName("env_explosion");
@@ -215,7 +215,7 @@ void DoRadiusDamage(int attacker, int inflictor, int item=Item_Null, const float
 		{
 			DispatchKeyValueInt(explosion, "spawnflags", 64);
 		}
-		
+
 		TeleportEntity(explosion, pos);
 		DispatchSpawn(explosion);
 		AcceptEntityInput(explosion, "Explode");
@@ -232,15 +232,15 @@ int SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]=NULL_V
 		case 3: classname = "item_currencypack_large";
 		default: classname = "item_currencypack_small";
 	}
-	
+
 	int entity = CreateEntityByName(classname);
 	g_flCashValue[entity] = cashValue;
-	
+
 	SetEntityMoveType(entity, MOVETYPE_FLYGRAVITY);
 	SetEntityGravity(entity, 1.0);
 	TeleportEntity(entity, pos, _, vel);
 	DispatchSpawn(entity);
-	
+
 	CreateTimer(0.25, Timer_CashMagnet, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	CreateTimer(g_cvCashBurnTime.FloatValue, Timer_DeleteCash, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
 	return entity;
@@ -250,12 +250,12 @@ public Action Timer_DeleteCash(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
 		return Plugin_Continue;
-		
+
 	float pos[3];
 	GetEntPos(entity, pos);
 	TE_TFParticle("mvm_cash_explosion", pos);
 	RemoveEntity(entity);
-	
+
 	return Plugin_Continue;
 }
 
@@ -263,20 +263,20 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
 		return Plugin_Stop;
-	
+
 	float pos[3], scoutPos[3];
 	GetEntPos(entity, pos);
-	
+
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsPlayerSurvivor(i))
 			continue;
-		
+
 		// Scouts pick up cash in a radius automatically, like in MvM. Though the healing is on an item: the Heart Of Gold.
 		if (TF2_GetPlayerClass(i) == TFClass_Scout)
 		{
 			GetEntPos(i, scoutPos);
-			
+
 			if (GetVectorDistance(pos, scoutPos, true) <= sq(450.0))
 			{
 				EmitSoundToAll(SND_MONEY_PICKUP, entity);
@@ -284,7 +284,7 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 			}
 		}
 	}
-	
+
 	return Plugin_Continue;
 }
 
@@ -295,39 +295,36 @@ void PickupCash(int client, int entity)
 	{
 		float modifier = 1.0;
 		ArrayList clientArray = CreateArray();
-		
+
 		// Check for Proof of Purchase item first to make sure everyone gets the bonus
 		for (int i = 1; i <= MaxClients; i++)
 		{
 			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
 				continue;
-			
-			clientArray.Push(i);		
-			
+
+			clientArray.Push(i);
+
 			if (PlayerHasItem(i, Item_ProofOfPurchase))
 			{
 				modifier += CalcItemMod(i, Item_ProofOfPurchase, 0);
 			}
 		}
-		
+
 		for (int i = 0; i < clientArray.Length; i++)
 		{
 			g_flPlayerCash[clientArray.Get(i)] += g_flCashValue[entity] * modifier;
 		}
-		
+
 		if (client > 0)
 		{
-			if (GetRandomInt(1, 20) == 1)
-			{
-				SpeakResponseConcept_MVM(client, "TLK_MVM_MONEY_PICKUP");
-			}
+			SpeakResponseConcept_MVM(client, "TLK_MVM_MONEY_PICKUP");
 
 			if (PlayerHasItem(client, Item_BanditsBoots))
 			{
 				HealPlayer(client, RoundToFloor(CalcItemMod(client, Item_BanditsBoots, 1)));
 			}
 		}
-		
+
 		delete clientArray;
 		RemoveEntity(entity);
 	}
@@ -346,19 +343,19 @@ int SpawnInfoParticle(const char[] effectName, const float pos[3], float duratio
 	{
 		SetVariantString("!activator");
 		AcceptEntityInput(particle, "SetParent", parent);
-		
+
 		if (attachment[0])
 		{
 			SetVariantString(attachment);
 			AcceptEntityInput(particle, "SetParentAttachment");
 		}
 	}
-	
+
 	if (duration > 0.0)
 	{
 		CreateTimer(duration, Timer_DeleteEntity, EntIndexToEntRef(particle), TIMER_FLAG_NO_MAPCHANGE);
 	}
-	
+
 	return particle;
 }
 
@@ -366,18 +363,18 @@ void TE_TFParticle(const char[] effectName, const float pos[3], int entity=-1, i
 bool reset=false, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0)
 {
 	TE_Start("TFParticleEffect");
-	
+
 	int index = GetParticleEffectIndex(effectName);
 	if (index == -1)
 	{
 		// try to cache it
 		index = PrecacheParticleEffect(effectName);
 	}
-	
+
 	if (index > -1)
 	{
 		TE_WriteNum("m_iParticleSystemIndex", index);
-		
+
 		if (attachmentName[0])
 		{
 			int attachPoint = LookupEntityAttachment(entity, attachmentName);
@@ -386,7 +383,7 @@ bool reset=false, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0
 				TE_WriteNum("m_iAttachmentPointIndex", attachPoint);
 			}
 		}
-		
+
 		if (entity > -1)
 		{
 			TE_WriteNum("entindex", entity);
@@ -398,10 +395,10 @@ bool reset=false, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0
 		TE_WriteFloat("m_vecStart[0]", pos[0]);
 		TE_WriteFloat("m_vecStart[1]", pos[1]);
 		TE_WriteFloat("m_vecStart[2]", pos[2]);
-		
+
 		TE_WriteNum("m_iAttachType", attachType);
 		TE_WriteNum("m_bResetParticles", asBool(reset));
-		
+
 		if (clientAmount <= 0)
 		{
 			TE_SendToAll();
@@ -420,7 +417,7 @@ int PrecacheParticleEffect(const char[] name)
 	int table = FindStringTable("ParticleEffectNames");
 	int count = GetStringTableNumStrings(table);
 	char buffer[128];
-	
+
 	for (int i = 0; i < count; i++)
 	{
 		ReadStringTable(table, i, buffer, sizeof(buffer));
@@ -432,12 +429,12 @@ int PrecacheParticleEffect(const char[] name)
 			break;
 		}
 	}
-	
+
 	if (index < 0)
 	{
 		LogError("[PrecacheParticleEffect] Couldn't find particle effect \"%s\".", name);
 	}
-	
+
 	return index;
 }
 
@@ -481,7 +478,7 @@ bool IsNPC(int entity)
 {
 	if (entity <= MaxClients) // we don't want player bots
 		return false;
-	
+
 	return (CBaseEntity(entity).MyNextBotPointer() && CBaseEntity(entity).IsCombatCharacter());
 }
 
@@ -513,7 +510,7 @@ float AddGesture(int entity, const char[] sequence, float duration=0.0, bool aut
 		{
 			duration = CBaseAnimating(entity).SequenceDuration(seq);
 		}
-		
+
 		int layer = CBaseAnimatingOverlay(entity).AddGestureSequence(seq, duration, autokill);
 		CBaseAnimatingOverlay(entity).SetLayerPlaybackRate(layer, playbackrate);
 		CBaseAnimatingOverlay(entity).SetLayerPriority(layer, priority);
@@ -522,7 +519,7 @@ float AddGesture(int entity, const char[] sequence, float duration=0.0, bool aut
 	{
 		LogError("[AddGesture] Couldn't find sequence \"%s\".", sequence);
 	}
-	
+
 	return duration;
 }
 
@@ -534,7 +531,7 @@ bool IsPlayingGesture(int entity, const char[] sequence)
 		LogError("[IsPlayingGesture] Couldn't find sequence \"%s\".", sequence);
 		return false;
 	}
-	
+
 	return (CBaseAnimatingOverlay(entity).FindGestureLayerBySequence(seq) >= 0);
 }
 
@@ -542,11 +539,21 @@ public MRESReturn DHook_TakeHealth(int entity, Handle returnVal, Handle params)
 {
 	if (IsValidClient(entity))
 	{
-		float health = DHookGetParam(params, 1); 
+		float health = DHookGetParam(params, 1);
 		health *= GetPlayerHealthMult(entity);
-		DHookSetParam(params, 1, health); 
+		DHookSetParam(params, 1, health);
 		return MRES_ChangedHandled;
 	}
-	
+
 	return MRES_Ignored;
+}
+
+int EnsureEntRef(int entIndex)
+{
+	if (entIndex & (1 << 31))
+	{
+		return entIndex;
+	}
+
+	return IsValidEntity(entIndex) ? EntIndexToEntRef(entIndex) : INVALID_ENT_REFERENCE;
 }
