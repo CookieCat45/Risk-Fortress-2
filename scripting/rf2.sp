@@ -4432,6 +4432,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	// Changing the crit type here will not change the damage, so we have to modify the damage ourselves.
 	// An issue will also occur when changing the crit type here where it plays the wrong effect or no effect at all.
 	// We can only fake a missing crit effect; an incorrect crit effect (such as minicrit -> crit spawning the minicrit effect) cannot be fixed.
+	bool bonked = IsValidClient(victim) && TF2_IsPlayerInCondition(victim, TFCond_Bonked); 
 	if (originalCritType != critType)
 	{
 		switch (originalCritType)
@@ -4442,14 +4443,22 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 				
 				if (critType == CritType_Crit)
 				{
-					TE_TFParticle("crit_text", damagePosition, victim);
-					EmitGameSoundToClient(attacker, GSND_CRIT);
+					if (!bonked)
+					{
+						TE_TFParticle("crit_text", damagePosition, victim);
+						EmitGameSoundToClient(attacker, GSND_CRIT);
+					}
+					
 					damage *= 3.0;
 				}
 				else // Mini crit
 				{
-					TE_TFParticle("minicrit_text", damagePosition, victim);
-					EmitGameSoundToClient(attacker, GSND_MINICRIT);
+					if (!bonked)
+					{
+						TE_TFParticle("minicrit_text", damagePosition, victim);
+						EmitGameSoundToClient(attacker, GSND_MINICRIT);
+					}
+					
 					damage *= 1.35;
 				}
 			}
@@ -4458,8 +4467,12 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			{
 				if (critType == CritType_Crit)
 				{
-					TE_TFParticle("crit_text", damagePosition, victim);
-					EmitGameSoundToClient(attacker, GSND_CRIT);
+					if (!bonked)
+					{
+						TE_TFParticle("crit_text", damagePosition, victim);
+						EmitGameSoundToClient(attacker, GSND_CRIT);
+					}
+					
 					damage *= 0.741;
 					damage *= 3.0;
 				}
@@ -4473,8 +4486,12 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			{
 				if (critType == CritType_MiniCrit)
 				{
-					TE_TFParticle("minicrit_text", damagePosition, victim);
-					EmitGameSoundToClient(attacker, GSND_MINICRIT);
+					if (!bonked)
+					{
+						TE_TFParticle("minicrit_text", damagePosition, victim);
+						EmitGameSoundToClient(attacker, GSND_MINICRIT);
+					}
+					
 					damage /= 3.0;
 					damage *= 1.35;
 				}
