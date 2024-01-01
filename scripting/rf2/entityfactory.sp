@@ -335,10 +335,8 @@ static void Workbench_OnCreate(int entity)
 	}
 	
 	SetEntProp(entity, Prop_Data, "m_iQuality", quality);
-	
 	int item = GetRandomItemEx(quality);
 	SetEntProp(entity, Prop_Data, "m_iItem", item);
-	
 	SDKHook(entity, SDKHook_SpawnPost, Hook_WorkbenchSpawnPost);
 }
 
@@ -356,6 +354,16 @@ public void Hook_WorkbenchSpawnPost(int entity)
 	TeleportEntity(sprite, pos);
 	DispatchSpawn(sprite);
 	SetEntPropEnt(entity, Prop_Data, "m_hDisplaySprite", sprite);
+
+	switch (GetItemQuality(item))
+	{
+		case Quality_Genuine:		SetEntityRenderColor(sprite, 125, 255, 125);
+		case Quality_Unusual: 		SetEntityRenderColor(sprite, 200, 125, 255);
+		case Quality_Strange:		SetEntityRenderColor(sprite, 200, 150, 0);
+		case Quality_Collectors:	SetEntityRenderColor(sprite, 255, 100, 100);
+		case Quality_Haunted, 
+			Quality_HauntedStrange:	SetEntityRenderColor(sprite, 125, 255, 255);
+	}
 }
 
 static void Workbench_OnDestroy(int entity)

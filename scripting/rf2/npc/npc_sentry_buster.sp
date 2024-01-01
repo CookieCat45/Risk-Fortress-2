@@ -136,7 +136,7 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 				playerList.Push(i);
 			}
 		}
-
+		
 		if (playerList.Length > 0)
 		{
 			SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER");
@@ -173,7 +173,7 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 			this.SetProp(Prop_Data, "m_PathFollower", value);
 		}
 	}
-
+	
 	public static void Precache()
 	{
 		PrecacheScriptSound("MVM.SentryBusterExplode");
@@ -183,10 +183,9 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 		PrecacheScriptSound("MVM.SentryBusterStep");
 		PrecacheScriptSound("Announcer.MVM_Sentry_Buster_Alert");
 		PrecacheScriptSound("Announcer.MVM_Sentry_Buster_Alert_Another");
-
 		PrecacheModel(MODEL_BUSTER, true);
 	}
-
+	
 	public void Detonate()
 	{
 		float pos[3];
@@ -258,7 +257,7 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 						damage *= 0.1;
 					}
 				}
-
+				
 				if (!boss)
 				{
 					float force[3];
@@ -271,7 +270,7 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 				}
 			}
 		}
-
+		
 		delete victims;
 		ArrayList playerList = new ArrayList();
 		for (int i = 1; i <= MaxClients; i++)

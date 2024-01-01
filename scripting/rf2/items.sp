@@ -333,14 +333,25 @@ int SpawnItem(int index, const float pos[3], int spawner=-1, float ownTime=0.0)
 		}
 	}
 	
-	if (GetItemQuality(index) == Quality_Unusual && g_iItemSpriteUnusualEffect[index] >= 0)
+	int quality = GetItemQuality(index);
+	switch (quality)
+	{
+		case Quality_Genuine:		SetEntityRenderColor(item, 125, 255, 125);
+		case Quality_Unusual: 		SetEntityRenderColor(item, 200, 125, 255);
+		case Quality_Strange:		SetEntityRenderColor(item, 200, 150, 0);
+		case Quality_Collectors:	SetEntityRenderColor(item, 255, 100, 100);
+		case Quality_Haunted, 
+			Quality_HauntedStrange:	SetEntityRenderColor(item, 125, 255, 255);
+	}
+	
+	if (quality == Quality_Unusual && g_iItemSpriteUnusualEffect[index] >= 0)
 	{
 		float effectPos[3];
 		CopyVectors(pos, effectPos);
 		effectPos[2] += 25.0;
 		TE_TFParticle(g_szUnusualEffectName[g_iItemSpriteUnusualEffect[index]], effectPos, item, PATTACH_ABSORIGIN);
 	}
-	
+
 	return item;
 }
 

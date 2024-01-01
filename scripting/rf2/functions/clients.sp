@@ -37,6 +37,7 @@ void RefreshClient(int client, bool force=false)
 	g_bItemPickupCooldown[client] = false;
 	g_bPlayerLawCooldown[client] = false;
 	g_bPlayerTookCollectorItem[client] = false;
+	g_bExecutionerBleedCooldown[client] = false;
 	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
 
 	g_szObjectiveHud[client] = "";
@@ -851,7 +852,7 @@ void SpeakResponseConcept_MVM(int client, const char[] response)
 void TF2_ForceWeaponSwitch(int client, int slot)
 {
 	ClientCommand(client, "slot%i", slot+1);
-
+	
 	// because the above doesn't always want to work
 	int weapon = GetPlayerWeaponSlot(client, slot);
 	SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);

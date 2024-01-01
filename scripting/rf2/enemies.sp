@@ -637,7 +637,6 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 			}
 			
 			case DIFFICULTY_TITANIUM: g_TFBot[client].SetSkillLevel(TFBotDifficulty_Expert);
-			
 			default: g_TFBot[client].SetSkillLevel(enemy.BotSkill);
 		}
 		

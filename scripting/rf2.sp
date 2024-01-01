@@ -19,7 +19,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.2b"
+#define PLUGIN_VERSION "0.2.1b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -357,6 +357,7 @@ bool g_bItemPickupCooldown[MAXTF2PLAYERS];
 bool g_bPlayerLawCooldown[MAXTF2PLAYERS];
 bool g_bPlayerTookCollectorItem[MAXTF2PLAYERS];
 bool g_bPlayerSpawnedByTeleporter[MAXTF2PLAYERS];
+bool g_bExecutionerBleedCooldown[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -795,18 +796,18 @@ public void OnMapStart()
 		{
 			SetFailState("[NAV] The NavMesh for map \"%s\" does not exist", mapName);
 		}
-
+		
 		#if defined _SteamWorks_Included
 		if (GetExtensionFileStatus("SteamWorks.ext") == 1)
 		{
 			char desc[64];
-			char difficultyName[16];
-			GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName));
+			char difficultyName[32];
+			GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
 			FormatEx(desc, sizeof(desc), "Risk Fortress 2 - %s (Stage %d - %s Difficulty)", PLUGIN_VERSION, g_iStagesCompleted+1, difficultyName);
 			SteamWorks_SetGameDescription(desc);
 		}
 		#endif
-
+		
 		LoadAssets();
 
 		if (!g_bLateLoad)
@@ -2769,11 +2770,11 @@ public Action Timer_PlayerHud(Handle timer)
 		{
 			strangeItemInfo = "";
 		}
-
+		
 		miscText = "";
-		char difficultyName[16];
-		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName));
-
+		char difficultyName[32];
+		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
+		
 		if (IsPlayerSurvivor(i))
 		{
 			if (g_bTankBossMode && !g_bGracePeriod)
@@ -2971,7 +2972,7 @@ public Action Timer_PlayerTimer(Handle timer)
 						}
 						else if (RF2_GetDifficulty() == DIFFICULTY_TITANIUM)
 						{
-							g_flPlayerHealthRegenTime[i] += 0.4;
+							g_flPlayerHealthRegenTime[i] += 0.3;
 						}
 						else if (RF2_GetDifficulty() == DIFFICULTY_SCRAP)
 						{
@@ -3326,18 +3327,18 @@ public Action Timer_SuicideTeleport(Handle timer, DataPack pack)
 {
 	pack.Reset();
 	int client = GetClientOfUserId(pack.ReadCell());
-
+	
 	if (client == 0)
 		return Plugin_Continue;
-
+	
 	if (!IsClientInGame(client) || !IsPlayerAlive(client))
 		return Plugin_Continue;
-
+	
 	float pos[3];
 	pos[0] = pack.ReadFloat();
 	pos[1] = pack.ReadFloat();
 	pos[2] = pack.ReadFloat();
-
+	
 	TeleportEntity(client, pos);
 	return Plugin_Continue;
 }
@@ -3358,7 +3359,7 @@ public void Hook_PreThink(int client)
 			PlayMusicTrack(client);
 		}
 	}
-
+	
 	if (!IsPlayerAlive(client))
 		return;
 
@@ -3366,7 +3367,7 @@ public void Hook_PreThink(int client)
 	{
 		TFBot_Think(g_TFBot[client]);
 	}
-
+	
 	TFClassType class = TF2_GetPlayerClass(client);
 	if (class == TFClass_Engineer)
 	{
@@ -3407,8 +3408,15 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	g_bPlayerInCondition[client][condition] = true;
 	if (!RF2_IsEnabled())
 		return;
-
-	if (condition == TFCond_Dazed)
+	
+	if (condition == TFCond_Jarated || condition == TFCond_Milked)
+	{
+		if (GetClientTeam(client) == TEAM_ENEMY)
+		{
+			TF2_AddCondition(client, condition, 5.0);
+		}
+	}
+	else if (condition == TFCond_Dazed)
 	{
 		if (!RF2_CanBeStunned(client) && IsPlayerStunned(client))
 		{
@@ -3754,7 +3762,7 @@ public void OnEntityDestroyed(int entity)
 		int index;
 		int builder = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
 
-		if (builder > 0 && (index = g_hPlayerExtraSentryList[builder].FindValue(entity)) != -1)
+		if (builder > 0 && g_hPlayerExtraSentryList[builder] && (index = g_hPlayerExtraSentryList[builder].FindValue(entity)) != -1)
 		{
 			g_hPlayerExtraSentryList[builder].Erase(index);
 		}
@@ -4416,22 +4424,25 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 							damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 1);
 						}
 					}
-
+					
 					// Executioner has a chance to cause bleeding on crit damage
-					if (IsValidClient(victim) && PlayerHasItem(attacker, Item_Executioner))
+					if (IsValidClient(victim) && PlayerHasItem(attacker, Item_Executioner) 
+						&& damageCustom != TF_CUSTOM_BLEEDING && !TF2_IsPlayerInCondition(victim, TFCond_Bonked) && !g_bExecutionerBleedCooldown[attacker])
 					{
 						float random = CalcItemMod_Hyperbolic(attacker, Item_Executioner, 0);
 						random *= proc;
 						if (RandChanceFloatEx(attacker, 0.0, 1.0, random))
 						{
 							TF2_MakeBleed(victim, attacker, GetItemMod(Item_Executioner, 1));
+							g_bExecutionerBleedCooldown[attacker] = true;
+							CreateTimer(0.2, Timer_ExecutionerBleedCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 						}
 					}
 				}
 			}
 		}
 	}
-
+	
 	// Changing the crit type here will not change the damage, so we have to modify the damage ourselves.
 	// An issue will also occur when changing the crit type here where it plays the wrong effect or no effect at all.
 	// We can only fake a missing crit effect; an incorrect crit effect (such as minicrit -> crit spawning the minicrit effect) cannot be fixed.
@@ -4508,6 +4519,15 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		return Plugin_Changed;
 	}
 
+	return Plugin_Continue;
+}
+
+public Action Timer_ExecutionerBleedCooldown(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Continue;
+
+	g_bExecutionerBleedCooldown[client] = false;
 	return Plugin_Continue;
 }
 
