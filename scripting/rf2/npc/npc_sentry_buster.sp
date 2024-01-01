@@ -373,15 +373,15 @@ void SentryBuster_OnMapStart()
 {
 	g_Busters = 0;
 	RF2_SentryBuster.Precache();
-
+	
 	static bool init;
 	if (!init)
 	{
 		RF2_SentryBuster.Initialize();
 		g_cvPhysPush = FindConVar("phys_pushscale");
 		g_cvSuicideBombRange = FindConVar("tf_bot_suicide_bomb_range");
-
 		g_cvBusterSpawnInterval = CreateConVar("rf2_sentry_buster_spawn_interval", "120", "Interval in seconds that Sentry Busters will spawn if RED has sentries.", FCVAR_NOTIFY, true, 0.0);
+		init = true;
 	}
 }
 

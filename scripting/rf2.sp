@@ -560,7 +560,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 		strcopy(error, err_max, "This plugin was developed for use with Team Fortress 2 only");
 		return APLRes_Failure;
 	}
-
+	
 	g_bLateLoad = late;
 	LoadNatives();
 	return APLRes_Success;
@@ -867,7 +867,7 @@ public void OnMapStart()
 
 		SentryBuster_OnMapStart();
 		BadassTank_OnMapStart();
-
+		
 		g_iMaxStages = FindMaxStages();
 		LoadMapSettings(mapName);
 		LoadItems();
