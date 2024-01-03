@@ -529,6 +529,7 @@ bool PickupItem(int client)
 		GiveItem(client, itemIndex, _, true);
 		RemoveEntity(item);
 		char qualityTag[32], itemName[128], qualityName[32];
+		GetItemName(itemIndex, itemName, sizeof(itemName));
 		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
 		GetQualityName(quality, qualityName, sizeof(qualityName));
 		PrintKeyHintText(client, "%s (%s)\n%s", g_szItemName[itemIndex], qualityName, g_szItemDescHint[itemIndex]);

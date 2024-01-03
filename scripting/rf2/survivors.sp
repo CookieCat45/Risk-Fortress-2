@@ -537,18 +537,15 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	int itemShare = objectCount / survivorCount;
 	for (int i = 0; i < MAX_SURVIVORS; i++)
 	{
-		if (IsSurvivorIndexValid(i))
+		if (survivorCount == 1)
 		{
-			if (survivorCount == 1)
-			{
-				g_iItemLimit[i] = 99999;
-				break;
-			}
-			else
-			{
-				g_iItemLimit[i] = itemShare;
-			}	
+			g_iItemLimit[i] = 99999;
+			break;
 		}
+		else
+		{
+			g_iItemLimit[i] = itemShare;
+		}	
 	}
 }
 
