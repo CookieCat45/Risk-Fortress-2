@@ -365,9 +365,10 @@ int StrContainsEx(const char[] str, const char[] substr, bool caseSensitive=true
 		{
 			int length = strlen(str);
 			int subLength = strlen(substr);
-			
 			if (position + subLength >= length || IsCharSpace(str[position+subLength]))
+			{
 				return position;
+			}
 		}
 	}
 	

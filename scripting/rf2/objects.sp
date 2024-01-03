@@ -456,11 +456,10 @@ bool ActivateObject(int client, int entity)
 		}
 		
 		delete itemArray;
-		
 		if (item > Item_Null)
 		{
 			GiveItem(client, item, -1);
-			GiveItem(client, benchItem, 1);
+			GiveItem(client, benchItem, 1, true);
 			EmitSoundToAll(SND_USE_WORKBENCH, client);
 			PrintCenterText(client, "%t", "UsedWorkbench", 
 			g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item), g_szItemName[item]);
@@ -575,7 +574,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 						for (int i = 1; i <= total; i++)
 						{
 							randomItem = GetRandomCollectorItem(class);
-							GiveItem(param1, randomItem);
+							GiveItem(param1, randomItem, _, true);
 							itemCount[randomItem]++;
 							
 							if (itemList.FindValue(randomItem) == -1)
@@ -600,7 +599,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 					{
 						GiveItem(param1, item, -1);
 						int randomItem = GetRandomCollectorItem(TF2_GetPlayerClass(param1));
-						GiveItem(param1, randomItem);
+						GiveItem(param1, randomItem, _, true);
 						PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[randomItem]);
 						EmitSoundToClient(param1, SND_USE_SCRAPPER);
 						ShowScrapperMenu(param1, false);
@@ -621,7 +620,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 					
 					if (scrap > Item_Null)
 					{
-						GiveItem(param1, scrap, 1);
+						GiveItem(param1, scrap, _, true);
 						PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[scrap]);
 					}
 					else // haunted item, give haunted key
@@ -1003,7 +1002,7 @@ void EndTeleporterEvent(int teleporter)
 			continue;
 		
 		randomItem = GetRandomInt(1, 10) > 2 ? GetRandomItemEx(Quality_Genuine) : GetRandomCollectorItem(TF2_GetPlayerClass(i));
-		GiveItem(i, randomItem);
+		GiveItem(i, randomItem, _, true);
 		GetItemName(randomItem, name, sizeof(name));
 		GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
 		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);

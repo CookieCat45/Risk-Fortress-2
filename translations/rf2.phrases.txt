@@ -378,9 +378,9 @@
 		"en"		"Type {lightblue}/rf2_settings{default} to change your in-game preferences at any time."
 	}
 	
-	"TipAFK"
+	"TipItemLog"
 	{
-		"en"		"Need to AFK? No problem! Type {lightblue}/rf2_afk{default} into chat to enter AFK Mode."
+		"en"		"To view a logbook of items you've collected in your runs, use the {yellow}/rf2_itemlog {default}command."
 	}
 	
 	"TipCredits"

@@ -97,6 +97,7 @@ void InstallEntities()
 		.DefineBoolField("m_bDropped")
 		.DefineEntityField("m_hItemOwner")
 		.DefineEntityField("m_hSubject")
+		.DefineEntityField("m_hOriginalItemOwner")
 	.EndDataMapDesc();
 	factory.Install();
 	

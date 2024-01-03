@@ -810,25 +810,25 @@ bool TF2_IsInvis(int client, bool fullyInvis=true)
 
 void PrintKeyHintText(int client, const char[] format, any ...)
 {
-    BfWrite userMessage = view_as<BfWrite>(StartMessageOne("KeyHintText", client));
-    if (userMessage)
-    {
-        char buffer[256];
-        SetGlobalTransTarget(client);
-        VFormat(buffer, sizeof(buffer), format, 3);
-
-        if (GetUserMessageType() == UM_Protobuf)
-        {
-            PbSetString(userMessage, "hints", buffer);
-        }
-        else
-        {
-            userMessage.WriteByte(1);
-            userMessage.WriteString(buffer);
-        }
-
-        EndMessage();
-    }
+	BfWrite userMessage = view_as<BfWrite>(StartMessageOne("KeyHintText", client));
+	if (userMessage)
+	{
+		char buffer[256];
+		SetGlobalTransTarget(client);
+		VFormat(buffer, sizeof(buffer), format, 3);
+		
+		if (GetUserMessageType() == UM_Protobuf)
+		{
+			PbSetString(userMessage, "hints", buffer);
+		}
+		else
+		{
+			userMessage.WriteByte(1);
+			userMessage.WriteString(buffer);
+		}
+		
+		EndMessage();
+	}
 }
 
 void SpeakResponseConcept(int client, const char[] response)

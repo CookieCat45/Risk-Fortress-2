@@ -34,11 +34,11 @@ void LoadCommandsAndCvars()
 	
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
-	RegConsoleCmd("rf2_afk", Command_AFK, "Puts you into AFK mode instantly.");
 	RegConsoleCmd("rf2_endlevel", Command_EndLevel, "Starts the vote to end the level in Tank Destruction mode.");
 	RegConsoleCmd("rf2_reset_tutorial", Command_ResetTutorial, "Resets the tutorial.");
 	RegConsoleCmd("rf2_skipwait", Command_VoteSkipWait, "Starts a vote to skip the Waiting for Players sequence.");
 	RegConsoleCmd("rf2_survivorqueue", Command_SurvivorQueue, "Shows the Survivor queue list.");
+	RegConsoleCmd("rf2_itemlog", Command_ItemLog, "Shows a list of items that you've collected.");
 	
 	char buffer[8];
 	IntToString(MaxClients, buffer, sizeof(buffer));
@@ -663,6 +663,109 @@ public int Menu_SurvivorQueue(Menu menu, MenuAction action, int param1, int para
 		}
 	}
 
+	return 0;
+}
+
+public Action Command_ItemLog(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	ShowItemLogbook(client);
+	return Plugin_Handled;
+}
+
+void ShowItemLogbook(int client, int position=0)
+{
+	Menu logbook = new Menu(Menu_ItemLog);
+	char info[16], display[MAX_NAME_LENGTH], quality[32];
+	ArrayList items = GetSortedItemList();
+	int item, count;
+	for (int i = 0; i < items.Length; i++)
+	{
+		item = items.Get(i);
+		if (IsItemInLogbook(client, item))
+		{
+			IntToString(item, info, sizeof(info));
+			GetQualityName(GetItemQuality(item), quality, sizeof(quality));
+			FormatEx(display, sizeof(display), "%s (%s)", g_szItemName[item], quality);
+			logbook.AddItem(info, display);
+			count++;
+		}
+	}
+	
+	logbook.SetTitle("Item Logbook (%i/%i items collected)", count, items.Length);
+	delete items;
+	logbook.DisplayAt(client, position, MENU_TIME_FOREVER);
+}
+
+public int Menu_ItemLog(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			g_iPlayerLastItemLogItem[param1] = GetMenuSelectionPosition();
+			char info[16];
+			menu.GetItem(param2, info, sizeof(info));
+			int item = StringToInt(info);
+			ShowItemInfo(param1, item);
+		}
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+	
+	return 0;
+}
+
+void ShowItemInfo(int client, int item)
+{
+	Menu menu = new Menu(Menu_ItemInfo);
+	menu.ExitBackButton = true;
+	
+	char quality[32];
+	GetQualityName(GetItemQuality(item), quality, sizeof(quality));
+	menu.SetTitle("%s (%s)", g_szItemName[item], quality);
+	
+	if (IsEquipmentItem(item))
+	{
+		char cooldown[32];
+		FormatEx(cooldown, sizeof(cooldown), "Cooldown: %.0f seconds", g_flEquipmentItemCooldown[item]);
+		menu.AddItem("cooldown", cooldown, ITEMDRAW_DISABLED);
+	}
+	
+	menu.AddItem("desc", g_szItemDescHint[item], ITEMDRAW_DISABLED);
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int Menu_ItemInfo(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_Cancel:
+		{
+			if (param2 == MenuCancel_ExitBack)
+			{
+				ShowItemLogbook(param1, g_iPlayerLastItemLogItem[param1]);
+			}
+		}
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+	
 	return 0;
 }
 
@@ -1294,11 +1397,9 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 			if (!strcmp2(info, "no_items"))
 			{
 				int item = StringToInt(info);
-				char quality[32], desc[256];
+				char quality[32];
 				GetQualityName(GetItemQuality(item), quality, sizeof(quality));
-				strcopy(desc, sizeof(desc), g_szItemDesc[item]);
-				CRemoveTags(desc, sizeof(desc));
-				PrintKeyHintText(param1, "%s (%s): %s", g_szItemName[item], quality, desc);
+				PrintKeyHintText(param1, "%s (%s)\n%s", g_szItemName[item], quality, g_szItemDescHint[item]);
 				ShowItemDropMenu(param1, item);
 			}
 			else

@@ -19,7 +19,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.2.1b"
+#define PLUGIN_VERSION "0.3b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -397,6 +397,7 @@ int g_iPlayerVampireSapperAttacker[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLastScrapMenuItem[MAXTF2PLAYERS];
 int g_iPlayerLastItemMenuItem[MAXTF2PLAYERS];
 int g_iPlayerLastDropMenuItem[MAXTF2PLAYERS];
+int g_iPlayerLastItemLogItem[MAXTF2PLAYERS];
 
 char g_szPlayerOriginalName[MAXTF2PLAYERS][MAX_NAME_LENGTH];
 ArrayList g_hPlayerExtraSentryList[MAXTF2PLAYERS];
@@ -510,6 +511,7 @@ Cookie g_coBecomeSurvivor;
 Cookie g_coBecomeBoss;
 Cookie g_coAutomaticItemMenu;
 Cookie g_coSurvivorPoints;
+Cookie g_coItemsCollected[4];
 Cookie g_coTutorialItemPickup;
 Cookie g_coTutorialSurvivor;
 
@@ -803,7 +805,7 @@ public void OnMapStart()
 			char desc[64];
 			char difficultyName[32];
 			GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
-			FormatEx(desc, sizeof(desc), "Risk Fortress 2 - %s (Stage %d - %s Difficulty)", PLUGIN_VERSION, g_iStagesCompleted+1, difficultyName);
+			FormatEx(desc, sizeof(desc), "Risk Fortress 2 - %s (Stage %d - %s)", PLUGIN_VERSION, g_iStagesCompleted+1, difficultyName);
 			SteamWorks_SetGameDescription(desc);
 		}
 		#endif
@@ -1854,7 +1856,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					float refChance = CalcItemMod(0, Item_PillarOfHats, 2, total);
 					float totalChance = scrapChance + recChance + refChance;
 					float result;
-
+					
 					if (RandChanceFloatEx(attacker, 0.0, 1.0, totalChance, result))
 					{
 						int item;
@@ -1870,16 +1872,15 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						{
 							item = Item_ScrapMetal;
 						}
-
+						
 						float pos[3];
 						GetEntPos(victim, pos);
 						pos[2] += 30.0;
-						int metal = SpawnItem(item, pos, attacker, 8.0);
-						SetEntProp(metal, Prop_Data, "m_bDropped", true);
+						SpawnItem(item, pos, attacker, 0.0);
 						g_iMetalItemsDropped++;
 					}
 				}
-
+				
 				if (PlayerHasItem(attacker, Item_Dangeresque))
 				{
 					if (RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(Item_Dangeresque, 3)))
@@ -2812,17 +2813,17 @@ public Action Timer_PlayerHud(Handle timer)
 			{
 				FormatEx(miscText, sizeof(miscText), "\nSapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
 			}
-
+			
 			ShowSyncHudText(i, g_hMainHudSync, g_szSurvivorHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed,
 				hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i], g_flPlayerNextLevelXP[i],
 				g_flPlayerCash[i], g_iPlayerHauntedKeys[i], g_szHudDifficulty, strangeItemInfo, miscText);
 		}
 		else
 		{
-			ShowSyncHudText(i, g_hMainHudSync, g_szEnemyHudText, difficultyName, g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds,
+			ShowSyncHudText(i, g_hMainHudSync, g_szEnemyHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed, hudSeconds,
 				g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo);
 		}
-
+		
 		if (g_szObjectiveHud[i][0])
 		{
 			if (GetPlayerEquipmentItem(i) != Item_Null)
@@ -2992,7 +2993,7 @@ public Action Timer_PlayerTimer(Handle timer)
 		{
 			TF2_MakeBleed(i, i, 60.0);
 		}
-
+		
 		if (g_flPlayerVampireSapperCooldown[i] > 0.0)
 		{
 			g_flPlayerVampireSapperCooldown[i] -= 0.1;
@@ -3016,11 +3017,11 @@ public Action Timer_PluginMessage(Handle timer)
 
 	static int message;
 	const int maxMessages = 5;
-
+	
 	switch (message)
 	{
 		case 0: RF2_PrintToChatAll("%t", "TipSettings");
-		case 1: RF2_PrintToChatAll("%t", "TipAFK");
+		case 1: RF2_PrintToChatAll("%t", "TipItemLog");
 		case 2: RF2_PrintToChatAll("%t", "TipCredits", PLUGIN_VERSION);
 		case 3: RF2_PrintToChatAll("%t", "TipQueue");
 		case 4: RF2_PrintToChatAll("%t", "TipMenu");
@@ -3413,6 +3414,7 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	{
 		if (GetClientTeam(client) == TEAM_ENEMY)
 		{
+			TF2_RemoveCondition(client, condition);
 			TF2_AddCondition(client, condition, 5.0);
 		}
 	}
@@ -3658,7 +3660,7 @@ public void TF2_OnWaitingForPlayersEnd()
 {
 	if (!RF2_IsEnabled())
 		return;
-
+	
 	g_bWaitingForPlayers = false;
 	PrintToServer("%T", "WaitingEnd", LANG_SERVER);
 }
@@ -3667,7 +3669,7 @@ public Action Timer_RestartGameWait(Handle timer)
 {
 	if (!g_bWaitingForPlayers)
 		return Plugin_Continue;
-
+	
 	PrintToServer("[RF2] Waited too long for players to join. Restarting game...");
 	ReloadPlugin(true);
 	return Plugin_Continue;
@@ -4429,11 +4431,9 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					if (IsValidClient(victim) && PlayerHasItem(attacker, Item_Executioner) 
 						&& damageCustom != TF_CUSTOM_BLEEDING && !TF2_IsPlayerInCondition(victim, TFCond_Bonked) && !g_bExecutionerBleedCooldown[attacker])
 					{
-						float random = CalcItemMod_Hyperbolic(attacker, Item_Executioner, 0);
-						random *= proc;
-						if (RandChanceFloatEx(attacker, 0.0, 1.0, random))
+						if (RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(Item_Executioner, 0) * proc))
 						{
-							TF2_MakeBleed(victim, attacker, GetItemMod(Item_Executioner, 1));
+							TF2_MakeBleed(victim, attacker, CalcItemMod(attacker, Item_Executioner, 1));
 							g_bExecutionerBleedCooldown[attacker] = true;
 							CreateTimer(0.2, Timer_ExecutionerBleedCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 						}

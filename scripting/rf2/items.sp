@@ -22,7 +22,8 @@ float g_flEquipmentItemCooldown[MAX_ITEMS] = {40.0, ...};
 float g_flItemSpriteScale[MAX_ITEMS] = {1.0, ...};
 
 char g_szItemName[MAX_ITEMS][MAX_NAME_LENGTH];
-char g_szItemDesc[MAX_ITEMS][256];
+char g_szItemDesc[MAX_ITEMS][512];
+char g_szItemDescHint[MAX_ITEMS][512];
 char g_szItemUnusualEffectName[MAX_ITEMS][MAX_NAME_LENGTH];
 
 bool g_bItemInDropPool[MAX_ITEMS];
@@ -77,7 +78,7 @@ void LoadItems()
 			g_iUnusualEffectCount++;
 		}
 	}
-
+	
 	delete effectKey;
 	
 	// Now items
@@ -110,9 +111,15 @@ void LoadItems()
 		{	
 			// This value will correspond to the item's index in the plugin so we know what the item does.
 			item = itemKey.GetNum("item_type", Item_Null);
-			
 			itemKey.GetString("name", g_szItemName[item], sizeof(g_szItemName[]), "Unnamed Item");
+
 			itemKey.GetString("desc", g_szItemDesc[item], sizeof(g_szItemDesc[]), "(No description found...)");
+			itemKey.GetString("desc_hint", g_szItemDescHint[item], sizeof(g_szItemDescHint[]), g_szItemDesc[item]);
+			CRemoveTags(g_szItemDescHint[item], sizeof(g_szItemDescHint[]));
+			char dummy[1];
+			dummy[0] = 10;
+			ReplaceString(g_szItemDescHint[item], sizeof(g_szItemDescHint[]), "\\n", dummy, false);
+			
 			itemKey.GetString("equip_regions", g_szItemEquipRegion[item], sizeof(g_szItemEquipRegion[]), "none");
 			itemKey.GetString("sprite", g_szItemSprite[item], sizeof(g_szItemSprite[]), MAT_DEBUGEMPTY);
 			g_bItemInDropPool[item] = asBool(itemKey.GetNum("in_item_pool", true));
@@ -321,6 +328,7 @@ int SpawnItem(int index, const float pos[3], int spawner=-1, float ownTime=0.0)
 	}
 	
 	SetEntProp(item, Prop_Data, "m_iIndex", index);
+	SetEntPropEnt(item, Prop_Data, "m_hOriginalItemOwner", spawner);
 	TeleportEntity(item, pos);
 	DispatchSpawn(item);
 	
@@ -366,7 +374,7 @@ public Action Timer_ClearItemOwner(Handle timer, int entity)
 }
 
 // negative values are accepted for amount
-void GiveItem(int client, int item, int amount=1)
+void GiveItem(int client, int item, int amount=1, bool addToLogbook=false)
 {
 	if (IsEquipmentItem(item))
 	{
@@ -392,6 +400,11 @@ void GiveItem(int client, int item, int amount=1)
 		}
 	}
 	
+	if (addToLogbook)
+	{
+		AddItemToLogbook(client, item);	
+	}
+
 	UpdatePlayerItem(client, item);
 }
 
@@ -411,12 +424,9 @@ bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=
 	{
 		// Only the dropper or the one we dropped the item for can pick this up.
 		SetEntPropEnt(entity, Prop_Data, "m_hSubject", subject);
-		
 		if (subject != client)
 		{
-			char itemName[128];
-			GetItemName(item, itemName, sizeof(itemName), false);
-			PrintHintText(subject, "%t", "DroppedItemForYou", client, itemName);
+			PrintHintText(subject, "%t", "DroppedItemForYou", client, g_szItemName[item]);
 		}
 	}
 	
@@ -486,13 +496,14 @@ bool PickupItem(int client)
 		int index = RF2_GetSurvivorIndex(client);
 		int itemIndex = GetEntProp(item, Prop_Data, "m_iIndex");
 		int spawner = GetEntPropEnt(item, Prop_Data, "m_hItemOwner");
+		int subject = GetEntPropEnt(item, Prop_Data, "m_hSubject");
+		int originalSpawner = GetEntPropEnt(item, Prop_Data, "m_hOriginalItemOwner");
 		bool dropped = asBool(GetEntProp(item, Prop_Data, "m_bDropped"));
 		int quality = GetItemQuality(itemIndex);
 		
 		// Strange items do not count towards the limit.
-		if (itemShare && g_iItemLimit[index] > 0 && !IsEquipmentItem(itemIndex) 
-			&& !dropped && (!IsValidClient(spawner) || !IsPlayerSurvivor(spawner) || spawner == client)
-			&& g_iItemsTaken[index] >= g_iItemLimit[index])
+		if (itemShare && g_iItemLimit[index] > 0 && !IsEquipmentItem(itemIndex) && subject != client
+		&& ((spawner == client || originalSpawner == client) || !IsValidClient(spawner) || !IsPlayerSurvivor(spawner)) && g_iItemsTaken[index] >= g_iItemLimit[index])
 		{
 			EmitSoundToClient(client, SND_NOPE);
 			PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[index]);
@@ -515,15 +526,12 @@ bool PickupItem(int client)
 			g_bPlayerTookCollectorItem[client] = true;
 		}
 		
-		GiveItem(client, itemIndex);
+		GiveItem(client, itemIndex, _, true);
 		RemoveEntity(item);
-		char qualityTag[32], itemName[128], qualityName[32], desc[256];
+		char qualityTag[32], itemName[128], qualityName[32];
 		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
-		GetItemName(itemIndex, itemName, sizeof(itemName));
 		GetQualityName(quality, qualityName, sizeof(qualityName));
-		strcopy(desc, sizeof(desc), g_szItemDesc[itemIndex]);
-		CRemoveTags(desc, sizeof(desc));
-		PrintKeyHintText(client, "%s (%s): %s", itemName, qualityName, desc);
+		PrintKeyHintText(client, "%s (%s)\n%s", g_szItemName[itemIndex], qualityName, g_szItemDescHint[itemIndex]);
 		
 		if (IsEquipmentItem(itemIndex))
 		{
@@ -549,7 +557,7 @@ bool PickupItem(int client)
 		RF2_PrintToChat(client, "%s%s{default}: %s", qualityTag, itemName, g_szItemDesc[itemIndex]);
 		EmitSoundToAll(SND_ITEM_PICKUP, client);
 		
-		if (!dropped || spawner == client)
+		if (!dropped || spawner == client || originalSpawner == client)
 		{
 			if (!dropped)
 				g_iTotalItemsFound++;
@@ -2039,7 +2047,10 @@ ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true)
 	ArrayList items = new ArrayList();
 	for (int i = 1; i < Item_MaxValid; i++)
 	{
-		if (poolOnly && !g_bItemInDropPool[i] && (!allowMetals || !IsScrapItem(i)))
+		if (poolOnly && !g_bItemInDropPool[i] && !IsScrapItem(i))
+			continue;
+		
+		if (!allowMetals && IsScrapItem(i))
 			continue;
 		
 		items.Push(i);
@@ -2096,4 +2107,35 @@ bool IsEquipmentItem(int item)
 int GetTotalItems()
 {
 	return g_iItemCount;
+}
+
+void AddItemToLogbook(int client, int item)
+{
+	if (item <= Item_Null || item >= Item_MaxValid || !AreClientCookiesCached(client) || IsItemInLogbook(client, item))
+		return;
+	
+	char buffer[2048], itemId[16];
+	GetItemLogCookie(client, buffer, sizeof(buffer));
+	FormatEx(itemId, sizeof(itemId), ";%i;", item);
+	if (!buffer[0])
+	{
+		strcopy(buffer, sizeof(buffer), itemId);
+	}
+	else
+	{
+		StrCat(buffer, sizeof(buffer), itemId);
+	}
+	
+	SetItemLogCookie(client, buffer);
+}
+
+bool IsItemInLogbook(int client, int item)
+{
+	if (item <= Item_Null || item >= Item_MaxValid || !AreClientCookiesCached(client))
+		return false;
+	
+	char buffer[2048], itemId[16];
+	GetItemLogCookie(client, buffer, sizeof(buffer));
+	FormatEx(itemId, sizeof(itemId), ";%i;", item);
+	return StrContains(buffer, itemId, false) != -1;
 }

@@ -146,7 +146,7 @@ void EndTankDestructionMode()
 			continue;
 		
 		randomItem = GetRandomInt(1, 10) > 2 ? GetRandomItemEx(Quality_Genuine) : GetRandomCollectorItem(TF2_GetPlayerClass(i));
-		GiveItem(i, randomItem);
+		GiveItem(i, randomItem, _, true);
 		GetItemName(randomItem, name, sizeof(name));
 		GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
 		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
