@@ -920,7 +920,7 @@ void UpdatePlayerItem(int client, int item)
 					
 					float uberRate = 1.0 + CalcItemMod(client, item, 0);
 					float uberDuration = CalcItemMod(client, item, 1);
-					TF2Attrib_SetByDefIndex(medigun, 9, uberRate); // "ubercharge rate penalty"
+					TF2Attrib_SetByDefIndex(medigun, 10, uberRate); // "ubercharge rate bonus"
 					TF2Attrib_SetByDefIndex(medigun, 314, uberDuration); // "uber duration bonus"
 				}
 				else if (item == ItemMedic_ProcedureMask && PlayerHasItem(client, item) && CanUseCollectorItem(client, item))

@@ -296,7 +296,8 @@ static int CreateTankBoss(bool badass=false)
 	int level = RF2_GetEnemyLevel();
 	if (level >= 50)
 	{
-		health = RoundToFloor(Pow(float(health), 1.0 + (float(level-49) * 0.0025)));
+		float cap = float(level) * 1000000.0;
+		health = RoundToFloor(fmin(Pow(float(health), 1.0 + (float(level-49) * 0.0025)), cap));
 	}
 	
 	if (IsSingleplayer(false))
@@ -305,7 +306,7 @@ static int CreateTankBoss(bool badass=false)
 	}
 	else
 	{
-		health = RoundToFloor(float(health) * (1.0 + 0.3*float(RF2_GetSurvivorCount()-1)));
+		health = RoundToFloor(float(health) * (1.0 + 0.25*float(RF2_GetSurvivorCount()-1)));
 	}
 	
 	SetEntProp(tankBoss, Prop_Data, "m_iHealth", health);

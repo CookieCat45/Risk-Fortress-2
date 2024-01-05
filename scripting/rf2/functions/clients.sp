@@ -852,10 +852,6 @@ void SpeakResponseConcept_MVM(int client, const char[] response)
 void TF2_ForceWeaponSwitch(int client, int slot)
 {
 	ClientCommand(client, "slot%i", slot+1);
-	
-	// because the above doesn't always want to work
-	int weapon = GetPlayerWeaponSlot(client, slot);
-	SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
 }
 
 bool IsPlayerAFK(int client)
