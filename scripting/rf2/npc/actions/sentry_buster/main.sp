@@ -59,6 +59,7 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 		{
 			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "No sentry what?");
 		}
+		target = actor.Target;
 	}
 
 	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(actor.index);
