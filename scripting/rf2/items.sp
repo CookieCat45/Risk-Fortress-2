@@ -530,8 +530,16 @@ bool PickupItem(int client)
 		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
 		GetQualityName(quality, qualityName, sizeof(qualityName));
 		PrintKeyHintText(client, "%s (%s)\n%s", g_szItemName[itemIndex], qualityName, g_szItemDescHint[itemIndex]);
-		RF2_PrintToChatAll("%t", "PickupItemStrange", client, qualityTag, itemName);
-		RF2_PrintToChatAll("%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, itemIndex));
+
+		if (IsEquipmentItem(itemIndex))
+		{
+			RF2_PrintToChatAll("%t", "PickupItemStrange", client, qualityTag, itemName);
+		}
+		else
+		{
+			RF2_PrintToChatAll("%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, itemIndex));
+		}
+		
 		//RF2_PrintToChat(client, "%s%s{default}: %s", qualityTag, itemName, g_szItemDesc[itemIndex]);
 		EmitSoundToAll(SND_ITEM_PICKUP, client);
 		
