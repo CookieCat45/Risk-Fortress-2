@@ -324,7 +324,7 @@ void PickupCash(int client, int entity)
 				HealPlayer(client, RoundToFloor(CalcItemMod(client, Item_BanditsBoots, 1)));
 			}
 		}
-
+		
 		delete clientArray;
 		RemoveEntity(entity);
 	}
@@ -541,6 +541,11 @@ public MRESReturn DHook_TakeHealth(int entity, Handle returnVal, Handle params)
 	{
 		float health = DHookGetParam(params, 1);
 		health *= GetPlayerHealthMult(entity);
+		if (IsPlayerSurvivor(entity) && IsArtifactActive(REDArtifact_Restoration))
+		{
+			health *= 2.0;
+		}
+		
 		DHookSetParam(params, 1, health);
 		return MRES_ChangedHandled;
 	}

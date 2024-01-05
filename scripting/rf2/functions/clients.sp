@@ -229,7 +229,12 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 	{
 		return 0;
 	}
-
+	
+	if (IsPlayerSurvivor(client) && IsArtifactActive(REDArtifact_Restoration))
+	{
+		amount *= 2;
+	}
+	
 	int amountHealed = amount;
 	SetEntityHealth(client, health+amount);
 

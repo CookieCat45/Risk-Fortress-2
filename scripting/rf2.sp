@@ -115,6 +115,8 @@ public Plugin myinfo =
 #define SND_THROW "weapons/cleaver_throw.wav"
 #define SND_BOMB_EXPLODE "weapons/loose_cannon_explode.wav"
 #define SND_TELEPORTER_BLU "mvm/mvm_tele_deliver.wav"
+#define SND_ARTIFACT_ROLL "ui/buttonclick.wav"
+#define SND_ARTIFACT_SELECT "items/spawn_item.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
@@ -504,6 +506,7 @@ ConVar g_cvMeleeCritChanceBonus;
 ConVar g_cvEngiMetalRegenInterval;
 ConVar g_cvEngiMetalRegenAmount;
 ConVar g_cvHauntedKeyDropChanceMax;
+ConVar g_cvArtifactChance;
 
 // Cookies
 Cookie g_coMusicEnabled;
@@ -534,6 +537,7 @@ ArrayList g_hTFBotEngineerBuildings[MAXTF2PLAYERS];
 bool g_bThrillerActive;
 int g_iThrillerRepeatCount;
 ArrayList g_hParticleEffectTable;
+ArrayList g_hActiveArtifacts;
 
 #include "rf2/overrides.sp"
 #include "rf2/items.sp"
@@ -550,6 +554,7 @@ ArrayList g_hParticleEffectTable;
 #include "rf2/functions/buildings.sp"
 #include "rf2/natives_forwards.sp"
 #include "rf2/commands_convars.sp"
+#include "rf2/artifacts.sp"
 #include "rf2/npc/nav.sp"
 #include "rf2/npc/tf_bot.sp"
 #include "rf2/npc/npc_tank_boss.sp"
@@ -577,6 +582,8 @@ public void OnPluginStart()
 	BakeCookies();
 	LoadTranslations("common.phrases");
 	LoadTranslations("rf2.phrases");
+	LoadTranslations("rf2_artifacts.phrases");
+	g_hActiveArtifacts = new ArrayList();
 }
 
 public void OnPluginEnd()
@@ -1049,6 +1056,7 @@ void CleanUp()
 	delete g_hParticleEffectTable;
 
 	StopMusicTrackAll();
+	DisableAllArtifacts();
 }
 
 void LoadAssets()
@@ -1117,6 +1125,8 @@ void LoadAssets()
 	PrecacheSound(SND_THROW, true);
 	PrecacheSound(SND_BOMB_EXPLODE, true);
 	PrecacheSound(SND_TELEPORTER_BLU, true);
+	PrecacheSound(SND_ARTIFACT_ROLL, true);
+	PrecacheSound(SND_ARTIFACT_SELECT, true);
 	PrecacheSound("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound("vo/halloween_boss/knight_attack02.mp3", true);
 	PrecacheSound("vo/halloween_boss/knight_attack03.mp3", true);
@@ -1124,7 +1134,7 @@ void LoadAssets()
 	PrecacheScriptSound(GSND_CRIT);
 	PrecacheScriptSound(GSND_MINICRIT);
 	PrecacheScriptSound(GSND_CLEAVER_HIT);
-
+	
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
 }
@@ -1412,6 +1422,11 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	{
 		RF2_PrintToChatAll("%t", "TanksWillArrive", g_flGracePeriodTime);
 	}
+	
+	if (GetRandomInt(1, g_cvArtifactChance.IntValue) == 1)
+	{
+		//RollArtifacts();
+	}
 
 	Call_StartForward(g_fwGracePeriodStart);
 	Call_Finish();
@@ -1628,7 +1643,15 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	{
 		TF2_AddCondition(client, TFCond_HalloweenThriller);
 	}
-
+	
+	if (GetClientTeam(client) == TEAM_ENEMY && IsArtifactActive(BLUArtifact_Silence))
+	{
+		if (GetRandomInt(1, 5) == 1)
+		{
+			TF2_AddCondition(client, TFCond_StealthedUserBuffFade);
+		}
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -1876,7 +1899,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						float pos[3];
 						GetEntPos(victim, pos);
 						pos[2] += 30.0;
-						SpawnItem(item, pos, attacker, 0.0);
+						SpawnItem(item, pos, attacker, 6.0);
 						g_iMetalItemsDropped++;
 					}
 				}
@@ -2496,12 +2519,18 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	int survivorCount = RF2_GetSurvivorCount();
 	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
-
+	
 	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
 		duration *= 0.8;
-
-	CreateTimer(fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue), Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
-
+	
+	duration = fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue);
+	if (IsArtifactActive(BLUArtifact_Swarm))
+	{
+		duration *= 0.6;
+	}
+	
+	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
+	
 	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + ((survivorCount-1)/3) + RF2_GetSubDifficulty() / 3;
 	spawnCount = imax(imin(spawnCount, g_cvEnemyMaxSpawnWaveCount.IntValue), g_cvEnemyMinSpawnWaveCount.IntValue);
 	float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
@@ -2838,7 +2867,7 @@ public Action Timer_PlayerHud(Handle timer)
 			ShowSyncHudText(i, g_hObjectiveHudSync, g_szObjectiveHud[i]);
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -2849,22 +2878,33 @@ public Action Timer_Difficulty(Handle timer)
 		g_hDifficultyTimer = null;
 		return Plugin_Stop;
 	}
-
+	
 	if (g_bGameOver || g_bGracePeriod)
 		return Plugin_Continue;
-
-	g_flSecondsPassed += 1.0;
+	
+	float secondsToAdd = 1.0;
+	if (IsArtifactActive(REDArtifact_Patience))
+	{
+		secondsToAdd *= 0.5;
+	}
+	
+	if (IsArtifactActive(BLUArtifact_Haste))
+	{
+		secondsToAdd *= 2.0;
+	}
+	
+	g_flSecondsPassed += secondsToAdd;
 	if (g_flSecondsPassed >= 60.0 * (float(g_iMinutesPassed+1)))
 	{
 		float seconds = g_flSecondsPassed - (float(g_iMinutesPassed) * 60.0);
 		g_iMinutesPassed += RoundToFloor(seconds/60.0);
 	}
-
+	
 	float timeFactor = g_flSecondsPassed / 10.0;
 	float playerFactor = fmax(1.0 + float(RF2_GetSurvivorCount()-1) * 0.12, 1.0);
 	float value = fmax(1.08 - (0.005 * float(RF2_GetSurvivorCount()-1)), 1.02);
 	float stageFactor = Pow(value, float(g_iStagesCompleted));
-
+	
 	float difficultyFactor = GetDifficultyFactor(RF2_GetDifficulty());
 	float oldDifficultyCoeff = g_flDifficultyCoeff;
 	g_flDifficultyCoeff = (timeFactor * stageFactor * playerFactor) * difficultyFactor;

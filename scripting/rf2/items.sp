@@ -510,17 +510,14 @@ bool PickupItem(int client)
 			return true;
 		}
 		
-		if (dropped)
+		if (IsValidClient(spawner) && IsPlayerSurvivor(spawner) 
+			&& client != spawner && client != subject)
 		{
-			if (IsValidClient(spawner) && IsPlayerSurvivor(spawner) 
-				&& client != spawner && client != GetEntPropEnt(item, Prop_Data, "m_hSubject"))
-			{
-				EmitSoundToClient(client, SND_NOPE);
-				PrintCenterText(client, "%t", "NotForYou");
-				return true;
-			}
+			EmitSoundToClient(client, SND_NOPE);
+			PrintCenterText(client, "%t", "NotForYou");
+			return true;
 		}
-		
+
 		if (quality == Quality_Collectors)
 		{
 			g_bPlayerTookCollectorItem[client] = true;
@@ -533,29 +530,9 @@ bool PickupItem(int client)
 		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
 		GetQualityName(quality, qualityName, sizeof(qualityName));
 		PrintKeyHintText(client, "%s (%s)\n%s", g_szItemName[itemIndex], qualityName, g_szItemDescHint[itemIndex]);
-		
-		if (IsEquipmentItem(itemIndex))
-		{
-			for (int i = 1; i <= MaxClients; i++)
-			{
-				if (i == client || !IsClientInGame(i) || IsFakeClient(i))
-					continue;
-				
-				RF2_PrintToChat(i, "%t", "PickupItemStrange", client, qualityTag, itemName);
-			}
-		}
-		else
-		{
-			for (int i = 1; i <= MaxClients; i++)
-			{
-				if (i == client || !IsClientInGame(i) || IsFakeClient(i))
-					continue;
-				
-				RF2_PrintToChat(i, "%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, itemIndex));
-			} 
-		}
-		
-		RF2_PrintToChat(client, "%s%s{default}: %s", qualityTag, itemName, g_szItemDesc[itemIndex]);
+		RF2_PrintToChatAll("%t", "PickupItemStrange", client, qualityTag, itemName);
+		RF2_PrintToChatAll("%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, itemIndex));
+		//RF2_PrintToChat(client, "%s%s{default}: %s", qualityTag, itemName, g_szItemDesc[itemIndex]);
 		EmitSoundToAll(SND_ITEM_PICKUP, client);
 		
 		if (!dropped || spawner == client || originalSpawner == client)
@@ -1690,6 +1667,10 @@ float GetPlayerEquipmentItemCooldown(int client)
 		return 0.0;
 	
 	float cooldown = g_flEquipmentItemCooldown[item] * CalcItemMod_HyperbolicInverted(client, Item_BatteryCanteens, 0);
+	if (IsPlayerSurvivor(client) && IsArtifactActive(REDArtifact_Efficiency))
+	{
+		cooldown *= 0.25;
+	}
 	
 	bool cooldownActive = g_flPlayerEquipmentItemCooldown[client] > 0.0;
 	if (cooldownActive)
