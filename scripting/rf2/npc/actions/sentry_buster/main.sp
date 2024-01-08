@@ -1,17 +1,13 @@
 #pragma semicolon 1
+#pragma newdecls required
 
 static NextBotActionFactory g_Factory;
 
 methodmap RF2_SentryBusterMainAction < NextBotAction
 {
-	public RF2_SentryBusterMainAction()
-	{
-		return view_as<RF2_SentryBusterMainAction>(g_Factory.Create());
-	}
-
 	public static NextBotActionFactory GetFactory()
 	{
-		if (g_Factory == null)
+		if (!g_Factory)
 		{
 			g_Factory = new NextBotActionFactory("RF2_SentryBusterMain");
 			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
@@ -21,6 +17,7 @@ methodmap RF2_SentryBusterMainAction < NextBotAction
 				.DefineFloatField("m_Talker")
 				.EndDataMapDesc();
 		}
+
 		return g_Factory;
 	}
 
@@ -144,7 +141,8 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	return action.Continue();
 }
 
-static int OnKilled(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, CBaseEntity attacker, CBaseEntity inflictor, float damage, int damageType, CBaseEntity weapon, const float damageForce[3], const float damagePosition[3], int damageCustom)
+static int OnKilled(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, CBaseEntity attacker, CBaseEntity inflictor,
+	float damage, int damageType, CBaseEntity weapon, const float damageForce[3], const float damagePosition[3], int damageCustom)
 {
 	return action.TryChangeTo(RF2_SentryBusterDetonateAction(), RESULT_CRITICAL);
 }

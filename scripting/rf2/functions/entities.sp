@@ -60,6 +60,25 @@ float DistBetween(int ent1, int ent2, bool squared=false)
 	return GetVectorDistance(pos1, pos2, squared);
 }
 
+/*
+float DistToPos(int entity, const float pos[3], bool squared=false)
+{
+	float entPos[3];
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", entPos);
+	return GetVectorDistance(entPos, pos, squared);
+}
+*/
+
+bool DoEntitiesIntersect(int ent1, int ent2)
+{
+	if (g_hSDKIntersects)
+	{
+		return SDKCall(g_hSDKIntersects, ent1, ent2);
+	}
+	
+	return false;
+}
+
 // SPELL PROJECTILES WILL ONLY WORK IF THE OWNER ENTITY IS A PLAYER! DO NOT TRY THEM WITH ANYTHING ELSE!
 int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], const float angles[3],
 	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
@@ -510,7 +529,7 @@ float AddGesture(int entity, const char[] sequence, float duration=0.0, bool aut
 		{
 			duration = CBaseAnimating(entity).SequenceDuration(seq);
 		}
-
+		
 		int layer = CBaseAnimatingOverlay(entity).AddGestureSequence(seq, duration, autokill);
 		CBaseAnimatingOverlay(entity).SetLayerPlaybackRate(layer, playbackrate);
 		CBaseAnimatingOverlay(entity).SetLayerPriority(layer, priority);
@@ -519,7 +538,7 @@ float AddGesture(int entity, const char[] sequence, float duration=0.0, bool aut
 	{
 		LogError("[AddGesture] Couldn't find sequence \"%s\".", sequence);
 	}
-
+	
 	return duration;
 }
 
@@ -559,6 +578,6 @@ int EnsureEntRef(int entIndex)
 	{
 		return entIndex;
 	}
-
+	
 	return IsValidEntity(entIndex) ? EntIndexToEntRef(entIndex) : INVALID_ENT_REFERENCE;
 }

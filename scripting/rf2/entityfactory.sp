@@ -248,7 +248,15 @@ static void ObjectBase_OnCreate(int entity)
 {
 	SetEntProp(entity, Prop_Send, "m_fEffects", EF_ITEM_BLINK);
 	SetEntProp(entity, Prop_Data, "m_bActive", true);
-	SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_OBB);
+	
+	static char classname[64];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	if (!strcmp2(classname, "rf2_object_teleporter"))
+	{
+		SetEntProp(entity, Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER_TOUCH_DEBRIS|FSOLID_TRIGGER|FSOLID_NOT_SOLID|FSOLID_CUSTOMBOXTEST);
+		SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_OBB);
+		SetEntityCollisionGroup(entity, COLLISION_GROUP_DEBRIS_TRIGGER);
+	}
 	
 	AcceptEntityInput(entity, "EnableCollision");
 }
@@ -284,7 +292,6 @@ static void Teleporter_OnDestroy(int entity)
 static void Crate_OnCreate(int entity)
 {
 	SetEntityModel(entity, MODEL_CRATE);
-	SetEntityCollisionGroup(entity, COLLISION_GROUP_CRATE);
 	SetEntPropFloat(entity, Prop_Data, "m_flCost", CalculateObjectCost(entity));
 	SetEntProp(entity, Prop_Data, "m_iItem", GetRandomItem(79, 20, 1));
 	SDKHook(entity, SDKHook_OnTakeDamage, Hook_OnCrateHit);
@@ -319,8 +326,6 @@ static void CrateCollector_OnCreate(int entity) // our item is decided when we'r
 static void Workbench_OnCreate(int entity)
 {
 	SetEntityModel(entity, MODEL_WORKBENCH);
-	SetEntityCollisionGroup(entity, COLLISION_GROUP_CRATE);
-	
 	int result, quality;
 	if (RandChanceInt(1, 100, 65, result))
 	{
@@ -379,7 +384,6 @@ static void Workbench_OnDestroy(int entity)
 static void Scrapper_OnCreate(int entity)
 {
 	SetEntityModel(entity, MODEL_SCRAPPER);
-	SetEntityCollisionGroup(entity, COLLISION_GROUP_CRATE);
 }
 
 

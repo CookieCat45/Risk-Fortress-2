@@ -14,22 +14,18 @@ void LoadNatives()
 	CreateNative("RF2_GetPlayerItemAmount", Native_GetPlayerItemAmount);
 	CreateNative("RF2_GivePlayerItem", Native_GivePlayerItem);
 	CreateNative("RF2_GetEnemyLevel", Native_GetEnemyLevel);
-	
 	CreateNative("RF2_GetSurvivorIndex", Native_GetSurvivorIndex);
 	CreateNative("RF2_GetSurvivorLevel", Native_GetSurvivorLevel);
 	CreateNative("RF2_GetSurvivorCount", Native_GetSurvivorCount);
 	CreateNative("RF2_GetSurvivorPoints", Native_GetSurvivorPoints);
 	CreateNative("RF2_SetSurvivorPoints", Native_SetSurvivorPoints);
-	
 	CreateNative("RF2_GetDifficultyCoeff", Native_GetDifficultyCoeff);
 	CreateNative("RF2_GetSubDifficulty", Native_GetSubDifficulty);
 	CreateNative("RF2_GetDifficulty", Native_GetDifficulty);
-	
 	CreateNative("RF2_GetBaseMaxHealth", Native_GetBaseMaxHealth);
 	CreateNative("RF2_GetCalculatedMaxHealth", Native_GetCalculatedMaxHealth);
 	CreateNative("RF2_GetBaseSpeed", Native_GetBaseSpeed);
 	CreateNative("RF2_GetCalculatedSpeed", Native_GetCalculatedSpeed);
-	
 	CreateNative("RF2_GetMaxStages", Native_GetMaxStages);
 	CreateNative("RF2_GetCurrentStage", Native_GetCurrentStage);
 	CreateNative("RF2_GetTeleporterEntity", Native_GetTeleporterEntity);
@@ -38,10 +34,17 @@ void LoadNatives()
 
 void LoadForwards()
 {
-	g_fwTeleEventStart = CreateGlobalForward("RF2_OnTeleporterEventStart", ET_Ignore);
-	g_fwTeleEventEnd = CreateGlobalForward("RF2_OnTeleporterEventEnd", ET_Ignore);
-	g_fwGracePeriodStart = CreateGlobalForward("RF2_OnGracePeriodStart", ET_Ignore);
-	g_fwGracePeriodEnded = CreateGlobalForward("RF2_OnGracePeriodEnd", ET_Ignore);
+	g_fwTeleEventStart = new GlobalForward("RF2_OnTeleporterEventStart", ET_Ignore);
+	g_fwTeleEventEnd = new GlobalForward("RF2_OnTeleporterEventEnd", ET_Ignore);
+	g_fwGracePeriodStart = new GlobalForward("RF2_OnGracePeriodStart", ET_Ignore);
+	g_fwGracePeriodEnded = new GlobalForward("RF2_OnGracePeriodEnd", ET_Ignore);
+	
+	g_fwPrivateOnMapStart = new PrivateForward(ET_Ignore); 
+	g_fwPrivateOnMapStart.AddFunction(INVALID_HANDLE, SentryBuster_OnMapStart);
+	g_fwPrivateOnMapStart.AddFunction(INVALID_HANDLE, BadassTank_OnMapStart);
+	g_fwPrivateOnMapStart.AddFunction(INVALID_HANDLE, RaidBoss_OnMapStart);
+	g_fwPrivateOnMapStart.AddFunction(INVALID_HANDLE, Galleom_OnMapStart);
+	g_fwPrivateOnMapStart.AddFunction(INVALID_HANDLE, CustomHitbox_OnMapStart);
 }
 
 public any Native_IsEnabled(Handle plugin, int numParams)

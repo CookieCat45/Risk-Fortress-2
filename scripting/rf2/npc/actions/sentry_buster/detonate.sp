@@ -1,4 +1,5 @@
 #pragma semicolon 1
+#pragma newdecls required
 
 static NextBotActionFactory g_Factory;
 
@@ -6,7 +7,7 @@ methodmap RF2_SentryBusterDetonateAction < NextBotAction
 {
 	public RF2_SentryBusterDetonateAction()
 	{
-		if (g_Factory == null)
+		if (!g_Factory)
 		{
 			g_Factory = new NextBotActionFactory("RF2_SentryBusterDetonate");
 			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);

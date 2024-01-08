@@ -291,18 +291,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 		{
 			EmitAmbientSound(SND_DROP_HAUNTED, pos);
 			effectName = "ghost_appearation";
-			
-			int shake = CreateEntityByName("env_shake");
-			DispatchKeyValueFloat(shake, "radius", 150.0);
-			DispatchKeyValue(shake, "spawnflags", "13");
-			DispatchKeyValueFloat(shake, "amplitude", 12.0);
-			DispatchKeyValueFloat(shake, "duration", 3.0);
-			DispatchKeyValueFloat(shake, "frequency", 20.0);
-			
-			TeleportEntity(shake, pos, NULL_VECTOR, NULL_VECTOR);
-			DispatchSpawn(shake);
-			AcceptEntityInput(shake, "StartShake");
-			CreateTimer(3.0, Timer_DeleteEntity, EntIndexToEntRef(shake), TIMER_FLAG_NO_MAPCHANGE);
+			UTIL_ScreenShake(pos, 12.0, 20.0, 3.0, 150.0, SHAKE_START, true);
 			particleRemoveTime = 3.0;
 		}
 		default:

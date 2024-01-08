@@ -100,3 +100,6 @@ scripting/swag.sp
 scripting/include/socket.inc
 .vscode/settings.json
 scripting/compiled/rf2.smx
+scripting/goomba.sp
+scripting/include/goomba.inc
+translations/goomba.phrases.txt

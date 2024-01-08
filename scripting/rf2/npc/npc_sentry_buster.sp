@@ -44,14 +44,14 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 	{
 		return view_as<RF2_SentryBuster>(entIndex);
 	}
-
+	
 	public bool IsValid()
 	{
 		if (!CBaseCombatCharacter(this.index).IsValid())
 		{
 			return false;
 		}
-
+		
 		return CEntityFactory.GetFactoryOfEntity(this.index) == g_Factory;
 	}
 
@@ -72,79 +72,17 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 
 		g_Factory.Install();
 	}
-
+	
 	public static RF2_SentryBuster Create(CBaseEntity target)
 	{
 		RF2_SentryBuster buster = RF2_SentryBuster(CreateEntityByName("rf2_npc_sentry_buster"));
-		if (!buster.IsValid())
-		{
-			return RF2_SentryBuster(-1);
-		}
-
-		CBaseNPC npc = TheNPCs.FindNPCByEntIndex(buster.index);
-
-		buster.Path = PathFollower(_, SentryBusterPath_FilterIgnoreActors, SentryBusterPath_FilterOnlyActors);
-		buster.Path.SetMinLookAheadDistance(1024.0);
-
-		int health = RoundToFloor(BUSTER_BASE_HEALTH * GetEnemyHealthMult());
-		buster.SetProp(Prop_Data, "m_iHealth", health);
-		buster.SetPropFloat(Prop_Data, "m_flModelScale", 1.75);
-
-		// We robots, don't bleed
-		buster.SetProp(Prop_Data, "m_bloodColor", -1);
-		// For triggers
-		buster.AddFlag(FL_CLIENT);
-
-		buster.SetModel(MODEL_BUSTER);
-		buster.SetProp(Prop_Data, "m_moveXPoseParameter", buster.LookupPoseParameter("move_x"));
-		buster.SetProp(Prop_Data, "m_moveYPoseParameter", buster.LookupPoseParameter("move_y"));
-		buster.SetProp(Prop_Data, "m_idleSequence", buster.LookupSequence("Stand_MELEE"));
-		buster.SetProp(Prop_Data, "m_runSequence", buster.LookupSequence("Run_MELEE"));
-		buster.SetProp(Prop_Data, "m_airSequence", buster.LookupSequence("a_jumpfloat_ITEM1"));
-		buster.Target = CBaseEntity(INVALID_ENT_REFERENCE);
-
-		buster.Hook_HandleAnimEvent(HandleAnimEvent);
-		buster.SetProp(Prop_Data, "m_iTeamNum", TEAM_ENEMY);
-		buster.SetProp(Prop_Send, "m_nSkin", 1);
-
-		EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
-		EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
-
 		buster.Target = target;
-
 		float targetPos[3], pos[3], mins[3], maxs[3];
 		GetEntPos(target.index, targetPos);
-
 		buster.GetPropVector(Prop_Send, "m_vecMins", mins);
 		buster.GetPropVector(Prop_Send, "m_vecMaxs", maxs);
 		GetSpawnPoint(targetPos, pos, 2000.0, 6500.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID, 15.0);
 		buster.Teleport(pos);
-
-		npc.flStepSize = 18.0;
-		npc.flGravity = 800.0;
-		npc.flAcceleration = 2000.0;
-		npc.flJumpHeight = 85.0;
-		npc.flWalkSpeed = 440.0;
-		npc.flRunSpeed = 440.0;
-		npc.flDeathDropHeight = 2000.0;
-
-		ArrayList playerList = new ArrayList();
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (IsValidClient(i) && IsPlayerAlive(i) && IsPlayerSurvivor(i))
-			{
-				playerList.Push(i);
-			}
-		}
-		
-		if (playerList.Length > 0)
-		{
-			SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER");
-		}
-
-		delete playerList;
-		buster.Spawn();
-		buster.Activate();
 		return buster;
 	}
 
@@ -327,6 +265,60 @@ static void OnCreate(RF2_SentryBuster buster)
 {
 	SDKHook(buster.index, SDKHook_ThinkPost, ThinkPost);
 	SDKHook(buster.index, SDKHook_OnTakeDamageAlivePost, OnTakeDamageAlivePost);
+	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(buster.index);
+	
+	buster.Path = PathFollower(_, SentryBusterPath_FilterIgnoreActors, SentryBusterPath_FilterOnlyActors);
+	buster.Path.SetMinLookAheadDistance(1024.0);
+	
+	int health = RoundToFloor(BUSTER_BASE_HEALTH * GetEnemyHealthMult());
+	buster.SetProp(Prop_Data, "m_iHealth", health);
+	buster.SetPropFloat(Prop_Data, "m_flModelScale", 1.75);
+
+	// We robots, don't bleed
+	buster.SetProp(Prop_Data, "m_bloodColor", -1);
+	// For triggers
+	buster.AddFlag(FL_CLIENT);
+	
+	buster.SetModel(MODEL_BUSTER);
+	buster.SetProp(Prop_Data, "m_moveXPoseParameter", buster.LookupPoseParameter("move_x"));
+	buster.SetProp(Prop_Data, "m_moveYPoseParameter", buster.LookupPoseParameter("move_y"));
+	buster.SetProp(Prop_Data, "m_idleSequence", buster.LookupSequence("Stand_MELEE"));
+	buster.SetProp(Prop_Data, "m_runSequence", buster.LookupSequence("Run_MELEE"));
+	buster.SetProp(Prop_Data, "m_airSequence", buster.LookupSequence("a_jumpfloat_ITEM1"));
+	buster.Target = CBaseEntity(INVALID_ENT_REFERENCE);
+
+	buster.Hook_HandleAnimEvent(HandleAnimEvent);
+	buster.SetProp(Prop_Data, "m_iTeamNum", TEAM_ENEMY);
+	buster.SetProp(Prop_Send, "m_nSkin", 1);
+
+	EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
+	EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
+
+	npc.flStepSize = 18.0;
+	npc.flGravity = 800.0;
+	npc.flAcceleration = 2000.0;
+	npc.flJumpHeight = 85.0;
+	npc.flWalkSpeed = 440.0;
+	npc.flRunSpeed = 440.0;
+	npc.flDeathDropHeight = 2000.0;
+	
+	ArrayList playerList = new ArrayList();
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsValidClient(i) && IsPlayerAlive(i) && IsPlayerSurvivor(i))
+		{
+			playerList.Push(i);
+		}
+	}
+	
+	if (playerList.Length > 0)
+	{
+		SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER");
+	}
+
+	delete playerList;
+	buster.Spawn();
+	buster.Activate();
 }
 
 static void ThinkPost(int ent)
@@ -334,13 +326,11 @@ static void ThinkPost(int ent)
 	RF2_SentryBuster(ent).SetNextThink(GetGameTime());
 }
 
-public void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3])
+static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3])
 {
 	RF2_SentryBuster buster = RF2_SentryBuster(victim);
 	int health = buster.GetProp(Prop_Data, "m_iHealth");
-
 	TE_TFParticle("bot_impact_heavy", damagePosition);
-
 	Event event = CreateEvent("npc_hurt");
 	if (event)
 	{
@@ -348,7 +338,7 @@ public void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
 		event.SetInt("health", health > 0 ? health : 0);
 		event.SetInt("damageamount", RoundToFloor(damage));
 		event.SetBool("crit", (damagetype & DMG_CRIT) == DMG_CRIT);
-
+		
 		if (attacker > 0 && attacker <= MaxClients)
 		{
 			event.SetInt("attacker_player", GetClientUserId(attacker));
@@ -367,6 +357,11 @@ public void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
 static void OnRemove(RF2_SentryBuster buster)
 {
 	StopSound(buster.index, SNDCHAN_STATIC, "mvm/sentrybuster/mvm_sentrybuster_loop.wav");
+	if (buster.Path)
+	{
+		buster.Path.Destroy();
+		buster.Path = view_as<PathFollower>(0);
+	}
 }
 
 void SentryBuster_OnMapStart()
@@ -392,6 +387,7 @@ static MRESReturn HandleAnimEvent(int actor, Handle params)
 	{
 		EmitGameSoundToAll("MVM.SentryBusterStep", actor);
 	}
+
 	return MRES_Ignored;
 }
 
@@ -415,7 +411,7 @@ int FixedUnsigned16(float value, int scale)
 void UTIL_ScreenFade(int player, int color[4], float fadeTime, float fadeHold, int flags)
 {
 	BfWrite bf = UserMessageToBfWrite(StartMessageOne("Fade", player, USERMSG_RELIABLE));
-	if (bf != null)
+	if (bf)
 	{
 		bf.WriteShort(FixedUnsigned16(fadeTime, 1 << SCREENFADE_FRACBITS));
 		bf.WriteShort(FixedUnsigned16(fadeHold, 1 << SCREENFADE_FRACBITS));
@@ -424,7 +420,6 @@ void UTIL_ScreenFade(int player, int color[4], float fadeTime, float fadeHold, i
 		bf.WriteByte(color[1]);
 		bf.WriteByte(color[2]);
 		bf.WriteByte(color[3]);
-
 		EndMessage();
 	}
 }
@@ -566,12 +561,12 @@ void DoSentryBusterWave()
 
 		sentryList.Push(entity);
 	}
-
+	
 	for (int i = 0; i < sentryList.Length; i++)
 	{
 		RF2_SentryBuster.Create(CBaseEntity(sentryList.Get(i)));
 	}
-
+	
 	if (sentryList.Length > 0)
 	{
 		if (g_Busters == 0)
@@ -590,10 +585,5 @@ void DoSentryBusterWave()
 
 bool IsSentryBusterActive()
 {
-	while (FindEntityByClassname(MaxClients + 1, "rf2_npc_sentry_buster") != -1)
-	{
-		return true;
-	}
-
-	return false;
+	return FindEntityByClassname(MaxClients + 1, "rf2_npc_sentry_buster") != -1;
 }

@@ -181,7 +181,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 
 public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 {
-	if (IsObject(entity) && GetEntProp(entity, Prop_Send, "m_CollisionGroup") == COLLISION_GROUP_CRATE)
+	if (IsObject(entity) && GetEntProp(entity, Prop_Send, "m_CollisionGroup") == COLLISION_GROUP_DEBRIS_TRIGGER)
 		return false;
 	
 	if (team > 0 && (IsValidClient(entity) || IsBuilding(entity) || IsNPC(entity)))

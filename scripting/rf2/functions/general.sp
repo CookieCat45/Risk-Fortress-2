@@ -83,6 +83,10 @@ void ReloadPlugin(bool changeMap=true)
 		}
 		
 		StopMusicTrackAll();
+		if (!changeMap && GetTotalHumans() == 0)
+		{
+			InsertServerCommand("mp_waitingforplayers_restart 1");
+		}
 	}
 	
 	g_bPluginReloading = true;
@@ -352,6 +356,61 @@ stock void AddMaterialToDownloadsTable(const char[] file)
 	}
 }
 
+/*
+void TE_DrawBox(int client, const float origin[3], const float endOrigin[3], const float inMins[3], const float inMaxs[3], float duration = 0.1, int laserIndex, int color[4])
+{
+	float mins[3], maxs[3];
+	CopyVectors(inMins, mins);
+	CopyVectors(inMaxs, maxs);
+	if( mins[0] == maxs[0] && mins[1] == maxs[1] && mins[2] == maxs[2] )
+	{
+		mins = {-15.0, -15.0, -15.0};
+		maxs = {15.0, 15.0, 15.0};
+	}
+	else
+	{
+		float start[3], end[3];
+		CopyVectors(origin, start);
+		CopyVectors(endOrigin, end);
+		AddVectors(start, maxs, maxs);
+		AddVectors(end, mins, mins);
+	}
+	
+	float pos1[3], pos2[3], pos3[3], pos4[3], pos5[3], pos6[3];
+	pos1 = maxs;
+	pos1[0] = mins[0];
+	pos2 = maxs;
+	pos2[1] = mins[1];
+	pos3 = maxs;
+	pos3[2] = mins[2];
+	pos4 = mins;
+	pos4[0] = maxs[0];
+	pos5 = mins;
+	pos5[1] = maxs[1];
+	pos6 = mins;
+	pos6[2] = maxs[2];
+	
+	TE_SendBeam(client, maxs, pos1, duration, laserIndex, color);
+	TE_SendBeam(client, maxs, pos2, duration, laserIndex, color);
+	TE_SendBeam(client, maxs, pos3, duration, laserIndex, color);
+	TE_SendBeam(client, pos6, pos1, duration, laserIndex, color);
+	TE_SendBeam(client, pos6, pos2, duration, laserIndex, color);
+	TE_SendBeam(client, pos6, mins, duration, laserIndex, color);
+	TE_SendBeam(client, pos4, mins, duration, laserIndex, color);
+	TE_SendBeam(client, pos5, mins, duration, laserIndex, color);
+	TE_SendBeam(client, pos5, pos1, duration, laserIndex, color);
+	TE_SendBeam(client, pos5, pos3, duration, laserIndex, color);
+	TE_SendBeam(client, pos4, pos3, duration, laserIndex, color);
+	TE_SendBeam(client, pos4, pos2, duration, laserIndex, color);
+}
+
+void TE_SendBeam(int client, const float mins[3], const float maxs[3], float duration = 0.1, int laserIndex, int color[4])
+{
+	TE_SetupBeamPoints(mins, maxs, laserIndex, laserIndex, 0, 30, duration, 1.0, 1.0, 1, 0.0, color, 30);
+	TE_SendToClient(client);
+}
+*/
+
 // StrContains(), but the string needs to be an exact match.
 // This means there must be either whitespace or out-of-bounds characters before and after the found string.
 // So if you search "apple" in "applebanana", -1 will be returned, while StrContains() would return a positive value.
@@ -399,6 +458,16 @@ bool CompareVectors(const float vec1[3], const float vec2[3])
 		&& vec1[2] == vec2[2]);
 }
 
+float VectorSum(const float vec[3], bool absolute=false)
+{
+	if (absolute)
+	{
+		return FloatAbs(vec[0]) + FloatAbs(vec[1]) + FloatAbs(vec[2]);
+	}
+
+	return vec[0] + vec[1] + vec[2];
+}
+
 void GetVectorAnglesTwoPoints(const float startPos[3], const float endPos[3], float angles[3])
 {
 	static float tmpVec[3];
@@ -426,13 +495,13 @@ stock float sq(float num)
 
 stock float fmodf(float num, float denom)
 {
-    return num - denom * RoundToFloor(num / denom);
+	return num - denom * RoundToFloor(num / denom);
 }
 
 // not implemented by default -_-
 stock float operator%(float oper1, float oper2)
 {
-    return fmodf(oper1, oper2);
+	return fmodf(oper1, oper2);
 }
 
 stock int imin(int val1, int val2)

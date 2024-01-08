@@ -16,6 +16,10 @@
 #tryinclude <SteamWorks>
 #define REQUIRE_EXTENSIONS
 
+#undef REQUIRE_PLUGIN
+#tryinclude <goomba>
+#define REQUIRE_PLUGIN
+
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -117,6 +121,7 @@ public Plugin myinfo =
 #define SND_TELEPORTER_BLU "mvm/mvm_tele_deliver.wav"
 #define SND_ARTIFACT_ROLL "ui/buttonclick.wav"
 #define SND_ARTIFACT_SELECT "items/spawn_item.wav"
+#define SND_DOOMSDAY_EXPLODE "misc/doomsday_missile_explosion.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
@@ -278,8 +283,27 @@ enum
 	LAST_SHARED_COLLISION_GROUP
 };
 
-// Doesn't block player movement, but still allowed to be hit by player weapons
-#define COLLISION_GROUP_CRATE COLLISION_GROUP_PROJECTILE
+// m_nSolidType
+#define SOLID_NONE 0 // no solid model
+#define SOLID_BSP 1 // a BSP tree
+#define SOLID_BBOX 2 // an AABB
+#define SOLID_OBB 3 // an OBB (not implemented yet)
+#define SOLID_OBB_YAW 4 // an OBB, constrained so that it can only yaw
+#define SOLID_CUSTOM 5 // Always call into the entity for tests
+#define SOLID_VPHYSICS 6 // solid vphysics object, get vcollide from the model and collide with that
+
+// m_usSolidFlags
+#define FSOLID_CUSTOMRAYTEST 0x0001 // Ignore solid type + always call into the entity for ray tests
+#define FSOLID_CUSTOMBOXTEST 0x0002 // Ignore solid type + always call into the entity for swept box tests
+#define FSOLID_NOT_SOLID 0x0004 // Are we currently not solid?
+#define FSOLID_TRIGGER 0x0008 // This is something may be collideable but fires touch functions
+							// even when it's not collideable (when the FSOLID_NOT_SOLID flag is set)
+#define FSOLID_NOT_STANDABLE 0x0010 // You can't stand on this
+#define FSOLID_VOLUME_CONTENTS 0x0020 // Contains volumetric contents (like water)
+#define FSOLID_FORCE_WORLD_ALIGNED 0x0040 // Forces the collision rep to be world-aligned even if it's SOLID_BSP or SOLID_VPHYSICS
+#define FSOLID_USE_TRIGGER_BOUNDS 0x0080 // Uses a special trigger bounds separate from the normal OBB
+#define FSOLID_ROOT_PARENT_ALIGNED 0x0100 // Collisions are defined in root parent's local coordinate space
+#define FSOLID_TRIGGER_TOUCH_DEBRIS 0x0200 // This trigger will touch debris objects
 
 enum // ParticleAttachment_t
 {
@@ -436,6 +460,7 @@ Handle g_hSDKUpdateSpeed;
 Handle g_hSDKDoQuickBuild;
 Handle g_hSDKGetMaxHealth;
 Handle g_hSDKPlayGesture;
+Handle g_hSDKIntersects;
 DHookSetup g_hSDKCanBuild;
 DHookSetup g_hSDKDoSwingTrace;
 DHookSetup g_hSDKSentryAttack;
@@ -445,10 +470,11 @@ DynamicHook g_hSDKStartUpgrading;
 DynamicHook g_hSDKVPhysicsCollision;
 
 // Forwards
-Handle g_fwTeleEventStart;
-Handle g_fwTeleEventEnd;
-Handle g_fwGracePeriodStart;
-Handle g_fwGracePeriodEnded;
+GlobalForward g_fwTeleEventStart;
+GlobalForward g_fwTeleEventEnd;
+GlobalForward g_fwGracePeriodStart;
+GlobalForward g_fwGracePeriodEnded;
+PrivateForward g_fwPrivateOnMapStart;
 
 // ConVars
 ConVar g_cvMaxHumanPlayers;
@@ -557,8 +583,12 @@ ArrayList g_hActiveArtifacts;
 #include "rf2/artifacts.sp"
 #include "rf2/npc/nav.sp"
 #include "rf2/npc/tf_bot.sp"
+#include "rf2/npc/customhitbox.sp"
+#include "rf2/npc/npc_raidboss_base.sp"
+#include "rf2/npc/actions/baseattack.sp"
 #include "rf2/npc/npc_tank_boss.sp"
 #include "rf2/npc/npc_sentry_buster.sp"
+#include "rf2/npc/npc_raidboss_galleom.sp"
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
@@ -567,7 +597,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 		strcopy(error, err_max, "This plugin was developed for use with Team Fortress 2 only");
 		return APLRes_Failure;
 	}
-	
+
 	g_bLateLoad = late;
 	LoadNatives();
 	return APLRes_Success;
@@ -590,7 +620,7 @@ public void OnPluginEnd()
 {
 	if (RF2_IsEnabled())
 		StopMusicTrackAll();
-
+	
 	for (int i = 0; i < MAXTF2PLAYERS; i++)
 	{
 		if (g_TFBot[i].Follower)
@@ -615,7 +645,7 @@ void LoadGameData()
 	{
 		SetFailState("[SDK] Failed to locate gamedata file \"rf2.txt\"");
 	}
-
+	
 	int offset;
 	// CBasePlayer::EquipWearable ------------------------------------------------------------------------------------------------------------
 	StartPrepSDKCall(SDKCall_Player);
@@ -678,17 +708,18 @@ void LoadGameData()
 	{
 		LogError("[DHooks] Failed to create virtual hook for CPhysicsProp::VPhysicsCollision");
 	}
-
-	/*
-	// CTFWeaponBase::InternalGetEffectBarRechargeTime ---------------------------------------------------------------------------------------
-	offset = GameConfGetOffset(gamedata, "CTFWeaponBase::InternalGetEffectBarRechargeTime");
-	g_hSDKEffectBarRecharge = DHookCreate(offset, HookType_Entity, ReturnType_Float, ThisPointer_CBaseEntity, DHook_GetEffectBarRechargeTime);
-	if (!g_hSDKEffectBarRecharge)
+	
+	// CBaseEntity::Intersects ---------------------------------------------------------------------------------------------------------------
+	StartPrepSDKCall(SDKCall_Entity);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CBaseEntity::Intersects");
+	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // pOther
+	PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
+	g_hSDKIntersects = EndPrepSDKCall();
+	if (!g_hSDKIntersects)
 	{
-		LogError("[DHooks] Failed to create virtual hook for CTFWeaponBase::InternalGetEffectBarRechargeTime");
+		LogError("[SDK] Failed to create call for CBaseEntity::Intersects");
 	}
-	*/
-
+	
 	// CTFWeaponBase::GetMaxClip1 ------------------------------------------------------------------------------------------------------------
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFWeaponBase::GetMaxClip1");
@@ -736,7 +767,7 @@ void LoadGameData()
 	{
 		LogError("[DHooks] Failed to create detour for HandleRageGain");
 	}
-
+	
 	delete gamedata;
 	gamedata = LoadGameConfigFile("sdkhooks.games");
 	StartPrepSDKCall(SDKCall_Player);
@@ -805,7 +836,7 @@ public void OnMapStart()
 		{
 			SetFailState("[NAV] The NavMesh for map \"%s\" does not exist", mapName);
 		}
-		
+
 		#if defined _SteamWorks_Included
 		if (GetExtensionFileStatus("SteamWorks.ext") == 1)
 		{
@@ -816,7 +847,7 @@ public void OnMapStart()
 			SteamWorks_SetGameDescription(desc);
 		}
 		#endif
-		
+
 		LoadAssets();
 
 		if (!g_bLateLoad)
@@ -873,16 +904,15 @@ public void OnMapStart()
 		g_hCachedPlayerSounds = CreateArray(PLATFORM_MAX_PATH);
 		g_hInvalidPlayerSounds = CreateArray(PLATFORM_MAX_PATH);
 		g_hParticleEffectTable = CreateArray(128);
-
-		SentryBuster_OnMapStart();
-		BadassTank_OnMapStart();
 		
 		g_iMaxStages = FindMaxStages();
 		LoadMapSettings(mapName);
 		LoadItems();
 		LoadWeapons();
 		LoadSurvivorStats();
-
+		Call_StartForward(g_fwPrivateOnMapStart);
+		Call_Finish();
+		
 		CreateTimer(1.0, Timer_AFKManager, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(60.0, Timer_PluginMessage, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 
@@ -890,7 +920,7 @@ public void OnMapStart()
 		{
 			DespawnObjects();
 		}
-
+		
 		// Find map spawned objects
 		int entity = -1;
 		while ((entity = FindEntityByClassname(entity, "*")) != -1)
@@ -1127,6 +1157,7 @@ void LoadAssets()
 	PrecacheSound(SND_TELEPORTER_BLU, true);
 	PrecacheSound(SND_ARTIFACT_ROLL, true);
 	PrecacheSound(SND_ARTIFACT_SELECT, true);
+	PrecacheSound(SND_DOOMSDAY_EXPLODE, true);
 	PrecacheSound("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound("vo/halloween_boss/knight_attack02.mp3", true);
 	PrecacheSound("vo/halloween_boss/knight_attack03.mp3", true);
@@ -1134,7 +1165,7 @@ void LoadAssets()
 	PrecacheScriptSound(GSND_CRIT);
 	PrecacheScriptSound(GSND_MINICRIT);
 	PrecacheScriptSound(GSND_CLEAVER_HIT);
-	
+
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
 }
@@ -1422,7 +1453,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	{
 		RF2_PrintToChatAll("%t", "TanksWillArrive", g_flGracePeriodTime);
 	}
-	
+
 	if (GetRandomInt(1, g_cvArtifactChance.IntValue) == 1)
 	{
 		//RollArtifacts();
@@ -1643,7 +1674,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	{
 		TF2_AddCondition(client, TFCond_HalloweenThriller);
 	}
-	
+
 	if (GetClientTeam(client) == TEAM_ENEMY && IsArtifactActive(BLUArtifact_Silence))
 	{
 		if (GetRandomInt(1, 5) == 1)
@@ -1651,7 +1682,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 			TF2_AddCondition(client, TFCond_StealthedUserBuffFade);
 		}
 	}
-	
+
 	return Plugin_Continue;
 }
 
@@ -1879,7 +1910,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					float refChance = CalcItemMod(0, Item_PillarOfHats, 2, total);
 					float totalChance = scrapChance + recChance + refChance;
 					float result;
-					
+
 					if (RandChanceFloatEx(attacker, 0.0, 1.0, totalChance, result))
 					{
 						int item;
@@ -1895,7 +1926,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						{
 							item = Item_ScrapMetal;
 						}
-						
+
 						float pos[3];
 						GetEntPos(victim, pos);
 						pos[2] += 30.0;
@@ -1903,7 +1934,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						g_iMetalItemsDropped++;
 					}
 				}
-				
+
 				if (PlayerHasItem(attacker, Item_Dangeresque))
 				{
 					if (RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(Item_Dangeresque, 3)))
@@ -2211,18 +2242,8 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 		if (hitCount > 0)
 		{
 			EmitSoundToAll(SND_THUNDER, medic);
-
-			int shake = CreateEntityByName("env_shake");
-			DispatchKeyValue(shake, "spawnflags", "4");
-			DispatchKeyValueFloat(shake, "radius", range*3.0);
-			DispatchKeyValueFloat(shake, "amplitude", 10.0);
-			DispatchKeyValueFloat(shake, "duration", 8.0);
-			DispatchKeyValueFloat(shake, "frequency", 5.0*hitCount);
-
-			TeleportEntity(shake, eyePos);
-			DispatchSpawn(shake);
-			CreateTimer(8.0, Timer_DeleteEntity, EntIndexToEntRef(shake), TIMER_FLAG_NO_MAPCHANGE);
-
+			UTIL_ScreenShake(eyePos, 20.0, 5.0*hitCount, 8.0, range*3.0, SHAKE_START, true);
+			
 			if (!vaccinator)
 			{
 				Handle msg;
@@ -2519,18 +2540,18 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	int survivorCount = RF2_GetSurvivorCount();
 	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
-	
+
 	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
 		duration *= 0.8;
-	
+
 	duration = fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue);
 	if (IsArtifactActive(BLUArtifact_Swarm))
 	{
 		duration *= 0.6;
 	}
-	
+
 	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
-	
+
 	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + ((survivorCount-1)/3) + RF2_GetSubDifficulty() / 3;
 	spawnCount = imax(imin(spawnCount, g_cvEnemyMaxSpawnWaveCount.IntValue), g_cvEnemyMinSpawnWaveCount.IntValue);
 	float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
@@ -2761,12 +2782,12 @@ public Action Timer_PlayerHud(Handle timer)
 
 				scoreCalculated = true;
 			}
-
+			
 			SetHudTextParams(-1.0, -1.3, 0.15, 255, 100, 100, 255);
 			ShowSyncHudText(i, g_hMainHudSync,
 				"\n\n\n\nGAME OVER\n\nEnemies slain: %i\nBosses slain: %i\nStages completed: %i\nItems found: %i\nTanks destroyed: %i\nTOTAL SCORE: %i points\nRANK: %s",
 				g_iTotalEnemiesKilled, g_iTotalBossesKilled, g_iStagesCompleted, g_iTotalItemsFound, g_iTotalTanksKilled, score, rank);
-
+			
 			return Plugin_Continue;
 		}
 
@@ -2800,11 +2821,11 @@ public Action Timer_PlayerHud(Handle timer)
 		{
 			strangeItemInfo = "";
 		}
-		
+
 		miscText = "";
 		char difficultyName[32];
 		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
-		
+
 		if (IsPlayerSurvivor(i))
 		{
 			if (g_bTankBossMode && !g_bGracePeriod)
@@ -2842,7 +2863,7 @@ public Action Timer_PlayerHud(Handle timer)
 			{
 				FormatEx(miscText, sizeof(miscText), "\nSapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
 			}
-			
+
 			ShowSyncHudText(i, g_hMainHudSync, g_szSurvivorHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed,
 				hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i], g_flPlayerNextLevelXP[i],
 				g_flPlayerCash[i], g_iPlayerHauntedKeys[i], g_szHudDifficulty, strangeItemInfo, miscText);
@@ -2852,7 +2873,7 @@ public Action Timer_PlayerHud(Handle timer)
 			ShowSyncHudText(i, g_hMainHudSync, g_szEnemyHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed, hudSeconds,
 				g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo);
 		}
-		
+
 		if (g_szObjectiveHud[i][0])
 		{
 			if (GetPlayerEquipmentItem(i) != Item_Null)
@@ -2867,7 +2888,7 @@ public Action Timer_PlayerHud(Handle timer)
 			ShowSyncHudText(i, g_hObjectiveHudSync, g_szObjectiveHud[i]);
 		}
 	}
-	
+
 	return Plugin_Continue;
 }
 
@@ -2878,33 +2899,33 @@ public Action Timer_Difficulty(Handle timer)
 		g_hDifficultyTimer = null;
 		return Plugin_Stop;
 	}
-	
+
 	if (g_bGameOver || g_bGracePeriod)
 		return Plugin_Continue;
-	
+
 	float secondsToAdd = 1.0;
 	if (IsArtifactActive(REDArtifact_Patience))
 	{
 		secondsToAdd *= 0.5;
 	}
-	
+
 	if (IsArtifactActive(BLUArtifact_Haste))
 	{
 		secondsToAdd *= 2.0;
 	}
-	
+
 	g_flSecondsPassed += secondsToAdd;
 	if (g_flSecondsPassed >= 60.0 * (float(g_iMinutesPassed+1)))
 	{
 		float seconds = g_flSecondsPassed - (float(g_iMinutesPassed) * 60.0);
 		g_iMinutesPassed += RoundToFloor(seconds/60.0);
 	}
-	
+
 	float timeFactor = g_flSecondsPassed / 10.0;
 	float playerFactor = fmax(1.0 + float(RF2_GetSurvivorCount()-1) * 0.12, 1.0);
 	float value = fmax(1.08 - (0.005 * float(RF2_GetSurvivorCount()-1)), 1.02);
 	float stageFactor = Pow(value, float(g_iStagesCompleted));
-	
+
 	float difficultyFactor = GetDifficultyFactor(RF2_GetDifficulty());
 	float oldDifficultyCoeff = g_flDifficultyCoeff;
 	g_flDifficultyCoeff = (timeFactor * stageFactor * playerFactor) * difficultyFactor;
@@ -3033,7 +3054,7 @@ public Action Timer_PlayerTimer(Handle timer)
 		{
 			TF2_MakeBleed(i, i, 60.0);
 		}
-		
+
 		if (g_flPlayerVampireSapperCooldown[i] > 0.0)
 		{
 			g_flPlayerVampireSapperCooldown[i] -= 0.1;
@@ -3057,7 +3078,7 @@ public Action Timer_PluginMessage(Handle timer)
 
 	static int message;
 	const int maxMessages = 5;
-	
+
 	switch (message)
 	{
 		case 0: RF2_PrintToChatAll("%t", "TipSettings");
@@ -3368,18 +3389,18 @@ public Action Timer_SuicideTeleport(Handle timer, DataPack pack)
 {
 	pack.Reset();
 	int client = GetClientOfUserId(pack.ReadCell());
-	
+
 	if (client == 0)
 		return Plugin_Continue;
-	
+
 	if (!IsClientInGame(client) || !IsPlayerAlive(client))
 		return Plugin_Continue;
-	
+
 	float pos[3];
 	pos[0] = pack.ReadFloat();
 	pos[1] = pack.ReadFloat();
 	pos[2] = pack.ReadFloat();
-	
+
 	TeleportEntity(client, pos);
 	return Plugin_Continue;
 }
@@ -3400,7 +3421,7 @@ public void Hook_PreThink(int client)
 			PlayMusicTrack(client);
 		}
 	}
-	
+
 	if (!IsPlayerAlive(client))
 		return;
 
@@ -3408,7 +3429,7 @@ public void Hook_PreThink(int client)
 	{
 		TFBot_Think(g_TFBot[client]);
 	}
-	
+
 	TFClassType class = TF2_GetPlayerClass(client);
 	if (class == TFClass_Engineer)
 	{
@@ -3449,7 +3470,7 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	g_bPlayerInCondition[client][condition] = true;
 	if (!RF2_IsEnabled())
 		return;
-	
+
 	if (condition == TFCond_Jarated || condition == TFCond_Milked)
 	{
 		if (GetClientTeam(client) == TEAM_ENEMY)
@@ -3700,7 +3721,7 @@ public void TF2_OnWaitingForPlayersEnd()
 {
 	if (!RF2_IsEnabled())
 		return;
-	
+
 	g_bWaitingForPlayers = false;
 	PrintToServer("%T", "WaitingEnd", LANG_SERVER);
 }
@@ -3709,7 +3730,7 @@ public Action Timer_RestartGameWait(Handle timer)
 {
 	if (!g_bWaitingForPlayers)
 		return Plugin_Continue;
-	
+
 	PrintToServer("[RF2] Waited too long for players to join. Restarting game...");
 	ReloadPlugin(true);
 	return Plugin_Continue;
@@ -4466,9 +4487,9 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 							damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 1);
 						}
 					}
-					
+
 					// Executioner has a chance to cause bleeding on crit damage
-					if (IsValidClient(victim) && PlayerHasItem(attacker, Item_Executioner) 
+					if (IsValidClient(victim) && PlayerHasItem(attacker, Item_Executioner)
 						&& damageCustom != TF_CUSTOM_BLEEDING && !TF2_IsPlayerInCondition(victim, TFCond_Bonked) && !g_bExecutionerBleedCooldown[attacker])
 					{
 						if (RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(Item_Executioner, 0) * proc))
@@ -4482,7 +4503,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			}
 		}
 	}
-	
+
 	// Changing the crit type here will not change the damage, so we have to modify the damage ourselves.
 	// An issue will also occur when changing the crit type here where it plays the wrong effect or no effect at all.
 	// We can only fake a missing crit effect; an incorrect crit effect (such as minicrit -> crit spawning the minicrit effect) cannot be fixed.
