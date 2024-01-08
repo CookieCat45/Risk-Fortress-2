@@ -600,6 +600,17 @@ float GetWeaponProcCoefficient(int weapon)
 	return 1.0;
 }
 
+float GetDamageCustomProcCoefficient(int damageCustom)
+{
+	switch (damageCustom)
+	{
+		case TF_CUSTOM_BLEEDING: return 0.2;
+		case TF_CUSTOM_BURNING, TF_CUSTOM_BURNING_ARROW, TF_CUSTOM_BURNING_FLARE: return 0.75;
+	}
+	
+	return 1.0;
+}
+
 bool IsEffectBarWeapon(int weapon)
 {
 	static char classname[32];

@@ -103,3 +103,4 @@ scripting/compiled/rf2.smx
 scripting/goomba.sp
 scripting/include/goomba.inc
 translations/goomba.phrases.txt
+scripting/goomba_tf.sp

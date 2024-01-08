@@ -81,6 +81,9 @@ enum
 	ItemPyro_LastBreath = 64,
 	Item_SaintMark = 65,
 	ItemDemo_ScotchBonnet = 66,
+	ItemScout_LongFallBoots = 67,
+	ItemSniper_Bloodhound = 68,
+	ItemSoldier_HawkWarrior = 69,
 	Item_MaxValid,
 };
 

@@ -23,7 +23,6 @@ float g_flItemSpriteScale[MAX_ITEMS] = {1.0, ...};
 
 char g_szItemName[MAX_ITEMS][MAX_NAME_LENGTH];
 char g_szItemDesc[MAX_ITEMS][512];
-char g_szItemDescHint[MAX_ITEMS][512];
 char g_szItemUnusualEffectName[MAX_ITEMS][MAX_NAME_LENGTH];
 
 bool g_bItemInDropPool[MAX_ITEMS];
@@ -108,21 +107,24 @@ void LoadItems()
 	for (int i = 0; i < Item_MaxValid; i++)
 	{
 		if (i == 0 && itemKey.GotoFirstSubKey() || itemKey.GotoNextKey())
-		{	
+		{
 			// This value will correspond to the item's index in the plugin so we know what the item does.
 			item = itemKey.GetNum("item_type", Item_Null);
 			itemKey.GetString("name", g_szItemName[item], sizeof(g_szItemName[]), "Unnamed Item");
-
+			
 			itemKey.GetString("desc", g_szItemDesc[item], sizeof(g_szItemDesc[]), "(No description found...)");
-			itemKey.GetString("desc_hint", g_szItemDescHint[item], sizeof(g_szItemDescHint[]), g_szItemDesc[item]);
-			CRemoveTags(g_szItemDescHint[item], sizeof(g_szItemDescHint[]));
+			CRemoveTags(g_szItemDesc[item], sizeof(g_szItemDesc[]));
 			char dummy[1];
 			dummy[0] = 10;
-			ReplaceString(g_szItemDescHint[item], sizeof(g_szItemDescHint[]), "\\n", dummy, false);
+			ReplaceString(g_szItemDesc[item], sizeof(g_szItemDesc[]), "\\n", dummy, false);
 			
 			itemKey.GetString("equip_regions", g_szItemEquipRegion[item], sizeof(g_szItemEquipRegion[]), "none");
 			itemKey.GetString("sprite", g_szItemSprite[item], sizeof(g_szItemSprite[]), MAT_DEBUGEMPTY);
 			g_bItemInDropPool[item] = asBool(itemKey.GetNum("in_item_pool", true));
+			if (item == ItemScout_LongFallBoots)
+			{
+				g_bItemInDropPool[item] = IsGoombaAvailable();
+			}
 			
 			if (FileExists(g_szItemSprite[item], true))
 			{
@@ -529,7 +531,7 @@ bool PickupItem(int client)
 		GetItemName(itemIndex, itemName, sizeof(itemName));
 		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
 		GetQualityName(quality, qualityName, sizeof(qualityName));
-		PrintKeyHintText(client, "%s (%s)\n%s", g_szItemName[itemIndex], qualityName, g_szItemDescHint[itemIndex]);
+		PrintKeyHintText(client, "%s (%s)\n%s", g_szItemName[itemIndex], qualityName, g_szItemDesc[itemIndex]);
 
 		if (IsEquipmentItem(itemIndex))
 		{
@@ -540,9 +542,7 @@ bool PickupItem(int client)
 			RF2_PrintToChatAll("%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, itemIndex));
 		}
 		
-		//RF2_PrintToChat(client, "%s%s{default}: %s", qualityTag, itemName, g_szItemDesc[itemIndex]);
 		EmitSoundToAll(SND_ITEM_PICKUP, client);
-		
 		if (!dropped || spawner == client || originalSpawner == client)
 		{
 			if (!dropped)
@@ -1759,7 +1759,6 @@ const float endPos[3]=NULL_VECTOR, float damage, int damageFlags, float size, in
 		TE_TFParticle("drg_manmelter_impact", pos);
 	}
 	
-	
 	// hitbox
 	float mins[3], maxs[3];
 	mins[0] = -size; mins[1] = -size; mins[2] = -size;
@@ -2129,3 +2128,19 @@ bool IsItemInLogbook(int client, int item)
 	FormatEx(itemId, sizeof(itemId), ";%i;", item);
 	return StrContains(buffer, itemId, false) != -1;
 }
+
+#if defined _goomba_included_
+public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &damageBonus, float &jumpPower)
+{
+	if (PlayerHasItem(attacker, ItemScout_LongFallBoots) && CanUseCollectorItem(attacker, ItemScout_LongFallBoots))
+	{
+		// Goombas by default do the victim's health in damage, let's instead give it a base damage value
+		damageMultiplier = 0.0;
+		damageBonus = GetItemMod(ItemScout_LongFallBoots, 0) * (1.0 + CalcItemMod(attacker, ItemScout_LongFallBoots, 1, -1));
+		jumpPower = GetItemMod(ItemScout_LongFallBoots, 2) * (1.0 * CalcItemMod(attacker, ItemScout_LongFallBoots, 3, -1));
+		return Plugin_Changed;
+	}
+	
+	return Plugin_Handled;
+}
+#endif

@@ -356,60 +356,11 @@ stock void AddMaterialToDownloadsTable(const char[] file)
 	}
 }
 
-/*
-void TE_DrawBox(int client, const float origin[3], const float endOrigin[3], const float inMins[3], const float inMaxs[3], float duration = 0.1, int laserIndex, int color[4])
+// Checks if the goomba plugin is loaded, do not call until after OnAllPluginsLoaded()
+bool IsGoombaAvailable()
 {
-	float mins[3], maxs[3];
-	CopyVectors(inMins, mins);
-	CopyVectors(inMaxs, maxs);
-	if( mins[0] == maxs[0] && mins[1] == maxs[1] && mins[2] == maxs[2] )
-	{
-		mins = {-15.0, -15.0, -15.0};
-		maxs = {15.0, 15.0, 15.0};
-	}
-	else
-	{
-		float start[3], end[3];
-		CopyVectors(origin, start);
-		CopyVectors(endOrigin, end);
-		AddVectors(start, maxs, maxs);
-		AddVectors(end, mins, mins);
-	}
-	
-	float pos1[3], pos2[3], pos3[3], pos4[3], pos5[3], pos6[3];
-	pos1 = maxs;
-	pos1[0] = mins[0];
-	pos2 = maxs;
-	pos2[1] = mins[1];
-	pos3 = maxs;
-	pos3[2] = mins[2];
-	pos4 = mins;
-	pos4[0] = maxs[0];
-	pos5 = mins;
-	pos5[1] = maxs[1];
-	pos6 = mins;
-	pos6[2] = maxs[2];
-	
-	TE_SendBeam(client, maxs, pos1, duration, laserIndex, color);
-	TE_SendBeam(client, maxs, pos2, duration, laserIndex, color);
-	TE_SendBeam(client, maxs, pos3, duration, laserIndex, color);
-	TE_SendBeam(client, pos6, pos1, duration, laserIndex, color);
-	TE_SendBeam(client, pos6, pos2, duration, laserIndex, color);
-	TE_SendBeam(client, pos6, mins, duration, laserIndex, color);
-	TE_SendBeam(client, pos4, mins, duration, laserIndex, color);
-	TE_SendBeam(client, pos5, mins, duration, laserIndex, color);
-	TE_SendBeam(client, pos5, pos1, duration, laserIndex, color);
-	TE_SendBeam(client, pos5, pos3, duration, laserIndex, color);
-	TE_SendBeam(client, pos4, pos3, duration, laserIndex, color);
-	TE_SendBeam(client, pos4, pos2, duration, laserIndex, color);
+	return g_bGoombaAvailable;
 }
-
-void TE_SendBeam(int client, const float mins[3], const float maxs[3], float duration = 0.1, int laserIndex, int color[4])
-{
-	TE_SetupBeamPoints(mins, maxs, laserIndex, laserIndex, 0, 30, duration, 1.0, 1.0, 1, 0.0, color, 30);
-	TE_SendToClient(client);
-}
-*/
 
 // StrContains(), but the string needs to be an exact match.
 // This means there must be either whitespace or out-of-bounds characters before and after the found string.

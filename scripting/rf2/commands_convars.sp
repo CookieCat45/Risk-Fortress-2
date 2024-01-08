@@ -539,6 +539,12 @@ public Action Command_VoteSkipWait(int client, int args)
 		return Plugin_Handled;
 	}
 	
+	if (IsVoteInProgress())
+	{
+		RF2_ReplyToCommand(client, "%t", "VoteInProgress");
+		return Plugin_Handled;
+	}
+	
 	if (g_bWaitingForPlayers)
 	{
 		// wait until all human players are connected, unless singleplayer
@@ -746,7 +752,7 @@ void ShowItemInfo(int client, int item)
 		menu.AddItem("cooldown", cooldown, ITEMDRAW_DISABLED);
 	}
 	
-	menu.AddItem("desc", g_szItemDescHint[item], ITEMDRAW_DISABLED);
+	menu.AddItem("desc", g_szItemDesc[item], ITEMDRAW_DISABLED);
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
@@ -1400,7 +1406,7 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 				int item = StringToInt(info);
 				char quality[32];
 				GetQualityName(GetItemQuality(item), quality, sizeof(quality));
-				PrintKeyHintText(param1, "%s (%s)\n%s", g_szItemName[item], quality, g_szItemDescHint[item]);
+				PrintKeyHintText(param1, "%s (%s)\n%s", g_szItemName[item], quality, g_szItemDesc[item]);
 				ShowItemDropMenu(param1, item);
 			}
 			else

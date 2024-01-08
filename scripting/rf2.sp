@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.3b"
+#define PLUGIN_VERSION "0.3.1b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -331,6 +331,8 @@ bool g_bMapChanging;
 bool g_bConVarsModified;
 bool g_bPluginReloading;
 bool g_bTankBossMode;
+bool g_bGoombaAvailable;
+bool g_bRoundEnding;
 
 int g_iTotalEnemiesKilled;
 int g_iTotalBossesKilled;
@@ -862,12 +864,13 @@ public void OnMapStart()
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("tf_bot_force_class").SetString("scout"); // prevent console spam
-
+		FindConVar("sm_vote_progress_hintbox").SetBool(true);
+		
 		// Why is this a development only ConVar Valve?
 		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
 		waitTime.Flags &= ~FCVAR_DEVELOPMENTONLY;
 		waitTime.SetInt(WAIT_TIME_DEFAULT);
-
+		
 		// Round events
 		HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Pre);
 		HookEvent("teamplay_round_win", OnRoundEnd, EventHookMode_Post);
@@ -970,7 +973,7 @@ public void OnConfigsExecuted()
 		FindConVar("tf_forced_holiday").SetInt(2);
 		FindConVar("tf_player_movement_restart_freeze").SetBool(false);
 		FindConVar("mp_bonusroundtime").SetInt(20);
-
+		
 		// no SourceTV
 		FindConVar("tv_enable").SetBool(false);
 		for (int i = 1; i <= MaxClients; i++)
@@ -1062,6 +1065,7 @@ void CleanUp()
 	g_bRoundActive = false;
 	g_bGracePeriod = false;
 	g_bWaitingForPlayers = false;
+	g_bRoundEnding = false;
 	g_hPlayerTimer = null;
 	g_hHudTimer = null;
 	g_hDifficultyTimer = null;
@@ -1078,7 +1082,7 @@ void CleanUp()
 	g_bThrillerActive = false;
 	g_iThrillerRepeatCount = 0;
 	g_iMetalItemsDropped = 0;
-
+	
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
 	delete g_hCachedPlayerSounds;
@@ -1203,6 +1207,11 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_bot_force_class"));
 }
 
+public void OnAllPluginsLoaded()
+{
+	g_bGoombaAvailable = LibraryExists("goomba");
+}
+
 public bool OnClientConnect(int client, char[] rejectmsg, int maxlen)
 {
 	if (RF2_IsEnabled() && GetClientCount(false)-1 >= g_cvMaxHumanPlayers.IntValue)
@@ -1310,7 +1319,7 @@ void CheckRedTeam(int client)
 			count++;
 	}
 
-	if (count <= 0) // Everybody on RED is gone, game over
+	if (count <= 0 && !g_bRoundEnding) // Everybody on RED is gone, game over
 	{
 		RF2_PrintToChatAll("%t", "AllHumansDisconnected");
 		GameOver();
@@ -1561,7 +1570,8 @@ public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 			RF2_PrintToChat(i, "%t", "GainedSurvivorPoints");
 		}
 	}
-
+	
+	g_bRoundEnding = true;
 	int winningTeam = event.GetInt("team");
 	if (winningTeam == TEAM_SURVIVOR)
 	{
@@ -1709,11 +1719,11 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
-
+	
 	int deathFlags = event.GetInt("death_flags");
 	if (deathFlags & TF_DEATHFLAG_DEADRINGER)
 		return Plugin_Continue;
-
+	
 	int victim = GetClientOfUserId(event.GetInt("userid"));
 	if (g_bWaitingForPlayers)
 	{
@@ -2045,16 +2055,15 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					lastMan = i;
 				}
 			}
-
-			if (alive == 0 && !g_cvDebugDontEndGame.BoolValue) // Game over, man!
+			
+			if (alive == 0 && !g_cvDebugDontEndGame.BoolValue && !g_bRoundEnding) // Game over, man!
 			{
 				GameOver();
 			}
 			else if (alive == 1)
 			{
 				PrintHintText(lastMan, "%t", "LastMan");
-				EmitSoundToClient(lastMan, SND_LASTMAN);
-
+				EmitSoundToAll(SND_LASTMAN);
 				SpeakResponseConcept_MVM(lastMan, "TLK_MVM_LAST_MAN_STANDING");
 			}
 		}
@@ -2069,7 +2078,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	{
 		SetClientName(victim, g_szPlayerOriginalName[victim]);
 	}
-
+	
 	RefreshClient(victim);
 	return action;
 }
@@ -2094,23 +2103,31 @@ public Action OnPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 	int victim = GetClientOfUserId(event.GetInt("userid"));
 	float damage = float(event.GetInt("damageamount"));
 	int damageCustom = event.GetInt("custom");
-
-	if (attacker > 0 && PlayerHasItem(attacker, ItemSniper_HolyHunter) && CanUseCollectorItem(attacker, ItemSniper_HolyHunter))
+	
+	if (damageCustom == TF_CUSTOM_HEADSHOT || damageCustom == TF_CUSTOM_HEADSHOT_DECAPITATION && attacker > 0)
 	{
-		if (damageCustom == TF_CUSTOM_HEADSHOT || damageCustom == TF_CUSTOM_HEADSHOT_DECAPITATION)
+		if (PlayerHasItem(attacker, ItemSniper_HolyHunter) && CanUseCollectorItem(attacker, ItemSniper_HolyHunter))
 		{
 			float pos[3];
 			GetEntPos(victim, pos);
 			pos[2] += 30.0;
-
 			float radiusDamage = damage * GetItemMod(ItemSniper_HolyHunter, 0);
 			radiusDamage *= 1.0 + CalcItemMod(attacker, ItemSniper_HolyHunter, 1, -1);
 			float radius = GetItemMod(ItemSniper_HolyHunter, 2);
 			radius *= 1.0 + CalcItemMod(attacker, ItemSniper_HolyHunter, 3, -1);
 			DoRadiusDamage(attacker, attacker, ItemSniper_HolyHunter, pos, radiusDamage, DMG_BLAST, radius, GetPlayerWeaponSlot(attacker, WeaponSlot_Primary), _, true);
 		}
+		
+		if (PlayerHasItem(attacker, ItemSniper_Bloodhound) && CanUseCollectorItem(attacker, ItemSniper_Bloodhound))
+		{
+			int stacks = RoundToFloor(GetItemMod(ItemSniper_Bloodhound, 0) + CalcItemMod(attacker, ItemSniper_Bloodhound, 1, -1));
+			for (int i = 1; i <= stacks; i++)
+			{
+				TF2_MakeBleed(victim, attacker, GetItemMod(ItemSniper_Bloodhound, 0));
+			}
+		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -2118,7 +2135,7 @@ public Action Timer_RespawnSurvivor(Handle timer, int client)
 {
 	if ((client = GetClientOfUserId(client)) == 0 || !IsPlayerSurvivor(client))
 		return Plugin_Continue;
-
+	
 	MakeSurvivor(client, RF2_GetSurvivorIndex(client), false, false);
 	return Plugin_Continue;
 }
@@ -2127,7 +2144,7 @@ public Action Timer_ChangeTeamOnDeath(Handle timer, int client)
 {
 	if ((client = GetClientOfUserId(client)) == 0)
 		return Plugin_Continue;
-
+	
 	ChangeClientTeam(client, TEAM_ENEMY);
 	return Plugin_Continue;
 }
@@ -3470,7 +3487,19 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	g_bPlayerInCondition[client][condition] = true;
 	if (!RF2_IsEnabled())
 		return;
-
+	
+	if (condition == TFCond_BlastJumping)
+	{
+		if (PlayerHasItem(client, ItemSoldier_HawkWarrior) && CanUseCollectorItem(client, ItemSoldier_HawkWarrior))
+		{
+			float meleeRangeBonus = fmin(1.0 + CalcItemMod(client, ItemSoldier_HawkWarrior, 1), 1.0 + GetItemMod(ItemSoldier_HawkWarrior, 2));
+			int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
+			if (melee != -1)
+			{
+				TF2Attrib_SetByDefIndex(melee, 264, meleeRangeBonus);
+			}
+		}
+	}
 	if (condition == TFCond_Jarated || condition == TFCond_Milked)
 	{
 		if (GetClientTeam(client) == TEAM_ENEMY)
@@ -3503,11 +3532,18 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 public void TF2_OnConditionRemoved(int client, TFCond condition)
 {
 	g_bPlayerInCondition[client][condition] = false;
-
 	if (!RF2_IsEnabled())
 		return;
-
-	if (condition == TFCond_Buffed && PlayerHasItem(client, Item_MisfortuneFedora))
+	
+	if (condition == TFCond_BlastJumping && CanUseCollectorItem(client, ItemSoldier_HawkWarrior))
+	{
+		int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
+		if (melee != -1)
+		{
+			TF2Attrib_RemoveByDefIndex(melee, 264);
+		}
+	}
+	else if (condition == TFCond_Buffed && PlayerHasItem(client, Item_MisfortuneFedora))
 	{
 		TF2_AddCondition(client, TFCond_Buffed);
 		return;
@@ -3950,7 +3986,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		return Plugin_Continue;
 	}
-
+	
 	bool victimIsClient = IsValidClient(victim);
 	bool victimIsBuilding = IsBuilding(victim);
 	bool victimIsNpc = IsNPC(victim);
@@ -3958,12 +3994,12 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		return Plugin_Continue;
 	}
-
+	
 	if (!ShouldDamageOwner(inflictor) && victim == GetEntPropEnt(inflictor, Prop_Send, "m_hOwnerEntity"))
 	{
 		return Plugin_Handled;
 	}
-
+	
 	float originalDamage = damage;
 	bool ignoreResist;
 	if (!ignoreResist && attackerIsClient && weapon > -1)
@@ -3974,7 +4010,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			ignoreResist = true;
 		}
 	}
-
+	
 	if (g_bFakeFireball[inflictor])
 	{
 		damageCustom = TF_CUSTOM_SPELL_FIREBALL;
@@ -3988,7 +4024,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		damage *= 0.8;
 	}
-
+	
 	static char inflictorClassname[64];
 	GetEntityClassname(inflictor, inflictorClassname, sizeof(inflictorClassname));
 
@@ -4023,19 +4059,21 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			g_iPlayerLastAttackedTank[attacker] = victim;
 		}
 	}
-
+	
 	// Proc coefficient calculation. Like Risk of Rain 2, this is a value that affects
 	// the rate at which certain items proc (such as Law).
 	// Important for things like miniguns and flamethrowers that send tons of damage events.
 	float proc = 1.0;
-
+	
 	if (attackerIsClient)
 	{
+		proc *= GetDamageCustomProcCoefficient(damageCustom);
+		
 		if (weapon > 0)
 		{
 			proc *= GetWeaponProcCoefficient(weapon);
 		}
-
+		
 		if (inflictorIsBuilding)
 		{
 			proc *= 0.5;
@@ -4102,16 +4140,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 
 		if (inflictorIsBuilding)
 		{
-			/*
-			if (victimIsClient && PlayerHasItem(attacker, ItemEngi_HeadOfDefense) && CanUseCollectorItem(attacker, ItemEngi_HeadOfDefense))
-			{
-				if (GetEntProp(inflictor, Prop_Send, "m_bMiniBuilding"))
-				{
-					TF2_AddCondition(victim, TFCond_MarkedForDeathSilent, GetItemMod(ItemEngi_HeadOfDefense, 1), attacker);
-				}
-			}
-			*/
-
 			if (PlayerHasItem(attacker, ItemEngi_BrainiacHairpiece) && CanUseCollectorItem(attacker, ItemEngi_BrainiacHairpiece))
 			{
 				if (g_flSentryNextLaserTime[inflictor] <= GetTickedTime()
@@ -4252,6 +4280,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				if (PlayerHasItem(attacker, Item_SaxtonHat))
 				{
 					damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 0);
+				}
+				
+				if (PlayerHasItem(attacker, ItemSoldier_HawkWarrior) && CanUseCollectorItem(attacker, ItemSoldier_HawkWarrior))
+				{
+					if (TF2_IsPlayerInCondition(attacker, TFCond_BlastJumping))
+					{
+						damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_HawkWarrior, 0);
+					}
 				}
 			}
 			else if (rangedDamage)
