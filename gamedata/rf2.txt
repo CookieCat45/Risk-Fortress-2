@@ -27,6 +27,11 @@
 		}
 		"Signatures"
 		{
+			"CBaseEntity::Intersects"
+			{
+				"linux"		"@_ZN11CBaseEntity10IntersectsEPS_"
+				"windows"	"\x55\x8B\xEC\x83\x2A\x18\x00\x56\x74\x6E\x8B\x75\x08\x83\x2A\x18\x00\x74\x65\x8B\x2A\x2A\x2A\x00\x00\x81\x2A\x2A\x2A\x00\x00\xD9\xEE\x57\x51"
+			}
 			"CTFWeaponBase::GetMaxClip1"
 			{
 				"linux"		"@_ZNK13CTFWeaponBase11GetMaxClip1Ev"
