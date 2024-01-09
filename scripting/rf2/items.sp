@@ -2136,8 +2136,8 @@ public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &
 	{
 		// Goombas by default do the victim's health in damage, let's instead give it a base damage value
 		damageMultiplier = 0.0;
-		damageBonus = GetItemMod(ItemScout_LongFallBoots, 0) * (1.0 + CalcItemMod(attacker, ItemScout_LongFallBoots, 1, -1));
-		jumpPower = GetItemMod(ItemScout_LongFallBoots, 2) * (1.0 * CalcItemMod(attacker, ItemScout_LongFallBoots, 3, -1));
+		damageBonus = GetItemMod(ItemScout_LongFallBoots, 0) + (1.0 + CalcItemMod(attacker, ItemScout_LongFallBoots, 1, -1));
+		jumpPower = GetItemMod(ItemScout_LongFallBoots, 2) + (1.0 * CalcItemMod(attacker, ItemScout_LongFallBoots, 3, -1));
 		return Plugin_Changed;
 	}
 	

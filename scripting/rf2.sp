@@ -1169,7 +1169,7 @@ void LoadAssets()
 	PrecacheScriptSound(GSND_CRIT);
 	PrecacheScriptSound(GSND_MINICRIT);
 	PrecacheScriptSound(GSND_CLEAVER_HIT);
-
+	
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
 }
@@ -1178,7 +1178,7 @@ void ResetConVars()
 {
 	ResetConVar(FindConVar("sv_alltalk"));
 	ResetConVar(FindConVar("sv_quota_stringcmdspersecond"));
-
+	ResetConVar(FindConVar("sm_vote_progress_hintbox"));
 	ResetConVar(FindConVar("mp_waitingforplayers_time"));
 	ResetConVar(FindConVar("mp_teams_unbalance_limit"));
 	ResetConVar(FindConVar("mp_forcecamera"));
@@ -1188,14 +1188,12 @@ void ResetConVars()
 	ResetConVar(FindConVar("mp_humans_must_join_team"));
 	ResetConVar(FindConVar("mp_bonusroundtime"));
 	ResetConVar(FindConVar("tv_enable"));
-
 	ResetConVar(FindConVar("tf_use_fixed_weaponspreads"));
 	ResetConVar(FindConVar("tf_avoidteammates_pushaway"));
 	ResetConVar(FindConVar("tf_dropped_weapon_lifetime"));
 	ResetConVar(FindConVar("tf_weapon_criticals"));
 	ResetConVar(FindConVar("tf_forced_holiday"));
 	ResetConVar(FindConVar("tf_player_movement_restart_freeze"));
-
 	ResetConVar(FindConVar("tf_bot_defense_must_defend_time"));
 	ResetConVar(FindConVar("tf_bot_offense_must_push_time"));
 	ResetConVar(FindConVar("tf_bot_taunt_victim_chance"));
@@ -1585,15 +1583,14 @@ public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 		{
 			nextStage++;
 		}
-
+		
 		CreateTimer(14.0, Timer_SetNextStage, nextStage, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else if (winningTeam == TEAM_ENEMY)
 	{
 		g_bGameOver = true;
-		CreateTimer(14.0, Timer_GameOver, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -2743,12 +2740,6 @@ public Action Timer_SetNextStage(Handle timer, int stage)
 	return Plugin_Continue;
 }
 
-public Action Timer_GameOver(Handle timer)
-{
-	ReloadPlugin(true);
-	return Plugin_Continue;
-}
-
 public Action Timer_PlayerHud(Handle timer)
 {
 	if (!RF2_IsEnabled())
@@ -3766,7 +3757,7 @@ public Action Timer_RestartGameWait(Handle timer)
 {
 	if (!g_bWaitingForPlayers)
 		return Plugin_Continue;
-
+	
 	PrintToServer("[RF2] Waited too long for players to join. Restarting game...");
 	ReloadPlugin(true);
 	return Plugin_Continue;
@@ -3776,7 +3767,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 {
 	if (!RF2_IsEnabled() || entity < 0 || entity >= MAX_EDICTS)
 		return;
-
+	
 	g_iItemDamageProc[entity] = Item_Null;
 
 	g_bDontDamageOwner[entity] = false;
