@@ -37,7 +37,6 @@ void ForceTeamWin(int team)
 void GameOver()
 {
 	g_bGameOver = true;
-	
 	int fog = CreateEntityByName("env_fog_controller");
 	DispatchKeyValue(fog, "spawnflags", "1");
 	DispatchKeyValueInt(fog, "fogenabled", 1);
@@ -45,7 +44,6 @@ void GameOver()
 	DispatchKeyValueFloat(fog, "fogend", 800.0);
 	DispatchKeyValueFloat(fog, "fogmaxdensity", 0.5);
 	DispatchKeyValue(fog, "fogcolor", "15 0 0");
-		
 	DispatchSpawn(fog);				
 	AcceptEntityInput(fog, "TurnOn");
 	
@@ -60,6 +58,7 @@ void GameOver()
 	PrintToServer("[RF2] Game Over!");
 	EmitSoundToAll(SND_GAME_OVER);
 	ForceTeamWin(TEAM_ENEMY);
+	CreateTimer(14.0, Timer_GameOver, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 void ReloadPlugin(bool changeMap=true)

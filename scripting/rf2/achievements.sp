@@ -24,7 +24,7 @@ void TriggerAchievement(int client, int achievement)
 {
 	if (IsFakeClient(client) || IsAchievementUnlocked(client, achievement))
 		return;
-
+	
 	int progress = GetAchievementProgress(client, achievement);
 	int cap = GetAchievementGoal(achievement);
 	progress++;
@@ -101,8 +101,10 @@ void OnAchievementUnlocked(int client, int achievement)
 			continue;
 		
 		GetAchievementName(achievement, name, sizeof(name), i);
-		RF2_PrintToChat(i, "%N has earned the achievement {lightgreen}%s", client, name);
+		RF2_PrintToChat(i, "{yellow}%N{default} has earned the achievement {lightgreen}%s", client, name);
 	}
+	
+	PrintHintText(client, "To view your achievements, use the /rf2_achievements command.");
 }
 
 int GetAchievementInternalName(int achievement, char[] buffer, int size)

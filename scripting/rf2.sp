@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.3.1b"
+#define PLUGIN_VERSION "0.3.2b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -334,6 +334,7 @@ bool g_bPluginReloading;
 bool g_bTankBossMode;
 bool g_bGoombaAvailable;
 bool g_bRoundEnding;
+float g_flWaitRestartTime;
 
 int g_iTotalEnemiesKilled;
 int g_iTotalBossesKilled;
@@ -482,10 +483,8 @@ PrivateForward g_fwPrivateOnMapStart;
 // ConVars
 ConVar g_cvMaxHumanPlayers;
 ConVar g_cvMaxSurvivors;
+ConVar g_cvGameResetTime;
 ConVar g_cvAlwaysSkipWait;
-ConVar g_cvDebugNoMapChange;
-ConVar g_cvDebugShowDifficultyCoeff;
-ConVar g_cvDebugDontEndGame;
 ConVar g_cvEnableAFKManager;
 ConVar g_cvAFKManagerKickTime;
 ConVar g_cvAFKLimit;
@@ -498,7 +497,6 @@ ConVar g_cvBotWanderMaxDist;
 ConVar g_cvBotWanderMinDist;
 ConVar g_cvSubDifficultyIncrement;
 ConVar g_cvDifficultyScaleMultiplier;
-ConVar g_cvDebugShowObjectSpawns;
 ConVar g_cvMaxObjects;
 ConVar g_cvCashBurnTime;
 ConVar g_cvSurvivorHealthScale;
@@ -536,6 +534,10 @@ ConVar g_cvEngiMetalRegenInterval;
 ConVar g_cvEngiMetalRegenAmount;
 ConVar g_cvHauntedKeyDropChanceMax;
 ConVar g_cvArtifactChance;
+ConVar g_cvDebugNoMapChange;
+ConVar g_cvDebugShowDifficultyCoeff;
+ConVar g_cvDebugDontEndGame;
+ConVar g_cvDebugShowObjectSpawns;
 
 // Cookies
 Cookie g_coMusicEnabled;
@@ -602,7 +604,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 		strcopy(error, err_max, "This plugin was developed for use with Team Fortress 2 only");
 		return APLRes_Failure;
 	}
-
+	
 	g_bLateLoad = late;
 	LoadNatives();
 	return APLRes_Success;
@@ -939,11 +941,11 @@ public void OnMapStart()
 				SetEntProp(entity, Prop_Data, "m_bMapPlaced", true);
 			}
 		}
-
+		
 		// If the game has already started, restart if we wait too long for players
-		if (g_bGameInitialized)
+		if (g_bGameInitialized && g_cvGameResetTime.FloatValue > 0.0)
 		{
-			CreateTimer(600.0, Timer_RestartGameWait, _, TIMER_FLAG_NO_MAPCHANGE);
+			g_flWaitRestartTime = GetTickedTime() + g_cvGameResetTime.FloatValue;
 		}
 	}
 	else
@@ -1081,6 +1083,7 @@ void CleanUp()
 	g_bThrillerActive = false;
 	g_iThrillerRepeatCount = 0;
 	g_iMetalItemsDropped = 0;
+	g_flWaitRestartTime = 0.0;
 	
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
@@ -1573,6 +1576,15 @@ public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 	int winningTeam = event.GetInt("team");
 	if (winningTeam == TEAM_SURVIVOR)
 	{
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+				continue;
+			
+			UpdatePlayerXP(i, g_flPlayerCash[i]/3.0);
+			g_flPlayerCash[i] = 0.0;
+		}
+		
 		int nextStage = RF2_GetCurrentStage();
 		if (nextStage >= RF2_GetMaxStages()-1)
 		{
@@ -2065,7 +2077,6 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			if (alive == 0 && !g_cvDebugDontEndGame.BoolValue && !g_bRoundEnding) // Game over, man!
 			{
 				GameOver();
-				CreateTimer(14.0, Timer_GameOver, _, TIMER_FLAG_NO_MAPCHANGE);
 			}
 			else if (alive == 1)
 			{
@@ -2084,7 +2095,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		}
 	}
 	
-	if (victimTeam == TEAM_ENEMY)
+	if (victimTeam == TEAM_ENEMY && !IsFakeClient(victim))
 	{
 		SetClientName(victim, g_szPlayerOriginalName[victim]);
 	}
@@ -3119,8 +3130,8 @@ public Action Timer_PluginMessage(Handle timer)
 		return Plugin_Stop;
 
 	static int message;
-	const int maxMessages = 5;
-
+	const int maxMessages = 6;
+	
 	switch (message)
 	{
 		case 0: RF2_PrintToChatAll("%t", "TipSettings");
@@ -3129,8 +3140,9 @@ public Action Timer_PluginMessage(Handle timer)
 		case 3: RF2_PrintToChatAll("%t", "TipQueue");
 		case 4: RF2_PrintToChatAll("%t", "TipMenu");
 		case 5:	RF2_PrintToChatAll("%t", "TipDiscord");
+		case 6: RF2_PrintToChatAll("%t", "TipAchievements");
 	}
-
+	
 	message++;
 	if (message > maxMessages)
 		message = 0;
@@ -3501,8 +3513,12 @@ public void Hook_PreThink(int client)
 		}
 		else if (GetEntProp(client, Prop_Send, "m_iAirDash") > 0)
 		{
-			g_iPlayerAirDashCounter[client]++;
-			TF2_OnPlayerAirDash(client, g_iPlayerAirDashCounter[client]);
+			int airDashLimit = GetPlayerItemCount(client, ItemScout_MonarchWings)+1;
+			if (g_iPlayerAirDashCounter[client] < airDashLimit)
+			{
+				g_iPlayerAirDashCounter[client]++;
+				TF2_OnPlayerAirDash(client, g_iPlayerAirDashCounter[client]);
+			}
 		}
 	}
 }
@@ -3773,7 +3789,7 @@ public void TF2_OnWaitingForPlayersStart()
 	{
 		InsertServerCommand("mp_restartgame_immediate 1");
 	}
-
+	
 	g_bWaitingForPlayers = true;
 	PrintToServer("%T", "WaitingStart", LANG_SERVER);
 }
@@ -3782,19 +3798,23 @@ public void TF2_OnWaitingForPlayersEnd()
 {
 	if (!RF2_IsEnabled())
 		return;
-
+	
 	g_bWaitingForPlayers = false;
+	g_flWaitRestartTime = 0.0;
 	PrintToServer("%T", "WaitingEnd", LANG_SERVER);
 }
 
-public Action Timer_RestartGameWait(Handle timer)
+public void OnGameFrame()
 {
-	if (!g_bWaitingForPlayers)
-		return Plugin_Continue;
-	
-	PrintToServer("[RF2] Waited too long for players to join. Restarting game...");
-	ReloadPlugin(true);
-	return Plugin_Continue;
+	if (g_bPluginEnabled && g_flWaitRestartTime > 0.0)
+	{
+		if (GetTickedTime() >= g_flWaitRestartTime && GetTotalHumans(false) == 0)
+		{
+			PrintToServer("[RF2] Waited too long for players to join. Restarting game...");
+			g_flWaitRestartTime = 0.0;
+			ReloadPlugin(true);
+		}
+	}
 }
 
 public void OnEntityCreated(int entity, const char[] classname)

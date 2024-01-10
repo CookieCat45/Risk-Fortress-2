@@ -47,7 +47,7 @@ void LoadCommandsAndCvars()
 	
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
 	g_cvMaxSurvivors = CreateConVar("rf2_max_survivors", buffer, "Max number of Survivors that can be in the game.", FCVAR_NOTIFY, true, 1.0, true, float(MAX_SURVIVORS));
-	
+	g_cvGameResetTime = CreateConVar("rf2_max_wait_time", "600", "If the game has already began, amount of time in seconds to wait for players to join before restarting. 0 to disable.", FCVAR_NOTIFY);
 	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvEnableAFKManager = CreateConVar("rf2_afk_manager_enabled", "1", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "200.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
@@ -107,7 +107,7 @@ void LoadCommandsAndCvars()
 	g_cvDebugShowObjectSpawns = CreateConVar("rf2_debug_show_object_spawns", "0", "If nonzero, when an object spawns, its name and location will be printed to the console.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvDebugDontEndGame = CreateConVar("rf2_debug_dont_end_game", "0", "If nonzero, don't end the game if all of the survivors die.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvDebugShowDifficultyCoeff = CreateConVar("rf2_debug_show_difficulty_coeff", "0", "If nonzero, shows the value of the difficulty coefficient.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	
+
 	HookConVarChange(g_cvEnableAFKManager, ConVarHook_EnableAFKManager);
 }
 
@@ -520,6 +520,11 @@ public Action Command_SkipWait(int client, int args)
 		return Plugin_Handled;
 	}
 	
+	if (GetPlayersOnTeam(TEAM_SURVIVOR, _, true) == 0 && GetPlayersOnTeam(TEAM_ENEMY, _, true) == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "JoinATeam");
+	}
+	
 	if (g_bWaitingForPlayers)
 	{
 		InsertServerCommand("mp_restartgame_immediate 1");
@@ -540,12 +545,23 @@ public Action Command_VoteSkipWait(int client, int args)
 		return Plugin_Handled;
 	}
 	
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
 	if (IsVoteInProgress())
 	{
 		RF2_ReplyToCommand(client, "%t", "VoteInProgress");
 		return Plugin_Handled;
 	}
 	
+	if (GetPlayersOnTeam(TEAM_SURVIVOR, _, true) == 0 && GetPlayersOnTeam(TEAM_ENEMY, _, true) == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "JoinATeam");
+	}
+
 	if (g_bWaitingForPlayers)
 	{
 		// wait until all human players are connected, unless singleplayer

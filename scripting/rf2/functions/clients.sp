@@ -622,6 +622,7 @@ void TF2_OnPlayerAirDash(int client, int count)
 		SetEntProp(client, Prop_Send, "m_iAirDash", 0);
 	}
 	
+	g_iPlayerAirDashCounter[client] = imin(count, airDashLimit);
 	if (count >= 8)
 	{
 		TriggerAchievement(client, ACHIEVEMENT_AIRJUMPS);

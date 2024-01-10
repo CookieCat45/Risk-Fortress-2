@@ -404,6 +404,11 @@
 		"en"		"Join the official Risk Fortress 2 Discord: {yellow}https://discord.gg/jXje8aKMQK"
 	}
 	
+	"TipAchievements"
+	{
+		"en"		"To view your unlocked achievements, use the {yellow}/rf2_achievements {default}command."
+	}
+	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// SURVIVOR DEATH PHRASES
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -747,5 +752,9 @@
 	"WaitForOthers"
 	{
 		"en"		"Wait for connecting players to join."
+	}
+	"JoinATeam"
+	{
+		"en"		"Someone needs to join RED or BLU first."
 	}
 }
