@@ -532,6 +532,11 @@ bool PickupItem(int client)
 		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
 		GetQualityName(quality, qualityName, sizeof(qualityName));
 		PrintKeyHintText(client, "%s (%s)\n%s", g_szItemName[itemIndex], qualityName, g_szItemDesc[itemIndex]);
+		
+		if (itemIndex == Item_HorrificHeadsplitter)
+		{
+			TriggerAchievement(client, ACHIEVEMENT_HEADSPLITTER);
+		}
 
 		if (IsEquipmentItem(itemIndex))
 		{
@@ -663,8 +668,10 @@ int EquipItemAsWearable(int client, int item)
 		entity = MaxClients+1;
 		while ((entity = FindEntityByClassname(entity, "tf_wearable")) != -1)
 		{
-			// Remove one loadout wearable
-			if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client && !g_bDontRemoveWearable[entity] && !g_bItemWearable[entity])
+			// Remove one loadout wearable (don't remove zombie ones cause it causes funky stuff to happen)
+			if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client 
+				&& !g_bDontRemoveWearable[entity] && !g_bItemWearable[entity]
+				&& !IsVoodooCursedCosmetic(entity))
 			{
 				TF2_RemoveWearable(client, entity);
 				break;
@@ -1241,11 +1248,11 @@ public void RF_SaxtonRadiusDamage(DataPack pack)
 	int attacker = pack.ReadCell();
 	int victim = pack.ReadCell();
 	delete pack;
-	
 	float victimPos[3];
 	GetEntPos(victim, victimPos);
 	float damage = GetItemMod(Item_SaxtonHat, 2) + CalcItemMod(attacker, Item_SaxtonHat, 3, -1);
 	DoRadiusDamage(attacker, attacker, Item_SaxtonHat, victimPos, damage, DMG_BLAST, 180.0, _, 0.6, true);
+	TriggerAchievement(attacker, ACHIEVEMENT_SAXTON);
 }
 
 bool ActivateStrangeItem(int client)
@@ -1464,6 +1471,8 @@ bool ActivateStrangeItem(int client)
 						}
 					}
 				}
+
+				TriggerAchievement(client, ACHIEVEMENT_BADMAGIC);
 			}
 		}
 		
@@ -1495,7 +1504,7 @@ bool ActivateStrangeItem(int client)
 			}
 			
 			FireLaser(client, ItemStrange_VirtualViewfinder, eyePos, angles, true, _, 
-			GetItemMod(ItemStrange_VirtualViewfinder, 0), DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE, 25.0, colors, "partyhat");
+				GetItemMod(ItemStrange_VirtualViewfinder, 0), DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE, 25.0, colors, "partyhat");
 		}
 		
 		case ItemStrange_NastyNorsemann:
@@ -1727,7 +1736,7 @@ public Action Timer_EquipmentCooldown(Handle timer, int client)
 }
 
 void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float angles[3], bool infiniteRange=true, 
-const float endPos[3]=NULL_VECTOR, float damage, int damageFlags, float size, int colors[4], const char[] particleAttach="")
+	const float endPos[3]=NULL_VECTOR, float damage, int damageFlags, float size, int colors[4], const char[] particleAttach="")
 {
 	RayType type;
 	float vec[3], end[3];
@@ -2116,6 +2125,18 @@ void AddItemToLogbook(int client, int item)
 	}
 	
 	SetItemLogCookie(client, buffer);
+	ArrayList items = GetSortedItemList();
+	int count;
+	for (int i = 0; i < items.Length; i++)
+	{
+		if (IsItemInLogbook(client, items.Get(i)))
+		{
+			count++;
+		}
+	}
+	
+	SetAchievementProgress(client, ACHIEVEMENT_FULLITEMLOG, count);
+	delete items;
 }
 
 bool IsItemInLogbook(int client, int item)
@@ -2132,15 +2153,28 @@ bool IsItemInLogbook(int client, int item)
 #if defined _goomba_included_
 public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &damageBonus, float &jumpPower)
 {
+	if (!RF2_IsEnabled())
+		return Plugin_Continue;
+
 	if (PlayerHasItem(attacker, ItemScout_LongFallBoots) && CanUseCollectorItem(attacker, ItemScout_LongFallBoots))
 	{
 		// Goombas by default do the victim's health in damage, let's instead give it a base damage value
 		damageMultiplier = 0.0;
 		damageBonus = GetItemMod(ItemScout_LongFallBoots, 0) + (1.0 + CalcItemMod(attacker, ItemScout_LongFallBoots, 1, -1));
 		jumpPower = GetItemMod(ItemScout_LongFallBoots, 2) + (1.0 * CalcItemMod(attacker, ItemScout_LongFallBoots, 3, -1));
+		SetEntItemDamageProc(attacker, ItemScout_LongFallBoots);
 		return Plugin_Changed;
 	}
 	
 	return Plugin_Handled;
+}
+
+public int OnStompPost(int attacker, int victim, float damageMultiplier, float damageBonus, float jumpPower)
+{
+	if (!RF2_IsEnabled())
+		return 0;
+	
+	SetEntItemDamageProc(attacker, Item_Null);
+	return 0;
 }
 #endif

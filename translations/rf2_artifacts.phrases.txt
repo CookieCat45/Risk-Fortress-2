@@ -1,0 +1,102 @@
+"Phrases"
+{
+	// Names
+	"Fortune"
+	{
+		"en"	"Artifact of Fortune"
+	}
+	"Patience"
+	{
+		"en"	"Artifact of Patience"
+	}
+	"Efficiency"
+	{
+		"en"	"Artifact of Efficiency"
+	}
+	"Restoration"
+	{
+		"en"	"Artifact of Restoration"
+	}
+	"Command"
+	{
+		"en"	"Artifact of Command"
+	}
+	"Luck"
+	{
+		"en"	"Artifact of Luck"
+	}
+	"Haste"
+	{
+		"en"	"Artifact of Haste"
+	}
+	"Swarm"
+	{
+		"en"	"Artifact of Swarm"
+	}
+	"Envy"
+	{
+		"en"	"Artifact of Envy"
+	}
+	"Silence"
+	{
+		"en"	"Artifact of Silence"
+	}
+	"Power"
+	{
+		"en"	"Artifact of Power"
+	}
+	"Wrath"
+	{
+		"en"	"Artifact of Wrath"
+	}
+	
+	// Descriptions
+	"Fortune_Desc"
+	{
+		"en"	"Enemies may drop random items on death!"
+	}
+	"Patience_Desc"
+	{
+		"en"	"Take your time... because it's slowed down!"
+	}
+	"Efficiency_Desc"
+	{
+		"en"	"Strange item cooldowns are reduced significantly!"
+	}
+	"Restoration_Desc"
+	{
+		"en"	"All healing and health regeneration is doubled!"
+	}
+	"Command_Desc"
+	{
+		"en"	"Choose your items!"
+	}
+	"Luck_Desc"
+	{
+		"en"	"Increased Unusual drop rate! It's the Crate Depression of 2019 all over again!"
+	}
+	"Haste_Desc"
+	{
+		"en"	"Better hurry up! Time is flying by!"
+	}
+	"Swarm_Desc"
+	{
+		"en"	"Increased enemy spawn rate!"
+	}
+	"Envy_Desc"
+	{
+		"en"	"Enemies may spawn with random items!"
+	}
+	"Silence_Desc"
+	{
+		"en"	"Enemies may spawn with an invisibility buff!"
+	}
+	"Power_Desc"
+	{
+		"en"	"Enemies have increased fire rate and reload speed!"
+	}
+	"Wrath_Desc"
+	{
+		"en"	"Difficulty set to TITANIUM for this stage!"
+	}
+}

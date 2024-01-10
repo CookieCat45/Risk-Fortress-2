@@ -1,0 +1,124 @@
+"Phrases"
+{
+	//
+	// Names
+	//
+	
+	"ACHIEVEMENT_BIGDAMAGE"
+	{
+		"en"	"Overpowered"
+	}
+	"ACHIEVEMENT_FULLITEMLOG"
+	{
+		"en"	"Fashion Fanatic"
+	}
+	"ACHIEVEMENT_DIE"
+	{
+		"en"	"Fresh Meat"
+	}
+	"ACHIEVEMENT_DIE100"
+	{
+		"en"	"Dead Meat"
+	}
+	"ACHIEVEMENT_MARKETGARDEN"
+	{
+		"en"	"Brave Digger"
+	}
+	"ACHIEVEMENT_GOOMBA"
+	{
+		"en"	"Professional Plumber"
+	}
+	"ACHIEVEMENT_AIRJUMPS"
+	{
+		"en"	"Mosquito"
+	}
+	"ACHIEVEMENT_BLOODHOUND"
+	{
+		"en"	"Do Robots Have Blood?"
+	}
+	"ACHIEVEMENT_HEADSPLITTER"
+	{
+		"en"	"GET IT OFF! GET IT OFF!"
+	}
+	"ACHIEVEMENT_SAXTON"
+	{
+		"en"	"Saxton HAAAAAALE!"
+	}
+	"ACHIEVEMENT_HALLOWEENBOSSES"
+	{
+		"en"	"Scream Fortress Came Early"
+	}
+	"ACHIEVEMENT_POCKETMEDIC"
+	{
+		"en"	"Life Saver"
+	}
+	"ACHIEVEMENT_SENTRIES"
+	{
+		"en"	"Defense? More Like Offense!"
+	}
+	"ACHIEVEMENT_BADMAGIC"
+	{
+		"en"	"Bad Wizard"
+	}
+	
+	//
+	// Descriptions
+	//
+	
+	"ACHIEVEMENT_BIGDAMAGE_DESC"
+	{
+		"en"	"As a Survivor, deal 10000+ damage in a single hit."
+	}
+	"ACHIEVEMENT_FULLITEMLOG_DESC"
+	{
+		"en"	"Fill out the entire item log."
+	}
+	"ACHIEVEMENT_DIE_DESC"
+	{
+		"en"	"Die for the first time as a Survivor."
+	}
+	"ACHIEVEMENT_DIE100_DESC"
+	{
+		"en"	"Die 100 times as a Survivor."
+	}
+	"ACHIEVEMENT_MARKETGARDEN_DESC"
+	{
+		"en"	"As a Soldier, kill 10 bosses by market gardening them."
+	}
+	"ACHIEVEMENT_GOOMBA_DESC"
+	{
+		"en"	"As a Scout, kill 10 bosses by goomba stomping them with the Long Fall Loafers."
+	}
+	"ACHIEVEMENT_AIRJUMPS_DESC"
+	{
+		"en"	"As a Scout, air jump 8 times in a row using the Flight of the Monarch."
+	}
+	"ACHIEVEMENT_BLOODHOUND_DESC"
+	{
+		"en"	"As a Sniper, inflict 20 stacks of bleed on a single robot in one shot using the Bloodhound."
+	}
+	"ACHIEVEMENT_HEADSPLITTER_DESC"
+	{
+		"en"	"Pick up a Horrific Headsplitter."
+	}
+	"ACHIEVEMENT_SAXTON_DESC"
+	{
+		"en"	"Trigger 100 explosions using the Saxton Hat."
+	}
+	"ACHIEVEMENT_HALLOWEENBOSSES_DESC"
+	{
+		"en"	"Summon 5+ Halloween bosses at once during the Teleporter event."
+	}
+	"ACHIEVEMENT_POCKETMEDIC_DESC"
+	{
+		"en"	"Trigger the Pocket Medic item 30 times."
+	}
+	"ACHIEVEMENT_SENTRIES_DESC"
+	{
+		"en"	"As an Engineer, have 10 sentries built at the same time using the Head of Defense."
+	}
+	"ACHIEVEMENT_BADMAGIC_DESC"
+	{
+		"en"	"Using the Spellbook Magazine, cast 10 backfiring spells."
+	}
+}

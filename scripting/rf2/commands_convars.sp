@@ -39,6 +39,7 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_skipwait", Command_VoteSkipWait, "Starts a vote to skip the Waiting for Players sequence.");
 	RegConsoleCmd("rf2_survivorqueue", Command_SurvivorQueue, "Shows the Survivor queue list.");
 	RegConsoleCmd("rf2_itemlog", Command_ItemLog, "Shows a list of items that you've collected.");
+	RegConsoleCmd("rf2_achievements", Command_Achievements, "Shows a list of achievements in Risk Fortress 2.");
 	
 	char buffer[8];
 	IntToString(MaxClients, buffer, sizeof(buffer));
@@ -680,7 +681,7 @@ public Action Command_ItemLog(int client, int args)
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
 	}
-
+	
 	if (client == 0)
 	{
 		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
@@ -710,6 +711,8 @@ void ShowItemLogbook(int client, int position=0)
 		}
 	}
 	
+	// in case someone has somehow 100% cleared the logbook before the achievement...
+	SetAchievementProgress(client, ACHIEVEMENT_FULLITEMLOG, count);
 	logbook.SetTitle("Item Logbook (%i/%i items collected)", count, items.Length);
 	delete items;
 	logbook.DisplayAt(client, position, MENU_TIME_FOREVER);
@@ -770,6 +773,104 @@ public int Menu_ItemInfo(Menu menu, MenuAction action, int param1, int param2)
 		case MenuAction_End:
 		{
 			delete menu;
+		}
+	}
+	
+	return 0;
+}
+
+public Action Command_Achievements(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	ShowAchievementsMenu(client);
+	return Plugin_Handled;
+}
+
+void ShowAchievementsMenu(int client)
+{
+	Menu menu = new Menu(Menu_Achievements);
+	menu.SetTitle("Achievements");
+	menu.AddItem("unlocked", "Unlocked Achievements");
+	menu.AddItem("locked", "Locked Achievements");
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int Menu_Achievements(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			char info[16], name[64];
+			menu.GetItem(param2, info, sizeof(info));
+			bool unlocked = strcmp2(info, "unlocked");
+			Menu list = new Menu(Menu_AchievementsDesc);
+			list.ExitBackButton = true;
+			list.SetTitle(unlocked ? "Unlocked Achievements" : "Locked Achievements");
+			for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
+			{
+				if (unlocked ? IsAchievementUnlocked(param1, i) : !IsAchievementUnlocked(param1, i))
+				{
+					FormatEx(info, sizeof(info), "%i", i);
+					GetAchievementName(i, name, sizeof(name), param1);
+					int cap = GetAchievementGoal(i);
+					if (cap > 1)
+					{
+						Format(name, sizeof(name), "%s (%i/%i)", name, GetAchievementProgress(param1, i), cap);
+					}
+					
+					list.AddItem(info, name);
+				}
+			}
+			
+			list.Display(param1, MENU_TIME_FOREVER);
+		}
+		
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+	
+	return 0;
+}
+
+public int Menu_AchievementsDesc(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			char info[16], desc[512];
+			menu.GetItem(param2, info, sizeof(info));
+			GetAchievementDesc(StringToInt(info), desc, sizeof(desc), param1);
+			PrintHintText(param1, desc);
+			menu.DisplayAt(param1, GetMenuSelectionPosition(), MENU_TIME_FOREVER);
+		}
+		
+		case MenuAction_Cancel:
+		{
+			if (param2 == MenuCancel_ExitBack)
+			{
+				ShowAchievementsMenu(param1);
+			}
+		}
+		
+		case MenuAction_End:
+		{
+			if (param1 != MenuEnd_Selected)
+				delete menu;
 		}
 	}
 	

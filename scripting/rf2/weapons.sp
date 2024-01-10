@@ -670,3 +670,9 @@ public MRESReturn DHook_DoSwingTracePost(int entity, DHookReturn returnVal, DHoo
 	GameRules_SetProp("m_bPlayingMannVsMachine", false);
 	return MRES_Ignored;
 }
+
+bool IsVoodooCursedCosmetic(int wearable)
+{
+	int index = GetEntProp(wearable, Prop_Send, "m_iItemDefinitionIndex");
+	return index >= 5617 && index <= 5625;
+}

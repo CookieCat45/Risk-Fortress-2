@@ -845,6 +845,17 @@ void StartTeleporterEvent(int teleporter)
 		CNavArea area;
 		float time;
 		
+		if (hhhSpawnCount + eyeSpawnCount >= 5)
+		{
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (!IsClientInGame(i) || IsFakeClient(i) || !IsPlayerSurvivor(i))
+					continue;
+
+				TriggerAchievement(i, ACHIEVEMENT_HALLOWEENBOSSES);
+			}
+		}
+		
 		while (hhhSpawnCount > 0 || eyeSpawnCount > 0)
 		{
 			area = GetSpawnPoint(pos, resultPos, 0.0, radius, 4, true, mins, maxs, MASK_NPCSOLID, zOffset);

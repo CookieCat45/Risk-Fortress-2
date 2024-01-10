@@ -122,6 +122,7 @@ public Plugin myinfo =
 #define SND_ARTIFACT_ROLL "ui/buttonclick.wav"
 #define SND_ARTIFACT_SELECT "items/spawn_item.wav"
 #define SND_DOOMSDAY_EXPLODE "misc/doomsday_missile_explosion.wav"
+#define SND_ACHIEVEMENT "misc/achievement_earned.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
@@ -542,9 +543,10 @@ Cookie g_coBecomeSurvivor;
 Cookie g_coBecomeBoss;
 Cookie g_coAutomaticItemMenu;
 Cookie g_coSurvivorPoints;
-Cookie g_coItemsCollected[4];
 Cookie g_coTutorialItemPickup;
 Cookie g_coTutorialSurvivor;
+Cookie g_coItemsCollected[4];
+Cookie g_coAchievementCookies[MAX_ACHIEVEMENTS];
 
 bool g_bPlayerMusicEnabled[MAXTF2PLAYERS] = {true, ...};
 bool g_bPlayerBecomeSurvivor[MAXTF2PLAYERS] = {true, ...};
@@ -583,6 +585,7 @@ ArrayList g_hActiveArtifacts;
 #include "rf2/natives_forwards.sp"
 #include "rf2/commands_convars.sp"
 #include "rf2/artifacts.sp"
+#include "rf2/achievements.sp"
 #include "rf2/npc/nav.sp"
 #include "rf2/npc/tf_bot.sp"
 #include "rf2/npc/customhitbox.sp"
@@ -615,6 +618,7 @@ public void OnPluginStart()
 	LoadTranslations("common.phrases");
 	LoadTranslations("rf2.phrases");
 	LoadTranslations("rf2_artifacts.phrases");
+	LoadTranslations("rf2_achievements.phrases");
 	g_hActiveArtifacts = new ArrayList();
 }
 
@@ -864,7 +868,6 @@ public void OnMapStart()
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("tf_bot_force_class").SetString("scout"); // prevent console spam
-		FindConVar("sm_vote_progress_hintbox").SetBool(true);
 		
 		// Why is this a development only ConVar Valve?
 		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
@@ -973,6 +976,7 @@ public void OnConfigsExecuted()
 		FindConVar("tf_forced_holiday").SetInt(2);
 		FindConVar("tf_player_movement_restart_freeze").SetBool(false);
 		FindConVar("mp_bonusroundtime").SetInt(20);
+		FindConVar("sm_vote_progress_hintbox").SetBool(true);
 		
 		// no SourceTV
 		FindConVar("tv_enable").SetBool(false);
@@ -1020,12 +1024,7 @@ public void OnMapEnd()
 
 	if (RF2_IsEnabled())
 	{
-		if (g_bGameOver)
-		{
-			ReloadPlugin(false);
-			return;
-		}
-		else
+		if (!g_bGameOver)
 		{
 			g_iStagesCompleted++;
 		}
@@ -1162,6 +1161,7 @@ void LoadAssets()
 	PrecacheSound(SND_ARTIFACT_ROLL, true);
 	PrecacheSound(SND_ARTIFACT_SELECT, true);
 	PrecacheSound(SND_DOOMSDAY_EXPLODE, true);
+	PrecacheSound(SND_ACHIEVEMENT, true);
 	PrecacheSound("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound("vo/halloween_boss/knight_attack02.mp3", true);
 	PrecacheSound("vo/halloween_boss/knight_attack03.mp3", true);
@@ -1632,7 +1632,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	{
 		// TODO: Do something about voodoo-cursed (zombie) cosmetics causing player skin issues.
 		TF2_RemoveLoadoutWearables(client);
-
+		
 		if (IsFakeClient(client))
 		{
 			char name[MAX_NAME_LENGTH];
@@ -1734,8 +1734,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	int inflictor = event.GetInt("inflictor_entindex");
-	//int assister = GetClientOfUserId(event.GetInt("assister"));
-	//int custom = event.GetInt("customkill");
+	int weaponIndex = event.GetInt("weapon_def_index");
 	int weaponId = event.GetInt("weaponid");
 	int damageType = event.GetInt("damagebits");
 	CritType critType = view_as<CritType>(event.GetInt("crit_type"));
@@ -1764,7 +1763,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			// Reset next frame in case we have multiple kills at once
 			RequestFrame(RF_ResetKillfeedItem, attacker);
 		}
-
+		
 		switch (itemProc)
 		{
 			case ItemDemo_ConjurersCowl, ItemMedic_WeatherMaster: event.SetString("weapon", "spellbook_lightning");
@@ -1836,7 +1835,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					PickupCash(attacker, cashEntity);
 				}
 			}
-
+			
 			// For now, enemies have a chance to drop Haunted Keys, may implement a different way of obtaining them later
 			int max = g_cvHauntedKeyDropChanceMax.IntValue;
 			if (max > 0 && RandChanceIntEx(attacker, 1, max, 1))
@@ -1847,6 +1846,16 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					if (IsPlayerSurvivor(i))
 						g_iPlayerHauntedKeys[i]++;
 				}
+			}
+			
+			if (GetEntItemDamageProc(attacker) == ItemScout_LongFallBoots && IsBoss(victim))
+			{
+				TriggerAchievement(attacker, ACHIEVEMENT_GOOMBA);
+			}
+			
+			if (weaponIndex == 416 && TF2_IsPlayerInCondition(attacker, TFCond_BlastJumping) && IsBoss(victim))
+			{
+				TriggerAchievement(attacker, ACHIEVEMENT_MARKETGARDEN);
 			}
 		}
 		else // If the grace period is active, die silently
@@ -2056,6 +2065,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			if (alive == 0 && !g_cvDebugDontEndGame.BoolValue && !g_bRoundEnding) // Game over, man!
 			{
 				GameOver();
+				CreateTimer(14.0, Timer_GameOver, _, TIMER_FLAG_NO_MAPCHANGE);
 			}
 			else if (alive == 1)
 			{
@@ -2063,6 +2073,9 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				EmitSoundToAll(SND_LASTMAN);
 				SpeakResponseConcept_MVM(lastMan, "TLK_MVM_LAST_MAN_STANDING");
 			}
+			
+			TriggerAchievement(victim, ACHIEVEMENT_DIE);
+			TriggerAchievement(victim, ACHIEVEMENT_DIE100);
 		}
 		else
 		{
@@ -2070,7 +2083,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			CreateTimer(0.1, Timer_RespawnSurvivor, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
-
+	
 	if (victimTeam == TEAM_ENEMY)
 	{
 		SetClientName(victim, g_szPlayerOriginalName[victim]);
@@ -2078,6 +2091,12 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	
 	RefreshClient(victim);
 	return action;
+}
+
+public Action Timer_GameOver(Handle timer)
+{
+	ReloadPlugin(true);
+	return Plugin_Continue;
 }
 
 public Action Timer_RespawnPlayerPreRound(Handle timer, int client)
@@ -2122,7 +2141,17 @@ public Action OnPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 			{
 				TF2_MakeBleed(victim, attacker, GetItemMod(ItemSniper_Bloodhound, 0));
 			}
+			
+			if (stacks >= 20)
+			{
+				TriggerAchievement(attacker, ACHIEVEMENT_BLOODHOUND);
+			}
 		}
+	}
+	
+	if (IsPlayerSurvivor(attacker) && damage >= 10000.0)
+	{
+		TriggerAchievement(attacker, ACHIEVEMENT_BIGDAMAGE);
 	}
 	
 	return Plugin_Continue;
@@ -2351,7 +2380,12 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	{
 		SDK_DoQuickBuild(building, true);
 	}
-
+	
+	if (TF2_GetPlayerBuildingCount(client, TFObject_Sentry) >= 10)
+	{
+		TriggerAchievement(client, ACHIEVEMENT_SENTRIES);
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -4655,12 +4689,11 @@ public void RF_CheckHealthForPocketMedic(int client)
 	{
 		EmitSoundToAll(SND_SHIELD, client);
 		TF2_AddCondition(client, TFCond_UberchargedCanteen, GetItemMod(Item_PocketMedic, 2));
-
 		int heal = RoundToFloor(float(maxHealth) * GetItemMod(Item_PocketMedic, 1));
 		HealPlayer(client, heal, false);
-
 		PrintHintText(client, "%t", "PocketMedic");
 		GiveItem(client, Item_PocketMedic, -1);
+		TriggerAchievement(client, ACHIEVEMENT_POCKETMEDIC);
 	}
 }
 

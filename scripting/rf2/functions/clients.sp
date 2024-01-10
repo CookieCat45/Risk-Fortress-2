@@ -616,10 +616,15 @@ void TF2_OnPlayerAirDash(int client, int count)
 {
 	int airDashLimit = 1;
 	airDashLimit += GetPlayerItemCount(client, ItemScout_MonarchWings);
-
+	
 	if (count < airDashLimit)
 	{
 		SetEntProp(client, Prop_Send, "m_iAirDash", 0);
+	}
+	
+	if (count >= 8)
+	{
+		TriggerAchievement(client, ACHIEVEMENT_AIRJUMPS);
 	}
 }
 
