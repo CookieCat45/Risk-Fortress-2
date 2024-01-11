@@ -682,10 +682,9 @@ bool IsWeaponTauntBanned(int weapon)
 	char classname[64];
 	GetEntityClassname(weapon, classname, sizeof(classname));
 	int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-	
 	return index == 128 || index == 775 // Equalizer/Escape Plan
 		|| index == 44 || index == 450 // Sandman/Atomizer
-		|| index == 1179 || index == 1180 // Thermal Thruster
+		|| index == 1179 || index == 1180 // Thermal Thruster/Gas Passer
 		|| index == 741 || index == 1181 // Rainblower/Hot Hand
 		|| index == 142 // Gunslinger
 		|| index == 37 || index == 1003 // Ubersaw
