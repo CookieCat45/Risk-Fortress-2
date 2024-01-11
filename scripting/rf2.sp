@@ -2595,18 +2595,23 @@ public Action Timer_EnemySpawnWave(Handle timer)
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive || IsStageCleared())
 		return Plugin_Continue;
-
+	
 	int survivorCount = RF2_GetSurvivorCount();
 	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
-
+	
 	if (GetTeleporterEventState() == TELE_EVENT_ACTIVE)
 		duration *= 0.8;
-
+	
 	duration = fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue);
 	if (IsArtifactActive(BLUArtifact_Swarm))
 	{
 		duration *= 0.6;
+	}
+	
+	if (IsSingleplayer(false) && g_iStagesCompleted == 0)
+	{
+		duration *= 1.25;
 	}
 
 	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
