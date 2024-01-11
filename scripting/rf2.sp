@@ -971,6 +971,7 @@ public void OnConfigsExecuted()
 		FindConVar("mp_teams_unbalance_limit").SetInt(0);
 		FindConVar("mp_forcecamera").SetBool(false);
 		FindConVar("mp_maxrounds").SetInt(9999);
+		FindConVar("mp_timelimit").SetInt(99999);
 		FindConVar("mp_forceautoteam").SetBool(true);
 		FindConVar("mp_respawnwavetime").SetFloat(99999.0);
 		FindConVar("tf_dropped_weapon_lifetime").SetInt(0);
@@ -1186,6 +1187,7 @@ void ResetConVars()
 	ResetConVar(FindConVar("mp_teams_unbalance_limit"));
 	ResetConVar(FindConVar("mp_forcecamera"));
 	ResetConVar(FindConVar("mp_maxrounds"));
+	ResetConVar(FindConVar("mp_timelimit"));
 	ResetConVar(FindConVar("mp_forceautoteam"));
 	ResetConVar(FindConVar("mp_respawnwavetime"));
 	ResetConVar(FindConVar("mp_humans_must_join_team"));
