@@ -520,9 +520,10 @@ public Action Command_SkipWait(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	if (GetPlayersOnTeam(TEAM_SURVIVOR, _, true) == 0 && GetPlayersOnTeam(TEAM_ENEMY, _, true) == 0)
+	if (GetPlayersOnTeam(TEAM_SURVIVOR, _, true) <= 0 && GetPlayersOnTeam(TEAM_ENEMY, _, true) <= 0)
 	{
 		RF2_ReplyToCommand(client, "%t", "JoinATeam");
+		return Plugin_Handled;
 	}
 	
 	if (g_bWaitingForPlayers)
@@ -557,11 +558,12 @@ public Action Command_VoteSkipWait(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	if (GetPlayersOnTeam(TEAM_SURVIVOR, _, true) == 0 && GetPlayersOnTeam(TEAM_ENEMY, _, true) == 0)
+	if (GetPlayersOnTeam(TEAM_SURVIVOR, _, true) <= 0 && GetPlayersOnTeam(TEAM_ENEMY, _, true) <= 0)
 	{
 		RF2_ReplyToCommand(client, "%t", "JoinATeam");
+		return Plugin_Handled;
 	}
-
+	
 	if (g_bWaitingForPlayers)
 	{
 		// wait until all human players are connected, unless singleplayer

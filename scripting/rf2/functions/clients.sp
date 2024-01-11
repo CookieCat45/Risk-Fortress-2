@@ -125,13 +125,16 @@ int GetPlayersOnTeam(int team, bool alive=false, bool onlyHumans=false)
 	{
 		if (!IsClientInGame(i) || GetClientTeam(i) != team)
 			continue;
-
-		if (alive && !IsPlayerAlive(i) || onlyHumans && IsFakeClient(i))
+		
+		if (alive && !IsPlayerAlive(i))
 			continue;
-
+		
+		if (onlyHumans && IsFakeClient(i))
+			continue;
+		
 		count++;
 	}
-
+	
 	return count;
 }
 
@@ -446,6 +449,11 @@ int SDK_GetPlayerMaxHealth(int client)
 
 float CalculatePlayerMaxSpeed(int client)
 {
+	if (g_bWaitingForPlayers)
+	{
+		return TF2_GetClassMaxSpeed(TF2_GetPlayerClass(client));
+	}
+
 	float speed = g_flPlayerMaxSpeed[client];
 	float classMaxSpeed = TF2_GetClassMaxSpeed(TF2_GetPlayerClass(client));
 

@@ -888,7 +888,7 @@ public void OnMapStart()
 		HookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
 		HookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
 		HookEvent("player_team", OnChangeTeamMessage, EventHookMode_Pre);
-
+		
 		// Command listeners
 		AddCommandListener(OnVoiceCommand, "voicemenu");
 		AddCommandListener(OnChangeClass, "joinclass");
@@ -3529,7 +3529,23 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	if (!RF2_IsEnabled())
 		return;
 	
-	if (condition == TFCond_BlastJumping)
+	if (condition == TFCond_Taunting && !g_bWaitingForPlayers)
+	{
+		if (IsFakeClient(client))
+		{
+			// Bots never taunt
+			TF2_RemoveCondition(client, TFCond_Taunting);
+		}
+		else if (!GetEntProp(client, Prop_Send, "m_iTauntIndex")) // Weapon taunts are always 0
+		{
+			int activeWeapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+			if (activeWeapon > 0 && IsWeaponTauntBanned(activeWeapon))
+			{
+				TF2_RemoveCondition(client, TFCond_Taunting);
+			}
+		}
+	}
+	else if (condition == TFCond_BlastJumping)
 	{
 		if (PlayerHasItem(client, ItemSoldier_HawkWarrior) && CanUseCollectorItem(client, ItemSoldier_HawkWarrior))
 		{

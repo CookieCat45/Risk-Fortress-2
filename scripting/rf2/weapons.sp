@@ -676,3 +676,25 @@ bool IsVoodooCursedCosmetic(int wearable)
 	int index = GetEntProp(wearable, Prop_Send, "m_iItemDefinitionIndex");
 	return index >= 5617 && index <= 5625;
 }
+
+bool IsWeaponTauntBanned(int weapon)
+{
+	char classname[64];
+	GetEntityClassname(weapon, classname, sizeof(classname));
+	int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+	
+	return index == 128 || index == 775 // Equalizer/Escape Plan
+		|| index == 44 || index == 450 // Sandman/Atomizer
+		|| index == 1179 || index == 1180 // Thermal Thruster
+		|| index == 741 || index == 1181 // Rainblower/Hot Hand
+		|| index == 142 // Gunslinger
+		|| index == 37 || index == 1003 // Ubersaw
+		|| strcmp2(classname, "tf_weapon_knife")
+		|| strcmp2(classname, "tf_weapon_shotgun_pyro")
+		|| strcmp2(classname, "tf_weapon_flaregun")
+		|| strcmp2(classname, "tf_weapon_compound_bow")
+		|| strcmp2(classname, "tf_weapon_fists")
+		|| strcmp2(classname, "tf_weapon_sword")
+		|| strcmp2(classname, "tf_weapon_katana")
+		|| strcmp2(classname, "tf_weapon_sentry_revenge");
+}
