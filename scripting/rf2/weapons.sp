@@ -660,6 +660,9 @@ public MRESReturn DHook_GetEffectBarRechargeTime(int entity, DHookReturn returnV
 
 public MRESReturn DHook_DoSwingTrace(int entity, DHookReturn returnVal, DHookParam params)
 {
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
 	// Don't hit teammates (note: only works for BLU team, but that's what we want anyway)
 	GameRules_SetProp("m_bPlayingMannVsMachine", true);
 	return MRES_Ignored;
@@ -667,6 +670,9 @@ public MRESReturn DHook_DoSwingTrace(int entity, DHookReturn returnVal, DHookPar
 
 public MRESReturn DHook_DoSwingTracePost(int entity, DHookReturn returnVal, DHookParam params)
 {
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+
 	GameRules_SetProp("m_bPlayingMannVsMachine", false);
 	return MRES_Ignored;
 }
