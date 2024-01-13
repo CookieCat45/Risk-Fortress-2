@@ -38,7 +38,6 @@ public const char g_szTankBarrageVoices[][] =
 	"rf2/sfx/boss_tank_badass/vo_firing_missiles5.wav"
 };
 
-
 static int g_iBadassTankModelIndex;
 static bool g_bTankDeploying[MAX_EDICTS];
 static bool g_bTankSpeedBoost[MAX_EDICTS];
@@ -276,7 +275,6 @@ static int CreateTankBoss(bool badass=false)
 	
 	spawn = spawnPoints.Get(GetRandomInt(0, spawnPoints.Length-1));
 	delete spawnPoints;
-	
 	float pos[3], angles[3];
 	GetEntPos(spawn, pos);
 	GetEntPropVector(spawn, Prop_Data, "m_angAbsRotation", angles);
@@ -296,8 +294,8 @@ static int CreateTankBoss(bool badass=false)
 	int level = RF2_GetEnemyLevel();
 	if (level >= 50)
 	{
-		float cap = float(level) * 1000000.0;
-		health = RoundToFloor(fmin(Pow(float(health), 1.0 + (float(level-49) * 0.0025)), cap));
+		health = imax(RoundToFloor(Pow(float(health), 1.0 + (float(level-49) * 0.002))), health);
+		health = imin(health, 50000000);
 	}
 	
 	if (IsSingleplayer(false))
@@ -313,14 +311,11 @@ static int CreateTankBoss(bool badass=false)
 	SetEntProp(tankBoss, Prop_Data, "m_iMaxHealth", health);
 	float speed = g_cvTankBaseSpeed.FloatValue;
 	SetEntPropFloat(tankBoss, Prop_Data, "m_speed", speed);
-	
 	TeleportEntity(tankBoss, pos, angles);
 	DispatchSpawn(tankBoss);
-	
 	g_bTankDeploying[tankBoss] = false;
 	g_bTankSpeedBoost[tankBoss] = false;
 	SDKHook(tankBoss, SDKHook_Think, Hook_TankBossThink);
-	
 	g_iTanksSpawned++;
 	
 	int pitch = SNDPITCH_NORMAL;

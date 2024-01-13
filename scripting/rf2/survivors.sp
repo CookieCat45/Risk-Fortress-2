@@ -112,7 +112,7 @@ bool CreateSurvivors()
 		{
 			int steamIDIndex;
 			// check to see if we can get our own inventory back
-			if (GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)) 
+			if (GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)) 
 				&& g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, steamIDIndex) && !indexTaken[steamIDIndex])
 			{
 				index = steamIDIndex;
@@ -423,7 +423,7 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 	g_iSavedHauntedKeys[index] = g_iPlayerHauntedKeys[client];
 	
 	char steamId[MAX_AUTHID_LENGTH];
-	if (saveSteamId && GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)))
+	if (saveSteamId && GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)))
 	{
 		g_hPlayerSteamIDToInventoryIndex.SetValue(steamId, index, false);
 	}
@@ -438,7 +438,7 @@ bool DoesClientOwnInventory(int client, int index)
 	char steamId[MAX_AUTHID_LENGTH];
 	int index2;
 	
-	return GetClientAuthId(client, AuthId_SteamID64, steamId, sizeof(steamId)) 
+	return GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)) 
 		&& g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, index2) && index2 == index;
 }
 
@@ -614,4 +614,18 @@ bool IsPlayerSurvivor(int client)
 bool IsSingleplayer(bool fullCheck=true)
 {
 	return g_iSurvivorCount == 1 || fullCheck && GetTotalHumans(false) == 1;
+}
+
+// Returns true if a player timed out and we're waiting for them to rejoin.
+// single=true means only return if there are no players on RED (likely singleplayer).
+bool WaitingForPlayerRejoin(bool single=false)
+{
+	if (single)
+	{
+		return g_hCrashedPlayerSteamIDs.Size > 0 && GetPlayersOnTeam(TEAM_SURVIVOR, true) == 0;
+	}
+	else
+	{
+		return g_hCrashedPlayerSteamIDs.Size > 0;
+	}	
 }

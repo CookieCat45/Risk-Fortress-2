@@ -388,6 +388,7 @@ bool g_bPlayerLawCooldown[MAXTF2PLAYERS];
 bool g_bPlayerTookCollectorItem[MAXTF2PLAYERS];
 bool g_bPlayerSpawnedByTeleporter[MAXTF2PLAYERS];
 bool g_bExecutionerBleedCooldown[MAXTF2PLAYERS];
+bool g_bPlayerTimingOut[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -433,6 +434,9 @@ char g_szPlayerOriginalName[MAXTF2PLAYERS][MAX_NAME_LENGTH];
 ArrayList g_hPlayerExtraSentryList[MAXTF2PLAYERS];
 ArrayList g_hCachedPlayerSounds;
 ArrayList g_hInvalidPlayerSounds;
+
+StringMap g_hCrashedPlayerSteamIDs;
+Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
 
 // Entities
 int g_iItemDamageProc[MAX_EDICTS];
@@ -622,6 +626,7 @@ public void OnPluginStart()
 	LoadTranslations("rf2_artifacts.phrases");
 	LoadTranslations("rf2_achievements.phrases");
 	g_hActiveArtifacts = new ArrayList();
+	g_hCrashedPlayerSteamIDs = new StringMap();
 }
 
 public void OnPluginEnd()
@@ -1091,7 +1096,9 @@ void CleanUp()
 	delete g_hCachedPlayerSounds;
 	delete g_hInvalidPlayerSounds;
 	delete g_hParticleEffectTable;
-
+	g_hCrashedPlayerSteamIDs.Clear();
+	SetAllInArray(g_hCrashedPlayerTimers, sizeof(g_hCrashedPlayerTimers), INVALID_HANDLE);
+	
 	StopMusicTrackAll();
 	DisableAllArtifacts();
 }
@@ -1208,6 +1215,8 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_bot_quota_mode"));
 	ResetConVar(FindConVar("tf_bot_pyro_shove_away_range"));
 	ResetConVar(FindConVar("tf_bot_force_class"));
+	ResetConVar(FindConVar("tf_allow_server_hibernation"));
+	ResetConVar(FindConVar("tf_bot_join_after_player"));
 }
 
 public void OnAllPluginsLoaded()
@@ -1217,12 +1226,15 @@ public void OnAllPluginsLoaded()
 
 public bool OnClientConnect(int client, char[] rejectmsg, int maxlen)
 {
-	if (RF2_IsEnabled() && GetClientCount(false)-1 >= g_cvMaxHumanPlayers.IntValue)
+	if (RF2_IsEnabled())
 	{
-		FormatEx(rejectmsg, maxlen, "Max human player limit of %i has been reached", g_cvMaxHumanPlayers.IntValue);
-		return false;
+		if (GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue)
+		{
+			FormatEx(rejectmsg, maxlen, "Max human player limit of %i has been reached", g_cvMaxHumanPlayers.IntValue);
+			return false;
+		}
 	}
-
+	
 	return true;
 }
 
@@ -1250,44 +1262,115 @@ public void OnClientPutInServer(int client)
 		{
 			PlayMusicTrack(client);
 		}
-
+		
 		SDKHook(client, SDKHook_PreThink, Hook_PreThink);
 		SDKHook(client, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamageAlive);
 		SDKHook(client, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
 		SDKHook(client, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
-
+		
 		if (g_hSDKTakeHealth)
 			DHookEntity(g_hSDKTakeHealth, false, client);
-
+		
 		g_hPlayerExtraSentryList[client] = CreateArray();
+		int survivorIndex;
+		char auth[MAX_AUTHID_LENGTH];
+		if (GetClientAuthId(client, AuthId_Steam2, auth, sizeof(auth)) && g_hCrashedPlayerSteamIDs.GetValue(auth, survivorIndex))
+		{
+			// This is a client rejoining who crashed/lost connection when they were a Survivor.
+			PrintToServer("%N has returned, moving them back to RED team.", client);
+			
+			char class[128];
+			FormatEx(class, sizeof(class), "%s_CLASS", auth);
+			TFClassType myClass;
+			g_hCrashedPlayerSteamIDs.GetValue(class, myClass);
+			
+			// needs a delay or the server crashes apparently
+			DataPack pack;
+			CreateDataTimer(0.5, Timer_MakeSurvivor, pack, TIMER_FLAG_NO_MAPCHANGE);
+			pack.WriteCell(GetClientUserId(client));
+			pack.WriteCell(survivorIndex);
+			pack.WriteCell(myClass);
+			g_hCrashedPlayerSteamIDs.Remove(auth);
+			g_hCrashedPlayerSteamIDs.Remove(class);
+			
+			if (g_hCrashedPlayerTimers[survivorIndex])
+			{
+				delete g_hCrashedPlayerTimers[survivorIndex];
+			}
+			
+			FindConVar("tf_allow_server_hibernation").SetBool(true);
+			FindConVar("tf_bot_join_after_player").SetBool(true);
+		}
 	}
+}
+
+public Action Timer_MakeSurvivor(Handle timer, DataPack pack)
+{
+	pack.Reset();
+	int client = GetClientOfUserId(pack.ReadCell());
+	if (client == 0)
+		return Plugin_Continue;
+	
+	int index = pack.ReadCell();
+	TF2_SetPlayerClass(client, view_as<TFClassType>(pack.ReadCell()));
+	MakeSurvivor(client, index, false);
+	return Plugin_Continue;
 }
 
 public void OnClientDisconnect(int client)
 {
 	if (!RF2_IsEnabled())
 		return;
-
+	
 	StopMusicTrack(client);
-
 	if (!IsFakeClient(client))
 	{
 		SaveClientCookies(client);
 	}
-
-	if (g_bRoundActive && !g_bGameOver && !g_bMapChanging)
+	
+	if (g_bPlayerTimingOut[client])
 	{
-		CheckRedTeam(client);
-	}
-
-	if (IsPlayerSurvivor(client) && !g_bPluginReloading)
-	{
-		SaveSurvivorInventory(client, RF2_GetSurvivorIndex(client));
-
-		// We need to deal with survivors who disconnect during the grace period.
-		if (g_bGracePeriod)
+		RF2_PrintToChatAll("{yellow}%N {red}crashed or lost connection on RED and has 5 minutes to reconnect!", client);
+		PrintToServer("%N crashed or lost connection on RED and has 5 minutes to reconnect!", client);
+		if (IsPlayerSurvivor(client))
 		{
-			ReshuffleSurvivor(client, -1);
+			char authId[MAX_AUTHID_LENGTH], class[128];
+			if (GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId)))
+			{
+				int index = RF2_GetSurvivorIndex(client);
+				g_hCrashedPlayerSteamIDs.SetValue(authId, index);
+				FormatEx(class, sizeof(class), "%s_CLASS", authId);
+				g_hCrashedPlayerSteamIDs.SetValue(class, TF2_GetPlayerClass(client)); // Remember class
+				SaveSurvivorInventory(client, index);
+				DataPack pack;
+				g_hCrashedPlayerTimers[index] = CreateDataTimer(300.0, Timer_PlayerReconnect, pack, TIMER_FLAG_NO_MAPCHANGE);
+				pack.WriteString(authId);
+				if (IsSingleplayer(true))
+				{
+					FindConVar("tf_allow_server_hibernation").SetBool(false);
+					FindConVar("tf_bot_join_after_player").SetBool(false);
+				}
+			}
+		}
+		
+		g_bPlayerTimingOut[client] = false;
+	}
+	else if (!IsFakeClient(client))
+	{
+		if (g_bRoundActive && !g_bGameOver && !g_bMapChanging)
+		{
+			CheckRedTeam(client);
+		}
+		
+		if (IsPlayerSurvivor(client) && !g_bPluginReloading)
+		{
+			SaveSurvivorInventory(client, RF2_GetSurvivorIndex(client));
+			
+			// We need to deal with survivors who disconnect during the grace period.
+			if (g_bGracePeriod)
+			{
+				ReshuffleSurvivor(client, -1);
+			}
 		}
 	}
 }
@@ -1304,10 +1387,31 @@ public void OnClientDisconnect_Post(int client)
 		g_TFBot[client].Follower.Destroy();
 		g_TFBot[client].Follower = view_as<PathFollower>(0);
 	}
-
+	
 	g_TFBot[client] = null;
 	RefreshClient(client);
 	ResetAFKTime(client, false);
+}
+
+public Action Timer_PlayerReconnect(Handle timer, DataPack pack)
+{
+	pack.Reset();
+	char authId[MAX_AUTHID_LENGTH];
+	pack.ReadString(authId, sizeof(authId));
+	int index;
+	g_hCrashedPlayerSteamIDs.GetValue(authId, index);
+	g_hCrashedPlayerTimers[index] = null;
+	char class[128];
+	FormatEx(class, sizeof(class), "%s_CLASS", authId);
+	g_hCrashedPlayerSteamIDs.Remove(authId);
+	g_hCrashedPlayerSteamIDs.Remove(class);
+	if (GetPlayersOnTeam(TEAM_SURVIVOR, true) == 0)
+	{
+		PrintToServer("[RF2] The game has ended because a timed-out client took too long to rejoin, and there are no players left on RED!");
+		GameOver();
+	}
+	
+	return Plugin_Continue;
 }
 
 void CheckRedTeam(int client)
@@ -1321,7 +1425,7 @@ void CheckRedTeam(int client)
 		if (IsPlayerSurvivor(i))
 			count++;
 	}
-
+	
 	if (count <= 0 && !g_bRoundEnding) // Everybody on RED is gone, game over
 	{
 		RF2_PrintToChatAll("%t", "AllHumansDisconnected");
@@ -2595,7 +2699,7 @@ public Action UserMessageHook_SayText2(UserMsg msg, BfRead bf, const int[] clien
 int g_iEnemySpawnPoints[MAXTF2PLAYERS];
 public Action Timer_EnemySpawnWave(Handle timer)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive || IsStageCleared())
+	if (!RF2_IsEnabled() || !g_bRoundActive || IsStageCleared() || WaitingForPlayerRejoin(true))
 		return Plugin_Continue;
 	
 	int survivorCount = RF2_GetSurvivorCount();
@@ -2959,10 +3063,10 @@ public Action Timer_Difficulty(Handle timer)
 		g_hDifficultyTimer = null;
 		return Plugin_Stop;
 	}
-
-	if (g_bGameOver || g_bGracePeriod)
+	
+	if (g_bGameOver || g_bGracePeriod || WaitingForPlayerRejoin(true))
 		return Plugin_Continue;
-
+	
 	float secondsToAdd = 1.0;
 	if (IsArtifactActive(REDArtifact_Patience))
 	{
@@ -3461,16 +3565,18 @@ public Action Timer_SuicideTeleport(Handle timer, DataPack pack)
 	pos[0] = pack.ReadFloat();
 	pos[1] = pack.ReadFloat();
 	pos[2] = pack.ReadFloat();
-
+	
 	TeleportEntity(client, pos);
 	return Plugin_Continue;
 }
 
 public void Hook_PreThink(int client)
 {
+	// IsClientTimingOut() doesn't work in OnClientDisconnect, so this is required to know if a client times out when disconnecting
+	g_bPlayerTimingOut[client] = !IsFakeClient(client) && IsClientTimingOut(client);
 	if (!g_bRoundActive)
 		return;
-
+	
 	float engineTime = GetEngineTime();
 	bool bot = IsFakeClient(client);
 

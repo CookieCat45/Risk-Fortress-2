@@ -100,6 +100,7 @@ void LoadCommandsAndCvars()
 	g_cvArtifactChance = CreateConVar("rf2_artifact_chance", "1", "1 in N chance for Artifacts to be rolled at the beginning of a stage.", FCVAR_NOTIFY, true, 0.0);
 	
 	// Debug
+	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
 	RegAdminCmd("rf2_debug_playgesture", Command_PlayGesture, ADMFLAG_SLAY, "Plays a gesture animation on yourself");
 	RegAdminCmd("rf2_debug_entitycount", Command_EntityCount, ADMFLAG_SLAY, "Shows the total number of networked entities (edicts) in the server.");
 	RegAdminCmd("rf2_debug_thriller_test", Command_ThrillerTest, ADMFLAG_ROOT, "\"Darkness falls across the land, the dancing hour is close at hand...\"");
@@ -107,7 +108,7 @@ void LoadCommandsAndCvars()
 	g_cvDebugShowObjectSpawns = CreateConVar("rf2_debug_show_object_spawns", "0", "If nonzero, when an object spawns, its name and location will be printed to the console.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvDebugDontEndGame = CreateConVar("rf2_debug_dont_end_game", "0", "If nonzero, don't end the game if all of the survivors die.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvDebugShowDifficultyCoeff = CreateConVar("rf2_debug_show_difficulty_coeff", "0", "If nonzero, shows the value of the difficulty coefficient.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-
+	
 	HookConVarChange(g_cvEnableAFKManager, ConVarHook_EnableAFKManager);
 }
 
@@ -1779,6 +1780,13 @@ public Action Command_PlayGesture(int client, int args)
 		RF2_ReplyToCommand(client, "Couldn't find gesture '%s'", gesture);
 	}
 	
+	return Plugin_Handled;
+}
+
+public Action Command_SimulateCrash(int client, int args)
+{
+	g_bPlayerTimingOut[client] = true;
+	KickClientEx(client, "Simulating Crash");
 	return Plugin_Handled;
 }
 

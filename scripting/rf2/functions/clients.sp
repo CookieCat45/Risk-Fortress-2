@@ -51,9 +51,9 @@ void RefreshClient(int client, bool force=false)
 		// Clear our custom model on a timer so our ragdoll uses the correct model if we're dying.
 		CreateTimer(0.5, Timer_ResetModel, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
-
+	
 	// Do not reset our Survivor stats if we die in the grace period.
-	if (force || !g_bGracePeriod && IsPlayerSurvivor(client) || g_bMapChanging)
+	if (force || !g_bGracePeriod && IsPlayerSurvivor(client) || g_bMapChanging || !IsClientInGame(client))
 	{
 		g_iPlayerLevel[client] = 1;
 		g_flPlayerXP[client] = 0.0;
@@ -404,11 +404,11 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 				{
 					oldBuildingMaxHealth = GetEntProp(entity, Prop_Send, "m_iMaxHealth");
 				}
-
+				
 				buildingMaxHealth = RoundToFloor(float(buildingMaxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
 				buildingMaxHealth = imax(buildingMaxHealth, 1); // prevent 0, causes division by zero crash on client
 				SetEntProp(entity, Prop_Send, "m_iMaxHealth", buildingMaxHealth);
-
+				
 				if (!carried && !GetEntProp(entity, Prop_Send, "m_bBuilding"))
 				{
 					buildingHealth = GetEntProp(entity, Prop_Send, "m_iHealth") + (buildingMaxHealth-oldBuildingMaxHealth);
