@@ -308,14 +308,14 @@ enum
 
 enum // ParticleAttachment_t
 {
-    PATTACH_INVALID = -1,            // Not in original, indicates invalid initial value
-    PATTACH_ABSORIGIN = 0,            // Create at absorigin, but don't follow
-    PATTACH_ABSORIGIN_FOLLOW,        // Create at absorigin, and update to follow the entity
-    PATTACH_CUSTOMORIGIN,            // Create at a custom origin, but don't follow
-    PATTACH_POINT,                    // Create on attachment point, but don't follow
-    PATTACH_POINT_FOLLOW,            // Create on attachment point, and update to follow the entity
-    PATTACH_WORLDORIGIN,            // Used for control points that don't attach to an entity
-    PATTACH_ROOTBONE_FOLLOW,        // Create at the root bone of the entity, and update to follow
+	PATTACH_INVALID = -1,			// Not in original, indicates invalid initial value
+	PATTACH_ABSORIGIN = 0,			// Create at absorigin, but don't follow
+	PATTACH_ABSORIGIN_FOLLOW,		// Create at absorigin, and update to follow the entity
+	PATTACH_CUSTOMORIGIN,			// Create at a custom origin, but don't follow
+	PATTACH_POINT,					// Create on attachment point, but don't follow
+	PATTACH_POINT_FOLLOW,			// Create on attachment point, and update to follow the entity
+	PATTACH_WORLDORIGIN,			// Used for control points that don't attach to an entity
+	PATTACH_ROOTBONE_FOLLOW,		// Create at the root bone of the entity, and update to follow
 };
 
 #include <rf2>
@@ -893,6 +893,8 @@ public void OnMapStart()
 		HookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
 		HookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
 		HookEvent("player_team", OnChangeTeamMessage, EventHookMode_Pre);
+		HookEvent("player_connect", OnPlayerConnect, EventHookMode_Pre);
+		HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
 		
 		// Command listeners
 		AddCommandListener(OnVoiceCommand, "voicemenu");
@@ -1052,7 +1054,9 @@ void CleanUp()
 	UnhookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
 	UnhookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
 	UnhookEvent("player_team", OnChangeTeamMessage, EventHookMode_Pre);
-
+	UnhookEvent("player_connect", OnPlayerConnect, EventHookMode_Pre);
+	UnhookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
+	
 	RemoveCommandListener(OnVoiceCommand, "voicemenu");
 	RemoveCommandListener(OnChangeClass, "joinclass");
 	RemoveCommandListener(OnChangeTeam, "jointeam");
@@ -1778,10 +1782,10 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 
 	if (IsFakeClient(client))
 	{
-        if (g_TFBot[client].Follower.IsValid())
-        {
-            g_TFBot[client].Follower.Invalidate();
-        }
+		if (g_TFBot[client].Follower.IsValid())
+		{
+			g_TFBot[client].Follower.Invalidate();
+		}
 	}
 
 	TF2Attrib_SetByDefIndex(client, 269, 1.0); // "mod see enemy health"
@@ -2614,6 +2618,25 @@ public Action OnChangeTeamMessage(Event event, const char[] name, bool dontBroad
 {
 	// no team change messages
 	event.BroadcastDisabled = true;
+	return Plugin_Continue;
+}
+
+public Action OnPlayerConnect(Event event, const char[] name, bool dontBroadcast)
+{
+	char auth[MAX_AUTHID_LENGTH];
+	event.GetString("networkid", auth, sizeof(auth));
+	if (strcmp2(auth, "BOT"))
+		event.BroadcastDisabled = true;
+	
+	return Plugin_Continue;
+}
+
+public Action OnPlayerDisconnect(Event event, const char[] name, bool dontBroadcast)
+{
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (IsFakeClient(client))
+		event.BroadcastDisabled = true;
+	
 	return Plugin_Continue;
 }
 
@@ -5266,7 +5289,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 					// Remove the client from the array.
 					for (int j = i; j < numClients-1; j++)
 					{
-				    	clients[j] = clients[j+1];
+						clients[j] = clients[j+1];
 					}
 
 					numClients--;
