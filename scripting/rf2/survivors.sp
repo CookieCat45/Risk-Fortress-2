@@ -613,8 +613,10 @@ bool IsPlayerSurvivor(int client)
 
 bool IsSingleplayer(bool fullCheck=true)
 {
-	return g_iSurvivorCount == 1 || fullCheck && GetTotalHumans(false) == 1;
-}
+	if (g_iSurvivorCount > 1)
+		return false;
+
+	return !fullCheck || GetTotalHumans(false) <= 1;
 
 // Returns true if a player timed out and we're waiting for them to rejoin.
 // single=true means only return if there are no players on RED (likely singleplayer).

@@ -569,6 +569,7 @@ void TF2_RemoveLoadoutWearables(int client)
 bool IsAttributeBlacklisted(int id)
 {
 	return id == 796 || // "min viewmodel offset" (causes client crashes when set by plugins)
+	id == 2058 // "meter_label" (another string attribute that can crash clients)
 	id >= 292 && id <= 294 || // "kill eater" attributes (these are for TF2 strange items, they do nothing for us but waste slots)
 	id == 388 || // "kill eater kill type"
 	id >= 379 && id <= 384 || // even MORE kill eater attributes

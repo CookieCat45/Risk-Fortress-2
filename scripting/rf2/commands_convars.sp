@@ -568,7 +568,7 @@ public Action Command_VoteSkipWait(int client, int args)
 	if (g_bWaitingForPlayers)
 	{
 		// wait until all human players are connected, unless singleplayer
-		if (IsSingleplayer(true))
+		if (GetTotalHumans(false) <= 1)
 		{
 			InsertServerCommand("mp_restartgame_immediate 1");
 		}

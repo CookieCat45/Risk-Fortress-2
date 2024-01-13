@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.3.2b"
+#define PLUGIN_VERSION "0.3.3b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -2623,6 +2623,7 @@ public Action OnChangeTeamMessage(Event event, const char[] name, bool dontBroad
 
 public Action OnPlayerConnect(Event event, const char[] name, bool dontBroadcast)
 {
+	// doesn't work :/
 	char auth[MAX_AUTHID_LENGTH];
 	event.GetString("networkid", auth, sizeof(auth));
 	if (strcmp2(auth, "BOT"))
@@ -2710,12 +2711,12 @@ public Action UserMessageHook_SayText2(UserMsg msg, BfRead bf, const int[] clien
 	char message[128];
 	bf.ReadString(message, sizeof(message));
 	bf.ReadString(message, sizeof(message));
-
+	
 	if (StrContains(message, "Name_Change") != -1) // Hide name change messages, they really get spammy
 	{
 		return Plugin_Handled;
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -5278,7 +5279,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				}
 			}
 		}
-
+		
 		// If we're disguised, don't play the new sound to our teammates
 		if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
 		{
@@ -5291,7 +5292,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 					{
 						clients[j] = clients[j+1];
 					}
-
+					
 					numClients--;
 					i--;
 				}
