@@ -47,7 +47,9 @@ void RefreshClient(int client, bool force=false)
 		TF2Attrib_RemoveAll(client);
 		SetEntityGravity(client, 1.0);
 		SetEntProp(client, Prop_Send, "m_bGlowEnabled", false);
-
+		//SetEntProp(client, Prop_Send, "m_nModelIndexOverrides", 0, _, 0);
+		//SetEntProp(client, Prop_Send, "m_nModelIndexOverrides", 0, _, 3);
+		
 		// Clear our custom model on a timer so our ragdoll uses the correct model if we're dying.
 		CreateTimer(0.5, Timer_ResetModel, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
@@ -945,8 +947,7 @@ bool IsPlayerSpectator(int client)
 
 float GetPercentInvisible(int client)
 {
-    int offset = FindSendPropInfo("CTFPlayer", "m_flInvisChangeCompleteTime") - 8;
-    return GetEntDataFloat(client, offset);
+    return GetEntDataFloat(client, FindSendPropInfo("CTFPlayer", "m_flInvisChangeCompleteTime") - 8);
 }
 
 int GetPlayerWearableCount(int client, bool itemOnly=false)

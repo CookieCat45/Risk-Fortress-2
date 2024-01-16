@@ -569,6 +569,7 @@ ArrayList g_hTFBotEngineerBuildings[MAXTF2PLAYERS];
 #define TFBOTFLAG_HOLDFIRE (1 << 3) // Hold fire until fully reloaded
 
 // Other
+//int g_iSpyDisguiseModels[10];
 bool g_bThrillerActive;
 int g_iThrillerRepeatCount;
 ArrayList g_hParticleEffectTable;
@@ -694,7 +695,7 @@ void LoadGameData()
 	{
 		LogError("Failed to create call for CTFPlayer::PlayGesture");
 	}
-
+	
 	// CBaseEntity::TakeHealth ---------------------------------------------------------------------------------------------------------------
 	offset = GameConfGetOffset(gamedata, "CBaseEntity::TakeHealth");
 	g_hSDKTakeHealth = DHookCreate(offset, HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity, DHook_TakeHealth);
@@ -1183,9 +1184,20 @@ void LoadAssets()
 	PrecacheScriptSound(GSND_CRIT);
 	PrecacheScriptSound(GSND_MINICRIT);
 	PrecacheScriptSound(GSND_CLEAVER_HIT);
-	
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
+	
+	/*
+	g_iSpyDisguiseModels[TFClass_Scout] = PrecacheModel("models/rf2/bots/bot_scout.mdl", true);
+	g_iSpyDisguiseModels[TFClass_Soldier] = PrecacheModel("models/rf2/bots/bot_soldier.mdl", true);
+	g_iSpyDisguiseModels[TFClass_Pyro] = PrecacheModel("models/rf2/bots/bot_pyro.mdl", true);
+	g_iSpyDisguiseModels[TFClass_DemoMan] = PrecacheModel("models/rf2/bots/bot_demo.mdl", true);
+	g_iSpyDisguiseModels[TFClass_Heavy] = PrecacheModel("models/rf2/bots/bot_heavy.mdl", true);
+	g_iSpyDisguiseModels[TFClass_Engineer] = PrecacheModel("models/rf2/bots/bot_engineer.mdl", true);
+	g_iSpyDisguiseModels[TFClass_Medic] = PrecacheModel("models/rf2/bots/bot_medic.mdl", true);
+	g_iSpyDisguiseModels[TFClass_Sniper] = PrecacheModel("models/rf2/bots/bot_sniper.mdl", true);
+	g_iSpyDisguiseModels[TFClass_Spy] = PrecacheModel("models/rf2/bots/bot_spy.mdl", true);
+	*/
 }
 
 void ResetConVars()
@@ -2640,7 +2652,7 @@ public Action OnPlayerConnect(Event event, const char[] name, bool dontBroadcast
 public Action OnPlayerDisconnect(Event event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
-	if (IsFakeClient(client))
+	if (client > 0 && IsFakeClient(client))
 		event.BroadcastDisabled = true;
 	
 	return Plugin_Continue;
@@ -3671,6 +3683,14 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	if (!RF2_IsEnabled())
 		return;
 	
+	/*
+	if ((condition == TFCond_Disguised || condition == TFCond_Disguising && TF2_IsPlayerInCondition(client, TFCond_Disguised)) 
+		&& IsPlayerSurvivor(client))
+	{
+		CreateTimer(condition == TFCond_Disguising ? 0.5 : 0.0, Timer_SetPlayerDisguiseModel, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	}
+	*/
+
 	if (condition == TFCond_Taunting && !g_bWaitingForPlayers)
 	{
 		if (IsFakeClient(client))
@@ -3734,6 +3754,14 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	if (!RF2_IsEnabled())
 		return;
 	
+	/*
+	if (condition == TFCond_Disguised && IsPlayerSurvivor(client))
+	{
+		SetEntProp(client, Prop_Send, "m_nModelIndexOverrides", 0, _, 0);
+		SetEntProp(client, Prop_Send, "m_nModelIndexOverrides", 0, _, 3);
+	}
+	*/
+	
 	if (condition == TFCond_BlastJumping && CanUseCollectorItem(client, ItemSoldier_HawkWarrior))
 	{
 		int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
@@ -3759,6 +3787,19 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 		CalculatePlayerMaxSpeed(client);
 	}
 }
+
+/*
+public Action Timer_SetPlayerDisguiseModel(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || !TF2_IsPlayerInCondition(client, TFCond_Disguised))
+		return Plugin_Continue;
+	
+	TFClassType class = view_as<TFClassType>(GetEntProp(client, Prop_Send, "m_nDisguiseClass"));
+	SetEntProp(client, Prop_Send, "m_nModelIndexOverrides", g_iSpyDisguiseModels[class], _, 0);
+	SetEntProp(client, Prop_Send, "m_nModelIndexOverrides", g_iSpyDisguiseModels[class], _, 3);
+	return Plugin_Continue;
+}
+*/
 
 int g_iLastFiredWeapon[MAXTF2PLAYERS] = {-1, ...};
 float g_flWeaponFireTime[MAXTF2PLAYERS];
@@ -4218,7 +4259,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		damageType |= DMG_PREVENT_PHYSICS_FORCE;
 	}
-
+	
 	if (g_bFakeFireball[inflictor])
 	{
 		damageCustom = TF_CUSTOM_SPELL_FIREBALL;
