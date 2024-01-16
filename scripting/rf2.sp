@@ -62,7 +62,6 @@ public Plugin myinfo =
 #define MAT_DEBUGEMPTY "debug/debugempty.vmt"
 #define MAT_BEAM "materials/sprites/laser.vmt"
 
-
 // Sounds -------------------------------------------------------------------------------------------------------------------------------------
 #define SND_ITEM_PICKUP "ui/item_default_pickup.wav"
 #define SND_GAME_OVER "music/mvm_lost_wave.wav"
@@ -1254,7 +1253,7 @@ public void OnClientPutInServer(int client)
 {
 	RefreshClient(client);
 	GetClientName(client, g_szPlayerOriginalName[client], sizeof(g_szPlayerOriginalName[]));
-
+	
 	if (RF2_IsEnabled() && !IsClientSourceTV(client) && !IsClientReplay(client))
 	{
 		if (IsFakeClient(client))
@@ -1276,9 +1275,15 @@ public void OnClientPutInServer(int client)
 			DHookEntity(g_hSDKTakeHealth, false, client);
 		
 		g_hPlayerExtraSentryList[client] = CreateArray();
+	}
+}
+
+public void OnClientAuthorized(int client, const char[] auth)
+{
+	if (RF2_IsEnabled() && !IsFakeClient(client))
+	{
 		int survivorIndex;
-		char auth[MAX_AUTHID_LENGTH];
-		if (GetClientAuthId(client, AuthId_Steam2, auth, sizeof(auth)) && g_hCrashedPlayerSteamIDs.GetValue(auth, survivorIndex))
+		if (g_hCrashedPlayerSteamIDs.GetValue(auth, survivorIndex))
 		{
 			// This is a client rejoining who crashed/lost connection when they were a Survivor.
 			PrintToServer("%N has returned, moving them back to RED team.", client);
@@ -4209,6 +4214,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 	}
 	
+	if (inflictorIsBuilding && GetEntProp(inflictor, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+	{
+		damageType |= DMG_PREVENT_PHYSICS_FORCE;
+	}
+
 	if (g_bFakeFireball[inflictor])
 	{
 		damageCustom = TF_CUSTOM_SPELL_FIREBALL;
