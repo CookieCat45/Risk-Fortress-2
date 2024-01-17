@@ -84,6 +84,10 @@ enum
 	ItemScout_LongFallBoots = 67,
 	ItemSniper_Bloodhound = 68,
 	ItemSoldier_HawkWarrior = 69,
+	Item_DeusSpecs = 70,
+	Item_MaxHead = 71,
+	ItemStrange_PartyHat = 72,
+	ItemStrange_RobotChicken = 73,
 	Item_MaxValid,
 };
 

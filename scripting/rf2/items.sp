@@ -738,6 +738,21 @@ void UpdatePlayerItem(int client, int item)
 {
 	switch (item)
 	{
+		case Item_MaxHead:
+		{
+			float value = CalcItemMod(client, Item_MaxHead, 0);
+			int primary = GetPlayerWeaponSlot(client, 0);
+			int secondary = GetPlayerWeaponSlot(client, 1);
+			if (primary > 0)
+			{
+				TF2Attrib_SetByDefIndex(primary, 266, value); // "projectile penetration"
+			}
+			
+			if (secondary > 0)
+			{
+				TF2Attrib_SetByDefIndex(secondary, 266, value);
+			}
+		}
 		case Item_PrideScarf, Item_ClassCrown:
 		{
 			CalculatePlayerMaxHealth(client);
@@ -1260,11 +1275,32 @@ bool ActivateStrangeItem(int client)
 	if (g_iPlayerEquipmentItemCharges[client] <= 0)
 		return false;
 	
-	if (GetPercentInvisible(client) > 0.0)
+	int equipment = GetPlayerEquipmentItem(client);
+	if (GetPercentInvisible(client) > 0.0 && equipment == ItemStrange_DarkHunter)
 		return false;
-	
-	switch (GetPlayerEquipmentItem(client))
+
+	if (equipment == ItemStrange_PartyHat)
 	{
+		ArrayList equipmentList = new ArrayList();
+		for (int i = 1; i < Item_MaxValid; i++)
+		{
+			if (i == ItemStrange_PartyHat || !g_bItemInDropPool[i] || !IsEquipmentItem(i))
+				continue;
+			
+			equipmentList.Push(i);
+		}
+		
+		equipment = equipmentList.Get(GetRandomInt(0, equipmentList.Length-1));
+		delete equipmentList;
+	}
+	
+	switch (equipment)
+	{
+		case ItemStrange_RobotChicken:
+		{
+			TF2_AddCondition(client, TFCond_CritCanteen, GetItemMod(ItemStrange_RobotChicken, 0));
+		}
+		
 		case ItemStrange_RoBro:
 		{
 			// This messes with things like banners and phlog. We can at least restore the client's old rage value after.
@@ -1683,7 +1719,7 @@ float GetPlayerEquipmentItemCooldown(int client)
 	if (!IsEquipmentItem(item))
 		return 0.0;
 	
-	float cooldown = g_flEquipmentItemCooldown[item] * CalcItemMod_HyperbolicInverted(client, Item_BatteryCanteens, 0);
+	float cooldown = g_flEquipmentItemCooldown[item] * CalcItemMod_HyperbolicInverted(client, Item_DeusSpecs, 0);
 	if (IsPlayerSurvivor(client) && IsArtifactActive(REDArtifact_Efficiency))
 	{
 		cooldown *= 0.25;

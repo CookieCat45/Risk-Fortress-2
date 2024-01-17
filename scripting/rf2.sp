@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.3.3b"
+#define PLUGIN_VERSION "0.3.4b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -4358,8 +4358,15 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			case TF_CUSTOM_SPELL_FIREBALL: proc *= 0.5;
 			case TF_CUSTOM_BURNING, TF_CUSTOM_BLEEDING: proc *= 0.75;
+			case TF_CUSTOM_PENETRATE_ALL_PLAYERS, TF_CUSTOM_PENETRATE_HEADSHOT, TF_CUSTOM_PENETRATE_MY_TEAM:
+			{
+				if (PlayerHasItem(attacker, Item_MaxHead))
+				{
+					damage *= 1.0 + CalcItemMod(attacker, Item_MaxHead, 1);
+				}
+			}
 		}
-
+		
 		damage *= GetPlayerDamageMult(attacker);
 
 		if (g_bFiredWhileRocketJumping[inflictor] && PlayerHasItem(attacker, ItemSoldier_Compatriot) && CanUseCollectorItem(attacker, ItemSoldier_Compatriot))

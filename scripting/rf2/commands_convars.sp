@@ -39,6 +39,7 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_skipwait", Command_VoteSkipWait, "Starts a vote to skip the Waiting for Players sequence.");
 	RegConsoleCmd("rf2_survivorqueue", Command_SurvivorQueue, "Shows the Survivor queue list.");
 	RegConsoleCmd("rf2_itemlog", Command_ItemLog, "Shows a list of items that you've collected.");
+	RegConsoleCmd("rf2_logbook", Command_ItemLog, "Shows a list of items that you've collected.");
 	RegConsoleCmd("rf2_achievements", Command_Achievements, "Shows a list of achievements in Risk Fortress 2.");
 	
 	char buffer[8];

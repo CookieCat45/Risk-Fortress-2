@@ -651,13 +651,16 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 		
 		switch (item)
 		{
-			case ItemStrange_VirtualViewfinder, ItemStrange_Spellbook: return threat > 0 && !invuln && vision.IsLookingAtTarget(threat);
+			case ItemStrange_VirtualViewfinder, ItemStrange_Spellbook, ItemStrange_PartyHat, ItemStrange_RobotChicken: 
+			{
+				return threat > 0 && !invuln && vision.IsLookingAtTarget(threat);
+			}
 			
 			case ItemStrange_RoBro: return threat > 0 && GetClientHealth(bot.Client) < RF2_GetCalculatedMaxHealth(bot.Client) / 2;
 			
 			case ItemStrange_HeartOfGold: return true; // we check when we use this item instead, so always try to use
 			
-			case ItemStrange_LegendaryLid:
+			case ItemStrange_LegendaryLid, ItemStrange_CroneDome, ItemStrange_HandsomeDevil:
 			{
 				if (threat > 0 && !invuln && vision.IsLookingAtTarget(threat))
 				{
