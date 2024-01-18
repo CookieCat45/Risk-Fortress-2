@@ -256,6 +256,21 @@ float GetDifficultyFactor(int difficulty)
 	return DifficultyFactor_Iron;
 }
 
+void UpdateGameDescription()
+{
+	#if defined _SteamWorks_Included
+	if (GetExtensionFileStatus("SteamWorks.ext") == 1)
+	{
+		char desc[256], difficultyName[32];
+		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
+		FormatEx(desc, sizeof(desc), "Risk Fortress 2 - %s (Stage %d - %s) %i/%i Players", PLUGIN_VERSION, g_iStagesCompleted+1, difficultyName, 
+				GetTotalHumans(false), g_cvMaxHumanPlayers.IntValue);
+
+		SteamWorks_SetGameDescription(desc);
+	}
+	#endif
+}
+
 // It does not matter if the .mdl extension is included in the path or not.
 void AddModelToDownloadsTable(const char[] file)
 {

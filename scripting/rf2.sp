@@ -849,20 +849,9 @@ public void OnMapStart()
 		{
 			SetFailState("[NAV] The NavMesh for map \"%s\" does not exist", mapName);
 		}
-
-		#if defined _SteamWorks_Included
-		if (GetExtensionFileStatus("SteamWorks.ext") == 1)
-		{
-			char desc[64];
-			char difficultyName[32];
-			GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
-			FormatEx(desc, sizeof(desc), "Risk Fortress 2 - %s (Stage %d - %s)", PLUGIN_VERSION, g_iStagesCompleted+1, difficultyName);
-			SteamWorks_SetGameDescription(desc);
-		}
-		#endif
-
+		
+		UpdateGameDescription();
 		LoadAssets();
-
 		if (!g_bLateLoad)
 		{
 			//AutoExecConfig(true, "RiskFortress2");
@@ -998,20 +987,20 @@ public void OnConfigsExecuted()
 				break;
 			}
 		}
-
+		
 		// For some reason, FindConVar() with sv_pure returns NULL
 		// So we will use this as a workaround. Custom servers should have sv_pure 0 anyways.
 		InsertServerCommand("sv_pure 0");
-
+		
 		// TFBots
-		FindConVar("tf_bot_quota").SetInt(MaxClients);
+		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxSurvivors.IntValue);
 		FindConVar("tf_bot_quota_mode").SetString("fill");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
 		FindConVar("tf_bot_taunt_victim_chance").SetInt(0);
 		FindConVar("tf_bot_join_after_player").SetBool(true);
 		FindConVar("tf_bot_auto_vacate").SetBool(true);
-
+		
 		ConVar botConsiderClass = FindConVar("tf_bot_reevaluate_class_in_spawnroom");
 		botConsiderClass.Flags = botConsiderClass.Flags & ~FCVAR_CHEAT;
 		botConsiderClass.SetBool(false);
@@ -1258,6 +1247,7 @@ public void OnClientConnected(int client)
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
 		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
+		UpdateGameDescription();
 	}
 }
 
@@ -1409,6 +1399,7 @@ public void OnClientDisconnect_Post(int client)
 	g_TFBot[client] = null;
 	RefreshClient(client);
 	ResetAFKTime(client, false);
+	UpdateGameDescription();
 }
 
 public Action Timer_PlayerReconnect(Handle timer, DataPack pack)
