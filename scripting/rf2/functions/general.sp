@@ -263,9 +263,9 @@ void UpdateGameDescription()
 	{
 		char desc[256], difficultyName[32];
 		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
-		FormatEx(desc, sizeof(desc), "Risk Fortress 2 - %s (Stage %d - %s) %i/%i Players", PLUGIN_VERSION, g_iStagesCompleted+1, difficultyName, 
+		FormatEx(desc, sizeof(desc), "Risk Fortress 2 (Stage %d - %s) %i/%i Players", g_iStagesCompleted+1, difficultyName, 
 				GetTotalHumans(false), g_cvMaxHumanPlayers.IntValue);
-
+		
 		SteamWorks_SetGameDescription(desc);
 	}
 	#endif
