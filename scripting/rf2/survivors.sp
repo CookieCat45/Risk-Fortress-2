@@ -223,8 +223,12 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	ChangeClientTeam(client, TEAM_SURVIVOR);
 	
 	// This is so weapons/wearables update properly on plugin reloads.
-	TF2_RemoveAllWeapons(client);
-	TF2_RemoveAllWearables(client);
+	if (!g_bGameInitialized)
+	{
+		TF2_RemoveAllWeapons(client);
+		TF2_RemoveAllWearables(client);
+	}
+	
 	TF2_RespawnPlayer(client);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 5.0);
 	SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);
