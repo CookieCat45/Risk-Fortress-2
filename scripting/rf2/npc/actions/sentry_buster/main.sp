@@ -36,9 +36,6 @@ methodmap RF2_SentryBusterMainAction < NextBotAction
 
 static int OnStart(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, NextBotAction prevAction)
 {
-	float worldSpace[3];
-	actor.WorldSpaceCenter(worldSpace);
-	actor.Target = CBaseEntity(GetNearestEntity(worldSpace, "obj_sentrygun", _, _, TEAM_SURVIVOR));
 	action.TalkerTime = GetGameTime() + 4.0;
 	return action.Continue();
 }
@@ -62,11 +59,6 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(actor.index);
 	NextBotGroundLocomotion loco = npc.GetLocomotion();
 
-	if (loco.IsStuck())
-	{
-		return action.ChangeTo(RF2_SentryBusterDetonateAction(), "Fuck we're stuck!");
-	}
-
 	float targetPos[3];
 	if (target.GetProp(Prop_Send, "m_bCarried"))
 	{
@@ -76,8 +68,8 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 			target = CBaseEntity(owner);
 		}
 	}
-	target.GetAbsOrigin(targetPos);
 
+	target.GetAbsOrigin(targetPos);
 	if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) && actor.IsLOSClearFromTarget(target))
 	{
 		return action.ChangeTo(RF2_SentryBusterDetonateAction(), "KABOOM");
@@ -89,6 +81,15 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	path.Update(bot);
 	loco.Run();
 
+	if (loco.IsStuck())
+	{
+		actor.RepathAttempts++;
+		if (actor.RepathAttempts >= 20)
+		{
+			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "Fuck we're stuck!");
+		}
+	}
+	
 	if (action.TalkerTime < GetGameTime())
 	{
 		action.TalkerTime = GetGameTime() + 4.0;

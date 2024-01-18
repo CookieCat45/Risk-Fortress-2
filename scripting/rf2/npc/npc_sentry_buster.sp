@@ -68,8 +68,9 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 			.DefineIntField("m_idleSequence")
 			.DefineIntField("m_runSequence")
 			.DefineIntField("m_airSequence")
+			.DefineIntField("m_iRepathAttempts")
 		.EndDataMapDesc();
-
+		
 		g_Factory.Install();
 	}
 	
@@ -96,6 +97,19 @@ methodmap RF2_SentryBuster < CBaseCombatCharacter
 		public set(CBaseEntity entity)
 		{
 			this.SetPropEnt(Prop_Data, "m_Target", EnsureEntRef(entity.index));
+		}
+	}
+
+	property int RepathAttempts
+	{
+		public get()
+		{
+			return this.GetProp(Prop_Data, "m_iRepathAttempts");
+		}
+
+		public set (int value)
+		{
+			this.SetProp(Prop_Data, "m_iRepathAttempts", value);
 		}
 	}
 
@@ -544,20 +558,14 @@ void DoSentryBusterWave()
 	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != -1)
 	{
 		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != TEAM_SURVIVOR)
-		{
 			continue;
-		}
-
+		
 		builder = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
 		if (builder <= 0)
-		{
 			continue;
-		}
-
+		
 		if (g_hPlayerExtraSentryList[builder].FindValue(entity) != -1) // Don't count disposable sentries
-		{
 			continue;
-		}
 
 		sentryList.Push(entity);
 	}
@@ -577,9 +585,10 @@ void DoSentryBusterWave()
 		{
 			EmitGameSoundToAll("Announcer.MVM_Sentry_Buster_Alert_Another");
 		}
+
 		g_Busters++;
 	}
-
+	
 	delete sentryList;
 }
 

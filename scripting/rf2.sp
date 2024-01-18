@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.3.4b"
+#define PLUGIN_VERSION "0.3.5b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -1349,32 +1349,27 @@ public void OnClientDisconnect(int client)
 		SaveClientCookies(client);
 	}
 	
-	if (g_bPlayerTimingOut[client])
+	if (g_bPlayerTimingOut[client] && IsPlayerSurvivor(client))
 	{
 		RF2_PrintToChatAll("{yellow}%N {red}crashed or lost connection on RED and has 5 minutes to reconnect!", client);
 		PrintToServer("%N crashed or lost connection on RED and has 5 minutes to reconnect!", client);
-		if (IsPlayerSurvivor(client))
+		char authId[MAX_AUTHID_LENGTH], class[128];
+		if (GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId)))
 		{
-			char authId[MAX_AUTHID_LENGTH], class[128];
-			if (GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId)))
+			int index = RF2_GetSurvivorIndex(client);
+			g_hCrashedPlayerSteamIDs.SetValue(authId, index);
+			FormatEx(class, sizeof(class), "%s_CLASS", authId);
+			g_hCrashedPlayerSteamIDs.SetValue(class, TF2_GetPlayerClass(client)); // Remember class
+			SaveSurvivorInventory(client, index);
+			DataPack pack;
+			g_hCrashedPlayerTimers[index] = CreateDataTimer(300.0, Timer_PlayerReconnect, pack, TIMER_FLAG_NO_MAPCHANGE);
+			pack.WriteString(authId);
+			if (IsSingleplayer(true))
 			{
-				int index = RF2_GetSurvivorIndex(client);
-				g_hCrashedPlayerSteamIDs.SetValue(authId, index);
-				FormatEx(class, sizeof(class), "%s_CLASS", authId);
-				g_hCrashedPlayerSteamIDs.SetValue(class, TF2_GetPlayerClass(client)); // Remember class
-				SaveSurvivorInventory(client, index);
-				DataPack pack;
-				g_hCrashedPlayerTimers[index] = CreateDataTimer(300.0, Timer_PlayerReconnect, pack, TIMER_FLAG_NO_MAPCHANGE);
-				pack.WriteString(authId);
-				if (IsSingleplayer(true))
-				{
-					FindConVar("tf_allow_server_hibernation").SetBool(false);
-					FindConVar("tf_bot_join_after_player").SetBool(false);
-				}
+				FindConVar("tf_allow_server_hibernation").SetBool(false);
+				FindConVar("tf_bot_join_after_player").SetBool(false);
 			}
 		}
-		
-		g_bPlayerTimingOut[client] = false;
 	}
 	else if (!IsFakeClient(client))
 	{
@@ -1394,6 +1389,8 @@ public void OnClientDisconnect(int client)
 			}
 		}
 	}
+	
+	g_bPlayerTimingOut[client] = false;
 }
 
 public void OnClientDisconnect_Post(int client)
@@ -1735,11 +1732,20 @@ public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 
 public Action OnPostInventoryApplication(Event event, const char[] eventName, bool dontBroadcast)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive)
+	if (!RF2_IsEnabled())
 		return Plugin_Continue;
 
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (!IsValidClient(client))
+		return Plugin_Continue;
+	
+	if (g_bWaitingForPlayers)
+	{
+		PrintHintText(client, "Once everyone is connected, you can skip waiting for players with /rf2_skipwait");
+		return Plugin_Continue;
+	}
+
+	if (!g_bRoundActive)
 		return Plugin_Continue;
 
 	int team = GetClientTeam(client);
@@ -4255,9 +4261,17 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 	}
 	
-	if (inflictorIsBuilding && GetEntProp(inflictor, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+	if (inflictorIsBuilding)
 	{
-		damageType |= DMG_PREVENT_PHYSICS_FORCE;
+		if (GetEntProp(inflictor, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+			damageType |= DMG_PREVENT_PHYSICS_FORCE;
+		
+		if (victim == attacker)
+		{
+			damage *= 0.4;
+			damageType &= ~DMG_CRIT;
+			return Plugin_Changed;
+		}
 	}
 	
 	if (g_bFakeFireball[inflictor])
