@@ -807,14 +807,14 @@ public void OnMapStart()
 	// This was a reload map change
 	if (g_bPluginReloading)
 	{
-		InsertServerCommand("sm plugins reload rf2");
+		InsertServerCommand("sm plugins load_unlock; sm plugins reload rf2");
 		return;
 	}
-
+	
 	g_bMapChanging = false;
 	float engineTime = GetEngineTime();
 	char mapName[256], buffer[8];
-
+	
 	GetCurrentMap(mapName, sizeof(mapName));
 	SplitString(mapName, "_", buffer, sizeof(buffer));
 
@@ -822,7 +822,7 @@ public void OnMapStart()
 	{
 		g_bPluginEnabled = true;
 		g_bWaitingForPlayers = asBool(GameRules_GetProp("m_bInWaitingForPlayers"));
-
+		
 		if (g_bLateLoad)
 		{
 			for (int i = 1; i <= MaxClients; i++)
@@ -949,7 +949,7 @@ public void OnMapStart()
 		g_bPluginEnabled = false;
 		LogMessage("The current map (%s) isn't an RF2-compatible map. RF2 will be disabled. Prefix your map's name with \"rf2_\" if this is in error.", mapName);
 	}
-
+	
 	LogMessage("Time taken to load: %f seconds", GetEngineTime()-engineTime);
 }
 
@@ -1225,6 +1225,15 @@ void ResetConVars()
 
 public void OnAllPluginsLoaded()
 {
+	if (g_bPluginEnabled)
+	{
+		InsertServerCommand("sm plugins load_lock");
+	}
+	else
+	{
+		InsertServerCommand("sm plugins load_unlock");
+	}
+
 	g_bGoombaAvailable = LibraryExists("goomba");
 }
 
@@ -1248,6 +1257,7 @@ public void OnClientConnected(int client)
 	{
 		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
 		UpdateGameDescription();
+		UpdateBotQuota();
 	}
 }
 
@@ -1400,6 +1410,7 @@ public void OnClientDisconnect_Post(int client)
 	RefreshClient(client);
 	ResetAFKTime(client, false);
 	UpdateGameDescription();
+	UpdateBotQuota();
 }
 
 public Action Timer_PlayerReconnect(Handle timer, DataPack pack)
@@ -1519,6 +1530,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 
 	g_bRoundActive = true;
 	g_bGracePeriod = true;
+	g_bRoundEnding = false;
 	if (!CreateSurvivors())
 	{
 		g_bRoundActive = false;

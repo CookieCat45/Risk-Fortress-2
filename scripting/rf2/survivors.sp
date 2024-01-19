@@ -60,10 +60,11 @@ bool CreateSurvivors()
 	if (!g_hPlayerSteamIDToInventoryIndex)
 		g_hPlayerSteamIDToInventoryIndex = new StringMap();
 	
+	int humanCount = GetPlayersOnTeam(TEAM_SURVIVOR, false, true) + GetPlayersOnTeam(TEAM_ENEMY, false, true);
 	ArrayList survivorList = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || IsPlayerSpectator(i))
+		if (!IsClientInGame(i) || IsPlayerSpectator(i) || humanCount > 1 && !g_bPlayerBecomeSurvivor[i])
 			continue;
 			
 		if (IsFakeClient(i))
@@ -221,14 +222,8 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	}
 	
 	ChangeClientTeam(client, TEAM_SURVIVOR);
-	
-	// This is so weapons/wearables update properly on plugin reloads.
-	if (!g_bGameInitialized)
-	{
-		TF2_RemoveAllWeapons(client);
-		TF2_RemoveAllWearables(client);
-	}
-	
+	TF2_RemoveAllWeapons(client);
+	TF2_RemoveAllWearables(client);
 	TF2_RespawnPlayer(client);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 5.0);
 	SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);

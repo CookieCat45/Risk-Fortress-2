@@ -1365,3 +1365,9 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 	CreateTimer(0.25, Timer_TFBotStopForceAttack, client, TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Continue;
 }
+
+void UpdateBotQuota()
+{
+	ConVar quota = FindConVar("tf_bot_quota");
+	quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue)+GetTotalHumans(false), MaxClients);
+}
