@@ -337,10 +337,19 @@ void TFBot_Think(TFBot &bot)
 	bot.GetMyPos(botPos);
 	bool aggressiveMode;
 	TFClassType class = TF2_GetPlayerClass(bot.Client);
-
+	
 	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer)
 	{
 		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon") == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
+		if (!aggressiveMode)
+		{
+			if (TF2_IsPlayerInCondition(bot.Client, TFCond_Charging) 
+				|| IsEnemy(bot.Client) && Enemy(bot.Client).BotMeleeDistance > 0.0 && DistBetween(bot.Client, threat) <= Enemy(bot.Client).BotMeleeDistance)
+			{
+				aggressiveMode = true;
+				TF2_ForceWeaponSwitch(bot.Client, WeaponSlot_Melee);
+			}
+		}
 		
 		// Aggressive AI, relentlessly pursues target and strafes on higher difficulties. Mostly for melee.
 		if (aggressiveMode)

@@ -1072,31 +1072,32 @@ float GetObjectCostMultiplier()
 
 float CalculateObjectCost(int entity)
 {
+	float cost;
 	if (GetEntProp(entity, Prop_Data, "m_bMapPlaced"))
 	{
-		float cost = GetEntPropFloat(entity, Prop_Data, "m_flCost");
+		cost = GetEntPropFloat(entity, Prop_Data, "m_flCost");
 		
 		// This object's cost was set by the mapper
 		if (cost >= 0.0)
-			return cost;
+			return float(RoundToNearest(cost));
 	}
 	
 	char classname[128];
 	GetEntityClassname(entity, classname, sizeof(classname));
 	if (strcmp2(classname, "rf2_object_crate"))
 	{
-		return g_cvObjectBaseCost.FloatValue * GetObjectCostMultiplier();
+		cost = g_cvObjectBaseCost.FloatValue * GetObjectCostMultiplier();
 	}
 	else if (strcmp2(classname, "rf2_object_crate_large") || strcmp2(classname, "rf2_object_crate_collector"))
 	{
-		return g_cvObjectBaseCost.FloatValue * GetObjectCostMultiplier() * 2.0;
+		cost = g_cvObjectBaseCost.FloatValue * GetObjectCostMultiplier() * 2.0;
 	}
 	else if (strcmp2(classname, "rf2_object_crate_strange"))
 	{
-		return g_cvObjectBaseCost.FloatValue * GetObjectCostMultiplier() * 1.5;
+		cost = g_cvObjectBaseCost.FloatValue * GetObjectCostMultiplier() * 1.5;
 	}
 	
-	return 0.0;
+	return float(RoundToNearest(cost));
 }
 
 int GetTeleporterEntity()

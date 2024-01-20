@@ -31,6 +31,7 @@ static int g_iEnemyBotSkill[MAX_ENEMIES];
 static bool g_bEnemyBotAggressive[MAX_ENEMIES];
 static bool g_bEnemyBotRocketJump[MAX_ENEMIES];
 static bool g_bEnemyBotHoldFireUntilReloaded[MAX_ENEMIES];
+static float g_flEnemyBotMeleeDistance[MAX_ENEMIES];
 
 // Weapons
 static bool g_bEnemyWeaponUseStaticAttributes[MAX_ENEMIES][TF_WEAPON_SLOTS];
@@ -195,6 +196,12 @@ methodmap Enemy
 	{
 		public get()			{ return g_bEnemyBotHoldFireUntilReloaded[this.Index];  }
 		public set(bool value)	{ g_bEnemyBotHoldFireUntilReloaded[this.Index] = value; }
+	}
+	
+	property float BotMeleeDistance
+	{
+		public get()			{ return g_flEnemyBotMeleeDistance[this.Index];  }
+		public set(float value)	{ g_flEnemyBotMeleeDistance[this.Index] = value; }
 	}
 	
 	property int WeaponCount
@@ -456,6 +463,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.BotAggressive = asBool(enemyKey.GetNum("tf_bot_aggressive", false));
 		enemy.BotRocketJump = asBool(enemyKey.GetNum("tf_bot_rocketjump", false));
 		enemy.BotHoldFireReload = asBool(enemyKey.GetNum("tf_bot_hold_fire_until_reload", false));
+		enemy.BotMeleeDistance = enemyKey.GetFloat("tf_bot_melee_distance");
 		
 		// XP and cash awards on death
 		enemy.XPAward = enemyKey.GetFloat("xp_award", 15.0);
