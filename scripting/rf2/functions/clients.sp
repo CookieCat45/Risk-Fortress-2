@@ -353,13 +353,13 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	int oldMaxHealth = RF2_GetCalculatedMaxHealth(client);
 	float healthScale = GetPlayerHealthMult(client);
 	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * healthScale);
-
+	
 	// Bosses have less health in single player (for now) to avoid overly long fights
 	if (IsSingleplayer(false) && IsBoss(client))
 	{
 		maxHealth = RoundToFloor(float(maxHealth) * 0.75);
 	}
-
+	
 	if (PlayerHasItem(client, Item_PrideScarf))
 	{
 		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_PrideScarf, 0))) - maxHealth;

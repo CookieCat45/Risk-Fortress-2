@@ -503,6 +503,12 @@ bool PickupItem(int client)
 		bool dropped = asBool(GetEntProp(item, Prop_Data, "m_bDropped"));
 		int quality = GetItemQuality(itemIndex);
 		
+		// hotfix
+		if (GetPlayersOnTeam(TEAM_SURVIVOR, true, true) <= 1)
+		{
+			g_iItemLimit[index] = 0;
+		}
+		
 		// Strange items do not count towards the limit.
 		if (itemShare && g_iItemLimit[index] > 0 && !IsEquipmentItem(itemIndex) && subject != client
 		&& ((spawner == client || originalSpawner == client) || !IsValidClient(spawner) || !IsPlayerSurvivor(spawner)) && g_iItemsTaken[index] >= g_iItemLimit[index])

@@ -50,7 +50,7 @@ void LoadCommandsAndCvars()
 	
 	g_cvGameResetTime = CreateConVar("rf2_max_wait_time", "600", "If the game has already began, amount of time in seconds to wait for players to join before restarting. 0 to disable.", FCVAR_NOTIFY);
 	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvEnableAFKManager = CreateConVar("rf2_afk_manager_enabled", "1", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvEnableAFKManager = CreateConVar("rf2_afk_manager_enabled", "0", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "200.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
 	g_cvAFKLimit = CreateConVar("rf2_afk_limit", "2", "How many players must be AFK before the AFK manager starts kicking.", FCVAR_NOTIFY, true, 0.0);
 	g_cvAFKMinHumans = CreateConVar("rf2_afk_min_humans", "8", "How many human players must be present in the server for the AFK manager to start kicking.", FCVAR_NOTIFY, true, 0.0);

@@ -803,18 +803,17 @@ public void OnMapStart()
 		ResetConVars();
 		g_bConVarsModified = false;
 	}
-
-	// This was a reload map change
+	
+	// This was a reload map change (refresh so any newly added plugins can load)
 	if (g_bPluginReloading)
 	{
-		InsertServerCommand("sm plugins load_unlock; sm plugins reload rf2");
+		InsertServerCommand("sm plugins load_unlock; sm plugins refresh");
 		return;
 	}
 	
 	g_bMapChanging = false;
 	float engineTime = GetEngineTime();
 	char mapName[256], buffer[8];
-	
 	GetCurrentMap(mapName, sizeof(mapName));
 	SplitString(mapName, "_", buffer, sizeof(buffer));
 
@@ -822,6 +821,7 @@ public void OnMapStart()
 	{
 		g_bPluginEnabled = true;
 		g_bWaitingForPlayers = asBool(GameRules_GetProp("m_bInWaitingForPlayers"));
+		InsertServerCommand("sm plugins load_lock");
 		
 		if (g_bLateLoad)
 		{
@@ -947,6 +947,7 @@ public void OnMapStart()
 	else
 	{
 		g_bPluginEnabled = false;
+		InsertServerCommand("sm plugins load_unlock");
 		LogMessage("The current map (%s) isn't an RF2-compatible map. RF2 will be disabled. Prefix your map's name with \"rf2_\" if this is in error.", mapName);
 	}
 	
@@ -1225,15 +1226,6 @@ void ResetConVars()
 
 public void OnAllPluginsLoaded()
 {
-	if (g_bPluginEnabled)
-	{
-		InsertServerCommand("sm plugins load_lock");
-	}
-	else
-	{
-		InsertServerCommand("sm plugins load_unlock");
-	}
-
 	g_bGoombaAvailable = LibraryExists("goomba");
 }
 
@@ -1737,7 +1729,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 {
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
-
+	
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (!IsValidClient(client))
 		return Plugin_Continue;
@@ -1747,7 +1739,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		PrintHintText(client, "Once everyone is connected, you can skip waiting for players with /rf2_skipwait");
 		return Plugin_Continue;
 	}
-
+	
 	if (!g_bRoundActive)
 		return Plugin_Continue;
 
@@ -3979,7 +3971,7 @@ public void TF2_OnWaitingForPlayersStart()
 {
 	if (!RF2_IsEnabled())
 		return;
-
+	
 	// Hide any map spawned objects
 	int entity = -1;
 	while ((entity = FindEntityByClassname(entity, "*")) != -1)
