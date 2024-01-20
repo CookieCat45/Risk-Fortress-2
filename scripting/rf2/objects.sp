@@ -102,13 +102,20 @@ int SpawnObjects()
 	float distance = SquareRoot(length * width);
 	
 	ArrayList objectArray = CreateArray(128);
-	const int crateWeight = 50;
-	const int largeWeight = 10;
-	const int strangeWeight = 8;
-	const int hauntedWeight = 5;
-	const int collectorWeight = 8;
-	const int workbenchWeight = 15;
-	const int scrapperWeight = 8;
+	ArrayList crateArray = CreateArray(128);
+	int crateWeight = 50;
+	int largeWeight = 10;
+	int strangeWeight = 8;
+	int hauntedWeight = 5;
+	int collectorWeight = 8;
+	int workbenchWeight = 16;
+	int scrapperWeight = 8;
+	
+	if (g_iStagesCompleted <= 0)
+	{
+		hauntedWeight = 0;
+	}
+	
 	char name[64];
 	int count;
 	
@@ -125,17 +132,27 @@ int SpawnObjects()
 			case 6: strcopy(name, sizeof(name), "rf2_object_scrapper"), count = scrapperWeight;
 		}
 		
+		bool crate = StrContains(name, "rf2_object_crate") != -1;
 		for (int j = 1; j <= count; j++)
 		{
-			objectArray.PushString(name);
+			if (crate)
+			{
+				crateArray.PushString(name);
+			}
+			else
+			{
+				objectArray.PushString(name);
+			}
 		}
 	}
 	
+	int minCrates = RoundToFloor(float(spawnCount) * 0.7);
+	int scrapperCount;
+	char name2[64];
 	while (spawns < spawnCount && attempts < 1000)
 	{
 		GetSpawnPoint(worldCenter, spawnPos, 0.0, distance, _, true);
 		nearestObject = GetNearestEntity(spawnPos, "rf2_object*");
-		
 		if (nearestObject != -1)
 		{
 			GetEntPos(nearestObject, nearestPos);
@@ -146,9 +163,32 @@ int SpawnObjects()
 			}
 		}
 		
-		objectArray.GetString(GetRandomInt(0, objectArray.Length-1), name, sizeof(name));
-		CreateObject(name, spawnPos);
+		if (spawns > minCrates)
+		{
+			objectArray.GetString(GetRandomInt(0, objectArray.Length-1), name, sizeof(name));
+			if (strcmp2(name, "rf2_object_scrapper"))
+			{
+				scrapperCount++;
+				if (scrapperCount >= g_iStagesCompleted <= 0 && IsSingleplayer(false) ? 1 : 2)
+				{
+					for (int i = 0; i < objectArray.Length; i++)
+					{
+						objectArray.GetString(i, name2, sizeof(name2));
+						if (strcmp2(name2, "rf2_object_scrapper"))
+						{
+							objectArray.Erase(i);
+							i--;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			crateArray.GetString(GetRandomInt(0, crateArray.Length-1), name, sizeof(name));
+		}
 		
+		CreateObject(name, spawnPos);
 		spawns++;
 	}
 	
@@ -158,6 +198,7 @@ int SpawnObjects()
 	}
 	
 	delete objectArray;
+	delete crateArray;
 	return spawns;
 }
 

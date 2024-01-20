@@ -83,7 +83,7 @@ void LoadCommandsAndCvars()
 	g_cvTeleporterRadiusMultiplier = CreateConVar("rf2_object_teleporter_radius_multiplier", "1.0", "How much to multiply the size of the Teleporter radius.", FCVAR_NOTIFY, true, 0.01);
 	g_cvMaxObjects = CreateConVar("rf2_object_max", "90", "The maximum number of objects allowed to spawn. Does not include Teleporters or Altars.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectSpreadDistance = CreateConVar("rf2_object_spread_distance", "80.0", "The minimum distance that spawned objects must be spread apart from eachother.", FCVAR_NOTIFY, true, 0.0);
-	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "10", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
+	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "12", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCost = CreateConVar("rf2_object_base_cost", "50.0", "The base cost to use objects such as crates. Scales with the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvItemShareEnabled = CreateConVar("rf2_item_share_enabled", "1", "Whether or not to enable item sharing. This prevents Survivors from hogging items in multiplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "7000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
