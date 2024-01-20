@@ -870,9 +870,15 @@ void SpeakResponseConcept_MVM(int client, const char[] response)
 	AcceptEntityInput(client, "SpeakResponseConcept");
 }
 
-void TF2_ForceWeaponSwitch(int client, int slot)
+bool TF2_ForceWeaponSwitch(int client, int slot)
 {
-	ClientCommand(client, "slot%i", slot+1);
+	int weapon = GetPlayerWeaponSlot(client, slot);
+	if (g_hSDKWeaponSwitch && weapon != -1)
+	{
+		return SDKCall(g_hSDKWeaponSwitch, client, weapon, 0);
+	}
+	
+	return false;
 }
 
 bool IsPlayerAFK(int client)

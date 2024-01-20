@@ -297,15 +297,7 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int inde
 		g_bSetStringAttributes = false;
 	}
 	
-	// These attributes need to be set with a neutral value on weapon creation,
-	// as adding or removing it while the weapon is recharging will break the recharge meter.
-	// This particular issue is caused by the Prinny Pouch.
-	// I'm not sure if this actually affects invis watches, but just to be safe I'll include them as well.
-	if (IsEffectBarWeapon(entity))
-	{
-		//if (g_hSDKEffectBarRecharge)
-		//	DHookEntity(g_hSDKEffectBarRecharge, true, entity);
-	}
+	SetEntProp(entity, Prop_Send, "m_bValidatedAttachedEntity", true);
 }
 
 int CreateWeapon(int client, char[] classname, int index, const char[] attributes = "", bool staticAttributes=false, bool visible=true, int quality = TF2Quality_Unique)

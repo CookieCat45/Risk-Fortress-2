@@ -467,6 +467,7 @@ Handle g_hSDKDoQuickBuild;
 Handle g_hSDKGetMaxHealth;
 Handle g_hSDKPlayGesture;
 Handle g_hSDKIntersects;
+Handle g_hSDKWeaponSwitch;
 DHookSetup g_hSDKCanBuild;
 DHookSetup g_hSDKDoSwingTrace;
 DHookSetup g_hSDKSentryAttack;
@@ -789,6 +790,17 @@ void LoadGameData()
 	if (!g_hSDKGetMaxHealth)
 	{
 		LogError("[SDK] Failed to create call for CBasePlayer::GetMaxHealth from SDKHooks gamedata");
+	}
+
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "Weapon_Switch");
+	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
+	g_hSDKWeaponSwitch = EndPrepSDKCall();
+	if (!g_hSDKWeaponSwitch)
+	{
+		LogError("[SDK] Failed to create call for CBasePlayer::Weapon_Switch from SDKHooks gamedata");
 	}
 
 	delete gamedata;

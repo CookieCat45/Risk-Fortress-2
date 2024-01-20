@@ -1120,7 +1120,7 @@ float CalculateObjectCost(int entity)
 		
 		// This object's cost was set by the mapper
 		if (cost >= 0.0)
-			return float(RoundToNearest(cost));
+			return float(RoundToFloor(cost));
 	}
 	
 	char classname[128];
@@ -1138,7 +1138,7 @@ float CalculateObjectCost(int entity)
 		cost = g_cvObjectBaseCost.FloatValue * GetObjectCostMultiplier() * 1.5;
 	}
 	
-	return float(RoundToNearest(cost));
+	return float(RoundToFloor(cost));
 }
 
 int GetTeleporterEntity()

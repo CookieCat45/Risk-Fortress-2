@@ -522,7 +522,6 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 		if (!recalculate)
 		{
 			GetEntityClassname(entity, classname, sizeof(classname));
-			
 			if (StrContains(classname, "rf2_object_crate") == 0)
 			{
 				objectCount++;
