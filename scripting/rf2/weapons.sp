@@ -604,6 +604,7 @@ float GetDamageCustomProcCoefficient(int damageCustom)
 	return 1.0;
 }
 
+/*
 bool IsEffectBarWeapon(int weapon)
 {
 	static char classname[32];
@@ -619,6 +620,7 @@ bool IsEffectBarWeapon(int weapon)
 	|| strcmp2(classname, "tf_wearable_demoshield")
 	|| strcmp2(classname, "tf_wearable_razorback"));
 }
+*/
 
 int SDK_GetWeaponClipSize(int entity)
 {
@@ -638,20 +640,7 @@ void SDK_EquipWearable(int client, int entity)
 	}
 }
 
-public MRESReturn DHook_GetEffectBarRechargeTime(int entity, DHookReturn returnVal)
-{
-	int client = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
-	if (!IsValidClient(client))
-		return MRES_Ignored;
-	
-	float value = DHookGetReturn(returnVal);
-	value *= CalcItemMod_HyperbolicInverted(client, Item_PrinnyPouch, 0);
-	//value = TF2Attrib_HookValueFloat(value, "effectbar_recharge_rate", entity);
-	returnVal.Value = value;
-	return MRES_Override;
-}
-
-public MRESReturn DHook_DoSwingTrace(int entity, DHookReturn returnVal, DHookParam params)
+public MRESReturn DHook_DoSwingTrace(int client, DHookReturn returnVal, DHookParam params)
 {
 	if (!RF2_IsEnabled())
 		return MRES_Ignored;
@@ -661,11 +650,11 @@ public MRESReturn DHook_DoSwingTrace(int entity, DHookReturn returnVal, DHookPar
 	return MRES_Ignored;
 }
 
-public MRESReturn DHook_DoSwingTracePost(int entity, DHookReturn returnVal, DHookParam params)
+public MRESReturn DHook_DoSwingTracePost(int client, DHookReturn returnVal, DHookParam params)
 {
 	if (!RF2_IsEnabled())
 		return MRES_Ignored;
-
+	
 	GameRules_SetProp("m_bPlayingMannVsMachine", false);
 	return MRES_Ignored;
 }

@@ -78,7 +78,7 @@ void RefreshClient(int client, bool force=false)
 	{
 		StopSound(client, SNDCHAN_AUTO, SND_SAPPER_DRAIN);
 	}
-
+	
 	g_bPlayerHasVampireSapper[client] = false;
 	g_bPlayerSpawnedByTeleporter[client] = false;
 	g_flPlayerVampireSapperCooldown[client] = 0.0;
@@ -90,9 +90,11 @@ void RefreshClient(int client, bool force=false)
 	g_TFBot[client].Flags = 0;
 	g_TFBot[client].Mission = MISSION_NONE;
 	g_TFBot[client].HasBuilt = false;
+	g_TFBot[client].AttemptingBuild = false;
 	g_TFBot[client].SentryArea = view_as<CTFNavArea>(NULL_AREA);
 	g_TFBot[client].BuildingTarget = -1;
 	g_TFBot[client].RepairTarget = -1;
+	g_TFBot[client].DesiredWeaponSlot = -1;
 
 	if (g_hTFBotEngineerBuildings[client])
 	{
@@ -872,13 +874,14 @@ void SpeakResponseConcept_MVM(int client, const char[] response)
 
 bool TF2_ForceWeaponSwitch(int client, int slot)
 {
-	int weapon = GetPlayerWeaponSlot(client, slot);
-	if (g_hSDKWeaponSwitch && weapon != -1)
-	{
-		return SDKCall(g_hSDKWeaponSwitch, client, weapon, 0);
-	}
+	if (!g_hSDKWeaponSwitch)
+		return false;
 	
-	return false;
+	int weapon = GetPlayerWeaponSlot(client, slot);
+	if (weapon == -1 || weapon == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon"))
+		return false;
+	
+	return SDKCall(g_hSDKWeaponSwitch, client, weapon, 0);
 }
 
 bool IsPlayerAFK(int client)

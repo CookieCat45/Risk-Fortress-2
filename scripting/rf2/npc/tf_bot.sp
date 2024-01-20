@@ -11,6 +11,7 @@ static CNavArea g_TFBotGoalArea[MAXTF2PLAYERS];
 
 static int g_iTFBotFlags[MAXTF2PLAYERS];
 static int g_iTFBotForcedButtons[MAXTF2PLAYERS];
+static int g_iTFBotDesiredWeaponSlot[MAXTF2PLAYERS] = {-1, ...}; 
 
 static float g_flTFBotStrafeTime[MAXTF2PLAYERS];
 static float g_flTFBotStrafeTimeStamp[MAXTF2PLAYERS];
@@ -21,6 +22,7 @@ static float g_flTFBotLastPosCheckTime[MAXTF2PLAYERS];
 static CNavArea g_TFBotEngineerSentryArea[MAXTF2PLAYERS];
 static float g_flTFBotEngineerSearchRetryTime[MAXTF2PLAYERS];
 static bool g_bTFBotEngineerHasBuilt[MAXTF2PLAYERS];
+static bool g_bTFBotEngineerAttemptingBuild[MAXTF2PLAYERS];
 static int g_iTFBotEngineerRepairTarget[MAXTF2PLAYERS];
 
 static int g_iTFBotSpyBuildingTarget[MAXTF2PLAYERS];
@@ -66,7 +68,7 @@ methodmap TFBot < Handle
 		public get() 				{ return g_TFBotPathFollower[this.Client]; }
 		public set(PathFollower pf) { g_TFBotPathFollower[this.Client] = pf;   }
 	}
-	property CNavArea GoalArea 
+	property CNavArea GoalArea
 	{
 		public get() 				{ return g_TFBotGoalArea[this.Client]; }
 		public set(CNavArea area) 	{ g_TFBotGoalArea[this.Client] = area; }
@@ -89,6 +91,12 @@ methodmap TFBot < Handle
 	{
 		public get() 			{ return g_iTFBotForcedButtons[this.Client];  }
 		public set(int value) 	{ g_iTFBotForcedButtons[this.Client] = value; }
+	}
+	
+	property int DesiredWeaponSlot
+	{
+		public get() 			{ return g_iTFBotDesiredWeaponSlot[this.Client];  }
+		public set(int value) 	{ g_iTFBotDesiredWeaponSlot[this.Client] = value; }
 	}
 
 	property float StrafeTime 
@@ -147,13 +155,19 @@ methodmap TFBot < Handle
 		public set(bool value) 	{ g_bTFBotEngineerHasBuilt[this.Client] = value; }
 	}
 	
+	property bool AttemptingBuild
+	{
+		public get() 			{ return g_bTFBotEngineerAttemptingBuild[this.Client];  }
+		public set(bool value) 	{ g_bTFBotEngineerAttemptingBuild[this.Client] = value; }
+	}
+
 	property int RepairTarget
 	{
 		public get() 			{ return g_iTFBotEngineerRepairTarget[this.Client];  }
 		public set(int value) 	{ g_iTFBotEngineerRepairTarget[this.Client] = value; }
 	}
 	
-	public int GetBuilding(TFObjectType obj)
+	public int GetBuilding(TFObjectType obj, TFObjectMode mode=TFObjectMode_None)
 	{
 		if (!g_hTFBotEngineerBuildings[this.Client])
 			return -1;
@@ -174,13 +188,13 @@ methodmap TFBot < Handle
 				continue;
 			}
 			
-			if (TF2_GetObjectType(entity) == obj)
+			if (TF2_GetObjectType(entity) == obj && TF2_GetObjectMode(entity) == mode)
 				return entity;
 		}
 		
 		return -1;
 	}
-
+	
 	public int GetPrioritizedBuilding()
 	{
 		if (!g_hTFBotEngineerBuildings[this.Client])
@@ -189,6 +203,9 @@ methodmap TFBot < Handle
 		int building;
 		int prioritizedBuilding = -1;
 		bool lowHealth;
+		int sentry = this.GetBuilding(TFObject_Sentry);
+		bool sentryUpgraded = IsValidEntity(sentry) && GetEntProp(sentry, Prop_Send, "m_iUpgradeLevel") >= 3;
+		
 		for (int i = 0; i < g_hTFBotEngineerBuildings[this.Client].Length; i++)
 		{
 			building = EntRefToEntIndex(g_hTFBotEngineerBuildings[this.Client].Get(i));
@@ -210,8 +227,19 @@ methodmap TFBot < Handle
 			}
 			
 			// upgrade sentry third
-			if (!lowHealth && TF2_GetObjectType(building) == TFObject_Sentry && GetEntProp(building, Prop_Send, "m_iUpgradeLevel") < 3)
-				return building;
+			if (!lowHealth)
+			{
+				if (sentryUpgraded)
+				{
+					if (GetEntProp(building, Prop_Send, "m_iUpgradeLevel") < 3)
+						return building;
+				}
+				else
+				{
+					if (TF2_GetObjectType(building) == TFObject_Sentry && GetEntProp(building, Prop_Send, "m_iUpgradeLevel") < 3)
+						return building;
+				}
+			}
 		}
 
 		return prioritizedBuilding;
@@ -219,9 +247,9 @@ methodmap TFBot < Handle
 	
 	public bool BuiltEverything()
 	{
-		return GetBuiltObject(this.Client, TFObject_Sentry) != -1 
-			&& GetBuiltObject(this.Client, TFObject_Dispenser) != -1
-			&& GetBuiltObject(this.Client, TFObject_Teleporter, TFObjectMode_Exit) != -1;
+		return this.GetBuilding(TFObject_Sentry) != -1 
+			&& this.GetBuilding(TFObject_Dispenser) != -1
+			&& this.GetBuilding(TFObject_Teleporter, TFObjectMode_Exit) != -1;
 	}
 	
 	// Spy
@@ -235,7 +263,7 @@ methodmap TFBot < Handle
 		public get()			{ return EntRefToEntIndex(g_iTFBotSpyBuildingTarget[this.Client]); }
 		public set(int entity)	{ g_iTFBotSpyBuildingTarget[this.Client] = entity <= 0 ? entity : EntIndexToEntRef(entity); }
 	}
-	
+
 	// NextBot
 	public INextBot GetNextBot() 
 	{
@@ -332,25 +360,23 @@ void TFBot_Think(TFBot &bot)
 	int threat = -1;
 	if (known != NULL_KNOWN_ENTITY)
 		threat = known.GetEntity();
-		
+	
 	float botPos[3];
 	bot.GetMyPos(botPos);
 	bool aggressiveMode;
 	TFClassType class = TF2_GetPlayerClass(bot.Client);
 	
+	// Switch to our desired weapon
+	int desiredSlot;
+	int desiredWeapon = TFBot_GetDesiredWeapon(bot, desiredSlot);
+	if (desiredWeapon != -1)
+	{
+		TF2_ForceWeaponSwitch(bot.Client, desiredSlot);
+	}
+	
 	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer)
 	{
 		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon") == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
-		if (!aggressiveMode)
-		{
-			if (TF2_IsPlayerInCondition(bot.Client, TFCond_Charging) 
-				|| IsEnemy(bot.Client) && Enemy(bot.Client).BotMeleeDistance > 0.0 && DistBetween(bot.Client, threat) <= Enemy(bot.Client).BotMeleeDistance)
-			{
-				aggressiveMode = true;
-				TF2_ForceWeaponSwitch(bot.Client, WeaponSlot_Melee);
-			}
-		}
-		
 		// Aggressive AI, relentlessly pursues target and strafes on higher difficulties. Mostly for melee.
 		if (aggressiveMode)
 		{
@@ -424,11 +450,7 @@ void TFBot_Think(TFBot &bot)
 		if (bot.Mission == MISSION_NONE && bot.HasBuilt && threat > 0)
 		{
 			// Shoot at enemies if we're not doing anything else
-			int primary = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Primary);
-			if (primary != -1)
-			{
-				TF2_ForceWeaponSwitch(bot.Client, WeaponSlot_Primary);
-			}
+			bot.DesiredWeaponSlot = WeaponSlot_Primary;
 		}
 		
 		if (!bot.HasBuilt && tickedTime >= bot.EngiSearchRetryTime && !bot.SentryArea) // Do we have an area to build in?
@@ -441,7 +463,6 @@ void TFBot_Think(TFBot &bot)
 			CNavArea area = TheNavMesh.GetNearestNavArea(navPos, true, 1000.0, false, true);
 			SurroundingAreasCollector collector = TheNavMesh.CollectSurroundingAreas(area, 10000.0);
 			int areaCount = collector.Count();
-			
 			for (int i = 0; i < areaCount; i++)
 			{
 				tfArea = view_as<CTFNavArea>(collector.Get(i));
@@ -489,6 +510,7 @@ void TFBot_Think(TFBot &bot)
 			if (GetVectorDistance(areaPos, botPos, true) <= sq(40.0))
 			{
 				// Try and build at this spot.
+				bot.DesiredWeaponSlot = WeaponSlot_Builder;
 				TFBotEngi_AttemptBuild(bot);
 			}
 			else
@@ -503,7 +525,6 @@ void TFBot_Think(TFBot &bot)
 			{
 				int building = EntRefToEntIndex(bot.RepairTarget);
 				int prioritizedBuilding = bot.GetPrioritizedBuilding();
-				
 				if (bot.HasBuilt && IsValidEntity(building) &&  (prioritizedBuilding == -1 || building == prioritizedBuilding) && 
 					(GetEntProp(building, Prop_Send, "m_iHealth") < GetEntProp(building, Prop_Send, "m_iMaxHealth") || GetEntProp(building, Prop_Send, "m_iUpgradeLevel") < 3))
 				{
@@ -529,6 +550,7 @@ void TFBot_Think(TFBot &bot)
 					// Make sure we have our wrench out
 					if (GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon") != GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee))
 					{
+						bot.DesiredWeaponSlot = WeaponSlot_Melee;
 						TF2_ForceWeaponSwitch(bot.Client, WeaponSlot_Melee);
 					}
 					
@@ -561,7 +583,7 @@ void TFBot_Think(TFBot &bot)
 						building = bot.GetBuilding(type);
 						if (building == -1)
 							continue;
-
+						
 						// does this building need to be repaired/upgraded?
 						if (GetEntProp(building, Prop_Send, "m_iHealth") < GetEntProp(building, Prop_Send, "m_iMaxHealth")
 							|| GetEntProp(building, Prop_Send, "m_iUpgradeLevel") < 3)
@@ -571,6 +593,11 @@ void TFBot_Think(TFBot &bot)
 							break;
 						}
 					}
+				}
+				
+				if (!bot.HasBuilt)
+				{
+					bot.Mission = MISSION_BUILD;
 				}
 			}
 		}
@@ -863,17 +890,34 @@ void TFBot_ForceLookAtPos(TFBot bot, const float pos[3])
 
 void TFBotEngi_AttemptBuild(TFBot &bot)
 {
+	if (bot.AttemptingBuild)
+		return;
+	
+	bot.AttemptingBuild = true;
 	bot.Mission = MISSION_BUILD;
-	TFBotEngi_BuildObject(bot, TFObject_Sentry);
-	CreateTimer(1.5, Timer_TFBotBuildTeleporterExit, GetClientUserId(bot.Client), TIMER_FLAG_NO_MAPCHANGE);
-	CreateTimer(2.5, Timer_TFBotBuildDispenser, GetClientUserId(bot.Client), TIMER_FLAG_NO_MAPCHANGE);
-	CreateTimer(3.5, Timer_TFBotFinishBuilding, GetClientUserId(bot.Client), TIMER_FLAG_NO_MAPCHANGE);
+	bool buildingSentry = TFBotEngi_BuildObject(bot, TFObject_Sentry);
+	if (!buildingSentry && bot.GetBuilding(TFObject_Teleporter, TFObjectMode_Exit) != -1)
+	{
+		TFBotEngi_BuildObject(bot, TFObject_Dispenser, _, 60.0);
+		CreateTimer(1.0, Timer_TFBotFinishBuilding, GetClientUserId(bot.Client), TIMER_FLAG_NO_MAPCHANGE);
+	}
+	else if (!buildingSentry && bot.GetBuilding(TFObject_Dispenser) != -1)
+	{
+		TFBotEngi_BuildObject(bot, TFObject_Teleporter, TFObjectMode_Exit, 60.0);
+		CreateTimer(1.0, Timer_TFBotFinishBuilding, GetClientUserId(bot.Client), TIMER_FLAG_NO_MAPCHANGE);
+	}
+	else if (buildingSentry && (bot.GetBuilding(TFObject_Dispenser) == -1 || bot.GetBuilding(TFObject_Teleporter, TFObjectMode_Exit) == -1))
+	{
+		CreateTimer(1.5, Timer_TFBotBuildTeleporterExit, GetClientUserId(bot.Client), TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(2.5, Timer_TFBotBuildDispenser, GetClientUserId(bot.Client), TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(3.5, Timer_TFBotFinishBuilding, GetClientUserId(bot.Client), TIMER_FLAG_NO_MAPCHANGE);
+	}
 }
 
-void TFBotEngi_BuildObject(TFBot &bot, TFObjectType type, TFObjectMode mode=TFObjectMode_Entrance, float yawOffset=0.0)
+bool TFBotEngi_BuildObject(TFBot &bot, TFObjectType type, TFObjectMode mode=TFObjectMode_Entrance, float yawOffset=0.0)
 {
 	if (GetBuiltObject(bot.Client, type, mode) != -1)
-		return;
+		return false;
 	
 	char command[32];
 	switch (type)
@@ -903,6 +947,7 @@ void TFBotEngi_BuildObject(TFBot &bot, TFObjectType type, TFObjectMode mode=TFOb
 	CreateDataTimer(delay, Timer_TFBotBuildObject, pack, TIMER_FLAG_NO_MAPCHANGE);
 	pack.WriteCell(GetClientUserId(bot.Client));
 	pack.WriteFloat(yawOffset);
+	return true;
 }
 
 public Action Timer_TFBotBuildDispenser(Handle timer, int client)
@@ -934,7 +979,9 @@ public Action Timer_TFBotFinishBuilding(Handle timer, int client)
 	if ((client = GetClientOfUserId(client)) == 0)
 		return Plugin_Continue;
 	
+	g_TFBot[client].AttemptingBuild = false;
 	g_TFBot[client].HasBuilt = g_TFBot[client].BuiltEverything();
+	g_TFBot[client].RemoveButtonFlag(IN_ATTACK);
 	if (g_TFBot[client].Mission == MISSION_BUILD)
 	{
 		g_TFBot[client].GetLocomotion().Run();
@@ -942,13 +989,17 @@ public Action Timer_TFBotFinishBuilding(Handle timer, int client)
 	}
 	
 	int entity = -1;
+	int ref;
 	if (!g_hTFBotEngineerBuildings[client])
 		g_hTFBotEngineerBuildings[client] = new ArrayList();
 	
 	while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
 	{
-		if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
-			g_hTFBotEngineerBuildings[client].Push(EntIndexToEntRef(entity));
+		ref = EntIndexToEntRef(entity);
+		if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client && g_hTFBotEngineerBuildings[client].FindValue(ref) == -1)
+		{
+			g_hTFBotEngineerBuildings[client].Push(ref);
+		}
 	}
 	
 	return Plugin_Continue;
@@ -968,7 +1019,7 @@ public Action Timer_TFBotBuildObject(Handle timer, DataPack pack)
 	TeleportEntity(client, _, angles);
 	
 	g_TFBot[client].AddButtonFlag(IN_ATTACK);
-	CreateTimer(0.1, Timer_TFBotStopForceAttack, client, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(0.5, Timer_TFBotStopForceAttack, client, TIMER_FLAG_NO_MAPCHANGE);
 	
 	g_TFBot[client].RemoveButtonFlag(IN_DUCK);
 	return Plugin_Continue;
@@ -1046,7 +1097,6 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	
 	int threat = -1;
 	CKnownEntity known = bot.GetTarget(TF2_GetPlayerClass(client) == TFClass_Spy ? false : true);
-	
 	if (known != NULL_KNOWN_ENTITY)
 		threat = known.GetEntity();
 	
@@ -1061,8 +1111,13 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			// TFBots have a stupid bug where they won't switch off certain weapons after use. Forcing them to let go of IN_ATTACK fixes this.
 			static char classname[32];
 			GetEntityClassname(secondary, classname, sizeof(classname));
-			if (strcmp2(classname, "tf_weapon_buff_item") && GetEntPropFloat(client, Prop_Send, "m_flRageMeter") >= 100.0
-				|| (StrContains(classname, "tf_weapon_jar") == 0 || strcmp2(classname, "tf_weapon_cleaver"))
+			bool banner = strcmp2(classname, "tf_weapon_buff_item");
+			if (banner && threat > 0 && IsBuilding(threat))
+			{
+				buttons &= ~IN_ATTACK;
+			}
+			
+			if ((StrContains(classname, "tf_weapon_jar") == 0 || strcmp2(classname, "tf_weapon_cleaver"))
 				&& GetEntProp(client, Prop_Send, "m_iAmmo", _, GetEntProp(secondary, Prop_Send, "m_iPrimaryAmmoType")) == 0)
 			{
 				buttons &= ~IN_ATTACK;
@@ -1154,11 +1209,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 					{
 						usingSapper = true;
 						bool sapperActive = (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == sapper);
-						if (!sapperActive)
-						{
-							TF2_ForceWeaponSwitch(client, WeaponSlot_Secondary);
-						}
-						
+						bot.DesiredWeaponSlot = WeaponSlot_Secondary;
 						threatPos[2] += 25.0;
 						TFBot_ForceLookAtPos(bot, threatPos);
 						
@@ -1219,7 +1270,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				GetEntPos(shootTarget, sentryPos);
 				sentryPos[2] += 25.0;
 				TFBot_ForceLookAtPos(bot, sentryPos);
-				
+				bot.DesiredWeaponSlot = WeaponSlot_Primary;
 				if (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != primary)
 				{
 					TF2_ForceWeaponSwitch(client, WeaponSlot_Primary);
@@ -1266,6 +1317,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				if (bot.GetTimeInFOV(threat) > 0.7 && primary > -1)
 				{
 					// shoot
+					bot.DesiredWeaponSlot = WeaponSlot_Primary;
 					if (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != primary)
 					{
 						TF2_ForceWeaponSwitch(client, WeaponSlot_Primary);
@@ -1289,6 +1341,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				}
 				else if (melee > -1)
 				{
+					bot.DesiredWeaponSlot = WeaponSlot_Melee;
 					if (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != melee)
 					{
 						TF2_ForceWeaponSwitch(client, WeaponSlot_Melee);
@@ -1380,4 +1433,43 @@ void UpdateBotQuota()
 {
 	ConVar quota = FindConVar("tf_bot_quota");
 	quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue)+GetTotalHumans(false), MaxClients);
+}
+
+// -1 = let bot decide
+int TFBot_GetDesiredWeapon(TFBot bot, int &slot=0)
+{
+	int threat = -1;
+	CKnownEntity known = bot.GetTarget();
+	if (known != NULL_KNOWN_ENTITY)
+		threat = known.GetEntity();
+	
+	if (bot.DesiredWeaponSlot != -1)
+	{
+		slot = bot.DesiredWeaponSlot;
+		return GetPlayerWeaponSlot(bot.Client, bot.DesiredWeaponSlot);
+	}
+	
+	if (TF2_IsPlayerInCondition(bot.Client, TFCond_Charging) 
+		|| threat > 0 && IsEnemy(bot.Client) && Enemy(bot.Client).BotMeleeDistance > 0.0 && DistBetween(bot.Client, threat) <= Enemy(bot.Client).BotMeleeDistance)
+	{
+		slot = WeaponSlot_Melee;
+		return GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
+	}
+	
+	return -1;
+}
+
+public Action Hook_TFBotWeaponCanSwitch(int client, int weapon)
+{
+	if (!g_TFBot[client])
+		return Plugin_Continue;
+	
+	int desiredWeapon = TFBot_GetDesiredWeapon(g_TFBot[client]);
+	if (desiredWeapon > 0 && weapon != desiredWeapon)
+	{
+		// do not switch to other weapons if we have a desired weapon
+		return Plugin_Stop;
+	}
+	
+	return Plugin_Continue;
 }

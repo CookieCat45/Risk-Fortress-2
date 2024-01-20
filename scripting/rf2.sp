@@ -183,12 +183,11 @@ enum
 	WeaponSlot_Primary,
 	WeaponSlot_Secondary,
 	WeaponSlot_Melee,
-	WeaponSlot_Utility, // Used for the PASS Time JACK
-	WeaponSlot_Builder,
 	WeaponSlot_PDA,
 	WeaponSlot_PDA2,
+	WeaponSlot_Builder,
 	WeaponSlot_Action = 9, // Action item, e.g. Spellbook Magazine or Grappling Hook (The rest of the slots are for wearables and taunts)
-
+	
 	WeaponSlot_DisguiseKit = WeaponSlot_PDA,
 	WeaponSlot_InvisWatch = WeaponSlot_PDA2,
 };
@@ -791,7 +790,7 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CBasePlayer::GetMaxHealth from SDKHooks gamedata");
 	}
-
+	
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "Weapon_Switch");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
@@ -802,7 +801,7 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CBasePlayer::Weapon_Switch from SDKHooks gamedata");
 	}
-
+	
 	delete gamedata;
 }
 
@@ -1266,13 +1265,13 @@ public void OnClientPutInServer(int client)
 {
 	RefreshClient(client);
 	GetClientName(client, g_szPlayerOriginalName[client], sizeof(g_szPlayerOriginalName[]));
-	
 	if (RF2_IsEnabled() && !IsClientSourceTV(client) && !IsClientReplay(client))
 	{
 		if (IsFakeClient(client))
 		{
 			g_TFBot[client] = new TFBot(client);
 			g_TFBot[client].Follower = PathFollower(_, Path_FilterIgnoreObjects, Path_FilterOnlyActors);
+			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_TFBotWeaponCanSwitch);
 		}
 		else if (g_bRoundActive)
 		{
@@ -4980,7 +4979,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 {
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
-
+	
 	bool bot = IsFakeClient(client);
 	if (!bot)
 	{
@@ -5006,7 +5005,6 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			if (!TF2_IsPlayerInCondition(client, TFCond_Cloaked) && GetGameTime() >= GetEntPropFloat(client, Prop_Send, "m_flInvisChangeCompleteTime"))
 			{
 				int sapper = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-
 				if (sapper > 0 && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == sapper)
 				{
 					const float range = 350.0;
