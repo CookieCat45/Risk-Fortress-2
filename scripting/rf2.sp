@@ -4282,7 +4282,12 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	static char inflictorClassname[64];
 	GetEntityClassname(inflictor, inflictorClassname, sizeof(inflictorClassname));
-
+	if (damageType & DMG_CRUSH && victimIsClient && (strcmp2(inflictorClassname, "tank_boss") || strcmp2(inflictorClassname, "rf2_tank_boss_badass")))
+	{
+		// block tank crush damage
+		return Plugin_Handled;
+	}
+	
 	bool selfDamage = (attacker == victim || inflictor == victim);
 	bool rangedDamage = (damageType & DMG_BULLET || damageType & DMG_BLAST || damageType & DMG_IGNITE || damageType & DMG_SONIC);
 	bool invuln = victimIsClient && TF2_IsInvuln(victim);

@@ -1049,11 +1049,12 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		
 		if (secondary > -1 && secondary == activeWeapon)
 		{
-			// TFBots have a bug where they won't switch off jar-type weapons after throwing. Forcing them to let go of IN_ATTACK fixes this.
+			// TFBots have a stupid bug where they won't switch off certain weapons after use. Forcing them to let go of IN_ATTACK fixes this.
 			static char classname[32];
 			GetEntityClassname(secondary, classname, sizeof(classname));
-			if (StrContains(classname, "tf_weapon_jar") == 0 
-			&& GetEntProp(client, Prop_Send, "m_iAmmo", _, GetEntProp(secondary, Prop_Send, "m_iPrimaryAmmoType")) == 0)
+			if (strcmp2(classname, "tf_weapon_buff_item") && GetEntPropFloat(client, Prop_Send, "m_flRageMeter") >= 100.0
+				|| (StrContains(classname, "tf_weapon_jar") == 0 || strcmp2(classname, "tf_weapon_cleaver"))
+				&& GetEntProp(client, Prop_Send, "m_iAmmo", _, GetEntProp(secondary, Prop_Send, "m_iPrimaryAmmoType")) == 0)
 			{
 				buttons &= ~IN_ATTACK;
 				buttons &= ~IN_ATTACK2;
