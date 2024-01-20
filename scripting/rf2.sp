@@ -806,7 +806,7 @@ public void OnMapStart()
 	// This was a reload map change (refresh so any newly added plugins can load)
 	if (g_bPluginReloading)
 	{
-		InsertServerCommand("sm plugins load_unlock; sm plugins refresh");
+		InsertServerCommand("sm plugins reload rf2");
 		return;
 	}
 	
@@ -820,7 +820,6 @@ public void OnMapStart()
 	{
 		g_bPluginEnabled = true;
 		g_bWaitingForPlayers = asBool(GameRules_GetProp("m_bInWaitingForPlayers"));
-		InsertServerCommand("sm plugins load_lock");
 		
 		if (g_bLateLoad)
 		{
@@ -946,7 +945,6 @@ public void OnMapStart()
 	else
 	{
 		g_bPluginEnabled = false;
-		InsertServerCommand("sm plugins load_unlock");
 		LogMessage("The current map (%s) isn't an RF2-compatible map. RF2 will be disabled. Prefix your map's name with \"rf2_\" if this is in error.", mapName);
 	}
 	

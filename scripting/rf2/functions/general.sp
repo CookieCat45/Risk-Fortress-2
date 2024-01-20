@@ -101,7 +101,7 @@ void ReloadPlugin(bool changeMap=true)
 			InsertServerCommand("mp_restartgame_immediate 2");
 		}
 		
-		InsertServerCommand("sm plugins load_unlock; sm plugins reload rf2; sm_reload_translations");
+		InsertServerCommand("sm plugins reload rf2; sm_reload_translations");
 	}
 }
 
