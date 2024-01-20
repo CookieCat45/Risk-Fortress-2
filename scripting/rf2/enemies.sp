@@ -23,7 +23,7 @@ static float g_flEnemyCashAward[MAX_ENEMIES];
 static bool g_bEnemyFullRage[MAX_ENEMIES];
 static bool g_bEnemyNoBleeding[MAX_ENEMIES];
 
-static char g_szEnemyName[MAX_ENEMIES][PLATFORM_MAX_PATH];
+static char g_szEnemyName[MAX_ENEMIES][MAX_NAME_LENGTH];
 static char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
 
 // TFBot
@@ -55,25 +55,18 @@ static int g_iEnemyVoicePitch[MAX_ENEMIES] = {SNDPITCH_NORMAL, ...};
 static int g_iEnemyFootstepType[MAX_ENEMIES] = {FootstepType_Robot, ...};
 
 // Other
-float g_flEnemyHeadScale[MAX_BOSSES] = {1.5, ...};
-float g_flEnemyTorsoScale[MAX_BOSSES] = {1.0, ...};
-float g_flEnemyHandScale[MAX_BOSSES] = {1.0, ...};
-static bool g_bEnemyAllowSelfDamage[MAX_BOSSES];
-static char g_szEnemyConditions[MAX_BOSSES][256];
+float g_flEnemyHeadScale[MAX_ENEMIES] = {1.5, ...};
+float g_flEnemyTorsoScale[MAX_ENEMIES] = {1.0, ...};
+float g_flEnemyHandScale[MAX_ENEMIES] = {1.0, ...};
+static int g_iEnemyTypeLimit[MAX_ENEMIES];
+static bool g_bEnemyAllowSelfDamage[MAX_ENEMIES];
+static char g_szEnemyConditions[MAX_ENEMIES][256];
 
 // Bosses
 static bool g_bEnemyIsBoss[MAX_ENEMIES];
 static bool g_bBossGiantWeaponSounds[MAX_ENEMIES];
 static float g_flBossFootstepInterval[MAX_ENEMIES];
 #define TF_TEAM_PVE_INVADERS_GIANTS 4
-
-// Minions (TODO)
-/*
-static char g_szBossMinions[MAX_BOSSES][PLATFORM_MAX_PATH];
-static float g_flBossMinionSpawnInterval[MAX_BOSSES];
-static bool g_bBossMinionInstantSpawn[MAX_BOSSES] = {true, ...};
-static int g_iBossMinionSpawnCount[MAX_BOSSES];
-*/
 
 methodmap Enemy
 {
@@ -208,6 +201,12 @@ methodmap Enemy
 	{
 		public get() 			{ return g_iEnemyWeaponAmount[this.Index]; }
 		public set(int value)	{ g_iEnemyWeaponAmount[this.Index] = value; }
+	}
+	
+	property int TypeLimit
+	{
+		public get() 			{ return g_iEnemyTypeLimit[this.Index]; }
+		public set(int value)	{ g_iEnemyTypeLimit[this.Index] = value; }
 	}
 	
 	public bool WeaponUseStaticAtts(int slot)
@@ -452,6 +451,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.BaseHealth = enemyKey.GetNum("health", 150);
 		enemy.BaseSpeed = enemyKey.GetFloat("speed", 300.0);
 		
+		// bot stuff
 		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotDifficulty_Normal);
 		enemy.BotAggressive = asBool(enemyKey.GetNum("tf_bot_aggressive", false));
 		enemy.BotRocketJump = asBool(enemyKey.GetNum("tf_bot_rocketjump", false));
@@ -461,7 +461,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.XPAward = enemyKey.GetFloat("xp_award", 15.0);
 		enemy.CashAward = enemyKey.GetFloat("cash_award", 20.0);
 		enemy.Weight = imin(imax(enemyKey.GetNum("weight", 50), 1), 100);
-		
 		enemy.FullRage = asBool(enemyKey.GetNum("full_rage", false));
 		enemy.NoBleeding = asBool(enemyKey.GetNum("no_bleeding", true));
 		
@@ -481,7 +480,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemy.SetWeaponUseStaticAtts(w, asBool(enemyKey.GetNum("static_attributes", false)));
 			enemy.SetWeaponIsFirstActive(w, asBool(enemyKey.GetNum("active_weapon", false)));
 			enemy.WeaponCount++;
-			
 			enemyKey.GoBack();
 		}
 		
@@ -498,7 +496,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemy.SetWearableVisible(w, asBool(enemyKey.GetNum("visible", true)));
 			enemy.SetWearableUseStaticAtts(w, asBool(enemyKey.GetNum("static_attributes", false)));
 			enemy.WearableCount++;
-			
 			enemyKey.GoBack();
 		}
 		
@@ -528,7 +525,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.VoiceType = enemyKey.GetNum("voice_type", VoiceType_Robot);
 		enemy.VoicePitch = enemyKey.GetNum("voice_pitch", SNDPITCH_NORMAL);
 		enemy.FootstepType = enemyKey.GetNum("footstep_type", enemy.IsBoss ? FootstepType_GiantRobot : FootstepType_Robot);
-		
+		enemy.TypeLimit = enemyKey.GetNum("active_limit");
 		enemy.AllowSelfDamage = asBool(enemyKey.GetNum("allow_self_damage", enemy.IsBoss ? false : true));
 		enemy.HeadScale = enemyKey.GetFloat("head_scale", enemy.IsBoss ? 1.5 : 1.0);
 		enemy.TorsoScale = enemyKey.GetFloat("torso_scale", 1.0);
@@ -561,15 +558,14 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 	
 	for (int i = 0; i < g_iEnemyCount; i++)
 	{
-		if (EnemyByIndex(i).IsBoss)
+		if (EnemyByIndex(i).IsBoss || EnemyByIndex(i).TypeLimit > 0 && GetActiveEnemiesOfType(i) >= EnemyByIndex(i).TypeLimit)
 			continue;
-
+		
 		for (int j = 1; j <= EnemyByIndex(i).Weight; j++)
 			enemyList.Push(i);
 	}
 	
 	selected = enemyList.Get(GetRandomInt(0, enemyList.Length-1));
-	
 	if (getName)
 	{
 		strcopy(buffer, size, g_szLoadedEnemies[selected]);
@@ -588,17 +584,14 @@ int GetRandomBoss(bool getName = false, char[] buffer="", int size=0)
 	
 	for (int i = 0; i < g_iEnemyCount; i++)
 	{
-		if (!EnemyByIndex(i).IsBoss)
+		if (!EnemyByIndex(i).IsBoss || EnemyByIndex(i).TypeLimit > 0 && GetActiveEnemiesOfType(i) >= EnemyByIndex(i).TypeLimit)
 			continue;
 		
 		for (int j = 1; j <= EnemyByIndex(i).Weight; j++)
-		{
 			bossList.Push(i);
-		}
 	}
 	
 	selected = bossList.Get(GetRandomInt(0, bossList.Length-1));
-	
 	if (getName)
 	{
 		strcopy(buffer, size, g_szLoadedEnemies[selected]);
@@ -870,7 +863,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		pack.WriteFloat(maxDist);
 		RequestFrame(RF_SpawnBossRecursive, pack);
 	}
-
+	
 	return false;
 }
 
@@ -1042,4 +1035,19 @@ float GetEnemyHealthMult()
 float GetEnemyDamageMult()
 {
 	return 1.0 + float(RF2_GetEnemyLevel()-1) * g_cvEnemyDamageScale.FloatValue;
+}
+
+int GetActiveEnemiesOfType(int type)
+{
+	int count;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsEnemy(i))
+			continue;
+		
+		if (Enemy(i).Index == type || g_iPlayerEnemySpawnType[i] == type || g_iPlayerBossSpawnType[i] == type)
+			count++;
+	}
+
+	return count;
 }

@@ -148,7 +148,6 @@ enum
 // Enemies/Bosses -------------------------------------------------------------------------------------------------------------------------------------
 #define MAX_ENEMIES 128
 #define MAX_WEARABLES 6
-#define MAX_BOSSES 32
 #define BOSS_BASE_BACKSTAB_DAMAGE 750.0
 
 enum
@@ -2821,7 +2820,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		{
 			g_iPlayerEnemySpawnType[client] = GetRandomEnemy();
 		}
-
+		
 		// Don't spawn everyone on the same frame to reduce lag
 		CreateTimer(time, Timer_SpawnEnemy, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		time += 0.1;
@@ -4277,8 +4276,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			TF2_IgnitePlayer(victim, attacker, 10.0);
 		}
 	}
-
-	if (victimIsClient && IsSingleplayer(false) && IsPlayerSurvivor(victim) && TF2_GetPlayerClass(victim) != TFClass_Heavy)
+	
+	if (victimIsClient && IsSingleplayer(false) && IsPlayerSurvivor(victim))
 	{
 		damage *= 0.8;
 	}

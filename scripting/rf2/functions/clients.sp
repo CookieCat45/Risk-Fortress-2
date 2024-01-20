@@ -401,7 +401,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 						case 3: buildingMaxHealth = 216;
 					}
 				}
-
+				
 				if (!carried)
 				{
 					oldBuildingMaxHealth = GetEntProp(entity, Prop_Send, "m_iMaxHealth");
