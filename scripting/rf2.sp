@@ -1335,6 +1335,7 @@ public Action Timer_MakeSurvivor(Handle timer, DataPack pack)
 	int index = pack.ReadCell();
 	TF2_SetPlayerClass(client, view_as<TFClassType>(pack.ReadCell()));
 	MakeSurvivor(client, index, false);
+	PrintHintText(client, "To avoid crashes in the future, try turning off Multicore Rendering in advanced video options.");
 	return Plugin_Continue;
 }
 
@@ -2071,14 +2072,18 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				{
 					float scrapChance = CalcItemMod(0, Item_PillarOfHats, 0, total);
 					float recChance = CalcItemMod(0, Item_PillarOfHats, 1, total);
-					//float refChance = CalcItemMod(0, Item_PillarOfHats, 2, total);
-					float totalChance = scrapChance + recChance;
+					float refChance = CalcItemMod(0, Item_PillarOfHats, 2, total);
+					float totalChance = scrapChance + recChance + refChance;
 					float result;
 					
 					if (RandChanceFloatEx(attacker, 0.0, 1.0, totalChance, result))
 					{
 						int item;
-						if (result <= recChance)
+						if (result <= refChance)
+						{
+							item = Item_RefinedMetal;
+						}
+						else if (result <= recChance)
 						{
 							item = Item_ReclaimedMetal;
 						}
