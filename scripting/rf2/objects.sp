@@ -104,7 +104,7 @@ int SpawnObjects()
 	ArrayList objectArray = CreateArray(128);
 	ArrayList crateArray = CreateArray(128);
 	int crateWeight = 50;
-	int largeWeight = 10;
+	int largeWeight = 8;
 	int strangeWeight = 8;
 	int hauntedWeight = 5;
 	int collectorWeight = 8;

@@ -331,7 +331,7 @@ static void Workbench_OnCreate(int entity)
 	{
 		quality = Quality_Normal;
 	}
-	else if (result <= 95)
+	else if (result <= 98)
 	{
 		quality = Quality_Genuine;
 	}

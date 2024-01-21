@@ -2066,23 +2066,19 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						total++;
 					}
 				}
-
+				
 				if (total > 0 && g_iMetalItemsDropped < limit)
 				{
 					float scrapChance = CalcItemMod(0, Item_PillarOfHats, 0, total);
 					float recChance = CalcItemMod(0, Item_PillarOfHats, 1, total);
-					float refChance = CalcItemMod(0, Item_PillarOfHats, 2, total);
-					float totalChance = scrapChance + recChance + refChance;
+					//float refChance = CalcItemMod(0, Item_PillarOfHats, 2, total);
+					float totalChance = scrapChance + recChance;
 					float result;
-
+					
 					if (RandChanceFloatEx(attacker, 0.0, 1.0, totalChance, result))
 					{
 						int item;
-						if (result <= refChance)
-						{
-							item = Item_RefinedMetal;
-						}
-						else if (result <= recChance)
+						if (result <= recChance)
 						{
 							item = Item_ReclaimedMetal;
 						}
@@ -2098,7 +2094,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						g_iMetalItemsDropped++;
 					}
 				}
-
+				
 				if (PlayerHasItem(attacker, Item_Dangeresque))
 				{
 					if (RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(Item_Dangeresque, 3)))
@@ -2108,15 +2104,12 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						GetEntPos(victim, pos);
 						pos[2] += 30.0;
 						TeleportEntity(bomb, pos);
-
 						float damage = GetItemMod(Item_Dangeresque, 0) + CalcItemMod(attacker, Item_Dangeresque, 1, -1);
 						SetEntPropFloat(bomb, Prop_Send, "m_flDamage", damage);
 						float radius = GetItemMod(Item_Dangeresque, 4) + CalcItemMod(attacker, Item_Dangeresque, 5, -1);
 						SetEntPropFloat(bomb, Prop_Send, "m_DmgRadius", radius);
-
 						SetEntityOwner(bomb, attacker);
 						SetEntProp(bomb, Prop_Data, "m_iTeamNum", GetClientTeam(attacker));
-
 						g_bCashBomb[bomb] = true;
 						if (IsEnemy(victim))
 						{
@@ -2125,22 +2118,18 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 						}
 
 						g_flCashBombAmount[bomb] *= 1.0 + (float(GetPlayerLevel(victim)-1) * g_cvEnemyCashDropScale.FloatValue);
-
 						if (PlayerHasItem(attacker, Item_BanditsBoots))
 						{
 							g_flCashBombAmount[bomb] *= 1.0 + CalcItemMod(attacker, Item_BanditsBoots, 0);
 						}
-
+						
 						SDKHook(bomb, SDKHook_StartTouch, Hook_DisableTouch);
 						SDKHook(bomb, SDKHook_Touch, Hook_DisableTouch);
-
 						SetShouldDamageOwner(bomb, false);
 						SetEntItemDamageProc(bomb, Item_Dangeresque);
-
 						DispatchSpawn(bomb);
 						ActivateEntity(bomb);
 						SetEntityModel(bomb, MODEL_CASH_BOMB);
-
 						TE_TFParticle("mvm_cash_embers_red", pos, bomb, PATTACH_ABSORIGIN_FOLLOW);
 					}
 				}
@@ -2167,10 +2156,8 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			DispatchKeyValueFloat(fog, "fogend", 100.0);
 			DispatchKeyValueFloat(fog, "fogmaxdensity", 0.9);
 			DispatchKeyValue(fog, "fogcolor", "255 0 0");
-
 			DispatchSpawn(fog);
 			AcceptEntityInput(fog, "TurnOn");
-
 			const float time = 0.1;
 			int oldFog;
 
@@ -2190,9 +2177,8 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					pack.WriteCell(EntIndexToEntRef(oldFog));
 				}
 			}
-
+			
 			CreateTimer(time, Timer_KillFog, EntIndexToEntRef(fog), TIMER_FLAG_NO_MAPCHANGE);
-
 			// Change the victim's team on a timer to avoid some strange behavior.
 			CreateTimer(0.3, Timer_ChangeTeamOnDeath, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 
