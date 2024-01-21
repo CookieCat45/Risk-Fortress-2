@@ -4233,7 +4233,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		return Plugin_Continue;
 
 	bool attackerIsClient = IsValidClient(attacker);
-	bool inflictorIsBuilding = IsBuilding(inflictor);
+	bool inflictorIsBuilding = inflictor > 0 && IsBuilding(inflictor);
 	bool attackerIsNpc = IsNPC(attacker);
 	if (!attackerIsClient && !inflictorIsBuilding && !attackerIsNpc)
 	{
@@ -4248,7 +4248,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		return Plugin_Continue;
 	}
 	
-	if (!ShouldDamageOwner(inflictor) && victim == GetEntPropEnt(inflictor, Prop_Send, "m_hOwnerEntity"))
+	if (inflictor > 0 && !ShouldDamageOwner(inflictor) && victim == GetEntPropEnt(inflictor, Prop_Send, "m_hOwnerEntity"))
 	{
 		return Plugin_Handled;
 	}
@@ -4277,7 +4277,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 	}
 	
-	if (g_bFakeFireball[inflictor])
+	if (inflictor > 0 && g_bFakeFireball[inflictor])
 	{
 		damageCustom = TF_CUSTOM_SPELL_FIREBALL;
 		if (IsValidClient(victim))
@@ -4292,8 +4292,12 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	}
 	
 	static char inflictorClassname[64];
-	GetEntityClassname(inflictor, inflictorClassname, sizeof(inflictorClassname));
-	if (damageType & DMG_CRUSH && victimIsClient && (strcmp2(inflictorClassname, "tank_boss") || strcmp2(inflictorClassname, "rf2_tank_boss_badass")))
+	if (inflictor > 0)
+	{
+		GetEntityClassname(inflictor, inflictorClassname, sizeof(inflictorClassname));
+	}
+	
+	if (inflictor > 0 && damageType & DMG_CRUSH && victimIsClient && (strcmp2(inflictorClassname, "tank_boss") || strcmp2(inflictorClassname, "rf2_tank_boss_badass")))
 	{
 		// block tank crush damage
 		return Plugin_Handled;
@@ -4390,8 +4394,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 		
 		damage *= GetPlayerDamageMult(attacker);
-
-		if (g_bFiredWhileRocketJumping[inflictor] && PlayerHasItem(attacker, ItemSoldier_Compatriot) && CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
+		
+		if (inflictor > 0 && g_bFiredWhileRocketJumping[inflictor] && PlayerHasItem(attacker, ItemSoldier_Compatriot) && CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
 		{
 			damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_Compatriot, 0);
 		}
@@ -4402,8 +4406,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			proc *= GetItemProcCoefficient(procItem);
 			SetEntItemDamageProc(attacker, Item_Null);
 		}
-
-		if (GetEntItemDamageProc(inflictor) != Item_Null)
+		
+		if (inflictor > 0 && GetEntItemDamageProc(inflictor) != Item_Null)
 		{
 			proc *= GetItemProcCoefficient(GetEntItemDamageProc(inflictor));
 		}
@@ -4693,7 +4697,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		if (!selfDamage && !invuln)
 		{
-			if (PlayerHasItem(attacker, Item_Law) && GetEntItemDamageProc(inflictor) != Item_Law && !g_bPlayerLawCooldown[attacker])
+			if (PlayerHasItem(attacker, Item_Law) && inflictor > 0 && GetEntItemDamageProc(inflictor) != Item_Law && !g_bPlayerLawCooldown[attacker])
 			{
 				float random = GetItemMod(Item_Law, 0);
 				random *= proc;
@@ -4718,7 +4722,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					CreateTimer(0.4, Timer_LawCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 				}
 			}
-
+			
 			if (PlayerHasItem(attacker, Item_HorrificHeadsplitter))
 			{
 				int healAmount = imax(RoundToFloor(damage * CalcItemMod_Hyperbolic(attacker, Item_HorrificHeadsplitter, 0)), 1);
