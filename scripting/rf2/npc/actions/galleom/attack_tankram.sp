@@ -73,8 +73,7 @@ static int OnStart(RF2_GalleomTankRamAttack action, RF2_RaidBoss_Galleom boss, N
 	boss.SetSequence("EnmGalleomTankAttack1");
 	boss.BaseNpc.flAcceleration = 750.0;
 	boss.BaseNpc.flRunSpeed = 1500.0;
-	EmitSoundToAll(SND_TANKLOOP, boss.index, _, SNDLEVEL_SCREAMING);
-	EmitSoundToAll(SND_TANKLOOP, boss.index, _, SNDLEVEL_SCREAMING);
+	EmitSoundToAllEx(SND_TANKLOOP, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
 	return action.Continue();
 }
 
@@ -89,8 +88,8 @@ static int Update(RF2_GalleomTankRamAttack action, RF2_RaidBoss_Galleom boss, fl
 		{
 			boss.BaseNpc.flAcceleration = 2000.0;
 			boss.SetHitboxSize({-150.0, -150.0, 0.0}, {150.0, 150.0, 300.0});
-			RemoveEntity(action.RocketTrailL.index);
-			RemoveEntity(action.RocketTrailR.index);
+			RemoveEntity2(action.RocketTrailL.index);
+			RemoveEntity2(action.RocketTrailR.index);
 			return action.Done("I'm done running people over.");
 		}
 	}
@@ -122,8 +121,7 @@ static int Update(RF2_GalleomTankRamAttack action, RF2_RaidBoss_Galleom boss, fl
 			StopSound(boss.index, SNDCHAN_AUTO, SND_TANKLOOP);
 			StopSound(boss.index, SNDCHAN_AUTO, SND_JET_LOOP);
 			StopSound(boss.index, SNDCHAN_AUTO, SND_JET_LOOP);
-			EmitSoundToAll(SND_TANKEXIT, boss.index, _, SNDLEVEL_SCREAMING);
-			EmitSoundToAll(SND_TANKEXIT, boss.index, _, SNDLEVEL_SCREAMING);
+			EmitSoundToAll(SND_TANKEXIT, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
 		}
 		
 		action.AttackTime = GetGameTime() + 0.2;
@@ -137,10 +135,10 @@ static int Update(RF2_GalleomTankRamAttack action, RF2_RaidBoss_Galleom boss, fl
 	
 	if (action.HitCounter > 0 && action.HitCounter < 20)
 	{
-		if (boss.Target.IsValid())
+		if (IsValidEntity2(boss.Target))
 		{
 			float targetPos[3];
-			boss.Target.GetAbsOrigin(targetPos);
+			GetEntPos(boss.Target, targetPos);
 			boss.Path.ComputeToPos(bot, targetPos);
 			boss.Path.Update(bot);
 			loco.Run();

@@ -181,7 +181,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 
 public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 {
-	if (IsObject(entity) && GetEntProp(entity, Prop_Send, "m_CollisionGroup") == COLLISION_GROUP_DEBRIS_TRIGGER)
+	if (RF2_Object_Base(entity).IsValid() && GetEntProp(entity, Prop_Send, "m_CollisionGroup") == COLLISION_GROUP_DEBRIS_TRIGGER)
 		return false;
 	
 	if (team > 0 && (IsValidClient(entity) || IsBuilding(entity) || IsNPC(entity)))
@@ -199,7 +199,7 @@ public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 public bool Path_FilterIgnoreObjects(int entity, int contentsMask, int desiredcollisiongroup)
 {	
 	// don't worry about objects, most are non solid anyway
-	if (IsObject(entity))
+	if (RF2_Object_Base(entity).IsValid())
 		return true;
 	
 	return !(contentsMask & MASK_SOLID);

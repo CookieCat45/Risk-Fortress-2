@@ -38,13 +38,6 @@ void LoadForwards()
 	g_fwTeleEventEnd = new GlobalForward("RF2_OnTeleporterEventEnd", ET_Ignore);
 	g_fwGracePeriodStart = new GlobalForward("RF2_OnGracePeriodStart", ET_Ignore);
 	g_fwGracePeriodEnded = new GlobalForward("RF2_OnGracePeriodEnd", ET_Ignore);
-	
-	g_fwPrivateOnMapStart = new PrivateForward(ET_Ignore); 
-	g_fwPrivateOnMapStart.AddFunction(INVALID_HANDLE, SentryBuster_OnMapStart);
-	g_fwPrivateOnMapStart.AddFunction(INVALID_HANDLE, BadassTank_OnMapStart);
-	g_fwPrivateOnMapStart.AddFunction(INVALID_HANDLE, RaidBoss_OnMapStart);
-	g_fwPrivateOnMapStart.AddFunction(INVALID_HANDLE, Galleom_OnMapStart);
-	g_fwPrivateOnMapStart.AddFunction(INVALID_HANDLE, CustomHitbox_OnMapStart);
 }
 
 public any Native_IsEnabled(Handle plugin, int numParams)
@@ -96,16 +89,16 @@ public any Native_GetSurvivorLevel(Handle plugin, int numParams)
 public any Native_GetSurvivorCount(Handle plugin, int numParams)
 {
 	return g_iSurvivorCount;
-}	
+}
 
 public any Native_GetSurvivorPoints(Handle plugin, int numParams)
 {
-	return g_iPlayerSurvivorPoints[GetNativeCell(1)];
+	return GetCookieInt(GetNativeCell(1), g_coSurvivorPoints);
 }
 
 public any Native_SetSurvivorPoints(Handle plugin, int numParams)
 {
-	g_iPlayerSurvivorPoints[GetNativeCell(1)] = GetNativeCell(2);
+	SetCookieInt(GetNativeCell(1), g_coSurvivorPoints, GetNativeCell(2));
 	return 0;
 }
 
@@ -156,7 +149,7 @@ public any Native_GetCurrentStage(Handle plugin, int numParams)
 
 public any Native_GetTeleporterEntity(Handle plugin, int numParams)
 {
-	return GetTeleporterEntity();
+	return GetCurrentTeleporter().index;
 }
 
 public any Native_IsTankDestructionMode(Handle plugin, int numParams)

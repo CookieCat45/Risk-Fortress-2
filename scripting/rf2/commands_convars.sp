@@ -665,20 +665,22 @@ public int SortSurvivorListByPoints2(int index1, int index2, ArrayList array, Ha
 {
 	int client1 = array.Get(index1);
 	int client2 = array.Get(index2);
-	if (!g_bPlayerBecomeSurvivor[client1] && !g_bPlayerBecomeSurvivor[client2])
+	bool survivor1 = GetCookieBool(client1, g_coBecomeSurvivor);
+	bool survivor2 = GetCookieBool(client2, g_coBecomeSurvivor);
+	if (!survivor1 && !survivor2)
 	{
 		return 0;
 	}
-	else if (!g_bPlayerBecomeSurvivor[client1])
+	else if (!survivor1)
 	{
 		return 1;
 	}
-	else if (!g_bPlayerBecomeSurvivor[client2])
+	else if (!survivor2)
 	{
 		return -1;
 	}
 	
-	return g_iPlayerSurvivorPoints[client1] > g_iPlayerSurvivorPoints[client2] ? -1 : 1;
+	return RF2_GetSurvivorPoints(client1) > RF2_GetSurvivorPoints(client2) ? -1 : 1;
 }
 
 public int Menu_SurvivorQueue(Menu menu, MenuAction action, int param1, int param2)
@@ -956,10 +958,7 @@ public Action Command_AddPoints(int client, int args)
 	{
 		for (int i = 0; i < matches; i++)
 		{
-			g_iPlayerSurvivorPoints[clients[i]] += amount;
-			if (g_iPlayerSurvivorPoints[clients[i]] < 0)
-				g_iPlayerSurvivorPoints[clients[i]] = 0;
-				
+			RF2_SetSurvivorPoints(clients[i], RF2_GetSurvivorPoints(clients[i])+amount);
 			RF2_PrintToChatAll("%t", "GaveQueuePoints", client, amount, clients[i]);
 		}
 	}
@@ -981,8 +980,8 @@ public Action Command_StartTeleporterEvent(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	int teleporter = GetTeleporterEntity();
-	if (teleporter == INVALID_ENT_REFERENCE || g_bTankBossMode || GetTeleporterEventState() == TELE_EVENT_ACTIVE || IsStageCleared())
+	RF2_Object_Teleporter teleporter = GetCurrentTeleporter();
+	if (!teleporter.IsValid() || g_bTankBossMode || teleporter.EventState == TELE_EVENT_ACTIVE || IsStageCleared())
 	{
 		RF2_ReplyToCommand(client, "%t", "CannotBeUsed");
 		return Plugin_Handled;
@@ -993,7 +992,7 @@ public Action Command_StartTeleporterEvent(int client, int args)
 		EndGracePeriod();
 	}
 	
-	PrepareTeleporterEvent(teleporter);
+	teleporter.Prepare();
 	return Plugin_Handled;
 }
 
@@ -1311,23 +1310,31 @@ void ShowClientSettingsMenu(int client)
 	Menu menu = new Menu(Menu_ClientSettings);
 	char buffer[128];
 	menu.SetTitle("Risk Fortress 2 Settings");
-	
 	int lang = GetClientLanguage(client);
 	char off[8], on[8];
 	FormatEx(off, sizeof(off), "%T", "Off", lang);
 	FormatEx(on, sizeof(on), "%T", "On", lang);
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "ToggleSurvivor", lang, g_bPlayerBecomeSurvivor[client] ? on : off);
-	menu.AddItem("survivor_pref", buffer);
+	FormatEx(buffer, sizeof(buffer), "%T", "ToggleSurvivor", lang, GetCookieBool(client, g_coBecomeSurvivor) ? on : off);
+	menu.AddItem("rf2_become_survivor", buffer);
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "ToggleTeleBoss", lang, g_bPlayerBecomeBoss[client] ? on : off);
-	menu.AddItem("boss_pref", buffer);
+	FormatEx(buffer, sizeof(buffer), "%T", "ToggleEnemy", lang, GetCookieBool(client, g_coBecomeEnemy) ? on : off);
+	menu.AddItem("rf2_become_enemy", buffer);
+
+	FormatEx(buffer, sizeof(buffer), "%T", "ToggleTeleBoss", lang, GetCookieBool(client, g_coBecomeBoss) ? on : off);
+	menu.AddItem("rf2_become_boss", buffer);
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "ToggleMusic", lang, g_bPlayerMusicEnabled[client] ? on : off);
-	menu.AddItem("music_pref", buffer);
+	FormatEx(buffer, sizeof(buffer), "%T", "SpecOnDeath", lang, GetCookieBool(client, g_coSpecOnDeath) ? on : off);
+	menu.AddItem("rf2_spec_on_death", buffer);
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "AutoItemMenu", lang, g_bPlayerAutomaticItemMenu[client] ? on : off);
-	menu.AddItem("itemmenu_pref", buffer);
+	FormatEx(buffer, sizeof(buffer), "%T", "StayInSpec", lang, GetCookieBool(client, g_coStayInSpecOnJoin) ? on : off);
+	menu.AddItem("rf2_stay_in_spec", buffer);
+	
+	FormatEx(buffer, sizeof(buffer), "%T", "ToggleMusic", lang, GetCookieBool(client, g_coMusicEnabled) ? on : off);
+	menu.AddItem("rf2_music_enabled", buffer);
+	
+	FormatEx(buffer, sizeof(buffer), "%T", "AutoItemMenu", lang, GetCookieBool(client, g_coAutomaticItemMenu) ? on : off);
+	menu.AddItem("rf2_auto_item_menu", buffer);
 	
 	menu.Display(client, MENU_TIME_FOREVER);
 }
@@ -1339,67 +1346,16 @@ public int Menu_ClientSettings(Menu menu, MenuAction action, int param1, int par
 		case MenuAction_Select:
 		{
 			char info[64];
-			GetMenuItem(menu, param2, info, sizeof(info));
-			
-			if (strcmp2(info, "survivor_pref"))
+			menu.GetItem(param2, info, sizeof(info));
+			Cookie cookie = FindClientCookie(info);
+			bool result = !GetCookieBool(param1, cookie);
+			SetCookieBool(param1, cookie, result);
+			if (strcmp2(info, "rf2_music_enabled"))
 			{
-				if (g_bPlayerBecomeSurvivor[param1])
-				{
-					g_bPlayerBecomeSurvivor[param1] = false;
-					SetClientCookie(param1, g_coBecomeSurvivor, "0");
-				}
-				else
-				{
-					g_bPlayerBecomeSurvivor[param1] = true;
-					SetClientCookie(param1, g_coBecomeSurvivor, "1");
-				}
-			}
-			else if (strcmp2(info, "boss_pref"))
-			{
-				if (g_bPlayerBecomeBoss[param1])
-				{
-					g_bPlayerBecomeBoss[param1] = false;
-					SetClientCookie(param1, g_coBecomeBoss, "0");
-				}
-				else
-				{
-					g_bPlayerBecomeBoss[param1] = true;
-					SetClientCookie(param1, g_coBecomeBoss, "1");
-				}
-			}
-			else if (strcmp2(info, "music_pref"))
-			{
-				if (g_bPlayerMusicEnabled[param1])
-				{
-					g_bPlayerMusicEnabled[param1] = false;
-					SetClientCookie(param1, g_coMusicEnabled, "0");
-					StopMusicTrack(param1);
-				}
-				else
-				{
-					g_bPlayerMusicEnabled[param1] = true;
-					SetClientCookie(param1, g_coMusicEnabled, "1");
-					
-					if (g_bRoundActive)
-					{
-						PlayMusicTrack(param1);
-					}
-				}
-			}
-			else if (strcmp2(info, "itemmenu_pref"))
-			{
-				if (g_bPlayerAutomaticItemMenu[param1])
-				{
-					g_bPlayerAutomaticItemMenu[param1] = false;
-					SetClientCookie(param1, g_coAutomaticItemMenu, "0");
-				}
-				else
-				{
-					g_bPlayerAutomaticItemMenu[param1] = true;
-					SetClientCookie(param1, g_coAutomaticItemMenu, "1");
-				}
+				result ? PlayMusicTrack(param1) : StopMusicTrack(param1);
 			}
 			
+			delete cookie;
 			ShowClientSettingsMenu(param1);
 		}
 		case MenuAction_End:
@@ -1744,7 +1700,7 @@ public Action Command_EndLevel(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	StartTeleporterVote(client, true);
+	RF2_Object_Teleporter.StartVote(client, true);
 	return Plugin_Handled;
 }
 

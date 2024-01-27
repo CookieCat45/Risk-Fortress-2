@@ -10,9 +10,12 @@ void BakeCookies()
 {
 	g_coMusicEnabled = RegClientCookie("rf2_music_enabled", "Enables or disables music.", CookieAccess_Protected);
 	g_coBecomeSurvivor = RegClientCookie("rf2_become_survivor", "Enables or disables becoming a Survivor.", CookieAccess_Protected);
+	g_coBecomeEnemy = RegClientCookie("rf2_become_enemy", "Enables spawning as an enemy.", CookieAccess_Protected);
 	g_coBecomeBoss = RegClientCookie("rf2_become_boss", "Enables or disables becoming the Teleporter boss.", CookieAccess_Protected);
-	g_coAutomaticItemMenu = RegClientCookie("rf2_auto_item_menu", "Enables or disables automatic item menu.", CookieAccess_Protected);
 	g_coSurvivorPoints = RegClientCookie("rf2_survivor_points", "Survivor queue points.", CookieAccess_Protected);
+	g_coStayInSpecOnJoin = RegClientCookie("rf2_stay_in_spec", "Stay in spectate upon joining.", CookieAccess_Protected);
+	g_coSpecOnDeath = RegClientCookie("rf2_spec_on_death", "Join spectator after dying on RED.", CookieAccess_Protected);
+	g_coAutomaticItemMenu = RegClientCookie("rf2_auto_item_menu", "Enables or disables automatic item menu.", CookieAccess_Protected);
 	g_coItemsCollected[0] = RegClientCookie("rf2_items_collected_1", "Items collected for logbook.", CookieAccess_Private);
 	g_coItemsCollected[1] = RegClientCookie("rf2_items_collected_2", "Items collected for logbook.", CookieAccess_Private);
 	g_coItemsCollected[2] = RegClientCookie("rf2_items_collected_3", "Items collected for logbook.", CookieAccess_Private);
@@ -33,27 +36,19 @@ public void OnClientCookiesCached(int client)
 	if (!RF2_IsEnabled())
 		return;
 	
-	char buffer[256];
+	char buffer[MAX_COOKIE_LENGTH];
 	
 	// Music Preference
 	GetClientCookie(client, g_coMusicEnabled, buffer, sizeof(buffer));
 	if (!buffer[0])
 	{
-		SetClientCookie(client, g_coMusicEnabled, "1");
+		SetCookieBool(client, g_coMusicEnabled, true);
 	}
-	else if (buffer[0] == '0')
-	{
-		g_bPlayerMusicEnabled[client] = false;
-	}
-	else
-	{
-		g_bPlayerMusicEnabled[client] = true;
-	}
-		
+	
 	// If the round is active, we can play the music to our client now
 	if (g_bRoundActive && IsClientInGame(client) && !IsFakeClient(client))
 	{
-		if (g_bPlayerMusicEnabled[client])
+		if (GetCookieBool(client, g_coMusicEnabled))
 		{
 			PlayMusicTrack(client);
 		}
@@ -67,71 +62,73 @@ public void OnClientCookiesCached(int client)
 	GetClientCookie(client, g_coBecomeSurvivor, buffer, sizeof(buffer));
 	if (!buffer[0])
 	{
-		SetClientCookie(client, g_coBecomeSurvivor, "1");
+		SetCookieBool(client, g_coBecomeSurvivor, true);
 	}
-	else if (buffer[0] == '0')
-	{
-		g_bPlayerBecomeSurvivor[client] = false;
-	}
-	else
-	{
-		g_bPlayerBecomeSurvivor[client] = true;
-	}	
 	
 	// Boss Preference
 	GetClientCookie(client, g_coBecomeBoss, buffer, sizeof(buffer));
 	if (!buffer[0])
 	{
-		SetClientCookie(client, g_coBecomeBoss, "1");
+		SetCookieBool(client, g_coBecomeBoss, true);
 	}
-	else if (buffer[0] == '0')
-	{
-		g_bPlayerBecomeBoss[client] = false;
-	}
-	else
-	{
-		g_bPlayerBecomeBoss[client] = true;
-	}	
-		
+	
 	// Auto Item Menu Preference
 	GetClientCookie(client, g_coAutomaticItemMenu, buffer, sizeof(buffer));
 	if (!buffer[0])
 	{
-		SetClientCookie(client, g_coAutomaticItemMenu, "0");
+		SetCookieBool(client, g_coAutomaticItemMenu, false);
 	}
-	else if (buffer[0] == '0')
+	
+	// Spectate Preference
+	GetClientCookie(client, g_coStayInSpecOnJoin, buffer, sizeof(buffer));
+	if (!buffer[0])
 	{
-		g_bPlayerAutomaticItemMenu[client] = false;
+		SetCookieBool(client, g_coStayInSpecOnJoin, false);
 	}
-	else
+
+	GetClientCookie(client, g_coSpecOnDeath, buffer, sizeof(buffer));
+	if (!buffer[0])
 	{
-		g_bPlayerAutomaticItemMenu[client] = true;
+		SetCookieBool(client, g_coSpecOnDeath, false);
+	}
+	
+	// Enemy Preference
+	GetClientCookie(client, g_coBecomeEnemy, buffer, sizeof(buffer));
+	if (!buffer[0])
+	{
+		SetCookieBool(client, g_coBecomeEnemy, true);
 	}
 	
 	// Survivor Points
 	GetClientCookie(client, g_coSurvivorPoints, buffer, sizeof(buffer));
 	if (!buffer[0])
 	{
-		SetClientCookie(client, g_coSurvivorPoints, "0");
-	}
-	else
-	{
-		g_iPlayerSurvivorPoints[client] = StringToInt(buffer);
+		SetCookieInt(client, g_coSurvivorPoints, 0);
 	}
 }
 
-void SaveClientCookies(int client)
-{
-	char buffer[256];
-	IntToString(g_iPlayerSurvivorPoints[client], buffer, sizeof(buffer));
-	SetClientCookie(client, g_coSurvivorPoints, buffer);
-}
-
-int GetClientCookieInt(int client, Cookie cookie)
+int GetCookieInt(int client, Cookie cookie)
 {
 	char buffer[16];
 	GetClientCookie(client, cookie, buffer, sizeof(buffer));
 	return StringToInt(buffer);
+}
+
+bool GetCookieBool(int client, Cookie cookie)
+{
+	return asBool(GetCookieInt(client, cookie));
+}
+
+void SetCookieInt(int client, Cookie cookie, int value)
+{
+	char buffer[MAX_COOKIE_LENGTH];
+	IntToString(value, buffer, sizeof(buffer));
+	cookie.Set(client, buffer);
+}
+
+void SetCookieBool(int client, Cookie cookie, bool value)
+{
+	SetCookieInt(client, cookie, view_as<int>(value));
 }
 
 int GetItemLogCookie(int client, char[] buffer, int size)
@@ -150,7 +147,7 @@ int GetItemLogCookie(int client, char[] buffer, int size)
 
 void SetItemLogCookie(int client, const char[] value)
 {
-	char cookie[100], buffer[512];
+	char cookie[MAX_COOKIE_LENGTH], buffer[512];
 	strcopy(buffer, sizeof(buffer), value);
 	for (int i = 0; i < sizeof(g_coItemsCollected); i++)
 	{

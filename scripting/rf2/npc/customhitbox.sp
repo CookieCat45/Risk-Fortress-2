@@ -20,7 +20,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 	
 	public bool IsValid()
 	{
-		if (!CBaseAnimating(this.index).IsValid())
+		if (this.index == 0 || !IsValidEntity2(this.index))
 		{
 			return false;
 		}
@@ -28,7 +28,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		return CEntityFactory.GetFactoryOfEntity(this.index) == g_Factory;
 	}
 	
-	public static void Initialize()
+	public static void Init()
 	{
 		g_Factory = new CEntityFactory("rf2_custom_hitbox", OnCreate);
 		g_Factory.DeriveFromClass("prop_dynamic_override");
@@ -127,15 +127,15 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		
 		while ((entity = FindEntityByClassname(entity, "*")) != -1)
 		{
-			if (!CBaseEntity(entity).IsCombatCharacter())
+			if (!IsCombatChar(entity))
 				continue;
-		
+			
 			if (entity == owner || GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
 				continue;
 			
 			if (DoEntitiesIntersect(this.index, entity))
 			{
-				SDKHooks_TakeDamage(entity, owner, owner, this.Damage, this.DamageFlags);
+				SDKHooks_TakeDamage2(entity, owner, owner, this.Damage, this.DamageFlags);
 				this.GetDamageForce(force);
 				if (VectorSum(force, true) > 0.0)
 				{
@@ -150,20 +150,10 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		
 		if (remove)
 		{
-			RemoveEntity(this.index);
+			RemoveEntity2(this.index);
 		}
 		
 		return this.ReturnHitEnts ? g_hHitEntities.Clone() : null;
-	}
-}
-
-void CustomHitbox_OnMapStart()
-{
-	static bool init;
-	if (!init)
-	{
-		RF2_CustomHitbox.Initialize();
-		init = true;
 	}
 }
 

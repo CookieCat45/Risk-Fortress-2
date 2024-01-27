@@ -29,8 +29,7 @@ static int OnStart(RF2_GalleomBodySlamAttack action, RF2_RaidBoss_Galleom boss, 
 	action.StartTime = GetGameTime();
 	action.AttackTime = GetGameTime() + 1.5;
 	boss.AddGesture("EnmGalleomChangeMiss");
-	EmitSoundToAll(SND_BODYSLAM_START, boss.index, _, SNDLEVEL_SCREAMING);
-	EmitSoundToAll(SND_BODYSLAM_START, boss.index, _, SNDLEVEL_SCREAMING);
+	EmitSoundToAllEx(SND_BODYSLAM_START, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
 	return action.Continue();
 }
 
@@ -47,11 +46,9 @@ static int Update(RF2_GalleomBodySlamAttack action, RF2_RaidBoss_Galleom boss, f
 	{
 		float pos[3];
 		action.DoAttackHitbox({350.0, 0.0, 0.0}, pos, {-300.0, -200.0, 0.0}, {75.0, 200.0, 80.0}, 600.0, DMG_CLUB|DMG_CRUSH|DMG_BLAST);
-		DoRadiusDamage(boss.index, boss.index, _, pos, 500.0, DMG_BLAST|DMG_CLUB, 550.0);
+		DoRadiusDamage(boss.index, boss.index, pos, _, 500.0, DMG_BLAST|DMG_CLUB, 550.0);
 		TE_TFParticle("hightower_explosion", pos);
-		EmitSoundToAll(SND_BODYSLAM_LAND, boss.index, _, SNDLEVEL_SCREAMING);
-		EmitSoundToAll(SND_BODYSLAM_LAND, boss.index, _, SNDLEVEL_SCREAMING);
-		EmitSoundToAll(SND_BODYSLAM_LAND, boss.index, _, SNDLEVEL_SCREAMING);
+		EmitSoundToAllEx(SND_BODYSLAM_LAND, boss.index, _, SNDLEVEL_SCREAMING, _, 3.0);
 		UTIL_ScreenShake(pos, 15.0, 30.0, 4.0, 1000.0, SHAKE_START, true);
 		action.RecoveryTime = GetGameTime() + 2.5;
 	}

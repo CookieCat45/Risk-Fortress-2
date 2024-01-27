@@ -7,30 +7,26 @@
 #pragma newdecls required
 
 bool g_bPlayerInCondition[MAXTF2PLAYERS][MAX_TF_CONDITIONS];
-
 bool TF2_IsPlayerInCondition2(int client, TFCond condition)
 {
 	return g_bPlayerInCondition[client][condition];
 }
-#define TF2_IsPlayerInCondition TF2_IsPlayerInCondition2
 
 public void RemoveEntity2(int entity)
 {
 	if (entity == 0)
 	{
-		LogStackTrace("RemoveEntity with entity index 0, aborting to prevent server crash!");
+		LogStackTrace("RemoveEntity2 with entity index 0, aborting to prevent server crash!");
 		return;
 	}
 	
 	RemoveEntity(entity);
 }
-#define RemoveEntity RemoveEntity2
 
 void SDKHooks_TakeDamage2(int entity, int inflictor, int attacker, float damage, int damageType=DMG_GENERIC, int weapon=-1, const float damageForce[3]=NULL_VECTOR, const float damagePosition[3]=NULL_VECTOR)
 {
 	SDKHooks_TakeDamage(entity, inflictor, attacker, damage, damageType, weapon, damageForce, damagePosition, false);
 }
-#define SDKHooks_TakeDamage SDKHooks_TakeDamage2
 
 bool PrecacheSound2(const char[] sound, bool preload=false)
 {
@@ -42,7 +38,6 @@ bool PrecacheSound2(const char[] sound, bool preload=false)
 	
 	return PrecacheSound(sound, preload);
 }
-#define PrecacheSound PrecacheSound2
 
 int PrecacheModel2(const char[] model, bool preload=false)
 {
@@ -54,19 +49,17 @@ int PrecacheModel2(const char[] model, bool preload=false)
 	
 	return PrecacheModel(model, preload);
 }
-#define PrecacheModel PrecacheModel2
 
 void SetEntityModel2(int entity, const char[] model)
 {
 	if (!IsModelPrecached(model))
 	{
 		// just precache it, better than a server crash
-		PrecacheModel(model);
+		PrecacheModel2(model);
 	}
 	
 	SetEntityModel(entity, model);
 }
-#define SetEntityModel SetEntityModel2
 
 bool IsValidEntity2(int entity)
 {
@@ -75,4 +68,3 @@ bool IsValidEntity2(int entity)
 	
 	return IsValidEntity(entity);
 }
-#define IsValidEntity IsValidEntity2

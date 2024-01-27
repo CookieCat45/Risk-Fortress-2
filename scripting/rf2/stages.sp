@@ -262,7 +262,7 @@ public Action Timer_PlayMusicDelay(Handle timer)
 
 void PlayMusicTrack(int client)
 {
-	if (IsFakeClient(client) || !g_bPlayerMusicEnabled[client])
+	if (IsFakeClient(client) || !GetCookieBool(client, g_coMusicEnabled))
 		return;
 	
 	StopMusicTrack(client);
@@ -336,10 +336,10 @@ void GetCurrentMusicTrack(char[] buffer, int size)
 
 bool IsStageCleared()
 {
-	int teleporter = GetTeleporterEntity();
-	if (teleporter != INVALID_ENT_REFERENCE)
+	RF2_Object_Teleporter teleporter = GetCurrentTeleporter();
+	if (teleporter.IsValid())
 	{
-		return GetEntProp(teleporter, Prop_Data, "m_iEventState") == TELE_EVENT_COMPLETE;
+		return teleporter.EventState == TELE_EVENT_COMPLETE;
 	}
 	
 	if (g_bTankBossMode)

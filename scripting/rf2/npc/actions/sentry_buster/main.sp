@@ -45,49 +45,59 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	float worldSpace[3], pos[3];
 	actor.GetAbsOrigin(pos);
 	actor.WorldSpaceCenter(worldSpace);
-	CBaseEntity target = actor.Target;
-	if (!target.IsValid())
+	int target = actor.Target;
+	if (!IsValidEntity2(target))
 	{
-		actor.Target = CBaseEntity(GetNearestEntity(worldSpace, "obj_sentrygun", _, _, TEAM_SURVIVOR));
-		if (!actor.Target.IsValid())
+		actor.Target = GetNearestEntity(worldSpace, "obj_sentrygun", _, _, TEAM_SURVIVOR);
+		if (!IsValidEntity2(target))
 		{
 			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "No sentry what?");
 		}
+
 		target = actor.Target;
 	}
-
+	
 	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(actor.index);
 	NextBotGroundLocomotion loco = npc.GetLocomotion();
-
+	
 	float targetPos[3];
-	if (target.GetProp(Prop_Send, "m_bCarried"))
+	if (GetEntProp(target, Prop_Send, "m_bCarried"))
 	{
-		int owner = target.GetPropEnt(Prop_Send, "m_hBuilder");
-		if (IsValidEntity(owner))
+		int owner = GetEntPropEnt(target, Prop_Send, "m_hBuilder");
+		if (IsValidEntity2(owner))
 		{
-			target = CBaseEntity(owner);
+			target = owner;
 		}
 	}
 
-	target.GetAbsOrigin(targetPos);
+	GetEntPos(target, targetPos);
 	if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) && actor.IsLOSClearFromTarget(target))
 	{
 		return action.ChangeTo(RF2_SentryBusterDetonateAction(), "KABOOM");
 	}
-
+	
 	INextBot bot = actor.MyNextBotPointer();
 	PathFollower path = actor.Path;
 	path.ComputeToPos(bot, targetPos);
 	path.Update(bot);
 	loco.Run();
-
+	
 	if (loco.IsStuck())
 	{
 		actor.RepathAttempts++;
 		if (actor.RepathAttempts >= 20)
 		{
+			loco.Jump();
+		}
+		
+		if (actor.RepathAttempts >= 60 && !loco.IsClimbingOrJumping())
+		{
 			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "Fuck we're stuck!");
 		}
+	}
+	else
+	{
+		actor.RepathAttempts = 0;
 	}
 	
 	if (action.TalkerTime < GetGameTime())

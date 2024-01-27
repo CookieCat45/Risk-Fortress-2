@@ -29,10 +29,8 @@ static int OnStart(RF2_GalleomHammerKnuckleAttack action, RF2_RaidBoss_Galleom b
 	action.StartTime = GetGameTime();
 	action.AttackTime = GetGameTime() + 3.0;
 	boss.AddGesture("EnmGalleomHammerKnuckle");
-	EmitSoundToAll(SND_FIST_SLAM, boss.index, _, SNDLEVEL_SCREAMING);
-	EmitSoundToAll(SND_FIST_SLAM, boss.index, _, SNDLEVEL_SCREAMING);
-	EmitSoundToAll(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING);
-	EmitSoundToAll(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING);
+	EmitSoundToAllEx(SND_FIST_SLAM, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
+	EmitSoundToAllEx(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
 	return action.Continue();
 }
 

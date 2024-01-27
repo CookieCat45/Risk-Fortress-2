@@ -176,7 +176,7 @@ methodmap TFBot < Handle
 		for (int i = 0; i < g_hTFBotEngineerBuildings[this.Client].Length; i++)
 		{
 			entity = EntRefToEntIndex(g_hTFBotEngineerBuildings[this.Client].Get(i));
-			if (!IsValidEntity(entity) || !IsBuilding(entity))
+			if (!IsValidEntity2(entity) || !IsBuilding(entity))
 			{
 				int index = g_hTFBotEngineerBuildings[this.Client].FindValue(entity);
 				if (index >= 0)
@@ -204,12 +204,12 @@ methodmap TFBot < Handle
 		int prioritizedBuilding = -1;
 		bool lowHealth;
 		int sentry = this.GetBuilding(TFObject_Sentry);
-		bool sentryUpgraded = IsValidEntity(sentry) && GetEntProp(sentry, Prop_Send, "m_iUpgradeLevel") >= 3;
+		bool sentryUpgraded = IsValidEntity2(sentry) && GetEntProp(sentry, Prop_Send, "m_iUpgradeLevel") >= 3;
 		
 		for (int i = 0; i < g_hTFBotEngineerBuildings[this.Client].Length; i++)
 		{
 			building = EntRefToEntIndex(g_hTFBotEngineerBuildings[this.Client].Get(i));
-			if (!IsValidEntity(building))
+			if (!IsValidEntity2(building))
 				continue;
 			
 			// remove sappers first, always top priority
@@ -371,7 +371,7 @@ void TFBot_Think(TFBot &bot)
 	int desiredWeapon = TFBot_GetDesiredWeapon(bot, desiredSlot);
 	if (desiredWeapon != -1)
 	{
-		TF2_ForceWeaponSwitch(bot.Client, desiredSlot);
+		ForceWeaponSwitch(bot.Client, desiredSlot);
 	}
 	
 	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer)
@@ -380,7 +380,7 @@ void TFBot_Think(TFBot &bot)
 		// Aggressive AI, relentlessly pursues target and strafes on higher difficulties. Mostly for melee.
 		if (aggressiveMode)
 		{
-			if (threat > MaxClients || !TF2_IsInvuln(threat) && class != TFClass_Spy)
+			if (threat > MaxClients || !IsInvuln(threat) && class != TFClass_Spy)
 			{
 				float threatPos[3];
 				GetEntPos(threat, threatPos);
@@ -525,7 +525,7 @@ void TFBot_Think(TFBot &bot)
 			{
 				int building = EntRefToEntIndex(bot.RepairTarget);
 				int prioritizedBuilding = bot.GetPrioritizedBuilding();
-				if (bot.HasBuilt && IsValidEntity(building) &&  (prioritizedBuilding == -1 || building == prioritizedBuilding) && 
+				if (bot.HasBuilt && IsValidEntity2(building) &&  (prioritizedBuilding == -1 || building == prioritizedBuilding) && 
 					(GetEntProp(building, Prop_Send, "m_iHealth") < GetEntProp(building, Prop_Send, "m_iMaxHealth") || GetEntProp(building, Prop_Send, "m_iUpgradeLevel") < 3))
 				{
 					float pos[3];
@@ -551,7 +551,7 @@ void TFBot_Think(TFBot &bot)
 					if (GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon") != GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee))
 					{
 						bot.DesiredWeaponSlot = WeaponSlot_Melee;
-						TF2_ForceWeaponSwitch(bot.Client, WeaponSlot_Melee);
+						ForceWeaponSwitch(bot.Client, WeaponSlot_Melee);
 					}
 					
 					TFBot_ForceLookAtPos(bot, pos);
@@ -682,7 +682,7 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 		bool invuln;
 		if (threat > 0 && threat <= MaxClients)
 		{
-			invuln = TF2_IsInvuln(threat);
+			invuln = IsInvuln(threat);
 		}
 		
 		switch (item)
@@ -736,7 +736,7 @@ void TFBot_TraverseMap(TFBot &bot)
 	float tickedTime = GetTickedTime();
 	bot.GetMyPos(myPos);
 	
-	if (bot.GoalArea && (!IsValidEntity(bot.BuildingTarget) || GetEntProp(bot.BuildingTarget, Prop_Send, "m_bCarried")))
+	if (bot.GoalArea && (!IsValidEntity2(bot.BuildingTarget) || GetEntProp(bot.BuildingTarget, Prop_Send, "m_bCarried")))
 	{
 		bot.GoalArea.GetCenter(areaPos);
 		bool stuck;
@@ -771,7 +771,7 @@ void TFBot_TraverseMap(TFBot &bot)
 		int enemy;
 		
 		// Are we after a building?
-		if (IsValidEntity(bot.BuildingTarget) && !GetEntProp(bot.BuildingTarget, Prop_Send, "m_bCarried"))
+		if (IsValidEntity2(bot.BuildingTarget) && !GetEntProp(bot.BuildingTarget, Prop_Send, "m_bCarried"))
 		{
 			TFBot_PathToEntity(bot, bot.BuildingTarget, 2500.0, true);
 			return;
@@ -792,15 +792,14 @@ void TFBot_TraverseMap(TFBot &bot)
 			SurroundingAreasCollector collector = TheNavMesh.CollectSurroundingAreas(area, g_cvBotWanderMaxDist.FloatValue, 100.0);
 			ArrayList areaArray = CreateArray();
 			float cost, radius;
-			int teleporter = -1;
 			float telePos[3];
-			bool event = GetTeleporterEventState() != TELE_EVENT_INACTIVE;
+			RF2_Object_Teleporter teleporter = GetCurrentTeleporter();
+			bool event = teleporter.EventState != TELE_EVENT_INACTIVE;
 			
 			if (event)
 			{
-				teleporter = GetTeleporterEntity();
-				GetEntPos(teleporter, telePos);
-				radius = GetEntPropFloat(teleporter, Prop_Data, "m_flRadius");
+				teleporter.GetAbsOrigin(telePos);
+				radius = teleporter.Radius;
 			}
 			
 			for (int i = 0; i < collector.Count(); i++)
@@ -1052,7 +1051,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		{
 			CKnownEntity known = bot.GetTarget();
 			int target = known != NULL_KNOWN_ENTITY ? known.GetEntity() : -1;
-			bool targetInvuln = IsValidClient(target) && TF2_IsInvuln(target);
+			bool targetInvuln = IsValidClient(target) && IsInvuln(target);
 			bool overload = TF2Attrib_HookValueInt(0, "can_overload", activeWep) != 0;
 			
 			if (clip >= maxClip)
@@ -1273,7 +1272,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				bot.DesiredWeaponSlot = WeaponSlot_Primary;
 				if (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != primary)
 				{
-					TF2_ForceWeaponSwitch(client, WeaponSlot_Primary);
+					ForceWeaponSwitch(client, WeaponSlot_Primary);
 				}
 				
 				buttons |= IN_ATTACK;
@@ -1320,7 +1319,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 					bot.DesiredWeaponSlot = WeaponSlot_Primary;
 					if (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != primary)
 					{
-						TF2_ForceWeaponSwitch(client, WeaponSlot_Primary);
+						ForceWeaponSwitch(client, WeaponSlot_Primary);
 					}
 					
 					int perfectAimChance;
@@ -1344,7 +1343,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 					bot.DesiredWeaponSlot = WeaponSlot_Melee;
 					if (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != melee)
 					{
-						TF2_ForceWeaponSwitch(client, WeaponSlot_Melee);
+						ForceWeaponSwitch(client, WeaponSlot_Melee);
 					}
 					
 					const float range = 200.0;
@@ -1449,7 +1448,7 @@ int TFBot_GetDesiredWeapon(TFBot bot, int &slot=0)
 		return GetPlayerWeaponSlot(bot.Client, bot.DesiredWeaponSlot);
 	}
 	
-	if (TF2_IsPlayerInCondition(bot.Client, TFCond_Charging) 
+	if (TF2_IsPlayerInCondition2(bot.Client, TFCond_Charging) 
 		|| threat > 0 && IsEnemy(bot.Client) && Enemy(bot.Client).BotMeleeDistance > 0.0 && DistBetween(bot.Client, threat) <= Enemy(bot.Client).BotMeleeDistance)
 	{
 		slot = WeaponSlot_Melee;

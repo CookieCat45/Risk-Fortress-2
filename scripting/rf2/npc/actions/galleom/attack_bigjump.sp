@@ -28,8 +28,7 @@ static int OnStart(RF2_GalleomBigJumpAttack action, RF2_RaidBoss_Galleom boss, N
 {
 	action.StartTime = GetGameTime();
 	action.AttackTime = GetGameTime() + boss.AddGesture("EnmGalleomJumpAttack")-0.05;
-	EmitSoundToAll(SND_JUMP, boss.index, _, SNDLEVEL_SCREAMING);
-	EmitSoundToAll(SND_JUMP, boss.index, _, SNDLEVEL_SCREAMING);
+	EmitSoundToAllEx(SND_JUMP, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
 	boss.BaseNpc.flRunSpeed = 300.0;
 	boss.SetHitboxSize({-150.0, -150.0, 0.0}, {150.0, 150.0, 700.0});
 	return action.Continue();
@@ -42,10 +41,10 @@ static int Update(RF2_GalleomBigJumpAttack action, RF2_RaidBoss_Galleom boss, fl
 	
 	if (GetGameTime() < action.AttackTime && action.RecoveryTime <= 0.0)
 	{
-		if (boss.Target.IsValid())
+		if (IsValidEntity2(boss.Target))
 		{
 			float targetPos[3];
-			boss.Target.GetAbsOrigin(targetPos);
+			GetEntPos(boss.Target, targetPos);
 			boss.Path.ComputeToPos(bot, targetPos);
 			boss.Path.Update(bot);
 			loco.Run();
@@ -72,8 +71,7 @@ static int Update(RF2_GalleomBigJumpAttack action, RF2_RaidBoss_Galleom boss, fl
 			
 			// Wait until landing animation finishes
 			action.RecoveryTime = GetGameTime() + boss.AddGesture("EnmGalleomJumpLand", _, _, _, 2);
-			EmitSoundToAll(SND_JUMP_SLAM, boss.index, _, SNDLEVEL_SCREAMING);
-			EmitSoundToAll(SND_JUMP_SLAM, boss.index, _, SNDLEVEL_SCREAMING);
+			EmitSoundToAllEx(SND_JUMP_SLAM, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
 		}
 		else if (GetGameTime() >= action.RecoveryTime)
 		{

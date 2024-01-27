@@ -81,30 +81,45 @@ bool DoEntitiesIntersect(int ent1, int ent2)
 
 // SPELL PROJECTILES WILL ONLY WORK IF THE OWNER ENTITY IS A PLAYER! DO NOT TRY THEM WITH ANYTHING ELSE!
 int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], const float angles[3],
-	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
+	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true)
 {
 	int entity = CreateEntityByName(classname);
 	if (entity == -1)
 	{
+		if (StrContains(classname, "rf2_") == 0)
+		{
+			LogError("[ShootProjectile] Invalid projectile entity %s. Did you forget to call the Init() method?", classname);
+		}
+		
 		return -1;
 	}
-
+	
+	if (RF2_Projectile_Base(entity).IsValid())
+	{
+		RF2_Projectile_Base(entity).Owner = owner;
+	}
+	
 	SetEntityOwner(entity, owner);
 	if (owner > 0)
 	{
 		int team = GetEntProp(owner, Prop_Data, "m_iTeamNum");
 		SetEntProp(entity, Prop_Data, "m_iTeamNum", team);
+		SetEntProp(entity, Prop_Send, "m_iTeamNum", team);
 	}
-
+	
 	float projectileAngles[3], velocity[3];
 	CopyVectors(angles, projectileAngles);
 	projectileAngles[0] += arc;
-
+	
 	if (damage >= 0.0)
 	{
-		if (strcmp2(classname, "tf_projectile_pipebomb") ||
-		strcmp2(classname, "tf_projectile_spellbats") ||
-		strcmp2(classname, "tf_projectile_spelltransposeteleport"))
+		if (RF2_Projectile_Base(entity).IsValid())
+		{
+			RF2_Projectile_Base(entity).Damage = damage;
+		}
+		else if (strcmp2(classname, "tf_projectile_pipebomb") 
+			|| strcmp2(classname, "tf_projectile_spellbats")
+			|| strcmp2(classname, "tf_projectile_spelltransposeteleport"))
 		{
 			SetEntPropFloat(entity, Prop_Send, "m_flDamage", damage);
 		}
@@ -113,86 +128,75 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 			int offset = FindSendPropInfo("CTFProjectile_Rocket", "m_iDeflected") + 4;
 			SetEntDataFloat(entity, offset, damage, true);
 		}
-		else if (IsEntityFromFactory(entity))
-		{
-			SetEntPropFloat(entity, Prop_Data, "m_flBaseDamage", damage);
-		}
 		else
 		{
 			g_flProjectileForcedDamage[entity] = damage;
 			SDKHook(entity, SDKHook_StartTouch, Hook_ProjectileForceDamage);
 		}
 	}
-
+	
 	// no annoying server console message
 	if (strcmp2(classname, "tf_projectile_arrow"))
 	{
 		int offset = FindSendPropInfo("CTFProjectile_Arrow", "m_iProjectileType") + 32; // m_flInitTime
 		SetEntDataFloat(entity, offset, GetGameTime()+9999.0, true);
 	}
-
+	
 	if (allowCrit && IsValidClient(owner) && HasEntProp(entity, Prop_Send, "m_bCritical"))
 	{
-		if (RollAttackCrit(owner, critProc) || PlayerHasItem(owner, Item_Executioner) && IsPlayerMiniCritBuffed(owner))
+		if (RollAttackCrit(owner) || PlayerHasItem(owner, Item_Executioner) && IsPlayerMiniCritBuffed(owner))
 		{
 			SetEntProp(entity, Prop_Send, "m_bCritical", true);
 		}
 	}
-
+	
 	GetAngleVectors(projectileAngles, velocity, NULL_VECTOR, NULL_VECTOR);
 	NormalizeVector(velocity, velocity);
 	ScaleVector(velocity, speed);
-
 	DispatchSpawn(entity);
 	ActivateEntity(entity);
 	TeleportEntity(entity, pos, projectileAngles, velocity);
 	SetEntPropVector(entity, Prop_Send, "m_vecForce", velocity);
-
 	return entity;
 }
 
-// Shoots a fake fireball (tf_projectile_rocket)
-int ShootProjectile_Fireball(int owner=-1, const float pos[3], const float angles[3],
-	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, float critProc=1.0)
-{
-	int entity = ShootProjectile(owner, "tf_projectile_rocket", pos, angles, speed, damage, arc, allowCrit, critProc);
-	SetEntityModel(entity, MODEL_INVISIBLE);
-
-	switch (view_as<TFTeam>(GetEntProp(entity, Prop_Data, "m_iTeamNum")))
-	{
-		case TFTeam_Red:	SpawnInfoParticle("spell_fireball_small_red", pos, _, entity);
-		case TFTeam_Blue:	SpawnInfoParticle("spell_fireball_small_blue", pos, _, entity);
-		default:			SpawnInfoParticle("spellbook_major_fire", pos, _, entity);
-	}
-
-	EmitSoundToAll(SND_SPELL_FIREBALL, entity);
-	g_bFakeFireball[entity] = true;
-	return entity;
-}
-
-void DoRadiusDamage(int attacker, int inflictor, int item=Item_Null, const float pos[3],
-	float baseDamage, int damageFlags, float radius, int weapon=-1,
-	float minimumFalloffMultiplier=0.3, bool explosionEffect=false, bool sound=true, bool allowSelfDamage=false)
+/* Does damage to entities in the specified radius.
+* @param attacker 			Entity responsible for the daamge.
+* @param inflictor 			Entity dealing the damage.
+* @param pos 				Position to deal damage from.
+* @param item 				Item index associated with the damage, if any. Only works if attacker is a client.
+* @param baseDamage 		Base damage.
+* @param damageFlags 		Damage flags.
+* @param radius 			Radius of the damage.
+* @param minFalloffMult		Minimum damage falloff.
+* @param allowSelfDamage	Allow self damage.
+* @param blacklist			ArrayList of entities to ignore when dealing damage.
+* @param returnHitEnts		If true, return an ArrayList of entities that were hit.
+*
+* @return If returnHitEnts is TRUE, return ArrayList of hit entities, otherwise return NULL.
+*/
+ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int item=Item_Null,
+	float baseDamage, int damageFlags, float radius, float minFalloffMult=0.3, 
+	bool allowSelfDamage=false, ArrayList blacklist=null, bool returnHitEnts=false)
 {
 	float enemyPos[3];
 	float distance, falloffMultiplier, calculatedDamage;
 	int attackerTeam = GetEntProp(attacker, Prop_Data, "m_iTeamNum");
 	int entity = -1;
-	int directTarget = -1;
-	if (inflictor > MaxClients && HasEntProp(inflictor, Prop_Data, "m_flExplodeRadius"))
+	ArrayList hitEnts;
+	if (returnHitEnts)
 	{
-		directTarget = GetEntPropEnt(inflictor, Prop_Data, "m_hDirectTarget");
+		hitEnts = new ArrayList();
 	}
 
 	while ((entity = FindEntityByClassname(entity, "*")) != -1)
 	{
-		if (entity < 1)
+		if (entity < 1 || !allowSelfDamage && entity == attacker)
 			continue;
-
-		// this is a bomb direct hit, don't deal damage to our direct target
-		if (directTarget > 0 && entity == directTarget)
+		
+		if (blacklist && blacklist.FindValue(entity) != -1)
 			continue;
-
+		
 		if ((!IsValidClient(entity) || !IsPlayerAlive(entity)) && !IsNPC(entity) && !IsBuilding(entity) || entity == attacker && !allowSelfDamage)
 			continue;
 
@@ -201,7 +205,7 @@ void DoRadiusDamage(int attacker, int inflictor, int item=Item_Null, const float
 
 		GetEntPos(entity, enemyPos);
 		enemyPos[2] += 30.0;
-
+		
 		if ((distance = GetVectorDistance(pos, enemyPos)) <= radius)
 		{
 			TR_TraceRayFilter(pos, enemyPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
@@ -209,36 +213,39 @@ void DoRadiusDamage(int attacker, int inflictor, int item=Item_Null, const float
 			if (!TR_DidHit())
 			{
 				falloffMultiplier = 1.0 - distance / radius;
-				if (falloffMultiplier < minimumFalloffMultiplier)
+				if (falloffMultiplier < minFalloffMult)
 				{
-					falloffMultiplier = minimumFalloffMultiplier;
+					falloffMultiplier = minFalloffMult;
 				}
-
+				
 				calculatedDamage = baseDamage * falloffMultiplier;
-
 				if (IsValidClient(attacker) && item > Item_Null)
 				{
-					SetEntItemDamageProc(attacker, item);
+					SetEntItemProc(attacker, item);
 				}
-
-				SDKHooks_TakeDamage(entity, inflictor, attacker, calculatedDamage, damageFlags, weapon);
+				
+				SDKHooks_TakeDamage2(entity, inflictor, attacker, calculatedDamage, damageFlags);
+				if (returnHitEnts)
+					hitEnts.Push(entity);
 			}
 		}
 	}
+	
+	return hitEnts;
+}
 
-	if (explosionEffect)
+void DoExplosionEffect(const float pos[3], bool sound=true)
+{
+	int explosion = CreateEntityByName("env_explosion");
+	DispatchKeyValueFloat(explosion, "iMagnitude", 0.0);
+	if (!sound)
 	{
-		int explosion = CreateEntityByName("env_explosion");
-		DispatchKeyValueFloat(explosion, "iMagnitude", 0.0);
-		if (!sound)
-		{
-			DispatchKeyValueInt(explosion, "spawnflags", 64);
-		}
-
-		TeleportEntity(explosion, pos);
-		DispatchSpawn(explosion);
-		AcceptEntityInput(explosion, "Explode");
+		DispatchKeyValueInt(explosion, "spawnflags", 64);
 	}
+	
+	TeleportEntity(explosion, pos);
+	DispatchSpawn(explosion);
+	AcceptEntityInput(explosion, "Explode");
 }
 
 int SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]=NULL_VECTOR)
@@ -273,7 +280,7 @@ public Action Timer_DeleteCash(Handle timer, int entity)
 	float pos[3];
 	GetEntPos(entity, pos);
 	TE_TFParticle("mvm_cash_explosion", pos);
-	RemoveEntity(entity);
+	RemoveEntity2(entity);
 
 	return Plugin_Continue;
 }
@@ -345,7 +352,7 @@ void PickupCash(int client, int entity)
 		}
 		
 		delete clientArray;
-		RemoveEntity(entity);
+		RemoveEntity2(entity);
 	}
 }
 
@@ -462,7 +469,7 @@ int GetParticleEffectIndex(const char[] name)
 	return g_hParticleEffectTable.FindString(name);
 }
 
-void SetEntItemDamageProc(int entity, int item)
+void SetEntItemProc(int entity, int item)
 {
 	g_iItemDamageProc[entity] = item;
 	if (IsValidClient(entity) && item != Item_Null)
@@ -471,7 +478,7 @@ void SetEntItemDamageProc(int entity, int item)
 	}
 }
 
-int GetEntItemDamageProc(int entity)
+int GetEntItemProc(int entity)
 {
 	return g_iItemDamageProc[entity];
 }
@@ -497,8 +504,13 @@ bool IsNPC(int entity)
 {
 	if (entity <= MaxClients) // we don't want player bots
 		return false;
+	
+	return IsCombatChar(entity) && CBaseEntity(entity).MyNextBotPointer() != NULL_NEXT_BOT;
+}
 
-	return (CBaseEntity(entity).MyNextBotPointer() && CBaseEntity(entity).IsCombatCharacter());
+bool IsCombatChar(int entity)
+{
+	return entity > 0 && CBaseEntity(entity).IsCombatCharacter();
 }
 
 void GetEntPos(int entity, float buffer[3])
@@ -570,14 +582,4 @@ public MRESReturn DHook_TakeHealth(int entity, Handle returnVal, Handle params)
 	}
 
 	return MRES_Ignored;
-}
-
-int EnsureEntRef(int entIndex)
-{
-	if (entIndex & (1 << 31))
-	{
-		return entIndex;
-	}
-	
-	return IsValidEntity(entIndex) ? EntIndexToEntRef(entIndex) : INVALID_ENT_REFERENCE;
 }

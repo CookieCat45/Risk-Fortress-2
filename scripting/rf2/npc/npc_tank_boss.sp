@@ -49,27 +49,25 @@ enum
 	SPECIAL_BARRAGE,
 };
 
+void BadassTank_Init()
+{
+	CEntityFactory factory = new CEntityFactory("rf2_tank_boss_badass", BadassTank_OnCreate);
+	factory.DeriveFromClass("tank_boss");
+	factory.BeginDataMapDesc()
+		.DefineFloatField("m_flNextRocketAttackR")
+		.DefineFloatField("m_flNextRocketAttackL")
+		.DefineFloatField("m_flNextLaserAttack")
+		.DefineFloatField("m_flNextBarrageAttack")
+		.DefineIntField("m_iSpecialAttack")
+		.DefineIntField("m_iActualMaxHealth")
+	.EndDataMapDesc();
+	factory.Install();
+	HookMapStart(BadassTank_OnMapStart);
+}
+
 void BadassTank_OnMapStart()
 {
-	static bool init;
-	if (!init)
-	{
-		CEntityFactory factory = new CEntityFactory("rf2_tank_boss_badass", BadassTank_OnCreate);
-		factory.DeriveFromClass("tank_boss");
-		factory.BeginDataMapDesc()
-			.DefineFloatField("m_flNextRocketAttackR")
-			.DefineFloatField("m_flNextRocketAttackL")
-			.DefineFloatField("m_flNextLaserAttack")
-			.DefineFloatField("m_flNextBarrageAttack")
-			.DefineIntField("m_iSpecialAttack")
-			.DefineIntField("m_iActualMaxHealth")
-		.EndDataMapDesc();
-		
-		factory.Install();
-		init = true;
-	}
-	
-	g_iBadassTankModelIndex = PrecacheModel(MODEL_TANK_BADASS, true);
+	g_iBadassTankModelIndex = PrecacheModel2(MODEL_TANK_BADASS, true);
 	PrecacheSound(SND_TANK_LASERSHOOT, true);
 	PrecacheSound(SND_TANK_LASERRISE, true);
 	PrecacheSound(SND_TANK_LASERRISE_END, true);
@@ -108,7 +106,7 @@ static void BadassTank_OnCreate(int entity)
 
 public void Hook_BadassTankSpawnPost(int entity)
 {
-	SetEntityModel(entity, MODEL_TANK_BADASS);
+	SetEntityModel2(entity, MODEL_TANK_BADASS);
 	
 	// The reason this needs to be done is because Tanks will change their model based on how much damage they have taken
 	// in relation to their max health. Setting their max health to 0 AFTER spawning will prevent this behaviour.
@@ -124,11 +122,10 @@ void BeginTankDestructionMode()
 	g_iTankKillRequirement = SpawnTanks();
 	RF2_PrintToChatAll("%t", "TanksHaveArrived");
 	PlayMusicTrackAll();
-	
-	int gamerules = GetRF2GameRules();
-	if (gamerules != INVALID_ENT_REFERENCE)
+	RF2_GameRules gamerules = GetRF2GameRules();
+	if (gamerules.IsValid())
 	{
-		FireEntityOutput(gamerules, "OnTankDestructionStart");
+		gamerules.FireOutput("OnTankDestructionStart");
 	}
 }
 
@@ -177,14 +174,14 @@ void EndTankDestructionMode()
 	{
 		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
 		{
-			SDKHooks_TakeDamage(entity, 0, 0, 9999999.0, DMG_PREVENT_PHYSICS_FORCE);
+			SDKHooks_TakeDamage2(entity, 0, 0, 9999999.0, DMG_PREVENT_PHYSICS_FORCE);
 		}
 	}
 	
-	int gamerules = GetRF2GameRules();
-	if (gamerules != INVALID_ENT_REFERENCE)
+	RF2_GameRules gamerules = GetRF2GameRules();
+	if (gamerules.IsValid())
 	{
-		FireEntityOutput(gamerules, "OnTankDestructionComplete");
+		gamerules.FireOutput("OnTankDestructionComplete");
 	}
 }
 
@@ -372,11 +369,10 @@ public Action Timer_TankDeployBomb(Handle timer, int entity)
 	
 	// RIP
 	GameOver();
-	
-	int gamerules = GetRF2GameRules();
-	if (gamerules != INVALID_ENT_REFERENCE)
+	RF2_GameRules gamerules = GetRF2GameRules();
+	if (gamerules.IsValid())
 	{
-		FireEntityOutput(gamerules, "OnTankDestructionBombDeployed");
+		gamerules.FireOutput("OnTankDestructionBombDeployed");
 	}
 	
 	return Plugin_Continue;
@@ -503,8 +499,7 @@ public void Hook_BadassTankThink(int entity)
 						float duration = AddGesture(entity, "eye_rise", _, _, 0.25);
 						
 						int num = GetRandomInt(0, sizeof(g_szTankLaserVoices)-1);
-						EmitSoundToAll(g_szTankLaserVoices[num], entity, _, 120);
-						EmitSoundToAll(g_szTankLaserVoices[num], entity, _, 120);
+						EmitSoundToAllEx(g_szTankLaserVoices[num], entity, _, 120, _, 2.0);
 						EmitSoundToAll(SND_TANK_LASERRISE, entity, _, 120);
 						
 						if (nextBarrageAttack - GetGameTime() <= 10.0)
@@ -526,8 +521,7 @@ public void Hook_BadassTankThink(int entity)
 							SetEntProp(entity, Prop_Data, "m_iSpecialAttack", special);
 							CBaseAnimatingOverlay(entity).RemoveAllGestures();
 							int num = GetRandomInt(0, sizeof(g_szTankBarrageVoices)-1);
-							EmitSoundToAll(g_szTankBarrageVoices[num], entity, _, 120);
-							EmitSoundToAll(g_szTankBarrageVoices[num], entity, _, 120);
+							EmitSoundToAllEx(g_szTankBarrageVoices[num], entity, _, 120, _, 2.0);
 							EmitSoundToAll(SND_TANK_LASERRISE, entity, _, 120);
 							
 							float duration = AddGesture(entity, "rocket_turn_up", _, _, 0.2, 2);
@@ -646,7 +640,7 @@ public void Hook_BadassTankThink(int entity)
 						laserPos[2] = pos[2] + 10.0;
 						
 						int laser = ShootProjectile(entity, "tf_projectile_rocket", pos, angles, speed, damage);
-						SetEntityModel(laser, MODEL_INVISIBLE);
+						SetEntityModel2(laser, MODEL_INVISIBLE);
 						EmitSoundToAll(SND_TANK_LASERSHOOT, entity, _, 120);
 						SpawnInfoParticle("drg_cow_rockettrail_fire_blue", pos, _, laser);
 						SpawnInfoParticle("teleported_flash", laserPos, 0.1);

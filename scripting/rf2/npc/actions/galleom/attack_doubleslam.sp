@@ -28,10 +28,8 @@ static int OnStart(RF2_GalleomDoubleSlamAttack action, RF2_RaidBoss_Galleom boss
 {
 	action.StartTime = GetGameTime();
 	boss.AddGesture("EnmGalleomDoubleArm");
-	EmitSoundToAll(SND_DOUBLESLAM, boss.index, _, SNDLEVEL_SCREAMING);
-	EmitSoundToAll(SND_DOUBLESLAM, boss.index, _, SNDLEVEL_SCREAMING);
-	EmitSoundToAll(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING);
-	EmitSoundToAll(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING);
+	EmitSoundToAllEx(SND_DOUBLESLAM, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
+	EmitSoundToAllEx(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
 	return action.Continue();
 }
 

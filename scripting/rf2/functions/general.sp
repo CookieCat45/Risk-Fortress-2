@@ -25,7 +25,7 @@ void ForceTeamWin(int team)
 	int point;
 	point = FindEntityByClassname(point, "team_control_point_master");
 	
-	if (!IsValidEntity(point))
+	if (!IsValidEntity2(point))
 	{
 		point = CreateEntityByName("team_control_point_master");
 	}
@@ -105,9 +105,113 @@ void ReloadPlugin(bool changeMap=true)
 	}
 }
 
+void UTIL_ScreenFade(int player, int color[4], float fadeTime, float fadeHold, int flags)
+{
+	BfWrite bf = UserMessageToBfWrite(StartMessageOne("Fade", player, USERMSG_RELIABLE));
+	if (bf)
+	{
+		bf.WriteShort(FixedUnsigned16(fadeTime, 1 << SCREENFADE_FRACBITS));
+		bf.WriteShort(FixedUnsigned16(fadeHold, 1 << SCREENFADE_FRACBITS));
+		bf.WriteShort(flags);
+		bf.WriteByte(color[0]);
+		bf.WriteByte(color[1]);
+		bf.WriteByte(color[2]);
+		bf.WriteByte(color[3]);
+		EndMessage();
+	}
+}
+
+const float MAX_SHAKE_AMPLITUDE = 16.0;
+void UTIL_ScreenShake(const float center[3], float amplitude, float frequency, float duration, float radius, ShakeCommand_t eCommand, bool bAirShake)
+{
+	float localAmplitude;
+	amplitude = fmin(amplitude, MAX_SHAKE_AMPLITUDE);
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || (!bAirShake && (eCommand == SHAKE_START) && !(GetEntityFlags(i) & FL_ONGROUND)))
+		{
+			continue;
+		}
+		
+		CBaseCombatCharacter cb = CBaseCombatCharacter(i);
+		float playerCenter[3];
+		cb.WorldSpaceCenter(playerCenter);
+
+		localAmplitude = ComputeShakeAmplitude(center, playerCenter, amplitude, radius);
+		// This happens if the player is outside the radius, in which case we should ignore all commands
+		if (localAmplitude < 0)
+		{
+			continue;
+		}
+
+		TransmitShakeEvent(i, localAmplitude, frequency, duration, eCommand);
+	}
+}
+
+int FixedUnsigned16(float value, int scale)
+{
+	int output;
+	
+	output = RoundToFloor(value * float(scale));
+	if (output < 0)
+	{
+		output = 0;
+	}
+	if (output > 0xFFFF)
+	{
+		output = 0xFFFF;
+	}
+	
+	return output;
+}
+
+float ComputeShakeAmplitude(const float center[3], const float shake[3], float amplitude, float radius)
+{
+	if (radius <= 0)
+	{
+		return amplitude;
+	}
+
+	float localAmplitude = -1.0;
+	float delta[3];
+	SubtractVectors(center, shake, delta);
+	float distance = GetVectorLength(delta);
+	
+	if (distance <= radius)
+	{
+		// Make the amplitude fall off over distance
+		float perc = 1.0 - (distance / radius);
+		localAmplitude = amplitude * perc;
+	}
+
+	return localAmplitude;
+}
+
+void TransmitShakeEvent(int player, float localAmplitude, float frequency, float duration, ShakeCommand_t eCommand)
+{
+	if ((localAmplitude > 0.0 ) || (eCommand == SHAKE_STOP))
+	{
+		if (eCommand == SHAKE_STOP)
+		{
+			localAmplitude = 0.0;
+		}
+
+		BfWrite msg = UserMessageToBfWrite(StartMessageOne("Shake", player, USERMSG_RELIABLE));
+		if (msg != null)
+		{
+			msg.WriteByte(view_as<int>(eCommand));
+			msg.WriteFloat(localAmplitude);
+			msg.WriteFloat(frequency);
+			msg.WriteFloat(duration);
+
+			EndMessage();
+		}
+	}
+}
+
 bool IsBossEventActive()
 {
-	return GetTeleporterEventState() == TELE_EVENT_ACTIVE || g_bTankBossMode && !g_bGracePeriod;
+	return GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE || g_bTankBossMode && !g_bGracePeriod;
 }
 
 void SetHudDifficulty(int difficulty)
@@ -370,10 +474,258 @@ stock void AddMaterialToDownloadsTable(const char[] file)
 	}
 }
 
-// Checks if the goomba plugin is loaded, do not call until after OnAllPluginsLoaded()
-bool IsGoombaAvailable()
+/**
+ * Wrapper to emit sound to all clients. Removes volume limit of 1.0.
+ *
+ * @param sample        Sound file name relative to the "sound" folder.
+ * @param entity        Entity to emit from.
+ * @param channel       Channel to emit with.
+ * @param level         Sound level.
+ * @param flags         Sound flags.
+ * @param volume        Sound volume.
+ * @param pitch         Sound pitch.
+ * @param speakerentity Unknown.
+ * @param origin        Sound origin.
+ * @param dir           Sound direction.
+ * @param updatePos     Unknown (updates positions?)
+ * @param soundtime     Alternate time to play sound for.
+ * @error               Invalid client index.
+ */
+void EmitSoundToAllEx(const char[] sound, int entity=SOUND_FROM_PLAYER, int channel=SNDCHAN_AUTO, int level=SNDLEVEL_NORMAL, int flags=SND_NOFLAGS,
+	float volume=SNDVOL_NORMAL, int pitch=SNDPITCH_NORMAL, int speakerentity=-1, const float origin[3]=NULL_VECTOR, const float dir[3]=NULL_VECTOR,
+	bool updatePos=true, float soundTime=0.0)
 {
-	return g_bGoombaAvailable;
+	int times = RoundToCeil(volume);
+	float decimal = FloatFraction(volume);
+	if (times == 1)
+	{
+		EmitSoundToAll(sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundTime);
+		return;
+	}
+	
+	float vol;
+	for (int i = 1; i <= times; i++)
+	{
+		if (i < times)
+		{
+			vol = 1.0;
+		}
+		else
+		{
+			vol = decimal;
+		}
+		
+		EmitSoundToAll(sound, entity, channel, level, flags, vol, pitch, speakerentity, origin, dir, updatePos, soundTime);
+	}
+}
+
+/**
+ * Wrapper to emit sound to one client. Removes volume limit of 1.0.
+ *
+ * @param client        Client index.
+ * @param sample        Sound file name relative to the "sound" folder.
+ * @param entity        Entity to emit from.
+ * @param channel       Channel to emit with.
+ * @param level         Sound level.
+ * @param flags         Sound flags.
+ * @param volume        Sound volume.
+ * @param pitch         Sound pitch.
+ * @param speakerentity Unknown.
+ * @param origin        Sound origin.
+ * @param dir           Sound direction.
+ * @param updatePos     Unknown (updates positions?)
+ * @param soundtime     Alternate time to play sound for.
+ * @error               Invalid client index or client not in game.
+ *
+void EmitSoundToClientEx(int client, const char[] sound, int entity=SOUND_FROM_PLAYER, int channel=SNDCHAN_AUTO, int level=SNDLEVEL_NORMAL, int flags=SND_NOFLAGS,
+	float volume=SNDVOL_NORMAL, int pitch=SNDPITCH_NORMAL, int speakerentity=-1, const float origin[3]=NULL_VECTOR, const float dir[3]=NULL_VECTOR,
+	bool updatePos=true, float soundTime=0.0)
+{
+	int times = RoundToCeil(volume);
+	float decimal = FloatFraction(volume);
+	if (times == 1)
+	{
+		EmitSoundToClient(client, sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundTime);
+		return;
+	}
+	
+	float vol;
+	for (int i = 1; i <= times; i++)
+	{
+		if (i < times)
+		{
+			vol = 1.0;
+		}
+		else
+		{
+			vol = decimal;
+		}
+		
+		EmitSoundToClient(client, sound, entity, channel, level, flags, vol, pitch, speakerentity, origin, dir, updatePos, soundTime);
+	}
+}
+*/
+
+/**
+ * Emits a game sound to a list of clients. Removes volume limit of 1.0.
+ *
+ * Game sounds are found in a game's scripts/game_sound.txt or other files
+ * referenced from it
+ *
+ * Note that if a game sound has a rndwave section, one of them will be returned
+ * at random.
+ *
+ * @param clients       Array of client indexes.
+ * @param numClients    Number of clients in the array.
+ * @param gameSound     Name of game sound.
+ * @param entity        Entity to emit from.
+ * @param flags         Sound flags.
+ * @param volume		Volume.
+ * @param speakerentity Unknown.
+ * @param origin        Sound origin.
+ * @param dir           Sound direction.
+ * @param updatePos     Unknown (updates positions?)
+ * @param soundtime     Alternate time to play sound for.
+ * @return              True if the sound was played successfully, false if it failed
+ * @error               Invalid client index or client not in game.
+ */
+stock bool EmitGameSoundEx(const int[] clients,
+				int numClients,
+				const char[] gameSound,
+				int entity = SOUND_FROM_PLAYER,
+				int flags = SND_NOFLAGS,
+				float volume = 1.0,
+				int speakerentity = -1,
+				const float origin[3] = NULL_VECTOR,
+				const float dir[3] = NULL_VECTOR,
+				bool updatePos = true,
+				float soundtime = 0.0)
+{
+	int channel;
+	int level;
+	int pitch;
+	char sample[PLATFORM_MAX_PATH];
+	float dummy;
+	
+	if (GetGameSoundParams(gameSound, channel, level, dummy, pitch, sample, sizeof(sample), entity))
+	{
+		int times = RoundToCeil(volume);
+		float decimal = FloatFraction(volume);
+		if (times == 1)
+		{
+			EmitSound(clients, numClients, sample, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
+			return true;
+		}
+		
+		float vol;
+		for (int i = 1; i <= times; i++)
+		{
+			if (i < times)
+			{
+				vol = 1.0;
+			}
+			else
+			{
+				vol = decimal;
+			}
+			
+			EmitSound(clients, numClients, sample, entity, channel, level, flags, vol, pitch, speakerentity, origin, dir, updatePos, soundtime);
+		}
+		
+		return true;
+	}
+	
+	return false;
+}
+
+/**
+ * Wrapper to emit a game sound to one client. Removes volume limit of 1.0.
+ *
+ * Game sounds are found in a game's scripts/game_sound.txt or other files
+ * referenced from it
+ *
+ * Note that if a game sound has a rndwave section, one of them will be returned
+ * at random.
+ *
+ * @param client        Client index.
+ * @param gameSound     Name of game sound.
+ * @param entity        Entity to emit from.
+ * @param flags         Sound flags.
+ * @param volume		Volume.
+ * @param speakerentity Unknown.
+ * @param origin        Sound origin.
+ * @param dir           Sound direction.
+ * @param updatePos     Unknown (updates positions?)
+ * @param soundtime     Alternate time to play sound for.
+ * @error               Invalid client index or client not in game.
+ */
+stock bool EmitGameSoundToClientEx(int client,
+				const char[] gameSound,
+				int entity = SOUND_FROM_PLAYER,
+				int flags = SND_NOFLAGS,
+				float volume=1.0,
+				int speakerentity = -1,
+				const float origin[3] = NULL_VECTOR,
+				const float dir[3] = NULL_VECTOR,
+				bool updatePos = true,
+				float soundtime = 0.0)
+{
+	int clients[1];
+	clients[0] = client;
+	/* Save some work for SDKTools and remove SOUND_FROM_PLAYER references */
+	entity = (entity == SOUND_FROM_PLAYER) ? client : entity;
+	return EmitGameSoundEx(clients, 1, gameSound, entity, flags, volume,
+		speakerentity, origin, dir, updatePos, soundtime);
+}
+
+/**
+ * Wrapper to emit game sound to all clients. Removes volume limit of 1.0.
+ *
+ * Game sounds are found in a game's scripts/game_sound.txt or other files
+ * referenced from it
+ *
+ * Note that if a game sound has a rndwave section, one of them will be returned
+ * at random.
+ *
+ * @param gameSound     Name of game sound.
+ * @param entity        Entity to emit from.
+ * @param flags         Sound flags.
+ * @param volume		Volume.
+ * @param speakerentity Unknown.
+ * @param origin        Sound origin.
+ * @param dir           Sound direction.
+ * @param updatePos     Unknown (updates positions?)
+ * @param soundtime     Alternate time to play sound for.
+ * @error               Invalid client index.
+ */
+stock bool EmitGameSoundToAllEx(const char[] gameSound,
+				int entity = SOUND_FROM_PLAYER,
+				int flags = SND_NOFLAGS,
+				float volume=1.0,
+				int speakerentity = -1,
+				const float origin[3] = NULL_VECTOR,
+				const float dir[3] = NULL_VECTOR,
+				bool updatePos = true,
+				float soundtime = 0.0)
+{
+	int[] clients = new int[MaxClients];
+	int total = 0;
+	
+	for (int i=1; i<=MaxClients; i++)
+	{
+		if (IsClientInGame(i))
+		{
+			clients[total++] = i;
+		}
+	}
+	
+	if (!total)
+	{
+		return false;
+	}
+	
+	return EmitGameSoundEx(clients, total, gameSound, entity, flags, volume,
+		speakerentity, origin, dir, updatePos, soundtime);
 }
 
 // StrContains(), but the string needs to be an exact match.
@@ -487,4 +839,10 @@ stock float fmin(float val1, float val2)
 stock float fmax(float val1, float val2)
 {	
 	return val1 > val2 ? val1 : val2;
+}
+
+// Checks if the goomba plugin is loaded, do not call until after OnAllPluginsLoaded()
+bool IsGoombaAvailable()
+{
+	return g_bGoombaAvailable;
 }

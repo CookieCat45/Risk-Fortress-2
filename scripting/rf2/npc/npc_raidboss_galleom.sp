@@ -31,7 +31,7 @@ static CEntityFactory g_Factory;
 
 #define GALLEOM_BASE_HEALTH 30000.0
 
-methodmap RF2_RaidBoss_Galleom < RF2_RaidBoss_Base
+methodmap RF2_RaidBoss_Galleom < RF2_NPC_Base
 {
 	public RF2_RaidBoss_Galleom(int entity)
 	{
@@ -40,7 +40,7 @@ methodmap RF2_RaidBoss_Galleom < RF2_RaidBoss_Base
 	
 	public bool IsValid()
 	{
-		if (!RF2_RaidBoss_Base(this.index).IsValid())
+		if (!IsValidEntity2(this.index))
 		{
 			return false;
 		}
@@ -48,29 +48,19 @@ methodmap RF2_RaidBoss_Galleom < RF2_RaidBoss_Base
 		return CEntityFactory.GetFactoryOfEntity(this.index) == g_Factory;
 	}
 	
-	public static void Initialize()
+	public static void Init()
 	{
-		g_Factory = new CEntityFactory("rf2_npc_raidboss_galleom", OnCreate, OnRemove);
-		g_Factory.DeriveFromClass("rf2_npc_raidboss_base");
+		g_Factory = new CEntityFactory("rf2_npc_raidboss_galleom", OnCreate);
+		g_Factory.DeriveFromFactory(GetBaseNPCFactory());
 		g_Factory.SetInitialActionFactory(RF2_GalleomMainAction.GetFactory());
-		g_Factory.BeginDataMapDesc()
-			.DefineEntityField("m_Target")
-			.DefineIntField("m_PathFollower")
-		.EndDataMapDesc();
 		g_Factory.Install();
+		HookMapStart(Galleom_OnMapStart);
 	}
 }
 
 void Galleom_OnMapStart()
 {
-	static bool init;
-	if (!init)
-	{
-		RF2_RaidBoss_Galleom.Initialize();
-		init = true;
-	}
-	
-	PrecacheModel(MODEL_GALLEOM, true);
+	PrecacheModel2(MODEL_GALLEOM, true);
 	PrecacheSound(SND_FIST_SLAM, true);
 	PrecacheSound(SND_JUMP, true);
 	PrecacheSound(SND_JUMP_SLAM, true);
@@ -87,8 +77,6 @@ void Galleom_OnMapStart()
 
 static void OnCreate(RF2_RaidBoss_Galleom boss)
 {
-	SDKHook(boss.index, SDKHook_ThinkPost, ThinkPost);
-	SDKHook(boss.index, SDKHook_OnTakeDamageAlivePost, OnTakeDamageAlivePost);
 	SDKHook(boss.index, SDKHook_SpawnPost, OnSpawnPost);
 	boss.SetModel(MODEL_GALLEOM);
 	boss.BaseNpc.SetBodyMins({-150.0, -150.0, 0.0});
@@ -96,64 +84,28 @@ static void OnCreate(RF2_RaidBoss_Galleom boss)
 	float health = GALLEOM_BASE_HEALTH * GetEnemyHealthMult();
 	health *= 1.0 + (0.25 * float(RF2_GetSurvivorCount()-1));
 	boss.SetProp(Prop_Data, "m_iHealth", RoundToFloor(health));
-	boss.Path = PathFollower(_, GalleomPath_FilterIgnoreActors, GalleomPath_FilterOnlyActors);
+	boss.Path = PathFollower(_, Path_FilterIgnoreActors, Path_FilterOnlyActors);
 	boss.BaseNpc.flAcceleration = 2000.0;
-}
-
-static void ThinkPost(int entity)
-{
-	RF2_RaidBoss_Galleom(entity).SetNextThink(GetGameTime());
 }
 
 static void OnSpawnPost(int entity)
 {
 	RF2_RaidBoss_Galleom boss = RF2_RaidBoss_Galleom(entity);
 	boss.SetHitboxSize({-150.0, -150.0, 0.0}, {150.0, 150.0, 300.0});
-}
-
-static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3])
-{
-	RF2_RaidBoss_Galleom boss = RF2_RaidBoss_Galleom(victim);
-	int health = boss.GetProp(Prop_Data, "m_iHealth");
-	TE_TFParticle("bot_impact_heavy", damagePosition);
-	Event event = CreateEvent("npc_hurt");
-	if (event)
-	{
-		event.SetInt("entindex", boss.index);
-		event.SetInt("health", health > 0 ? health : 0);
-		event.SetInt("damageamount", RoundToFloor(damage));
-		event.SetBool("crit", (damagetype & DMG_CRIT) == DMG_CRIT);
-
-		if (attacker > 0 && attacker <= MaxClients)
-		{
-			event.SetInt("attacker_player", GetClientUserId(attacker));
-			event.SetInt("weaponid", 0);
-		}
-		else
-		{
-			event.SetInt("attacker_player", 0);
-			event.SetInt("weaponid", 0);
-		}
-
-		event.Fire();
-	}
-}
-
-static void OnRemove(RF2_RaidBoss_Galleom boss)
-{
-	if (boss.Path)
-	{
-		boss.Path.Destroy();
-		boss.Path = view_as<PathFollower>(0);
-	}
+	boss.Team = 5;
 }
 
 public bool GalleomPath_FilterIgnoreActors(int entity, int contentsMask, int desiredcollisiongroup)
 {
+	if ((entity > 0 && entity <= MaxClients) || !IsCombatChar(entity))
+	{
+		return false;
+	}
+	
 	return true;
 }
 
 public bool GalleomPath_FilterOnlyActors(int entity, int contentsMask, int desiredcollisiongroup)
 {
-	return false;
+	return ((entity > 0 && entity <= MaxClients) || IsCombatChar(entity));
 }

@@ -41,7 +41,7 @@ void LoadWeapons()
 	
 	for (int i = 1; i < TF_CLASSES; i++)
 	{
-		TF2_GetClassString(view_as<TFClassType>(i), tfClassName, sizeof(tfClassName));
+		GetClassString(view_as<TFClassType>(i), tfClassName, sizeof(tfClassName));
 		
 		if (weaponKey.JumpToKey(tfClassName))
 		{
@@ -70,7 +70,7 @@ void LoadWeapons()
 						{
 							if (FileExists(g_szWeaponStringAttributeValue[i][count][strAttribCount]))
 							{
-								PrecacheModel(g_szWeaponStringAttributeValue[i][count][strAttribCount]);
+								PrecacheModel2(g_szWeaponStringAttributeValue[i][count][strAttribCount]);
 								AddModelToDownloadsTable(g_szWeaponStringAttributeValue[i][count][strAttribCount]);
 							}
 							else
@@ -268,7 +268,7 @@ public void RF_ReplaceNewWeapon(DataPack pack)
 public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index, int level, int quality, int entity)
 {
 	// Can be an invalid entity, somehow
-	if (!IsValidEntity(entity))
+	if (!IsValidEntity2(entity))
 		return;
 	
 	if (g_bSetStringAttributes)
@@ -499,8 +499,8 @@ bool visible = true, const char[] model="", int quality=0, int level=0)
 	
 	if (model[0])
 	{
-		int modelIndex = PrecacheModel(model);
-		SetEntityModel(wearable, model);
+		int modelIndex = PrecacheModel2(model);
+		SetEntityModel2(wearable, model);
 
 		for (int i = 0; i <= 3; i++)
 		{

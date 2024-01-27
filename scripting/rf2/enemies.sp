@@ -444,7 +444,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		
 		if (FileExists(g_szEnemyModel[e]))
 		{
-			PrecacheModel(g_szEnemyModel[e]);
+			PrecacheModel2(g_szEnemyModel[e]);
 			AddModelToDownloadsTable(g_szEnemyModel[e]);
 		}
 		else
@@ -745,7 +745,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		enemy.GetWeaponAttributes(i, attributes, sizeof(attributes));
 		weapon = CreateWeapon(client, name, enemy.WeaponIndex(i), attributes, enemy.WeaponUseStaticAtts(i), enemy.WeaponVisible(i));
 		
-		if (activeWeapon == -1 && IsValidEntity(weapon) && enemy.WeaponIsFirstActive(i))
+		if (activeWeapon == -1 && IsValidEntity2(weapon) && enemy.WeaponIsFirstActive(i))
 		{
 			activeWeapon = weapon;
 		}
@@ -825,7 +825,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	{
 		if (teleporterBoss)
 		{
-			maxDist = GetEntPropFloat(GetTeleporterEntity(), Prop_Data, "m_flRadius")*1.5;
+			maxDist = GetCurrentTeleporter().Radius * 1.5;
 		}
 		else
 		{
@@ -875,7 +875,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	return false;
 }
 
-void SummonTeleporterBosses(int entity)
+void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 {
 	ArrayList players = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
@@ -902,7 +902,7 @@ void SummonTeleporterBosses(int entity)
 		CreateDataTimer(time, Timer_SpawnTeleporterBoss, pack, TIMER_FLAG_NO_MAPCHANGE);
 		pack.WriteCell(GetClientUserId(client));
 		pack.WriteCell(GetRandomBoss());
-		pack.WriteCell(entity);
+		pack.WriteCell(teleporter.index);
 		time += 0.1;
 		
 		count++;
@@ -919,10 +919,10 @@ public int SortBossSpawnList(int index1, int index2, ArrayList array, Handle hnd
 	int client1 = array.Get(index1);
 	int client2 = array.Get(index2);
 
-	if (!g_bPlayerBecomeBoss[client1])
+	if (!GetCookieBool(client1, g_coBecomeBoss))
 		return 1;
 	
-	if (!g_bPlayerBecomeBoss[client2])
+	if (!GetCookieBool(client2, g_coBecomeBoss))
 		return -1;
 	
 	if (IsPlayerAlive(client1))

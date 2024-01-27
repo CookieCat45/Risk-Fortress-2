@@ -35,10 +35,6 @@ methodmap RF2_SentryBusterDetonateAction < NextBotAction
 
 static int OnStart(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor, NextBotAction prevAction)
 {
-	if (actor.Path)
-	{
-		actor.Path.Destroy();
-	}
 	int sequence = actor.LookupSequence("taunt04");
 	actor.SetProp(Prop_Data, "m_takedamage", DAMAGE_NO);
 	if (sequence == -1)
@@ -53,7 +49,7 @@ static int OnStart(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor
 	EmitGameSoundToAll("MVM.SentryBusterSpin", actor.index);
 
 	float duration = actor.SequenceDuration(sequence);
-
+	
 	action.DetonateTime = GetGameTime() + duration;
 
 	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(actor.index);

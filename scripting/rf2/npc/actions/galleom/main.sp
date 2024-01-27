@@ -32,18 +32,17 @@ static int OnStart(RF2_GalleomMainAction action, RF2_RaidBoss_Galleom boss, Next
 
 static int Update(RF2_GalleomMainAction action, RF2_RaidBoss_Galleom boss, float interval)
 {
-	float worldSpace[3], pos[3];
-	boss.GetAbsOrigin(pos);
-	boss.WorldSpaceCenter(worldSpace);
-	if (!boss.Target.IsValid() || boss.Target.GetProp(Prop_Data, "m_iTeamNum") != TEAM_SURVIVOR)
+	if (!IsValidEntity2(boss.Target))
 	{
 		boss.GetNewTarget();
 	}
 	
-	if (boss.Target.IsValid())
+	if (IsValidEntity2(boss.Target))
 	{
-		float dist = DistBetween(boss.index, boss.Target.index);
-		float targetPos[3], ang[3];
+		float dist = DistBetween(boss.index, boss.Target);
+		float targetPos[3], ang[3], pos[3];
+		boss.GetAbsOrigin(pos);
+		GetEntPos(boss.Target, targetPos);
 		GetVectorAnglesTwoPoints(pos, targetPos, ang);
 		ang[2] = 0.0;
 		boss.SetAbsAngles(ang);

@@ -64,7 +64,7 @@ bool CreateSurvivors()
 	ArrayList survivorList = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || IsPlayerSpectator(i) || humanCount > 1 && !g_bPlayerBecomeSurvivor[i])
+		if (!IsClientInGame(i) || IsPlayerSpectator(i) || humanCount > 1 && !GetCookieBool(i, g_coBecomeSurvivor))
 			continue;
 			
 		if (IsFakeClient(i))
@@ -171,7 +171,7 @@ bool CreateSurvivors()
 void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInventory=true)
 {
 	if (resetPoints)
-		g_iPlayerSurvivorPoints[client] = 0;
+		RF2_SetSurvivorPoints(client, 0);
 
 	// Player is probably still on the class select screen, so we need to kick them out by giving them a random class.
 	if (TF2_GetPlayerClass(client) == TFClass_Unknown)
@@ -216,7 +216,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 		if (totalAttribs > MAX_ATTRIBUTES)
 		{
 			char tfClassName[16];
-			TF2_GetClassString(class, tfClassName, sizeof(tfClassName));
+			GetClassString(class, tfClassName, sizeof(tfClassName));
 			LogError("[MakeSurvivor] Survivor class %i (%s) reached attribute limit of %i", view_as<int>(class), tfClassName, MAX_ATTRIBUTES);
 		}
 	}
@@ -230,20 +230,45 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	
 	if (loadInventory)
 	{
-		if (g_bGameInitialized && IsSurvivorInventoryEmpty(index))
+		// likely a mid-game join, so get us up to speed
+		if (g_bGameInitialized && !DoesClientOwnInventory(client, index))
 		{
-			// if we join in a game and our inventory is empty, get us up to speed
-			g_iPlayerLevel[client] = GetLowestSurvivorLevel();
-			int itemsToGive = GetTotalSurvivorItems() / GetTotalClaimedInventories();
-			for (int i = 1; i <= itemsToGive; i++)
+			g_iPlayerLevel[client] = GetHighestSurvivorLevel();
+			int myItems = GetTotalSurvivorItems(index);
+			int minItems = GetTotalSurvivorItems() / GetTotalClaimedInventories();
+			int divisor;
+			for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
 			{
-				GiveItem(client, GetRandomItem(79, 20, 1));
+				if (GetTotalSurvivorItems(i) >= minItems)
+					divisor++;
 			}
+			
+			int total = GetTotalSurvivorItems() / divisor <= 0 ? GetTotalClaimedInventories() : divisor;
+			if (myItems < total)
+			{
+				for (int i = 1; i <= total-myItems; i++)
+				{
+					if (GetRandomInt(1, 10) == 1)
+					{
+						GiveItem(client, GetRandomCollectorItem(class));
+					}
+					else
+					{
+						GiveItem(client, GetRandomItem(79, 20, 5));
+					}
+				}
+			}
+			
+			if (g_iSavedEquipmentItem[index] == Item_Null)
+			{
+				GiveItem(client, GetRandomItemEx(Quality_Strange));
+			}
+			
+			// save now so it actually keeps our items
+			SaveSurvivorInventory(client, index);
 		}
-		else
-		{
-			LoadSurvivorInventory(client, index);
-		}
+		
+		LoadSurvivorInventory(client, index);
 	}
 	else // we should still update our items in case this is a respawn
 	{
@@ -256,7 +281,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 		}
 	}
 	
-	if (!IsFakeClient(client) && !GetClientCookieInt(client, g_coTutorialSurvivor))
+	if (!IsFakeClient(client) && !GetCookieBool(client, g_coTutorialSurvivor))
 	{
 		CreateTimer(1.0, Timer_SurvivorTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
@@ -268,15 +293,17 @@ public int SortSurvivorListByPoints(int index1, int index2, ArrayList array, Han
 	int client2 = array.Get(index2);
 	
 	// move bots, AFK people and those who don't want to be survivors to the end of the list
-	if (!g_bPlayerBecomeSurvivor[client1] && !g_bPlayerBecomeSurvivor[client2])
+	bool survivor1 = GetCookieBool(client1, g_coBecomeSurvivor);
+	bool survivor2 = GetCookieBool(client2, g_coBecomeSurvivor);
+	if (!survivor1 && !survivor2)
 	{
 		return 0;
 	}
-	else if (!g_bPlayerBecomeSurvivor[client1])
+	else if (!survivor1)
 	{
 		return 1;
 	}
-	else if (!g_bPlayerBecomeSurvivor[client2])
+	else if (!survivor2)
 	{
 		return -1;
 	}
@@ -294,10 +321,12 @@ public int SortSurvivorListByPoints(int index1, int index2, ArrayList array, Han
 		return -1;
 	}
 	
-	if (g_iPlayerSurvivorPoints[client1] == g_iPlayerSurvivorPoints[client2])
+	int points1 = RF2_GetSurvivorPoints(client1);
+	int points2 = RF2_GetSurvivorPoints(client2);
+	if (points1 == points2)
 		return 0;
 	
-	return g_iPlayerSurvivorPoints[client1] > g_iPlayerSurvivorPoints[client2] ? -1 : 1;
+	return points1 > points2 ? -1 : 1;
 }
 
 public int SortSurvivorListByInventory(int index1, int index2, ArrayList array, Handle hndl)
@@ -387,7 +416,7 @@ void LoadSurvivorInventory(int client, int index)
 	g_iPlayerLevel[client] = g_iSavedLevel[index];
 	g_flPlayerXP[client] = g_flSavedXP[index];
 	g_iPlayerHauntedKeys[client] = g_iSavedHauntedKeys[index];
-	g_flPlayerCash[client] = 100.0 * GetObjectCostMultiplier();
+	g_flPlayerCash[client] = 100.0 * RF2_Object_Crate.GetCostMultiplier();
 	g_iItemsTaken[index] = 0;
 	
 	if (g_iPlayerLevel[client] > 1)
@@ -452,29 +481,34 @@ int GetClientOwnedInventory(int client)
 	return -1;
 }
 
-bool IsSurvivorInventoryEmpty(int index)
+int GetHighestSurvivorLevel()
 {
-	return !g_bSurvivorInventoryClaimed[index];
-}
-
-int GetLowestSurvivorLevel()
-{
-	int lowest = 1;
+	int highest = 1;
 	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
 	{
 		if (g_iSavedLevel[i] <= 1)
 			continue;
 	
-		if (lowest <= 1 || g_iSavedLevel[i] < lowest)
-			lowest = g_iSavedLevel[i];
+		if (highest <= 1 || g_iSavedLevel[i] > highest)
+			highest = g_iSavedLevel[i];
 	}
 	
-	return lowest;
+	return highest;
 }
 
-int GetTotalSurvivorItems()
+int GetTotalSurvivorItems(int index=-1)
 {
 	int total;
+	if (index >= 0)
+	{
+		for (int i = 0; i < MAX_ITEMS; i++)
+		{
+			total += g_iSavedItem[index][i];
+		}
+		
+		return total;
+	}
+	
 	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
 	{
 		for (int j = 0; j < MAX_ITEMS; j++)

@@ -1,8 +1,3 @@
-#if defined _RF2_items_included
- #endinput
-#endif
-#define _RF2_items_included
-
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -128,7 +123,7 @@ void LoadItems()
 			
 			if (FileExists(g_szItemSprite[item], true))
 			{
-				PrecacheModel(g_szItemSprite[item]);
+				PrecacheModel2(g_szItemSprite[item]);
 				AddMaterialToDownloadsTable(g_szItemSprite[item]);
 			}
 			else
@@ -195,7 +190,7 @@ bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
 }
 
 int GetRandomItem(int normalWeight=0, int genuineWeight=0, 
-int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, bool allowHauntedStrange=true)
+	int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, bool allowHauntedStrange=true)
 {
 	ArrayList array = CreateArray();
 	int quality, count, item;
@@ -321,67 +316,12 @@ bool CanUseCollectorItem(int client, int item)
 	return TF2_GetPlayerClass(client) == GetCollectorItemClass(item);
 }
 
-int SpawnItem(int index, const float pos[3], int spawner=-1, float ownTime=0.0)
-{
-	int item = CreateEntityByName("rf2_item");
-	if (!IsValidEntity(item))
-	{
-		return -1;
-	}
-	
-	SetEntProp(item, Prop_Data, "m_iIndex", index);
-	SetEntPropEnt(item, Prop_Data, "m_hOriginalItemOwner", spawner);
-	TeleportEntity(item, pos);
-	DispatchSpawn(item);
-	
-	if (IsValidClient(spawner)) // We spawned this item, so we own it unless we don't pick it up, assuming we don't want it.
-	{
-		SetEntPropEnt(item, Prop_Data, "m_hItemOwner", spawner);
-		if (ownTime > 0.0)
-		{
-			CreateTimer(ownTime, Timer_ClearItemOwner, EntIndexToEntRef(item), TIMER_FLAG_NO_MAPCHANGE);
-		}
-	}
-	
-	int quality = GetItemQuality(index);
-	switch (quality)
-	{
-		case Quality_Genuine:		SetEntityRenderColor(item, 125, 255, 125);
-		case Quality_Unusual: 		SetEntityRenderColor(item, 200, 125, 255);
-		case Quality_Strange:		SetEntityRenderColor(item, 200, 150, 0);
-		case Quality_Collectors:	SetEntityRenderColor(item, 255, 100, 100);
-		case Quality_Haunted, 
-			Quality_HauntedStrange:	SetEntityRenderColor(item, 125, 255, 255);
-	}
-	
-	if (quality == Quality_Unusual && g_iItemSpriteUnusualEffect[index] >= 0)
-	{
-		float effectPos[3];
-		CopyVectors(pos, effectPos);
-		effectPos[2] += 25.0;
-		TE_TFParticle(g_szUnusualEffectName[g_iItemSpriteUnusualEffect[index]], effectPos, item, PATTACH_ABSORIGIN);
-	}
-
-	return item;
-}
-
-public Action Timer_ClearItemOwner(Handle timer, int entity)
-{
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
-		return Plugin_Continue;
-		
-	SetEntPropEnt(entity, Prop_Data, "m_hItemOwner", -1);
-	SetEntPropEnt(entity, Prop_Data, "m_hSubject", -1);
-	return Plugin_Continue;
-}
-
 // negative values are accepted for amount
-void GiveItem(int client, int item, int amount=1, bool addToLogbook=false)
+void GiveItem(int client, int type, int amount=1, bool addToLogbook=false)
 {
-	if (IsEquipmentItem(item))
+	if (IsEquipmentItem(type))
 	{
 		int strangeItem = GetPlayerEquipmentItem(client);
-		
 		if (strangeItem > Item_Null && IsPlayerSurvivor(client))
 		{
 			float pos[3];
@@ -390,213 +330,23 @@ void GiveItem(int client, int item, int amount=1, bool addToLogbook=false)
 			DropItem(client, strangeItem, pos, _, 6.0);
 		}
 		
-		g_iPlayerEquipmentItem[client] = item;
+		g_iPlayerEquipmentItem[client] = type;
 	}
 	else
 	{
-		g_iPlayerItem[client][item] += amount;
-		
-		if (GetPlayerItemCount(client, item) < 0)
+		g_iPlayerItem[client][type] += amount;
+		if (GetPlayerItemCount(client, type) < 0)
 		{
-			g_iPlayerItem[client][item] = 0;
+			g_iPlayerItem[client][type] = 0;
 		}
 	}
 	
 	if (addToLogbook)
 	{
-		AddItemToLogbook(client, item);	
-	}
-
-	UpdatePlayerItem(client, item);
-}
-
-// Subject is who we're dropping the item for, or -1 if we don't care
-bool DropItem(int client, int item, float pos[3], int subject=-1, float ownTime=0.0)
-{
-	if (GetPlayerItemCount(client, item) <= 0 && !IsEquipmentItem(item))
-		return false;
-	
-	if (IsEquipmentItem(item) && GetPlayerEquipmentItem(client) != item)
-		return false;
-	
-	int entity = SpawnItem(item, pos, client);
-	SetEntProp(entity, Prop_Data, "m_bDropped", true);
-	
-	if (subject > 0)
-	{
-		// Only the dropper or the one we dropped the item for can pick this up.
-		SetEntPropEnt(entity, Prop_Data, "m_hSubject", subject);
-		if (subject != client)
-		{
-			PrintHintText(subject, "%t", "DroppedItemForYou", client, g_szItemName[item]);
-		}
+		AddItemToLogbook(client, type);	
 	}
 	
-	if (ownTime > 0.0) // If we own this item but the owner/subject takes too long to pick it up, it's free for taking
-	{
-		CreateTimer(ownTime, Timer_ClearItemOwner, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
-	}
-	else
-	{
-		SetEntPropEnt(entity, Prop_Data, "m_hItemOwner", -1);
-	}
-	
-	if (IsEquipmentItem(item))
-	{
-		g_iPlayerEquipmentItem[client] = Item_Null;
-	}
-	else
-	{
-		g_iPlayerItem[client][item]--;
-	}
-	
-	UpdatePlayerItem(client, item);
-	if (IsPlayerSurvivor(client) && GetItemQuality(item) != Quality_Strange)
-	{
-		int index = RF2_GetSurvivorIndex(client);
-		if (g_iItemsTaken[index] > 0)
-			g_iItemsTaken[index]--;
-	}
-	
-	return true;
-}
-
-bool PickupItem(int client)
-{
-	if (g_bItemPickupCooldown[client])
-		return false;
-	
-	const float range = 90.0;
-	
-	float eyePos[3], endPos[3], eyeAng[3], direction[3];
-	GetClientEyePosition(client, eyePos);
-	CopyVectors(eyePos, endPos);
-	
-	GetClientEyeAngles(client, eyeAng);
-	GetAngleVectors(eyeAng, direction, NULL_VECTOR, NULL_VECTOR);
-	NormalizeVector(direction, direction);
-	
-	endPos[0] += direction[0] * range;
-	endPos[1] += direction[1] * range;
-	endPos[2] += direction[2] * range;
-	
-	TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_DontHitSelf, client);
-	TR_GetEndPosition(endPos);
-	
-	int item = GetNearestEntity(endPos, "rf2_item");
-	if (item == -1)
-	{
-		return false;
-	}
-
-	float pos[3];
-	GetEntPos(item, pos);
-	
-	if (GetVectorDistance(pos, endPos, true) <= sq(range))
-	{
-		bool itemShare = g_cvItemShareEnabled.BoolValue;
-		int index = RF2_GetSurvivorIndex(client);
-		int itemIndex = GetEntProp(item, Prop_Data, "m_iIndex");
-		int spawner = GetEntPropEnt(item, Prop_Data, "m_hItemOwner");
-		int subject = GetEntPropEnt(item, Prop_Data, "m_hSubject");
-		int originalSpawner = GetEntPropEnt(item, Prop_Data, "m_hOriginalItemOwner");
-		bool dropped = asBool(GetEntProp(item, Prop_Data, "m_bDropped"));
-		int quality = GetItemQuality(itemIndex);
-		
-		// hotfix
-		if (GetPlayersOnTeam(TEAM_SURVIVOR, true, true) <= 1)
-		{
-			g_iItemLimit[index] = 0;
-		}
-		
-		// Strange items do not count towards the limit.
-		if (itemShare && g_iItemLimit[index] > 0 && !IsEquipmentItem(itemIndex) && subject != client
-		&& ((spawner == client || originalSpawner == client) || !IsValidClient(spawner) || !IsPlayerSurvivor(spawner)) && g_iItemsTaken[index] >= g_iItemLimit[index])
-		{
-			EmitSoundToClient(client, SND_NOPE);
-			PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[index]);
-			return true;
-		}
-		
-		if (IsValidClient(spawner) && IsPlayerSurvivor(spawner) 
-			&& client != spawner && client != subject)
-		{
-			EmitSoundToClient(client, SND_NOPE);
-			PrintCenterText(client, "%t", "NotForYou");
-			return true;
-		}
-
-		if (quality == Quality_Collectors)
-		{
-			g_bPlayerTookCollectorItem[client] = true;
-		}
-		
-		GiveItem(client, itemIndex, _, true);
-		RemoveEntity(item);
-		char qualityTag[32], itemName[128], qualityName[32];
-		GetItemName(itemIndex, itemName, sizeof(itemName));
-		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
-		GetQualityName(quality, qualityName, sizeof(qualityName));
-		PrintKeyHintText(client, "%s (%s)\n%s", g_szItemName[itemIndex], qualityName, g_szItemDesc[itemIndex]);
-		
-		if (itemIndex == Item_HorrificHeadsplitter)
-		{
-			TriggerAchievement(client, ACHIEVEMENT_HEADSPLITTER);
-		}
-
-		if (IsEquipmentItem(itemIndex))
-		{
-			RF2_PrintToChatAll("%t", "PickupItemStrange", client, qualityTag, itemName);
-		}
-		else
-		{
-			RF2_PrintToChatAll("%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, itemIndex));
-		}
-		
-		EmitSoundToAll(SND_ITEM_PICKUP, client);
-		if (!dropped || spawner == client || originalSpawner == client)
-		{
-			if (!dropped)
-				g_iTotalItemsFound++;
-			
-			if (!IsEquipmentItem(itemIndex))
-			{
-				g_iItemsTaken[index]++;
-				
-				// Notify our player that they've reached their limit.
-				if (itemShare && g_iItemLimit[index] > 0 && g_iItemsTaken[index] >= g_iItemLimit[index])
-				{
-					PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[index]);
-				}
-			}
-		}
-		
-		if (g_bPlayerAutomaticItemMenu[client] || g_bPlayerViewingItemMenu[client])
-		{
-			ShowItemMenu(client);
-		}
-		
-		if (!GetClientCookieInt(client, g_coTutorialItemPickup))
-		{
-			PrintKeyHintText(client, "%t", "ItemPickupTutorial2");
-			SetClientCookie(client, g_coTutorialItemPickup, "1");
-		}
-		
-		g_bItemPickupCooldown[client] = true;
-		CreateTimer(0.2, Timer_ItemPickupCooldown, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-		return true;
-	}
-	
-	return false;
-}
-
-public Action Timer_ItemPickupCooldown(Handle timer, int client)
-{
-	if ((client = GetClientOfUserId(client)) == 0)
-		return Plugin_Continue;
-
-	g_bItemPickupCooldown[client] = false;
-	return Plugin_Continue;
+	UpdatePlayerItem(client, type);
 }
 
 int EquipItemAsWearable(int client, int item)
@@ -731,8 +481,8 @@ int GetQualityEquipPriority(int quality)
 	{
 		case Quality_Normal: return 0;
 		case Quality_Genuine: return 1;
-		case Quality_Haunted: return 2;
-		case Quality_Collectors: return 3;
+		case Quality_Collectors: return 2;
+		case Quality_Haunted: return 3;
 		case Quality_Unusual: return 4;
 		case Quality_Strange, Quality_HauntedStrange: return 5;
 	}
@@ -917,20 +667,6 @@ void UpdatePlayerItem(int client, int item)
 			{
 				if (item == ItemMedic_BlightedBeak && PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
 				{
-					/*
-					float attrUberRate, attrUberDuration;
-					Address attrib;
-					if ((attrib = TF2Attrib_GetByDefIndex(medigun, 9)) != Address_Null)
-					{
-						attrUberRate = TF2Attrib_GetValue(attrib);
-					}
-					
-					if ((attrib = TF2Attrib_GetByDefIndex(medigun, 314)) != Address_Null)
-					{
-						attrUberDuration = TF2Attrib_GetValue(attrib);
-					}
-					*/
-					
 					float uberRate = 1.0 + CalcItemMod(client, item, 0);
 					float uberDuration = CalcItemMod(client, item, 1);
 					TF2Attrib_SetByDefIndex(medigun, 10, uberRate); // "ubercharge rate bonus"
@@ -1084,6 +820,19 @@ void UpdatePlayerItem(int client, int item)
 					else
 					{
 						TF2Attrib_RemoveByDefIndex(secondary, 670);
+					}
+				}
+				
+				int shield = GetPlayerShield(client);
+				if (shield > 0)
+				{
+					if (PlayerHasItem(client, ItemDemo_ScotchBonnet))
+					{
+						TF2Attrib_SetByDefIndex(shield, 249, 1.0 + CalcItemMod(client, ItemDemo_ScotchBonnet, 2));
+					}
+					else
+					{
+						TF2Attrib_RemoveByDefIndex(shield, 249);
 					}
 				}
 			}
@@ -1261,6 +1010,104 @@ void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cr
 			}
 		}
 	}
+	
+	if (PlayerHasItem(attacker, Item_BruiserBandana))
+	{
+		int heal = RoundToFloor(GetItemMod(Item_BruiserBandana, 0)) * GetPlayerItemCount(attacker, Item_BruiserBandana);
+		HealPlayer(attacker, heal);
+	}
+
+	if (GetClientTeam(victim) == TEAM_ENEMY)
+	{
+		int total;
+		int limit = RoundToFloor(GetItemMod(Item_PillarOfHats, 3));
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+				continue;
+			
+			if (PlayerHasItem(i, Item_PillarOfHats))
+			{
+				if (total >= 1)
+				{
+					limit += RoundToFloor(CalcItemMod(i, Item_PillarOfHats, 4));
+				}
+
+				total++;
+			}
+		}
+		
+		if (total > 0 && g_iMetalItemsDropped < limit)
+		{
+			float scrapChance = CalcItemMod(0, Item_PillarOfHats, 0, total);
+			float recChance = CalcItemMod(0, Item_PillarOfHats, 1, total);
+			float refChance = CalcItemMod(0, Item_PillarOfHats, 2, total);
+			float totalChance = scrapChance + recChance + refChance;
+			float result;
+			
+			if (RandChanceFloatEx(attacker, 0.0, 1.0, totalChance, result))
+			{
+				int item;
+				if (result <= refChance)
+				{
+					item = Item_RefinedMetal;
+				}
+				else if (result <= recChance)
+				{
+					item = Item_ReclaimedMetal;
+				}
+				else
+				{
+					item = Item_ScrapMetal;
+				}
+
+				float pos[3];
+				GetEntPos(victim, pos);
+				pos[2] += 30.0;
+				SpawnItem(item, pos, attacker, 6.0);
+				g_iMetalItemsDropped++;
+			}
+		}
+		
+		if (PlayerHasItem(attacker, Item_Dangeresque) && GetClientTeam(victim))
+		{
+			if (RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(Item_Dangeresque, 3)))
+			{
+				int bomb = CreateEntityByName("tf_projectile_pipe");
+				float pos[3];
+				GetEntPos(victim, pos);
+				pos[2] += 30.0;
+				TeleportEntity(bomb, pos);
+				float damage = GetItemMod(Item_Dangeresque, 0) + CalcItemMod(attacker, Item_Dangeresque, 1, -1);
+				SetEntPropFloat(bomb, Prop_Send, "m_flDamage", damage);
+				float radius = GetItemMod(Item_Dangeresque, 4) + CalcItemMod(attacker, Item_Dangeresque, 5, -1);
+				SetEntPropFloat(bomb, Prop_Send, "m_DmgRadius", radius);
+				SetEntityOwner(bomb, attacker);
+				SetEntProp(bomb, Prop_Data, "m_iTeamNum", GetClientTeam(attacker));
+				g_bCashBomb[bomb] = true;
+				if (IsEnemy(victim))
+				{
+					g_flCashBombAmount[bomb] = Enemy(victim).CashAward;
+					g_iCashBombSize[bomb] = 2;
+				}
+
+				g_flCashBombAmount[bomb] *= 1.0 + (float(GetPlayerLevel(victim)-1) * g_cvEnemyCashDropScale.FloatValue);
+				if (PlayerHasItem(attacker, Item_BanditsBoots))
+				{
+					g_flCashBombAmount[bomb] *= 1.0 + CalcItemMod(attacker, Item_BanditsBoots, 0);
+				}
+				
+				SDKHook(bomb, SDKHook_StartTouch, Hook_DisableTouch);
+				SDKHook(bomb, SDKHook_Touch, Hook_DisableTouch);
+				SetShouldDamageOwner(bomb, false);
+				SetEntItemProc(bomb, Item_Dangeresque);
+				DispatchSpawn(bomb);
+				ActivateEntity(bomb);
+				SetEntityModel2(bomb, MODEL_CASH_BOMB);
+				TE_TFParticle("mvm_cash_embers_red", pos, bomb, PATTACH_ABSORIGIN_FOLLOW);
+			}
+		}
+	}
 }
 
 public void RF_SaxtonRadiusDamage(DataPack pack)
@@ -1272,7 +1119,8 @@ public void RF_SaxtonRadiusDamage(DataPack pack)
 	float victimPos[3];
 	GetEntPos(victim, victimPos);
 	float damage = GetItemMod(Item_SaxtonHat, 2) + CalcItemMod(attacker, Item_SaxtonHat, 3, -1);
-	DoRadiusDamage(attacker, attacker, Item_SaxtonHat, victimPos, damage, DMG_BLAST, 180.0, _, 0.6, true);
+	DoRadiusDamage(attacker, attacker, victimPos, Item_SaxtonHat, damage, DMG_BLAST, 180.0, 0.6);
+	DoExplosionEffect(victimPos, true);
 	TriggerAchievement(attacker, ACHIEVEMENT_SAXTON);
 }
 
@@ -1324,7 +1172,7 @@ bool ActivateStrangeItem(int client)
 			SetEntProp(client, Prop_Send, "m_bRageDraining", true);
 			
 			DispatchKeyValueInt(shield, "skin", GetEntProp(client, Prop_Data, "m_iTeamNum")-2);
-			SetEntityModel(shield, MODEL_MEDISHIELD);
+			SetEntityModel2(shield, MODEL_MEDISHIELD);
 			DispatchSpawn(shield);
 			EmitSoundToAll(SND_MEDISHIELD, shield);
 		}
@@ -1432,7 +1280,7 @@ bool ActivateStrangeItem(int client)
 				// Try shooting our projectile. If it's an invalid entity, we have a non-projectile spell.
 				int entity = ShootProjectile(client, spellType, eyePos, eyeAng, speed, _, arc);
 				
-				if (!IsValidEntity(entity))
+				if (!IsValidEntity2(entity))
 				{
 					if (strcmp2(spellType, "BlastJump"))
 					{
@@ -1551,7 +1399,7 @@ bool ActivateStrangeItem(int client)
 		
 		case ItemStrange_NastyNorsemann:
 		{
-			if (TF2_IsPlayerInCondition(client, TFCond_HasRune))
+			if (TF2_IsPlayerInCondition2(client, TFCond_HasRune))
 			{
 				EmitSoundToClient(client, SND_NOPE);
 				PrintCenterText(client, "%t", "AlreadyHasRune");
@@ -1559,7 +1407,7 @@ bool ActivateStrangeItem(int client)
 			}
 			
 			char sound[PLATFORM_MAX_PATH];
-			TFCond rune = TF2_GetRandomMannpowerRune(sound, sizeof(sound));
+			TFCond rune = GetRandomMannpowerRune(sound, sizeof(sound));
 			TF2_AddCondition(client, rune, GetItemMod(ItemStrange_NastyNorsemann, 0));
 			EmitSoundToAll(sound, client);
 		}
@@ -1829,10 +1677,10 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 			
 			if (item > Item_Null && IsValidClient(attacker))
 			{
-				SetEntItemDamageProc(attacker, item);
+				SetEntItemProc(attacker, item);
 			}
 			
-			SDKHooks_TakeDamage(entity, attacker, attacker, damage, damageFlags);
+			SDKHooks_TakeDamage2(entity, attacker, attacker, damage, damageFlags);
 		}
 	}
 }
@@ -1934,7 +1782,7 @@ public Action Timer_HalloweenThriller(Handle timer, int merasmus)
 			EmitAmbientSound(SND_MERASMUS_DISAPPEAR, pos, _, SNDLEVEL_TRAIN);
 			TE_TFParticle("merasmus_spawn", pos);
 			
-			RemoveEntity(merasmus);
+			RemoveEntity2(merasmus);
 			FindConVar("nb_stop").SetInt(0);
 			
 			PlayMusicTrackAll();
@@ -2204,7 +2052,7 @@ public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &
 		damageMultiplier = 0.0;
 		damageBonus = GetItemMod(ItemScout_LongFallBoots, 0) + (1.0 + CalcItemMod(attacker, ItemScout_LongFallBoots, 1, -1));
 		jumpPower = GetItemMod(ItemScout_LongFallBoots, 2) + (1.0 * CalcItemMod(attacker, ItemScout_LongFallBoots, 3, -1));
-		SetEntItemDamageProc(attacker, ItemScout_LongFallBoots);
+		SetEntItemProc(attacker, ItemScout_LongFallBoots);
 		return Plugin_Changed;
 	}
 	
@@ -2216,7 +2064,7 @@ public int OnStompPost(int attacker, int victim, float damageMultiplier, float d
 	if (!RF2_IsEnabled())
 		return 0;
 	
-	SetEntItemDamageProc(attacker, Item_Null);
+	SetEntItemProc(attacker, Item_Null);
 	return 0;
 }
 #endif

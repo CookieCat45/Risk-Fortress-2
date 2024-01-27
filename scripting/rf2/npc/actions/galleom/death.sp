@@ -24,8 +24,7 @@ static int OnStart(RF2_GalleomDeathState action, RF2_RaidBoss_Galleom boss, Next
 	pos[2] += 80.0;
 	TE_TFParticle("grenade_smoke", pos);
 	EmitSoundToAll(SND_BOSS_DEATH);
-	EmitSoundToAll(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING);
-	EmitSoundToAll(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING);
+	EmitSoundToAllEx(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
 	float time;
 	if (GetRandomInt(1, 2) == 1)
 	{
@@ -49,7 +48,7 @@ static int OnStart(RF2_GalleomDeathState action, RF2_RaidBoss_Galleom boss, Next
 	}
 	
 	CreateTimer(0.5, Timer_HostTimescaleReset, _, TIMER_FLAG_NO_MAPCHANGE);
-	CreateTimer(time, Timer_GalleomDeathExplosion, EnsureEntRef(boss.index), TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(time, Timer_GalleomDeathExplosion, EntIndexToEntRef(boss.index), TIMER_FLAG_NO_MAPCHANGE);
 	return action.Continue();
 }
 
@@ -89,6 +88,6 @@ public Action Timer_GalleomDeathExplosion(Handle timer, int entity)
 		UTIL_ScreenFade(i, {255, 255, 255, 255}, 0.3, 0.1, FFADE_PURGE);
 	}
 	
-	RemoveEntity(entity);
+	RemoveEntity2(entity);
 	return Plugin_Continue;
 }

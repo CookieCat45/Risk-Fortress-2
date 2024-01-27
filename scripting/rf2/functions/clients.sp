@@ -39,23 +39,19 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerTookCollectorItem[client] = false;
 	g_bExecutionerBleedCooldown[client] = false;
 	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
-
 	g_szObjectiveHud[client] = "";
-
+	
 	if (IsClientInGame(client) && !g_bMapChanging)
 	{
 		TF2Attrib_RemoveAll(client);
 		SetEntityGravity(client, 1.0);
 		SetEntProp(client, Prop_Send, "m_bGlowEnabled", false);
-		//SetEntProp(client, Prop_Send, "m_nModelIndexOverrides", 0, _, 0);
-		//SetEntProp(client, Prop_Send, "m_nModelIndexOverrides", 0, _, 3);
 		
 		// Clear our custom model on a timer so our ragdoll uses the correct model if we're dying.
 		CreateTimer(0.5, Timer_ResetModel, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
-	// Do not reset our Survivor stats if we die in the grace period.
-	if (force || !g_bGracePeriod && IsPlayerSurvivor(client) || g_bMapChanging || !IsClientInGame(client))
+	if (force || !IsPlayerSurvivor(client) || !g_bGracePeriod || g_bMapChanging || !IsClientInGame(client))
 	{
 		g_iPlayerLevel[client] = 1;
 		g_flPlayerXP[client] = 0.0;
@@ -66,14 +62,14 @@ void RefreshClient(int client, bool force=false)
 		g_iPlayerEquipmentItem[client] = Item_Null;
 		g_flPlayerEquipmentItemCooldown[client] = 0.0;
 		SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
-
+		
 		// Recalculate our item sharing for other players, assuming the game is still going.
-		if (!g_bMapChanging)
+		if (!g_bMapChanging && IsPlayerSurvivor(client))
 		{
 			CalculateSurvivorItemShare();
 		}
 	}
-
+	
 	if (g_bPlayerHasVampireSapper[client])
 	{
 		StopSound(client, SNDCHAN_AUTO, SND_SAPPER_DRAIN);
@@ -84,7 +80,7 @@ void RefreshClient(int client, bool force=false)
 	g_flPlayerVampireSapperCooldown[client] = 0.0;
 	g_flPlayerVampireSapperDuration[client] = 0.0;
 	g_flPlayerReloadBuffDuration[client] = 0.0;
-
+	
 	g_TFBot[client].GoalArea = NULL_AREA;
 	g_TFBot[client].ForcedButtons = 0;
 	g_TFBot[client].Flags = 0;
@@ -95,7 +91,7 @@ void RefreshClient(int client, bool force=false)
 	g_TFBot[client].BuildingTarget = -1;
 	g_TFBot[client].RepairTarget = -1;
 	g_TFBot[client].DesiredWeaponSlot = -1;
-
+	
 	if (g_hTFBotEngineerBuildings[client])
 	{
 		delete g_hTFBotEngineerBuildings[client];
@@ -254,7 +250,7 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 	return amountHealed;
 }
 
-bool RollAttackCrit(int client, float proc=1.0, int damageType=DMG_GENERIC, int damageCustom=-1)
+bool RollAttackCrit(int client, int damageType=DMG_GENERIC, int damageCustom=-1)
 {
 	float critChance;
 	int rollTimes = 1;
@@ -291,10 +287,8 @@ bool RollAttackCrit(int client, float proc=1.0, int damageType=DMG_GENERIC, int 
 	{
 		critChance *= g_cvMeleeCritChanceBonus.FloatValue;
 	}
-
-	critChance *= proc;
+	
 	critChance = fmin(critChance, 1.0);
-
 	for (int i = 1; i <= rollTimes; i++)
 	{
 		if (RandChanceFloat(0.01, 1.0, critChance))
@@ -423,7 +417,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		}
 	}
 
-	int classMaxHealth = TF2_GetClassMaxHealth(TF2_GetPlayerClass(client));
+	int classMaxHealth = GetClassMaxHealth(TF2_GetPlayerClass(client));
 	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth)); // "max health additive bonus"
 	int actualMaxHealth = SDK_GetPlayerMaxHealth(client);
 	g_iPlayerCalculatedMaxHealth[client] = actualMaxHealth;
@@ -455,11 +449,11 @@ float CalculatePlayerMaxSpeed(int client)
 {
 	if (g_bWaitingForPlayers)
 	{
-		return TF2_GetClassMaxSpeed(TF2_GetPlayerClass(client));
+		return GetClassMaxSpeed(TF2_GetPlayerClass(client));
 	}
 
 	float speed = g_flPlayerMaxSpeed[client];
-	float classMaxSpeed = TF2_GetClassMaxSpeed(TF2_GetPlayerClass(client));
+	float classMaxSpeed = GetClassMaxSpeed(TF2_GetPlayerClass(client));
 
 	if (PlayerHasItem(client, Item_RobinWalkers))
 	{
@@ -540,22 +534,21 @@ void ApplyVampireSapper(int client, int attacker, float damage=10.0, float durat
 	g_iPlayerVampireSapperAttacker[client] = GetClientUserId(attacker);
 	g_flPlayerVampireSapperDamage[client] = damage;
 	g_flPlayerVampireSapperDuration[client] = duration;
-
-	EmitSoundToAll(SND_SAPPER_PLANT, client);
-	EmitSoundToAll(SND_SAPPER_PLANT, client);
+	
+	EmitSoundToAllEx(SND_SAPPER_PLANT, client, _, _, _, 2.0);
 	StopSound(client, SNDCHAN_AUTO, SND_SAPPER_DRAIN);
 	EmitSoundToAll(SND_SAPPER_DRAIN, client);
-
+	
 	// spawn the sapper particle
 	float pos[3];
 	GetClientEyePosition(client, pos);
 	SpawnInfoParticle("sapper_sentry1_fx", pos, duration, client, "head");
-
+	
 	if (!IsBoss(client))
 	{
 		TF2_StunPlayer(client, duration, 0.4, TF_STUNFLAG_SLOWDOWN, attacker);
 	}
-
+	
 	TF2_RemovePlayerDisguise(attacker);
 }
 
@@ -571,7 +564,7 @@ public Action Timer_VampireSapper(Handle timer, int client)
 		sapper = GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary);
 	}
 
-	SDKHooks_TakeDamage(client, attacker, attacker, g_flPlayerVampireSapperDamage[client], DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, sapper);
+	SDKHooks_TakeDamage2(client, attacker, attacker, g_flPlayerVampireSapperDamage[client], DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, sapper);
 
 	int totalHealing = RoundToFloor(g_flPlayerVampireSapperDamage[client]);
 	int team = GetClientTeam(client);
@@ -588,7 +581,7 @@ public Action Timer_VampireSapper(Handle timer, int client)
 		GetEntPos(i, victimPos);
 		if (GetVectorDistance(pos, victimPos, true) <= Pow(range, 2.0))
 		{
-			SDKHooks_TakeDamage(i, attacker, attacker, g_flPlayerVampireSapperDamage[client]*0.5, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, sapper);
+			SDKHooks_TakeDamage2(i, attacker, attacker, g_flPlayerVampireSapperDamage[client]*0.5, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, sapper);
 
 			if (!IsBoss(i))
 			{
@@ -624,7 +617,7 @@ public Action Timer_VampireSapper(Handle timer, int client)
 	return Plugin_Continue;
 }
 
-void TF2_OnPlayerAirDash(int client, int count)
+void OnPlayerAirDash(int client, int count)
 {
 	int airDashLimit = 1;
 	airDashLimit += GetPlayerItemCount(client, ItemScout_MonarchWings);
@@ -641,7 +634,7 @@ void TF2_OnPlayerAirDash(int client, int count)
 	}
 }
 
-int TF2_GetClassMaxHealth(TFClassType class)
+int GetClassMaxHealth(TFClassType class)
 {
 	switch (class)
 	{
@@ -655,11 +648,11 @@ int TF2_GetClassMaxHealth(TFClassType class)
 		case TFClass_Sniper: return 125;
 		case TFClass_Spy: return 125;
 	}
-
+	
 	return 75;
 }
 
-float TF2_GetClassMaxSpeed(TFClassType class)
+float GetClassMaxSpeed(TFClassType class)
 {
 	switch (class)
 	{
@@ -677,7 +670,7 @@ float TF2_GetClassMaxSpeed(TFClassType class)
 	return 300.0;
 }
 
-void TF2_GetClassString(TFClassType class, char[] buffer, int size, bool underScore=false, bool capitalize=false)
+void GetClassString(TFClassType class, char[] buffer, int size, bool underScore=false, bool capitalize=false)
 {
 	switch (class)
 	{
@@ -705,7 +698,7 @@ void TF2_GetClassString(TFClassType class, char[] buffer, int size, bool underSc
 	}
 }
 
-int TF2_GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-1))
+int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-1))
 {
 	int count;
 	int entity = -1;
@@ -727,24 +720,22 @@ int TF2_GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectTyp
 	return count;
 }
 
-/*
-bool TF2_PlayerHasShieldEquipped(int client)
+int GetPlayerShield(int client)
 {
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "tf_wearable_demoshield")) != -1)
 	{
 		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
-			return true;
+			return entity;
 	}
-
-	return false;
+	
+	return -1;
 }
-*/
 
-TFCond TF2_GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0)
+TFCond GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0)
 {
 	TFCond rune = view_as<TFCond>(g_MannpowerRunes[GetRandomInt(0, sizeof(g_MannpowerRunes)-1)]);
-
+	
 	if (size > 0)
 	{
 		switch (rune)
@@ -760,16 +751,16 @@ TFCond TF2_GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int si
 			case TFCond_RuneWarlock: strcopy(soundBuffer, size, SND_RUNE_WARLOCK);
 		}
 	}
-
+	
 	return rune;
 }
 
 bool IsPlayerMiniCritBuffed(int client)
 {
-	return TF2_IsPlayerInCondition(client, TFCond_CritCola)
-	|| TF2_IsPlayerInCondition(client, TFCond_Buffed)
-	|| TF2_IsPlayerInCondition(client, TFCond_NoHealingDamageBuff)
-	|| TF2_IsPlayerInCondition(client, TFCond_MiniCritOnKill);
+	return TF2_IsPlayerInCondition2(client, TFCond_CritCola)
+		|| TF2_IsPlayerInCondition2(client, TFCond_Buffed)
+		|| TF2_IsPlayerInCondition2(client, TFCond_NoHealingDamageBuff)
+		|| TF2_IsPlayerInCondition2(client, TFCond_MiniCritOnKill);
 }
 
 void SDK_ForceSpeedUpdate(int client)
@@ -784,50 +775,50 @@ public MRESReturn DHook_HandleRageGain(DHookParam params)
 {
 	if (!RF2_IsEnabled())
 		return MRES_Ignored;
-
+	
 	// apparently this can be null
 	if (params.IsNull(1))
 		return MRES_Ignored;
-
+	
 	int client = params.Get(1);
 	float damage = params.Get(3);
 	float finalDamage;
-
+	
 	// Rage needs more damage as player's damage goes up
 	finalDamage = damage / GetPlayerDamageMult(client);
-	if (GetClientTeam(client) == TEAM_SURVIVOR)
+	if (IsPlayerSurvivor(client))
 	{
 		// 50% additional penalty for survivors
 		finalDamage *= 0.5;
 	}
-
+	
 	params.Set(3, finalDamage);
 	return MRES_ChangedHandled;
 }
 
-bool TF2_IsInvuln(int client)
+bool IsInvuln(int client)
 {
-	return (TF2_IsPlayerInCondition(client, TFCond_Ubercharged) ||
-		TF2_IsPlayerInCondition(client, TFCond_UberchargedCanteen) ||
-		TF2_IsPlayerInCondition(client, TFCond_UberchargedHidden) ||
-		TF2_IsPlayerInCondition(client, TFCond_UberchargedOnTakeDamage) ||
-		TF2_IsPlayerInCondition(client, TFCond_Bonked) ||
-		TF2_IsPlayerInCondition(client, TFCond_HalloweenGhostMode) ||
+	return (TF2_IsPlayerInCondition2(client, TFCond_Ubercharged) ||
+		TF2_IsPlayerInCondition2(client, TFCond_UberchargedCanteen) ||
+		TF2_IsPlayerInCondition2(client, TFCond_UberchargedHidden) ||
+		TF2_IsPlayerInCondition2(client, TFCond_UberchargedOnTakeDamage) ||
+		TF2_IsPlayerInCondition2(client, TFCond_Bonked) ||
+		TF2_IsPlayerInCondition2(client, TFCond_HalloweenGhostMode) ||
 		!GetEntProp(client, Prop_Data, "m_takedamage"));
 }
 
 /*
-bool TF2_IsInvis(int client, bool fullyInvis=true)
+bool IsInvis(int client, bool fullyInvis=true)
 {
-	return ((TF2_IsPlayerInCondition(client, TFCond_Cloaked) ||
-		TF2_IsPlayerInCondition(client, TFCond_Stealthed) ||
-		TF2_IsPlayerInCondition(client, TFCond_StealthedUserBuffFade))
-		&& (!fullyInvis || !TF2_IsPlayerInCondition(client, TFCond_CloakFlicker)
-		&& !TF2_IsPlayerInCondition(client, TFCond_OnFire)
-		&& !TF2_IsPlayerInCondition(client, TFCond_Jarated)
-		&& !TF2_IsPlayerInCondition(client, TFCond_Milked)
-		&& !TF2_IsPlayerInCondition(client, TFCond_Bleeding)
-		&& !TF2_IsPlayerInCondition(client, TFCond_Gas)));
+	return ((TF2_IsPlayerInCondition2(client, TFCond_Cloaked) ||
+		TF2_IsPlayerInCondition2(client, TFCond_Stealthed) ||
+		TF2_IsPlayerInCondition2(client, TFCond_StealthedUserBuffFade))
+		&& (!fullyInvis || !TF2_IsPlayerInCondition2(client, TFCond_CloakFlicker)
+		&& !TF2_IsPlayerInCondition2(client, TFCond_OnFire)
+		&& !TF2_IsPlayerInCondition2(client, TFCond_Jarated)
+		&& !TF2_IsPlayerInCondition2(client, TFCond_Milked)
+		&& !TF2_IsPlayerInCondition2(client, TFCond_Bleeding)
+		&& !TF2_IsPlayerInCondition2(client, TFCond_Gas)));
 }
 */
 
@@ -872,7 +863,7 @@ void SpeakResponseConcept_MVM(int client, const char[] response)
 	AcceptEntityInput(client, "SpeakResponseConcept");
 }
 
-bool TF2_ForceWeaponSwitch(int client, int slot)
+bool ForceWeaponSwitch(int client, int slot)
 {
 	if (!g_hSDKWeaponSwitch)
 		return false;
@@ -916,7 +907,7 @@ bool IsValidClient(int client)
 bool IsPlayerStunned(int client)
 {
 	int stunFlags = GetEntProp(client, Prop_Send, "m_iStunFlags");
-	return TF2_IsPlayerInCondition(client, TFCond_Dazed) && (stunFlags & TF_STUNFLAG_THIRDPERSON || stunFlags & TF_STUNFLAG_BONKSTUCK);
+	return TF2_IsPlayerInCondition2(client, TFCond_Dazed) && (stunFlags & TF_STUNFLAG_THIRDPERSON || stunFlags & TF_STUNFLAG_BONKSTUCK);
 }
 
 float GetPlayerHealthMult(int client)

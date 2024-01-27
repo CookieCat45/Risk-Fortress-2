@@ -653,10 +653,28 @@
 		"en"		"Toggle becoming a Teleporter boss ({1})"
 	}
 	
+	"ToggleEnemy"
+	{
+		"#format"	"{1:s}"
+		"en"		"Toggle spawning as an enemy ({1})"
+	}
+	
 	"ToggleMusic"
 	{
 		"#format"	"{1:s}"
 		"en"		"Toggle music ({1})"
+	}
+
+	"StayInSpec"
+	{
+		"#format"	"{1:s}"
+		"en"		"Stay in spectate after loading in ({1})"
+	}
+	
+	"SpecOnDeath"
+	{
+		"#format"	"{1:s}"
+		"en"		"Join spectate after dying as a Survivor ({1})"
 	}
 	
 	"AutoItemMenu"

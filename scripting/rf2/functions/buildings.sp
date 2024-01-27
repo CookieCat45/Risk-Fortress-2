@@ -112,7 +112,7 @@ public MRESReturn DHook_CanBuild(int client, DHookReturn returnVal, DHookParam p
 		TFObjectType type = view_as<TFObjectType>(DHookGetParam(params, 1));
 		if (type == TFObject_Sentry && PlayerHasItem(client, ItemEngi_HeadOfDefense))
 		{
-			if (TF2_GetPlayerBuildingCount(client, TFObject_Sentry) <= RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0))+1)
+			if (GetPlayerBuildingCount(client, TFObject_Sentry) <= RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0))+1)
 			{
 				DHookSetReturn(returnVal, CB_CAN_BUILD);
 				return MRES_Supercede;
