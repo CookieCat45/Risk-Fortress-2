@@ -99,6 +99,7 @@ void LoadCommandsAndCvars()
 	g_cvEngiMetalRegenAmount = CreateConVar("rf2_engineer_metal_regen_amount", "30", "The base amount of metal an Engineer will regen per interval lapse", FCVAR_NOTIFY, true, 0.0);
 	g_cvHauntedKeyDropChanceMax = CreateConVar("rf2_haunted_key_drop_chance_max", "135", "1 in N chance for a Haunted Key to drop each time an enemy is slain.", FCVAR_NOTIFY, true, 0.0);
 	g_cvArtifactChance = CreateConVar("rf2_artifact_chance", "1", "1 in N chance for Artifacts to be rolled at the beginning of a stage.", FCVAR_NOTIFY, true, 0.0);
+	g_cvAutoReloadPlugin = CreateConVar("rf2_auto_reload_plugin", "1", "If nonzero, automatically reload the plugin if the game hasn't started and a change has been detected.", FCVAR_NOTIFY, true, 0.0);
 	
 	// Debug
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");

@@ -51,6 +51,8 @@ bool g_bTankBossMode;
 bool g_bGoombaAvailable;
 bool g_bRoundEnding;
 float g_flWaitRestartTime;
+int g_iFileTime;
+float g_flNextAutoReloadCheckTime;
 
 int g_iTotalEnemiesKilled;
 int g_iTotalBossesKilled;
@@ -261,6 +263,7 @@ ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
 ConVar g_cvDebugShowObjectSpawns;
+ConVar g_cvAutoReloadPlugin;
 
 // Cookies
 Cookie g_coMusicEnabled;
@@ -355,6 +358,7 @@ public void OnPluginStart()
 	LoadTranslations("rf2_achievements.phrases");
 	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
+	g_iFileTime = GetPluginModifiedTime();
 }
 
 public void OnPluginEnd()
@@ -530,7 +534,7 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CBasePlayer::Weapon_Switch from SDKHooks gamedata");
 	}
-	
+
 	delete gamedata;
 }
 
@@ -669,10 +673,17 @@ public void OnMapStart()
 			RF2_Object_Base(entity).MapPlaced = true;
 		}
 		
-		// If the game has already started, restart if we wait too long for players
-		if (g_bGameInitialized && g_cvGameResetTime.FloatValue > 0.0)
+		if (g_bGameInitialized)
 		{
-			g_flWaitRestartTime = GetTickedTime() + g_cvGameResetTime.FloatValue;
+			if (g_cvGameResetTime.FloatValue > 0.0)
+			{
+				// If the game has already started, restart if we wait too long for players
+				g_flWaitRestartTime = GetTickedTime() + g_cvGameResetTime.FloatValue;
+			}
+		}
+		else if (g_cvAutoReloadPlugin.BoolValue)
+		{
+			g_flNextAutoReloadCheckTime = GetTickedTime()+2.0;
 		}
 	}
 	else
@@ -797,6 +808,7 @@ void CleanUp()
 	g_bGracePeriod = false;
 	g_bWaitingForPlayers = false;
 	g_bRoundEnding = false;
+	g_flNextAutoReloadCheckTime = 0.0;
 	g_hPlayerTimer = null;
 	g_hHudTimer = null;
 	g_hDifficultyTimer = null;
@@ -1025,7 +1037,7 @@ public void OnClientPostAdminCheck(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		if (!GetCookieBool(client, g_coStayInSpecOnJoin) && GetTotalHumans(false) > 1)
+		if (g_bWaitingForPlayers && !GetCookieBool(client, g_coStayInSpecOnJoin) && GetTotalHumans(false) > 1)
 			ChangeClientTeam(client, GetRandomInt(2, 3));
 		
 		char auth[MAX_AUTHID_LENGTH];
@@ -3576,13 +3588,29 @@ public void TF2_OnWaitingForPlayersEnd()
 
 public void OnGameFrame()
 {
-	if (g_bPluginEnabled && g_flWaitRestartTime > 0.0)
+	if (g_bPluginEnabled)
 	{
-		if (GetTickedTime() >= g_flWaitRestartTime && GetTotalHumans(false) == 0)
+		if (g_flWaitRestartTime > 0.0 && GetTickedTime() >= g_flWaitRestartTime && GetTotalHumans(false) == 0)
 		{
 			PrintToServer("[RF2] Waited too long for players to join. Restarting game...");
 			g_flWaitRestartTime = 0.0;
 			ReloadPlugin(true);
+		}
+		
+		if (!g_bGameInitialized && !g_bRoundActive && g_flNextAutoReloadCheckTime > 0.0 && GetTickedTime() >= g_flNextAutoReloadCheckTime)
+		{
+			int time = GetPluginModifiedTime();
+			if (time != -1 && time != g_iFileTime)
+			{
+				RF2_PrintToChatAll("A plugin change has been detected, reloading...");
+				PrintToServer("[RF2] A plugin change has been detected, reloading...");
+				g_flNextAutoReloadCheckTime = 0.0;
+				ReloadPlugin(false);
+			}
+			else
+			{
+				g_flNextAutoReloadCheckTime = GetTickedTime() + 2.0;
+			}
 		}
 	}
 }

@@ -82,7 +82,7 @@ void ReloadPlugin(bool changeMap=true)
 		}
 		
 		StopMusicTrackAll();
-		if (!changeMap && GetTotalHumans() == 0)
+		if (!changeMap && g_bWaitingForPlayers && GetTotalHumans() == 0)
 		{
 			InsertServerCommand("mp_waitingforplayers_restart 1");
 		}
@@ -726,6 +726,13 @@ stock bool EmitGameSoundToAllEx(const char[] gameSound,
 	
 	return EmitGameSoundEx(clients, total, gameSound, entity, flags, volume,
 		speakerentity, origin, dir, updatePos, soundtime);
+}
+
+int GetPluginModifiedTime()
+{
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "plugins/rf2.smx");
+	return GetFileTime(path, FileTime_LastChange);
 }
 
 // StrContains(), but the string needs to be an exact match.
