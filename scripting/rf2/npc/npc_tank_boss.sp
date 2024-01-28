@@ -287,14 +287,7 @@ static int CreateTankBoss(bool badass=false)
 		tankBoss = CreateEntityByName("rf2_tank_boss_badass");
 	}
 	
-	int health = RoundToFloor(float(g_cvTankBaseHealth.IntValue) * (1.0 + (float(imin(RF2_GetEnemyLevel()-1, 50)) * g_cvTankHealthScale.FloatValue)));
-	int level = RF2_GetEnemyLevel();
-	if (level >= 50)
-	{
-		health = imax(RoundToFloor(Pow(float(health), 1.0 + (float(level-49) * 0.002))), health);
-		health = imin(health, 50000000);
-	}
-	
+	int health = RoundToFloor(float(g_cvTankBaseHealth.IntValue) * (1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvTankHealthScale.FloatValue)));
 	if (IsSingleplayer(false))
 	{
 		health = RoundToFloor(float(health) * 0.75);

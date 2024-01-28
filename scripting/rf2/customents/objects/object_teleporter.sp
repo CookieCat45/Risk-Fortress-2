@@ -203,6 +203,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	public void Start()
 	{
 		this.EventState = TELE_EVENT_ACTIVE;
+		this.TextSize = 20.0;
 		Call_StartForward(g_fwTeleEventStart);
 		Call_Finish();
 		
@@ -312,6 +313,8 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	{
 		this.EventState = TELE_EVENT_COMPLETE;
 		this.Effects = EF_ITEM_BLINK;
+		this.TextSize = 6.0;
+		this.SetWorldText("Press [E] to go to the next stage!");
 		RemoveEntity2(this.Bubble.index);
 		EmitSoundToAll(SND_TELEPORTER_CHARGED);
 		StopMusicTrackAll();
@@ -396,6 +399,8 @@ static void OnCreate(RF2_Object_Teleporter teleporter)
 	teleporter.SetProp(Prop_Send, "m_nSolidType", SOLID_VPHYSICS);
 	teleporter.SetModel(model);
 	teleporter.HookInteract(Teleporter_OnInteract);
+	teleporter.SetWorldText("Press [E] to start the Teleporter event!");
+	teleporter.TextZOffset = 70.0;
 }
 
 static void OnRemove(RF2_Object_Teleporter teleporter)
@@ -533,6 +538,10 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 		{
 			FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Teleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
 		}
+		
+		static char text[256];
+		FormatEx(text, sizeof(text), "%.0f", oldCharge);
+		teleporter.SetWorldText(text);
 	}
 	
 	if (oldCharge < 100.0 && chargeToSet > 0.0 && oldCharge != chargeToSet)

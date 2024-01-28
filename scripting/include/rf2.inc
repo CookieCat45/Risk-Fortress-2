@@ -314,7 +314,7 @@ forward void RF2_OnGracePeriodEnd();
 // Prints a message to a client with the [RF2] tag. Uses the same parameters and supports color tags.
 stock void RF2_PrintToChat(int client, const char[] message, any ...)
 {
-	char buffer[PLATFORM_MAX_PATH];
+	char buffer[512];
 	VFormat(buffer, sizeof(buffer), message, 3);
 	CPrintToChat(client, "{lightseagreen}[RF2] {default}%s", buffer);
 }
@@ -322,7 +322,7 @@ stock void RF2_PrintToChat(int client, const char[] message, any ...)
 // Prints a message to all clients with the [RF2] tag. Uses the same parameters and supports color tags.
 stock void RF2_PrintToChatAll(const char[] message, any ...)
 {
-	char buffer[PLATFORM_MAX_PATH];
+	char buffer[512];
 	VFormat(buffer, sizeof(buffer), message, 2);
 	CPrintToChatAll("{lightseagreen}[RF2] {default}%s", buffer);
 }
@@ -330,7 +330,7 @@ stock void RF2_PrintToChatAll(const char[] message, any ...)
 // Replies to a command with the [RF2] tag. Uses the same parameters and supports color tags.
 stock void RF2_ReplyToCommand(int client, const char[] message, any ...)
 {
-	char buffer[PLATFORM_MAX_PATH];
+	char buffer[512];
 	VFormat(buffer, sizeof(buffer), message, 3);
 	if (client == 0)
 	{

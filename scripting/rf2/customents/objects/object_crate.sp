@@ -119,11 +119,51 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 		switch (this.Type)
 		{
 			case Crate_Normal: cost = g_cvObjectBaseCost.FloatValue * costMult;
-			case Crate_Large: cost = g_cvObjectBaseCost.FloatValue * costMult * 2.0;
+			case Crate_Large, Crate_Collectors: cost = g_cvObjectBaseCost.FloatValue * costMult * 2.0;
 			case Crate_Strange: cost =g_cvObjectBaseCost.FloatValue * costMult * 1.5;
 		}
 		
 		return float(RoundToFloor(cost));
+	}
+	
+	public void InitType()
+	{
+		switch (this.Type)
+		{
+			case Crate_Normal:
+			{
+				this.SetModel(MODEL_CRATE);
+				this.Item = GetRandomItem(79, 20, 1);
+			}
+			
+			case Crate_Large:
+			{
+				this.SetModel(MODEL_CRATE);
+				this.SetPropFloat(Prop_Send, "m_flModelScale", 1.35);
+				this.Item = GetRandomItem(_, 85, 15);
+				this.TextZOffset = 90.0;
+			}
+			
+			case Crate_Strange:
+			{
+				this.SetModel(MODEL_CRATE_STRANGE);
+				this.SetRenderColor(255, 100, 0);
+				this.Item = GetRandomItemEx(Quality_Strange);
+				this.TextZOffset = 100.0;
+			}
+			
+			case Crate_Collectors:
+			{
+				// our item is decided when we're opened
+				this.SetModel(MODEL_CRATE_COLLECTOR);
+			}
+			
+			case Crate_Haunted:
+			{
+				this.SetModel(MODEL_CRATE_HAUNTED);
+				this.Item = GetRandomItem(_, _, _, 1);
+			}
+		}
 	}
 }
 
@@ -131,43 +171,19 @@ RF2_Object_Crate SpawnCrate(int type, const float pos[3])
 {
 	RF2_Object_Crate crate = RF2_Object_Crate(CreateObject("rf2_object_crate", pos, false).index);
 	crate.Type = type;
-	switch (type)
+	crate.InitType();
+	crate.Cost = crate.CalculateCost();
+	if (crate.Type == Crate_Haunted)
 	{
-		case Crate_Normal:
-		{
-			crate.SetModel(MODEL_CRATE);
-			crate.Item = GetRandomItem(79, 20, 1);
-		}
-		
-		case Crate_Large:
-		{
-			crate.SetModel(MODEL_CRATE);
-			crate.SetPropFloat(Prop_Send, "m_flModelScale", 1.35);
-			crate.Item = GetRandomItem(_, 85, 15);
-		}
-		
-		case Crate_Strange:
-		{
-			crate.SetModel(MODEL_CRATE_STRANGE);
-			crate.SetRenderColor(255, 100, 0);
-			crate.Item = GetRandomItemEx(Quality_Strange);
-		}
-		
-		case Crate_Collectors:
-		{
-			// our item is decided when we're opened
-			crate.SetModel(MODEL_CRATE_COLLECTOR);
-		}
-
-		case Crate_Haunted:
-		{
-			crate.SetModel(MODEL_CRATE_HAUNTED);
-			crate.Item = GetRandomItem(_, _, _, 1);
-		}
+		crate.SetWorldText("1 Haunted Key (Whack to Open)");
+	}
+	else
+	{
+		char text[256];
+		FormatEx(text, sizeof(text), "$%.0f (Whack to Open)", crate.Cost);
+		crate.SetWorldText(text);
 	}
 	
-	SDKHook(crate.index, SDKHook_SpawnPost, OnSpawnPost);
-	crate.Cost = crate.CalculateCost();
 	crate.Spawn();
 	return crate;
 }
@@ -180,26 +196,26 @@ static void OnSpawnPost(int entity)
 	{
 		case Crate_Large:
 		{
-			crate.SetPropVector(Prop_Send, "m_vecMins", {-15.0, -15.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxs", {15.0, 15.0, 70.0});
-			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-15.0, -15.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {15.0, 15.0, 70.0});
+			crate.SetPropVector(Prop_Send, "m_vecMins", {-20.0, -20.0, 0.0});
+			crate.SetPropVector(Prop_Send, "m_vecMaxs", {20.0, 20.0, 70.0});
+			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-20.0, -20.0, 0.0});
+			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {20.0, 20.0, 70.0});
 		}
 		
 		case Crate_Strange:
 		{
-			crate.SetPropVector(Prop_Send, "m_vecMins", {-15.0, -15.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxs", {15.0, 15.0, 90.0});
-			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-15.0, -15.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {15.0, 15.0, 90.0});
+			crate.SetPropVector(Prop_Send, "m_vecMins", {-20.0, -20.0, 0.0});
+			crate.SetPropVector(Prop_Send, "m_vecMaxs", {20.0, 20.0, 90.0});
+			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-20.0, -20.0, 0.0});
+			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {20.0, 20.0, 90.0});
 		}
 		
 		default:
 		{
-			crate.SetPropVector(Prop_Send, "m_vecMins", {-10.0, -10.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxs", {10.0, 10.0, 40.0});
-			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-10.0, -10.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {10.0, 10.0, 40.0});
+			crate.SetPropVector(Prop_Send, "m_vecMins", {-15.0, -15.0, 0.0});
+			crate.SetPropVector(Prop_Send, "m_vecMaxs", {15.0, 15.0, 40.0});
+			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-15.0, -15.0, 0.0});
+			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {15.0, 15.0, 40.0});
 		}
 	}
 	
@@ -217,19 +233,8 @@ void Crate_OnMapStart()
 
 static void OnCreate(RF2_Object_Crate crate)
 {
-	crate.HookInteract(Crate_OnInteract);
 	SDKHook(crate.index, SDKHook_OnTakeDamage, Hook_OnCrateHit);
-}
-
-static Action Crate_OnInteract(int client, RF2_Object_Crate crate)
-{
-	if (crate.Cost > 0.0)
-	{
-		PrintCenterText(client, "%t", "ThisCosts", crate.Cost);
-		return Plugin_Handled;
-	}
-	
-	return Plugin_Continue;
+	SDKHook(crate.index, SDKHook_SpawnPost, OnSpawnPost);
 }
 
 public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, float damageForce[3], float damagePosition[3], int damageCustom)

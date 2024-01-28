@@ -87,6 +87,8 @@ static void OnCreate(RF2_Object_Scrapper scrapper)
 {
 	scrapper.SetModel(MODEL_SCRAPPER);
 	scrapper.HookInteract(Scrapper_OnInteract);
+	scrapper.TextZOffset = 35.0;
+	scrapper.SetWorldText("Press [E] to scrap your items!");
 }
 
 static Action Scrapper_OnInteract(int client, RF2_Object_Scrapper scrapper)

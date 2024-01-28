@@ -94,17 +94,7 @@ int SpawnObjects()
 {
 	// Make sure everything is gone first
 	DespawnObjects();
-	
-	// Show any map spawned objects now
 	int entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "rf2_object*")) != -1)
-	{
-		if (RF2_Object_Base(entity).MapPlaced)
-		{
-			AcceptEntityInput(entity, "TurnOn");
-		}
-	}
-	
 	if (!g_bTankBossMode)
 	{
 		ArrayList teleporterSpawns = CreateArray();
@@ -264,7 +254,7 @@ void DespawnObjects()
 	while ((entity = FindEntityByClassname(entity, "*")) != -1)
 	{
 		GetEntityClassname(entity, classname, sizeof(classname));
-		if (strcmp2(classname, "rf2_item") || StrContains(classname, "rf2_object") == 0 && !GetEntProp(entity, Prop_Data, "m_bMapPlaced"))
+		if (strcmp2(classname, "rf2_item") || StrContains(classname, "rf2_object") == 0 && !RF2_Object_Base(entity).MapPlaced)
 		{
 			RemoveEntity2(entity);
 		}

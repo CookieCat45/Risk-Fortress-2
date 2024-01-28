@@ -666,13 +666,6 @@ public void OnMapStart()
 			DespawnObjects();
 		}
 		
-		// Find map spawned objects
-		int entity = MaxClients+1;
-		while ((entity = FindEntityByClassname(entity, "rf2_object*")) != -1)
-		{
-			RF2_Object_Base(entity).MapPlaced = true;
-		}
-		
 		if (g_bGameInitialized)
 		{
 			if (g_cvGameResetTime.FloatValue > 0.0)

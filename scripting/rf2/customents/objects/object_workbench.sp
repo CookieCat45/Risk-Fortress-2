@@ -137,8 +137,12 @@ static void OnCreate(RF2_Object_Workbench bench)
 	{
 		bench.Item = GetRandomItemEx(bench.Quality);
 	}
-
+	
 	SDKHook(bench.index, SDKHook_SpawnPost, OnSpawnPost);
+	char text[256];
+	FormatEx(text, sizeof(text), "Press [E] to trade for 1 %s!", g_szItemName[bench.Item]);
+	bench.SetWorldText(text);
+	bench.TextZOffset = 90.0;
 }
 
 static void OnSpawnPost(int entity)
