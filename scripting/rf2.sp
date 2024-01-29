@@ -599,6 +599,12 @@ public void OnMapStart()
 		{
 			//AutoExecConfig(true, "RiskFortress2");
 		}
+		
+		ConVar maxSpeed = FindConVar("sm_tf2_maxspeed");
+		if (maxSpeed)
+		{
+			maxSpeed.FloatValue = 900.0;
+		}
 
 		// These are ConVars we're OK with being set by server.cfg, but we'll set our personal defaults.
 		// If configs wish to change these, they will be overridden by them later.
@@ -1031,8 +1037,10 @@ public void OnClientPostAdminCheck(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		if (g_bWaitingForPlayers && !GetCookieBool(client, g_coStayInSpecOnJoin))
-			ChangeClientTeam(client, GetRandomInt(2, 3));
+		if (g_bWaitingForPlayers && !GetCookieBool(client, g_coStayInSpecOnJoin) && GetTotalHumans(false) > 1)
+		{
+			CreateTimer(1.0, Timer_ChangeTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		}
 		
 		char auth[MAX_AUTHID_LENGTH];
 		if (GetClientAuthId(client, AuthId_Steam2, auth, sizeof(auth)))
@@ -1063,6 +1071,16 @@ public void OnClientPostAdminCheck(int client)
 			}
 		}
 	}
+}
+
+public Action Timer_ChangeTeam(Handle timer, int client)
+{
+	if (!g_bWaitingForPlayers || !(client = GetClientOfUserId(client)) || GetClientTeam(client) > 1 || IsPlayerAlive(client))
+		return Plugin_Continue;
+	
+	ChangeClientTeam(client, GetRandomInt(2, 3));
+	TF2_RespawnPlayer(client);
+	return Plugin_Continue;
 }
 
 public Action Timer_MakeSurvivor(Handle timer, DataPack pack)
@@ -3472,7 +3490,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	{
 		if (PlayerHasItem(client, ItemPyro_PyromancerMask) && CanUseCollectorItem(client, ItemPyro_PyromancerMask)
 			&& (!IsPlayerSurvivor(client) || GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemPyro_PyromancerMask, 5))
-			&& GetGameTime() >= g_flPlayerNextFireSpellTime[client])
+			&& GetTickedTime() >= g_flPlayerNextFireSpellTime[client])
 		{
 			float speed = GetItemMod(ItemPyro_PyromancerMask, 2) + CalcItemMod(client, ItemPyro_PyromancerMask, 3, -1);
 			speed = fmin(speed, GetItemMod(ItemPyro_PyromancerMask, 4));
@@ -3482,12 +3500,12 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			float damage = GetItemMod(ItemPyro_PyromancerMask, 0) + CalcItemMod(client, ItemPyro_PyromancerMask, 1, -1);
 			int fireball = ShootProjectile(client, "rf2_projectile_fireball", eyePos, eyeAng, speed, damage);
 			SetEntItemProc(fireball, ItemPyro_PyromancerMask);
-			g_flPlayerNextFireSpellTime[client] = GetGameTime() + GetItemMod(ItemPyro_PyromancerMask, 6);
+			g_flPlayerNextFireSpellTime[client] = GetTickedTime() + GetItemMod(ItemPyro_PyromancerMask, 6);
 		}
 		
 		if (PlayerHasItem(client, ItemDemo_ConjurersCowl) && CanUseCollectorItem(client, ItemDemo_ConjurersCowl)
 			&& (!IsPlayerSurvivor(client) || GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemDemo_ConjurersCowl, 5))
-			&& GetGameTime() >= g_flPlayerNextDemoSpellTime[client])
+			&& GetTickedTime() >= g_flPlayerNextDemoSpellTime[client])
 		{
 			float speed = GetItemMod(ItemDemo_ConjurersCowl, 2) + CalcItemMod(client, ItemDemo_ConjurersCowl, 3, -1);
 			speed = fmin(speed, GetItemMod(ItemDemo_ConjurersCowl, 4));
@@ -3497,7 +3515,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			float damage = GetItemMod(ItemDemo_ConjurersCowl, 0) + CalcItemMod(client, ItemDemo_ConjurersCowl, 1, -1);
 			int beam = ShootProjectile(client, "rf2_projectile_beam", eyePos, eyeAng, speed, damage, -4.0);
 			SetEntItemProc(beam, ItemDemo_ConjurersCowl);
-			g_flPlayerNextDemoSpellTime[client] = GetGameTime() + GetItemMod(ItemDemo_ConjurersCowl, 6);
+			g_flPlayerNextDemoSpellTime[client] = GetTickedTime() + GetItemMod(ItemDemo_ConjurersCowl, 6);
 		}
 	}
 	
@@ -3617,7 +3635,6 @@ public void OnGameFrame()
 				{
 					LogMessage("A change to the plugin has been detected, locking plugin loads/reloads.");
 					InsertServerCommand("sm plugins load_lock");
-					RF2_PrintToChatAll("A change to the plugin was detected! The changes will apply after this run ends.");
 				}
 			}
 			else

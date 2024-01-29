@@ -500,7 +500,12 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	{
 		multiplier *= (1.0 / (1.0 + (float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1))));
 	}
-
+	
+	if (PlayerHasItem(client, Item_MaxHead))
+	{
+		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_MaxHead, 2);
+	}
+	
 	if (multiplier < 1.0 && weapon > 0)
 	{
 		static char classname[32];

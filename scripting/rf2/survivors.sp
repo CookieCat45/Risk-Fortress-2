@@ -231,7 +231,8 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	if (loadInventory)
 	{
 		// likely a mid-game join, so get us up to speed
-		int itemsToGive = (GetTotalSurvivorItems() / GetTotalClaimedInventories()) - GetTotalSurvivorItems(index);
+		int totalInvs = imax(1, GetTotalClaimedInventories());
+		int itemsToGive = (GetTotalSurvivorItems() / totalInvs) - GetTotalSurvivorItems(index);
 		if (g_bGameInitialized && !DoesClientOwnInventory(client, index) && itemsToGive > 0)
 		{
 			// if we join in a game and our inventory is empty, get us up to speed

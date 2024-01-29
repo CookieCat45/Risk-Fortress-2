@@ -58,5 +58,8 @@ static void OnCollide(RF2_Projectile_Kunai kunai, int other)
 	}
 	
 	SDKHooks_TakeDamage2(other, kunai.index, kunai.Owner, kunai.Damage, damageType);
-	TF2_AddCondition(other, TFCond_MarkedForDeath, GetItemMod(ItemStrange_HandsomeDevil, 1), kunai.Owner);
+	if (IsValidClient(other))
+	{
+		TF2_AddCondition(other, TFCond_MarkedForDeath, GetItemMod(ItemStrange_HandsomeDevil, 1), IsValidClient(kunai.Owner) ? kunai.Owner : 0);
+	}
 }

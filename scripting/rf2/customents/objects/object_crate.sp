@@ -196,18 +196,18 @@ static void OnSpawnPost(int entity)
 	{
 		case Crate_Large:
 		{
-			crate.SetPropVector(Prop_Send, "m_vecMins", {-20.0, -20.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxs", {20.0, 20.0, 70.0});
-			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-20.0, -20.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {20.0, 20.0, 70.0});
+			crate.SetPropVector(Prop_Send, "m_vecMins", {-15.0, -15.0, 0.0});
+			crate.SetPropVector(Prop_Send, "m_vecMaxs", {15.0, 15.0, 60.0});
+			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-15.0, -15.0, 0.0});
+			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {15.0, 15.0, 60.0});
 		}
 		
 		case Crate_Strange:
 		{
-			crate.SetPropVector(Prop_Send, "m_vecMins", {-20.0, -20.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxs", {20.0, 20.0, 90.0});
-			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-20.0, -20.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {20.0, 20.0, 90.0});
+			crate.SetPropVector(Prop_Send, "m_vecMins", {-15.0, -15.0, 0.0});
+			crate.SetPropVector(Prop_Send, "m_vecMaxs", {15.0, 15.0, 75.0});
+			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-15.0, -15.0, 0.0});
+			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {15.0, 15.0, 75.0});
 		}
 		
 		default:
