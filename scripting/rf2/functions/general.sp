@@ -101,7 +101,7 @@ void ReloadPlugin(bool changeMap=true)
 			InsertServerCommand("mp_restartgame_immediate 2");
 		}
 		
-		InsertServerCommand("sm plugins reload rf2; sm_reload_translations");
+		InsertServerCommand("sm plugins load_unlock; sm plugins reload rf2; sm_reload_translations");
 	}
 }
 
@@ -211,7 +211,7 @@ void TransmitShakeEvent(int player, float localAmplitude, float frequency, float
 
 bool IsBossEventActive()
 {
-	return GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE || g_bTankBossMode && !g_bGracePeriod;
+	return GetCurrentTeleporter().IsValid() && GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE || g_bTankBossMode && !g_bGracePeriod;
 }
 
 void SetHudDifficulty(int difficulty)

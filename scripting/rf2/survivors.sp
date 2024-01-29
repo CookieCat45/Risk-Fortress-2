@@ -231,31 +231,20 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	if (loadInventory)
 	{
 		// likely a mid-game join, so get us up to speed
-		if (g_bGameInitialized && !DoesClientOwnInventory(client, index))
+		int itemsToGive = (GetTotalSurvivorItems() / GetTotalClaimedInventories()) - GetTotalSurvivorItems(index);
+		if (g_bGameInitialized && !DoesClientOwnInventory(client, index) && itemsToGive > 0)
 		{
+			// if we join in a game and our inventory is empty, get us up to speed
 			g_iPlayerLevel[client] = GetHighestSurvivorLevel();
-			int myItems = GetTotalSurvivorItems(index);
-			int minItems = GetTotalSurvivorItems() / GetTotalClaimedInventories();
-			int divisor;
-			for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
+			for (int i = 1; i <= itemsToGive; i++)
 			{
-				if (GetTotalSurvivorItems(i) >= minItems)
-					divisor++;
-			}
-			
-			int total = GetTotalSurvivorItems() / divisor <= 0 ? GetTotalClaimedInventories() : divisor;
-			if (myItems < total)
-			{
-				for (int i = 1; i <= total-myItems; i++)
+				if (GetRandomInt(1, 10) == 1)
 				{
-					if (GetRandomInt(1, 10) == 1)
-					{
-						GiveItem(client, GetRandomCollectorItem(class));
-					}
-					else
-					{
-						GiveItem(client, GetRandomItem(79, 20, 5));
-					}
+					GiveItem(client, GetRandomCollectorItem(class));
+				}
+				else
+				{
+					GiveItem(client, GetRandomItem(79, 20, 1));
 				}
 			}
 			
@@ -528,7 +517,7 @@ int GetTotalClaimedInventories()
 		if (g_bSurvivorInventoryClaimed[i])
 			total++;
 	}
-
+	
 	return total;
 }
 

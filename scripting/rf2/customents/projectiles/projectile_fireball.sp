@@ -42,7 +42,7 @@ static void OnCreate(RF2_Projectile_Fireball fireball)
 	fireball.SetRenderMode(RENDER_TRANSCOLOR); // RENDER_NONE doesn't seem to work properly
 	fireball.SetRenderColor(0, 0, 0, 0);
 	fireball.DeactivateTime = 0.0;
-	fireball.Radius = 170.0;
+	fireball.Radius = 200.0;
 	fireball.Flying = true;
 	fireball.SetRedTrail("spell_fireball_small_red");
 	fireball.SetBlueTrail("spell_fireball_small_blue");
@@ -54,12 +54,17 @@ static void OnCreate(RF2_Projectile_Fireball fireball)
 
 static void OnCollide(RF2_Projectile_Fireball fireball, int other)
 {
-	ArrayList hitEnts = fireball.Explode(DMG_BURN, true, false, true);
+	ArrayList hitEnts = fireball.Explode(DMG_BURN, true, true, true);
+	if (IsValidClient(other))
+	{
+		TF2_IgnitePlayer(other, fireball.Owner, 10.0);
+	}
+	
 	int entity;
 	for (int i = 0; i < hitEnts.Length; i++)
 	{
 		entity = hitEnts.Get(i);
-		if (entity == other || !IsValidClient(entity))
+		if (!IsValidClient(entity))
 			continue;
 		
 		TF2_IgnitePlayer(entity, fireball.Owner, 10.0);
@@ -69,4 +74,5 @@ static void OnCollide(RF2_Projectile_Fireball fireball, int other)
 	float pos[3];
 	fireball.GetAbsOrigin(pos);
 	fireball.Team == TEAM_SURVIVOR ? TE_TFParticle("spell_fireball_tendril_parent_red", pos) : TE_TFParticle("spell_fireball_tendril_parent_blue", pos);
+	fireball.Remove();
 }

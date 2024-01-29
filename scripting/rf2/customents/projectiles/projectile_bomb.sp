@@ -44,8 +44,8 @@ static void OnCreate(RF2_Projectile_Bomb bomb)
 	bomb.DeactivateTime = 0.0;
 	bomb.SetWorldImpactSound(SND_BOMB_EXPLODE);
 	bomb.Damage = GetItemMod(ItemStrange_CroneDome, 1);
-	bomb.Radius = GetItemMod(ItemStrange_CroneDome, 0);
 	bomb.DirectDamage = GetItemMod(ItemStrange_CroneDome, 2);
+	bomb.Radius = GetItemMod(ItemStrange_CroneDome, 0);
 	bomb.HookOnCollide(OnCollide);
 }
 

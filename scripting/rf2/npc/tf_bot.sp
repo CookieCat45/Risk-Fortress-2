@@ -794,7 +794,7 @@ void TFBot_TraverseMap(TFBot &bot)
 			float cost, radius;
 			float telePos[3];
 			RF2_Object_Teleporter teleporter = GetCurrentTeleporter();
-			bool event = teleporter.EventState != TELE_EVENT_INACTIVE;
+			bool event = teleporter.IsValid() && teleporter.EventState != TELE_EVENT_INACTIVE;
 			
 			if (event)
 			{

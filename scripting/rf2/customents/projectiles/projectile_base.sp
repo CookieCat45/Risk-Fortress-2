@@ -394,7 +394,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		}
 		
 		float pos[3];
-		this.GetAbsOrigin(pos);
+		this.WorldSpaceCenter(pos);
 		hitEnts = DoRadiusDamage(this.Owner, this.index, pos, GetEntItemProc(this.index), 
 			this.Damage, DMG_BLAST, this.Radius, this.FalloffMult, this.DamageOwner, blacklist, returnHitEnts);
 		

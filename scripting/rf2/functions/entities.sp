@@ -116,6 +116,7 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 		if (RF2_Projectile_Base(entity).IsValid())
 		{
 			RF2_Projectile_Base(entity).Damage = damage;
+			RF2_Projectile_Base(entity).DirectDamage = damage;
 		}
 		else if (strcmp2(classname, "tf_projectile_pipebomb") 
 			|| strcmp2(classname, "tf_projectile_spellbats")

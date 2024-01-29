@@ -53,6 +53,8 @@ bool g_bRoundEnding;
 float g_flWaitRestartTime;
 int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
+float g_flAutoReloadTime;
+bool g_bChangeDetected;
 
 int g_iTotalEnemiesKilled;
 int g_iTotalBossesKilled;
@@ -263,7 +265,6 @@ ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
 ConVar g_cvDebugShowObjectSpawns;
-ConVar g_cvAutoReloadPlugin;
 
 // Cookies
 Cookie g_coMusicEnabled;
@@ -506,7 +507,7 @@ void LoadGameData()
 	{
 		LogError("[DHooks] Failed to create detour for CObjectSentrygun::Attack");
 	}
-
+	
 	g_hSDKHandleRageGain = DHookCreateFromConf(gamedata, "HandleRageGain");
 	if (!g_hSDKHandleRageGain || !DHookEnableDetour(g_hSDKHandleRageGain, false, DHook_HandleRageGain))
 	{
@@ -550,7 +551,7 @@ public void OnMapStart()
 	// This was a reload map change (refresh so any newly added plugins can load)
 	if (g_bPluginReloading)
 	{
-		InsertServerCommand("sm plugins reload rf2");
+		InsertServerCommand("sm plugins load_unlock; sm plugins reload rf2");
 		return;
 	}
 	
@@ -674,10 +675,9 @@ public void OnMapStart()
 				g_flWaitRestartTime = GetTickedTime() + g_cvGameResetTime.FloatValue;
 			}
 		}
-		else if (g_cvAutoReloadPlugin.BoolValue)
-		{
-			g_flNextAutoReloadCheckTime = GetTickedTime()+2.0;
-		}
+		
+		if (!g_bChangeDetected)
+			g_flNextAutoReloadCheckTime = GetTickedTime()+1.0;
 	}
 	else
 	{
@@ -802,6 +802,7 @@ void CleanUp()
 	g_bWaitingForPlayers = false;
 	g_bRoundEnding = false;
 	g_flNextAutoReloadCheckTime = 0.0;
+	g_flAutoReloadTime = 0.0;
 	g_hPlayerTimer = null;
 	g_hHudTimer = null;
 	g_hDifficultyTimer = null;
@@ -1030,7 +1031,7 @@ public void OnClientPostAdminCheck(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		if (g_bWaitingForPlayers && !GetCookieBool(client, g_coStayInSpecOnJoin) && GetTotalHumans(false) > 1)
+		if (g_bWaitingForPlayers && !GetCookieBool(client, g_coStayInSpecOnJoin))
 			ChangeClientTeam(client, GetRandomInt(2, 3));
 		
 		char auth[MAX_AUTHID_LENGTH];
@@ -1475,7 +1476,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	
 	if (g_bWaitingForPlayers)
 	{
-		PrintHintText(client, "Once everyone is connected, you can skip waiting for players with /rf2_skipwait");
+		CreateTimer(1.0, Timer_SkipWaitHint, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		return Plugin_Continue;
 	}
 	
@@ -1569,6 +1570,15 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		}
 	}
 
+	return Plugin_Continue;
+}
+
+public Action Timer_SkipWaitHint(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Continue;
+	
+	PrintHintText(client, "If everyone is connected, you can skip Waiting For Players with the /rf2_skipwait command.");
 	return Plugin_Continue;
 }
 
@@ -2366,7 +2376,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
 	
-	if (GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE)
+	if (GetCurrentTeleporter().IsValid() && GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE)
 		duration *= 0.8;
 	
 	duration = fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue);
@@ -3590,20 +3600,36 @@ public void OnGameFrame()
 			ReloadPlugin(true);
 		}
 		
-		if (!g_bGameInitialized && !g_bRoundActive && g_flNextAutoReloadCheckTime > 0.0 && GetTickedTime() >= g_flNextAutoReloadCheckTime)
+		if (g_flNextAutoReloadCheckTime > 0.0 && GetTickedTime() >= g_flNextAutoReloadCheckTime)
 		{
 			int time = GetPluginModifiedTime();
 			if (time != -1 && time != g_iFileTime)
 			{
-				RF2_PrintToChatAll("A plugin change has been detected, reloading...");
-				PrintToServer("[RF2] A plugin change has been detected, reloading...");
 				g_flNextAutoReloadCheckTime = 0.0;
-				ReloadPlugin(false);
+				
+				// if server is empty, we can just reload now
+				if (!g_bGameInitialized && GetTotalHumans(false) == 0)
+				{
+					LogMessage("A change to the plugin has been detected, reloading in 5 seconds.");
+					g_flAutoReloadTime = GetTickedTime()+5.0;
+				}
+				else
+				{
+					LogMessage("A change to the plugin has been detected, locking plugin loads/reloads.");
+					InsertServerCommand("sm plugins load_lock");
+					RF2_PrintToChatAll("A change to the plugin was detected! The changes will apply after this run ends.");
+				}
 			}
 			else
 			{
-				g_flNextAutoReloadCheckTime = GetTickedTime() + 2.0;
+				g_flNextAutoReloadCheckTime = GetTickedTime() + 1.0;
 			}
+		}
+		
+		if (!g_bGameInitialized && g_flAutoReloadTime > 0.0 && GetTickedTime() >= g_flAutoReloadTime)
+		{
+			g_flAutoReloadTime = 0.0;
+			ReloadPlugin(false);
 		}
 	}
 }
