@@ -41,6 +41,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 			.DefineStringField("m_szWorldText")
 			.DefineFloatField("m_flTextZOffset")
 			.DefineFloatField("m_flTextSize")
+			.DefineEntityField("m_hGlow")
 			.DefineInputFunc("SetActive", InputFuncValueType_Boolean, Input_SetActive)
 		.EndDataMapDesc();
 		g_Factory.Install();
@@ -176,6 +177,19 @@ methodmap RF2_Object_Base < CBaseAnimating
 		text.AcceptInput("SetParent", this.index);
 	}
 	
+	property int GlowEnt
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hGlow");
+		}
+		
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hGlow", value);
+		}
+	}
+	
 	public void HookInteract(OnInteractCallback func)
 	{
 		this.OnInteractForward.AddFunction(INVALID_HANDLE, func);
@@ -184,6 +198,28 @@ methodmap RF2_Object_Base < CBaseAnimating
 	public void SetModel(const char[] model)
 	{
 		SetEntityModel2(this.index, model);
+	}
+	
+	public void SetGlow(bool state)
+	{
+		if (state)
+		{
+			if (!IsValidEntity2(this.GlowEnt))
+			{
+				CBaseEntity glow = CBaseEntity(this.GlowEnt = CreateEntityByName("tf_glow"));
+				char name[128];
+				FormatEx(name, sizeof(name), "rf2object_%i", this.index);
+				this.SetPropString(Prop_Data, "m_iName", name);
+				glow.KeyValue("target", name);
+				glow.KeyValue("targetname", name);
+				glow.Spawn();
+				glow.AcceptInput("Enable");
+			}
+		}
+		else if (IsValidEntity2(this.GlowEnt))
+		{
+			RemoveEntity2(this.GlowEnt);
+		}
 	}
 }
 

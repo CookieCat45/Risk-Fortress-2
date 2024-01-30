@@ -3,6 +3,7 @@
 
 enum
 {
+	// When adding new achievements, DO NOT insert new ones anywhere other than the end of this enum!
 	ACHIEVEMENT_BIGDAMAGE,
 	ACHIEVEMENT_FULLITEMLOG,
 	ACHIEVEMENT_DIE,

@@ -161,6 +161,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	public void Prepare()
 	{
 		this.EventState = TELE_EVENT_PREPARING;
+		this.SetGlow(true);
 		RF2_PrintToChatAll("%t", "TeleporterActivated");
 		StopMusicTrackAll();
 		float pos[3];

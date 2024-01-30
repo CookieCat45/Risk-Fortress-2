@@ -62,12 +62,6 @@ void RefreshClient(int client, bool force=false)
 		g_iPlayerEquipmentItem[client] = Item_Null;
 		g_flPlayerEquipmentItemCooldown[client] = 0.0;
 		SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
-		
-		// Recalculate our item sharing for other players, assuming the game is still going.
-		if (!g_bMapChanging && IsPlayerSurvivor(client))
-		{
-			CalculateSurvivorItemShare();
-		}
 	}
 	
 	if (g_bPlayerHasVampireSapper[client])

@@ -71,6 +71,8 @@ int g_iRF2GameRulesEntRef = INVALID_ENT_REFERENCE;
 // Difficulty
 float g_flSecondsPassed;
 float g_flDifficultyCoeff;
+float g_flRoundStartSeconds;
+bool g_bTeleporterEventReminder;
 
 int g_iMinutesPassed;
 int g_iDifficultyLevel = DIFFICULTY_IRON;
@@ -702,7 +704,7 @@ public void OnConfigsExecuted()
 		{
 			LogMessage("TF2 Move Speed Unlocker plugin not found. It is not required, but is recommended to install.");
 		}
-
+		
 		// Here are ConVars that we don't want changed by configs
 		FindConVar("sv_quota_stringcmdspersecond").SetInt(5000); // So Engie bots don't get kicked
 		FindConVar("mp_teams_unbalance_limit").SetInt(0);
@@ -712,10 +714,10 @@ public void OnConfigsExecuted()
 		FindConVar("mp_forceautoteam").SetBool(true);
 		FindConVar("mp_respawnwavetime").SetFloat(99999.0);
 		FindConVar("tf_dropped_weapon_lifetime").SetInt(0);
+		FindConVar("mp_bonusroundtime").SetInt(15);
 		FindConVar("tf_weapon_criticals").SetBool(false);
 		FindConVar("tf_forced_holiday").SetInt(2);
 		FindConVar("tf_player_movement_restart_freeze").SetBool(false);
-		FindConVar("mp_bonusroundtime").SetInt(20);
 		FindConVar("sm_vote_progress_hintbox").SetBool(true);
 		
 		// no SourceTV
@@ -827,6 +829,7 @@ void CleanUp()
 	g_iThrillerRepeatCount = 0;
 	g_iMetalItemsDropped = 0;
 	g_flWaitRestartTime = 0.0;
+	g_bTeleporterEventReminder = false;
 	
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
@@ -1274,13 +1277,14 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 		ReloadPlugin(true);
 		return Plugin_Continue;
 	}
-
+	
 	if (!g_bGameInitialized)
 	{
 		CreateTimer(2.0, Timer_DifficultyVote, _, TIMER_FLAG_NO_MAPCHANGE);
 		g_bGameInitialized = true;
 	}
-
+	
+	g_flRoundStartSeconds = g_flSecondsPassed;
 	CreateTimer(0.5, Timer_KillEnemyTeam, _, TIMER_FLAG_NO_MAPCHANGE);
 
 	int gamerules = FindEntityByClassname(-1, "tf_gamerules");
@@ -1855,13 +1859,38 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		SetClientName(victim, g_szPlayerOriginalName[victim]);
 	}
 	
+	bool wasSurvivor = IsPlayerSurvivor(victim);
 	RefreshClient(victim);
+	if (wasSurvivor)
+	{
+		// Recalculate our item sharing for other players
+		CalculateSurvivorItemShare();
+	}
+	
 	return action;
 }
 
 public Action Timer_GameOver(Handle timer)
 {
-	ReloadPlugin(true);
+	if (g_iStagesCompleted == 0)
+	{
+		int count;
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) > 1)
+			{
+				ChangeClientTeam(i, TEAM_ENEMY);
+				count++;
+			}
+		}
+		
+		ReloadPlugin((count > 0));
+	}
+	else
+	{
+		ReloadPlugin(true);
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -1869,7 +1898,7 @@ public Action Timer_RespawnPlayerPreRound(Handle timer, int client)
 {
 	if (!g_bWaitingForPlayers || (client = GetClientOfUserId(client)) <= 0)
 		return Plugin_Continue;
-
+	
 	TF2_RespawnPlayer(client);
 	return Plugin_Continue;
 }
@@ -2376,7 +2405,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		return Plugin_Continue;
 	
 	int survivorCount = RF2_GetSurvivorCount();
-	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
+	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.0 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
 	
 	if (GetCurrentTeleporter().IsValid() && GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE)
@@ -2392,10 +2421,10 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	{
 		duration *= 1.25;
 	}
-
+	
 	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
-
-	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + ((survivorCount-1)/3) + RF2_GetSubDifficulty() / 3;
+	
+	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + RF2_GetSubDifficulty() / 3;
 	spawnCount = imax(imin(spawnCount, g_cvEnemyMaxSpawnWaveCount.IntValue), g_cvEnemyMinSpawnWaveCount.IntValue);
 	float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
 	ArrayList respawnArray = CreateArray();
@@ -2406,7 +2435,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		for (int i = 1; i < MAXTF2PLAYERS; i++)
 			g_iEnemySpawnPoints[i] = 0;
 	}
-
+	
 	// grab our next players for the spawn (bots don't get points)
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -2753,14 +2782,33 @@ public Action Timer_Difficulty(Handle timer)
 	{
 		secondsToAdd *= 2.0;
 	}
-
+	
 	g_flSecondsPassed += secondsToAdd;
 	if (g_flSecondsPassed >= 60.0 * (float(g_iMinutesPassed+1)))
 	{
 		float seconds = g_flSecondsPassed - (float(g_iMinutesPassed) * 60.0);
 		g_iMinutesPassed += RoundToFloor(seconds/60.0);
 	}
-
+	
+	float secondsSinceStart = g_flSecondsPassed - g_flRoundStartSeconds;
+	if (secondsSinceStart >= 360.0 && !g_bTeleporterEventReminder && GetCurrentTeleporter().IsValid())
+	{
+		RF2_Object_Teleporter teleporter = GetCurrentTeleporter();
+		if (teleporter.EventState == TELE_EVENT_INACTIVE)
+		{
+			teleporter.SetGlow(true);
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (IsClientInGame(i) && IsPlayerSurvivor(i))
+				{
+					PrintHintText(i, "Remember, as time passes, the strength of the enemy increases. Don't forget to activate the Teleporter!");
+				}
+			}
+		}
+		
+		g_bTeleporterEventReminder = true;
+	}
+	
 	float timeFactor = g_flSecondsPassed / 10.0;
 	float playerFactor = fmax(1.0 + float(RF2_GetSurvivorCount()-1) * 0.12, 1.0);
 	float value = fmax(1.08 - (0.005 * float(RF2_GetSurvivorCount()-1)), 1.02);
