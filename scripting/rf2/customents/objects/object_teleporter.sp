@@ -356,6 +356,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
 			RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
 			PrintHintText(i, "%t", "GotItemReward", name);
+			TriggerAchievement(i, ACHIEVEMENT_TELEPORTER);
 		}
 		
 		RF2_PrintToChatAll("%t", "TeleporterComplete");

@@ -1037,11 +1037,6 @@ public void OnClientPostAdminCheck(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		if (g_bWaitingForPlayers && !GetCookieBool(client, g_coStayInSpecOnJoin) && GetTotalHumans(false) > 1)
-		{
-			CreateTimer(1.0, Timer_ChangeTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-		}
-		
 		char auth[MAX_AUTHID_LENGTH];
 		if (GetClientAuthId(client, AuthId_Steam2, auth, sizeof(auth)))
 		{
@@ -1071,16 +1066,6 @@ public void OnClientPostAdminCheck(int client)
 			}
 		}
 	}
-}
-
-public Action Timer_ChangeTeam(Handle timer, int client)
-{
-	if (!g_bWaitingForPlayers || !(client = GetClientOfUserId(client)) || GetClientTeam(client) > 1 || IsPlayerAlive(client))
-		return Plugin_Continue;
-	
-	ChangeClientTeam(client, GetRandomInt(2, 3));
-	TF2_RespawnPlayer(client);
-	return Plugin_Continue;
 }
 
 public Action Timer_MakeSurvivor(Handle timer, DataPack pack)
@@ -2691,8 +2676,8 @@ public Action Timer_PlayerHud(Handle timer)
 					int maxHealth;
 					int health = GetEntProp(g_iPlayerLastAttackedTank[i], Prop_Data, "m_iHealth");
 					GetEntityClassname(g_iPlayerLastAttackedTank[i], classname, sizeof(classname));
-
-					if (strcmp2(classname, "rf2_tank_boss_badass"))
+					
+					if (IsTankBadass(g_iPlayerLastAttackedTank[i]))
 					{
 						name = "Badass Tank";
 						maxHealth = GetEntProp(g_iPlayerLastAttackedTank[i], Prop_Data, "m_iActualMaxHealth");
@@ -3815,7 +3800,6 @@ public void Hook_CashSpawnPost(int entity)
 	{
 		char classname[16];
 		GetEntityClassname(owner, classname, sizeof(classname));
-
 		// remove cash drops spawned by tank_boss and base_boss
 		if (StrContains(classname, "tank_boss") != -1 || strcmp2(classname, "base_boss"))
 		{
@@ -3901,7 +3885,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		GetEntityClassname(inflictor, inflictorClassname, sizeof(inflictorClassname));
 	}
 	
-	if (inflictor > 0 && damageType & DMG_CRUSH && victimIsClient && (strcmp2(inflictorClassname, "tank_boss") || strcmp2(inflictorClassname, "rf2_tank_boss_badass")))
+	if (inflictor > 0 && damageType & DMG_CRUSH && victimIsClient && IsTank(inflictor))
 	{
 		// block tank crush damage
 		return Plugin_Handled;
@@ -3932,8 +3916,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				damage = fmax(damage, 1.0);
 			}
 		}
-		else if (attackerIsClient && IsPlayerSurvivor(attacker) && g_iPlayerLastAttackedTank[attacker] != victim
-		&& StrContains(classname, "tank_boss") != -1)
+		else if (attackerIsClient && IsPlayerSurvivor(attacker) && g_iPlayerLastAttackedTank[attacker] != victim && IsTank(victim))
 		{
 			g_iPlayerLastAttackedTank[attacker] = victim;
 		}
@@ -4301,7 +4284,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			RequestFrame(RF_ClearViewPunch, victim);
 		}
 	}
-
+	else if (IsTank(victim))
+	{
+		if (IsValidClient(attacker) && GetEntProp(victim, Prop_Data, "m_iHealth") <= 0)
+		{
+			TriggerAchievement(attacker, ACHIEVEMENT_TANKBUSTER);
+		}
+	}
+	
 	if (attackerIsClient)
 	{
 		if (!selfDamage && !invuln)

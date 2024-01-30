@@ -147,6 +147,7 @@ void EndTankDestructionMode()
 		GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
 		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
 		PrintHintText(i, "%t", "GotItemReward", name);
+		TriggerAchievement(i, ACHIEVEMENT_TELEPORTER);
 		
 		char text[256];
 		FormatEx(text, sizeof(text), "%T", "EndLevelCommandReminder", i);
@@ -387,7 +388,6 @@ public void Output_OnTankKilled(const char[] output, int caller, int activator, 
 		GetAngleVectors(ang, vel, NULL_VECTOR, NULL_VECTOR);
 		NormalizeVector(vel, vel);
 		ScaleVector(vel, GetRandomFloat(100.0, 800.0));
-		
 		SpawnCashDrop(totalCash*0.1, pos, GetRandomInt(2, 3), vel);
 	}
 	
@@ -749,4 +749,11 @@ bool IsTankBadass(int entity)
 	static char classname[128];
 	GetEntityClassname(entity, classname, sizeof(classname));
 	return strcmp2(classname, "rf2_tank_boss_badass");
+}
+
+bool IsTank(int entity)
+{
+	static char classname[128];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	return StrContains(classname, "tank_boss") != -1;
 }

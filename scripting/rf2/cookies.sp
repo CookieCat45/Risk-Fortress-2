@@ -33,7 +33,7 @@ void BakeCookies()
 
 public void OnClientCookiesCached(int client)
 {
-	if (!RF2_IsEnabled())
+	if (!RF2_IsEnabled() || IsFakeClient(client))
 		return;
 	
 	char buffer[MAX_COOKIE_LENGTH];
@@ -105,6 +105,25 @@ public void OnClientCookiesCached(int client)
 	{
 		SetCookieInt(client, g_coSurvivorPoints, 0);
 	}
+	
+	if (!g_bRoundActive && !GetCookieBool(client, g_coStayInSpecOnJoin) && GetTotalHumans(false) > 1)
+	{
+		CreateTimer(1.0, Timer_ChangeTeam, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	}
+}
+
+public Action Timer_ChangeTeam(Handle timer, int client)
+{
+	if (g_bRoundActive || !(client = GetClientOfUserId(client)) || IsClientInGame(client) && (IsPlayerAlive(client) || GetClientTeam(client) > 1))
+		return Plugin_Stop;
+	
+	// Client may not be fully in game at this point, wait for them to be
+	if (!IsClientInGame(client))
+		return Plugin_Continue;
+	
+	ChangeClientTeam(client, GetRandomInt(2, 3));
+	TF2_RespawnPlayer(client);
+	return Plugin_Stop;
 }
 
 int GetCookieInt(int client, Cookie cookie)

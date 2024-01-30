@@ -17,6 +17,8 @@ enum
 	ACHIEVEMENT_POCKETMEDIC,
 	ACHIEVEMENT_SENTRIES,
 	ACHIEVEMENT_BADMAGIC,
+	ACHIEVEMENT_TELEPORTER,
+	ACHIEVEMENT_TANKBUSTER,
 	MAX_ACHIEVEMENTS,
 }
 
@@ -77,8 +79,10 @@ int GetAchievementGoal(int achievement)
 		case ACHIEVEMENT_POCKETMEDIC: return 30;
 		
 		case ACHIEVEMENT_DIE100, ACHIEVEMENT_SAXTON: return 100;
-
+		
 		case ACHIEVEMENT_MARKETGARDEN, ACHIEVEMENT_GOOMBA, ACHIEVEMENT_BADMAGIC: return 10;
+		
+		case ACHIEVEMENT_TANKBUSTER: return 200;
 	}
 	
 	return 1;
@@ -125,6 +129,8 @@ int GetAchievementInternalName(int achievement, char[] buffer, int size)
 		case ACHIEVEMENT_POCKETMEDIC: return strcopy(buffer, size, "ACHIEVEMENT_POCKETMEDIC");
 		case ACHIEVEMENT_SENTRIES: return strcopy(buffer, size, "ACHIEVEMENT_SENTRIES");
 		case ACHIEVEMENT_BADMAGIC: return strcopy(buffer, size, "ACHIEVEMENT_BADMAGIC");
+		case ACHIEVEMENT_TELEPORTER: return strcopy(buffer, size, "ACHIEVEMENT_TELEPORTER");
+		case ACHIEVEMENT_TANKBUSTER: return strcopy(buffer, size, "ACHIEVEMENT_TANKBUSTER");
 	}
 	
 	return 0;

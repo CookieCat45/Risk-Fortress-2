@@ -60,6 +60,14 @@
 	{
 		"en"	"Bad Wizard"
 	}
+	"ACHIEVEMENT_TELEPORTER"
+	{
+		"en"	"First Steps"
+	}
+	"ACHIEVEMENT_TANKBUSTER"
+	{
+		"en"	"Tank Buster"
+	}
 	
 	//
 	// Descriptions
@@ -120,5 +128,13 @@
 	"ACHIEVEMENT_BADMAGIC_DESC"
 	{
 		"en"	"Using the Spellbook Magazine, cast 10 backfiring spells."
+	}
+	"ACHIEVEMENT_TELEPORTER_DESC"
+	{
+		"en"	"Survive the Teleporter event."
+	}
+	"ACHIEVEMENT_TANKBUSTER_DESC"
+	{
+		"en"	"Destroy 200 tanks."
 	}
 }
