@@ -1265,7 +1265,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 {
 	if (!RF2_IsEnabled() || g_bWaitingForPlayers)
 		return Plugin_Continue;
-
+	
 	g_bRoundActive = true;
 	g_bGracePeriod = true;
 	g_bRoundEnding = false;
@@ -1274,7 +1274,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 		g_bRoundActive = false;
 		g_bGracePeriod = false;
 		PrintToServer("%T", "NoSurvivorsSpawned", LANG_SERVER);
-		ReloadPlugin(true);
+		ReloadPlugin(asBool(g_iStagesCompleted > 0));
 		return Plugin_Continue;
 	}
 	
@@ -1874,23 +1874,20 @@ public Action Timer_GameOver(Handle timer)
 {
 	if (g_iStagesCompleted == 0)
 	{
-		int count;
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) > 1)
-			{
-				ChangeClientTeam(i, TEAM_ENEMY);
-				count++;
-			}
-		}
-		
-		ReloadPlugin((count > 0));
+		InsertServerCommand("mp_waitingforplayers_restart 1");
+		CreateTimer(1.2, Timer_ReloadPluginNoMapChange, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else
 	{
 		ReloadPlugin(true);
 	}
 	
+	return Plugin_Continue;
+}
+
+public Action Timer_ReloadPluginNoMapChange(Handle timer)
+{
+	ReloadPlugin(false);
 	return Plugin_Continue;
 }
 
@@ -2428,7 +2425,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	spawnCount = imax(imin(spawnCount, g_cvEnemyMaxSpawnWaveCount.IntValue), g_cvEnemyMinSpawnWaveCount.IntValue);
 	float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
 	ArrayList respawnArray = CreateArray();
-
+	
 	// Reset everyone's points
 	if (g_iRespawnWavesCompleted <= 0)
 	{

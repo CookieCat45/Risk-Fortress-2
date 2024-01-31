@@ -233,6 +233,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 		// likely a mid-game join, so get us up to speed
 		int totalInvs = imax(1, GetTotalClaimedInventories());
 		int itemsToGive = (GetTotalSurvivorItems() / totalInvs) - GetTotalSurvivorItems(index);
+		itemsToGive += 6 * g_iStagesCompleted;
 		if (g_bGameInitialized && !DoesClientOwnInventory(client, index) && itemsToGive > 0)
 		{
 			// if we join in a game and our inventory is empty, get us up to speed
@@ -247,6 +248,14 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 				{
 					GiveItem(client, GetRandomItem(79, 20, 1));
 				}
+			}
+			
+			if (g_iLoopCount >= 2 && g_iSavedItem[index][Item_PrideScarf] < itemsToGive/2)
+			{
+				// Give a bunch of health otherwise the player just endlessly dies at this point
+				GiveItem(client, Item_PrideScarf, itemsToGive/2);
+				GiveItem(client, Item_SpiralSallet, 15);
+				GiveItem(client, Item_ClassCrown);
 			}
 			
 			if (g_iSavedEquipmentItem[index] == Item_Null)

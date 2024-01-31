@@ -58,7 +58,7 @@ void GameOver()
 	PrintToServer("[RF2] Game Over!");
 	EmitSoundToAll(SND_GAME_OVER);
 	ForceTeamWin(TEAM_ENEMY);
-	CreateTimer(12.0, Timer_GameOver, _, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(11.0, Timer_GameOver, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 void ReloadPlugin(bool changeMap=true)

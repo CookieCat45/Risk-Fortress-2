@@ -45,8 +45,7 @@ void LoadCommandsAndCvars()
 	char buffer[8];
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
 	g_cvMaxSurvivors = CreateConVar("rf2_max_survivors", buffer, "Max number of Survivors that can be in the game.", FCVAR_NOTIFY, true, 1.0, true, float(MAX_SURVIVORS));
-	IntToString(imax(g_cvMaxSurvivors.IntValue, MaxClients/2), buffer, sizeof(buffer));
-	g_cvMaxHumanPlayers = CreateConVar("rf2_human_player_limit", buffer, "Max number of human players allowed in the server.", FCVAR_NOTIFY, true, 1.0, true, float(MaxClients));
+	g_cvMaxHumanPlayers = CreateConVar("rf2_human_player_limit", "14", "Max number of human players allowed in the server.", FCVAR_NOTIFY, true, 1.0, true, float(MaxClients));
 	
 	g_cvGameResetTime = CreateConVar("rf2_max_wait_time", "600", "If the game has already began, amount of time in seconds to wait for players to join before restarting. 0 to disable.", FCVAR_NOTIFY);
 	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
