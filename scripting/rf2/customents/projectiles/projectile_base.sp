@@ -405,7 +405,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		{
 			DoExplosionEffect(pos, sound);
 		}
-
+		
 		return hitEnts;
 	}
 }

@@ -205,12 +205,9 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		RemoveEntity2(this.index);
 	}
 	
+	/*
 	public bool IsLOSClearFromTarget(int target, bool checkGlass = true)
 	{
-		if (!IsValidEntity2(target))
-		{
-			return false;
-		}
 		int traceEnt;
 		float eyePos[3], targetPos[3];
 		this.WorldSpaceCenter(eyePos);
@@ -239,6 +236,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		
 		return visible;
 	}
+	*/
 }
 
 void SentryBuster_OnMapStart()
@@ -281,13 +279,10 @@ static void OnCreate(RF2_SentryBuster buster)
 	buster.SetProp(Prop_Data, "m_iTeamNum", TEAM_ENEMY);
 	buster.SetProp(Prop_Send, "m_nSkin", 1);
 	
-	EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
-	EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
-	
 	npc.flStepSize = 18.0;
 	npc.flGravity = 800.0;
 	npc.flAcceleration = 2000.0;
-	npc.flJumpHeight = 85.0;
+	npc.flJumpHeight = 150.0;
 	npc.flWalkSpeed = 440.0;
 	npc.flRunSpeed = 440.0;
 	npc.flDeathDropHeight = 2000.0;
@@ -305,10 +300,12 @@ static void OnCreate(RF2_SentryBuster buster)
 	{
 		SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER");
 	}
-
+	
 	delete playerList;
 	buster.Spawn();
 	buster.Activate();
+	npc.SetBodyMins(PLAYER_MINS);
+	npc.SetBodyMaxs(PLAYER_MAXS);
 }
 
 static void OnRemove(RF2_SentryBuster buster)
@@ -383,9 +380,15 @@ void DoSentryBusterWave()
 	
 	for (int i = 0; i < sentryList.Length; i++)
 	{
-		if (!RF2_SentryBuster.Create(sentryList.Get(i)).IsValid())
+		RF2_SentryBuster buster = RF2_SentryBuster.Create(sentryList.Get(i));
+		if (!buster.IsValid())
 		{
 			RequestFrame(RF_BusterSpawnRetry, EntIndexToEntRef(sentryList.Get(i)));
+		}
+		else
+		{
+			EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
+			EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
 		}
 	}
 	
@@ -411,9 +414,15 @@ public void RF_BusterSpawnRetry(int sentry)
 	if (IsStageCleared() || (sentry = EntRefToEntIndex(sentry)) == INVALID_ENT_REFERENCE)
 		return;
 	
-	if (!RF2_SentryBuster.Create(sentry).IsValid())
+	RF2_SentryBuster buster = RF2_SentryBuster.Create(sentry);
+	if (!buster.IsValid())
 	{
-		RequestFrame(RF_BusterSpawnRetry, sentry);
+		RequestFrame(RF_BusterSpawnRetry, EntIndexToEntRef(sentry));
+	}
+	else
+	{
+		EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
+		EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
 	}
 }
 

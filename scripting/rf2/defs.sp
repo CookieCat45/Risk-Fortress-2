@@ -288,3 +288,13 @@ enum // ParticleAttachment_t
 	PATTACH_WORLDORIGIN,			// Used for control points that don't attach to an entity
 	PATTACH_ROOTBONE_FOLLOW,		// Create at the root bone of the entity, and update to follow
 };
+
+enum // Move collide types
+{
+	MOVECOLLIDE_DEFAULT,
+	MOVECOLLIDE_FLY_BOUNCE, // Entity bounces, reflects, based on elasticity of surface and object - applies friction (adjust velocity) (Used by item_currencypack)
+	MOVECOLLIDE_FLY_CUSTOM, // ENTITY:Touch will modify the velocity however it likes
+	MOVECOLLIDE_FLY_SLIDE // Entity slides along surfaces (no bounce) - applies friciton (adjusts velocity)
+};
+
+#define SF_NORESPAWN (1 << 30)

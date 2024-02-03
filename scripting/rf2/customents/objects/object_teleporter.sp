@@ -369,6 +369,25 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		{
 			gamerules.FireOutput("OnTeleporterEventComplete");
 		}
+		
+		int boss = MaxClients+1;
+		while ((boss = FindEntityByClassname(boss, "headless_hatman")) != -1)
+		{
+			// HHH team number is 0, set to something else so he actually takes damage and dies
+			SetEntProp(boss, Prop_Data, "m_iTeamNum", 1);
+			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
+			SDKHooks_TakeDamage2(boss, 0, 0, 32000.0, DMG_PREVENT_PHYSICS_FORCE);
+		}
+		
+		boss = MaxClients+1;
+		while ((boss = FindEntityByClassname(boss, "eyeball_boss")) != -1)
+		{
+			if (GetEntProp(boss, Prop_Data, "m_iTeamNum") != 5)
+				continue;
+			
+			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
+			SDKHooks_TakeDamage2(boss, 0, 0, 32000.0, DMG_PREVENT_PHYSICS_FORCE);
+		}
 	}
 }
 
@@ -564,7 +583,7 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 public Action Timer_DelayHalloweenBossSpawn(Handle timer, int entity)
 {
 	DispatchSpawn(entity);
-	int health = 3000 + (RF2_GetEnemyLevel() * 500);
+	int health = 3000 + (RF2_GetEnemyLevel() * 250);
 	SetEntProp(entity, Prop_Data, "m_iMaxHealth", health);
 	SetEntProp(entity, Prop_Data, "m_iHealth", health);
 	return Plugin_Continue;

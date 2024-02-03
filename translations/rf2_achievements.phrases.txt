@@ -68,6 +68,14 @@
 	{
 		"en"	"Tank Buster"
 	}
+	"ACHIEVEMENT_DAMAGECAP"
+	{
+		"en"	"Why Is It Even 16-Bit?"
+	}
+	"ACHIEVEMENT_FIRERATECAP"
+	{
+		"en"	"Cracked Shooter"
+	}
 	
 	//
 	// Descriptions
@@ -136,5 +144,13 @@
 	"ACHIEVEMENT_TANKBUSTER_DESC"
 	{
 		"en"	"Destroy 200 tanks."
+	}
+	"ACHIEVEMENT_DAMAGECAP_DESC"
+	{
+		"en"	"As a Survivor, deal the maximum possible damage in TF2 in a single hit."
+	}
+	"ACHIEVEMENT_FIRERATECAP_DESC"
+	{
+		"en"	"As a Survivor, reach the maximum possible firing speed on any ranged weapon."
 	}
 }

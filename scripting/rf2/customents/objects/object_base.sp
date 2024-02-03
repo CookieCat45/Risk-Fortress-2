@@ -206,12 +206,17 @@ methodmap RF2_Object_Base < CBaseAnimating
 		{
 			if (!IsValidEntity2(this.GlowEnt))
 			{
-				CBaseEntity glow = CBaseEntity(this.GlowEnt = CreateEntityByName("tf_glow"));
+				this.GlowEnt = CreateEntityByName("tf_glow");
+				CBaseEntity glow = CBaseEntity(this.GlowEnt);
 				char name[128];
 				FormatEx(name, sizeof(name), "rf2object_%i", this.index);
 				this.SetPropString(Prop_Data, "m_iName", name);
 				glow.KeyValue("target", name);
-				glow.KeyValue("targetname", name);
+				SetVariantColor({255, 255, 255, 255});
+				glow.AcceptInput("SetGlowColor");
+				float pos[3];
+				this.GetAbsOrigin(pos);
+				glow.Teleport(pos);
 				glow.Spawn();
 				glow.AcceptInput("Enable");
 			}

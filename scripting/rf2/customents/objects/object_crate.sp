@@ -188,6 +188,21 @@ RF2_Object_Crate SpawnCrate(int type, const float pos[3])
 	return crate;
 }
 
+void Crate_OnMapStart()
+{
+	PrecacheModel2(MODEL_CRATE, true);
+	PrecacheModel2(MODEL_CRATE_STRANGE, true);
+	PrecacheModel2(MODEL_CRATE_HAUNTED, true);
+	PrecacheModel2(MODEL_CRATE_COLLECTOR, true);
+	AddModelToDownloadsTable(MODEL_CRATE);
+}
+
+static void OnCreate(RF2_Object_Crate crate)
+{
+	SDKHook(crate.index, SDKHook_OnTakeDamage, Hook_OnCrateHit);
+	SDKHook(crate.index, SDKHook_SpawnPost, OnSpawnPost);
+}
+
 static void OnSpawnPost(int entity)
 {
 	// Change bounding box size to fix exploit where hiding inside some objects make TFBots unable to see you
@@ -218,23 +233,6 @@ static void OnSpawnPost(int entity)
 			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {30.0, 30.0, 45.0});
 		}
 	}
-	
-	
-}
-
-void Crate_OnMapStart()
-{
-	PrecacheModel2(MODEL_CRATE, true);
-	PrecacheModel2(MODEL_CRATE_STRANGE, true);
-	PrecacheModel2(MODEL_CRATE_HAUNTED, true);
-	PrecacheModel2(MODEL_CRATE_COLLECTOR, true);
-	AddModelToDownloadsTable(MODEL_CRATE);
-}
-
-static void OnCreate(RF2_Object_Crate crate)
-{
-	SDKHook(crate.index, SDKHook_OnTakeDamage, Hook_OnCrateHit);
-	SDKHook(crate.index, SDKHook_SpawnPost, OnSpawnPost);
 }
 
 public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, float damageForce[3], float damagePosition[3], int damageCustom)

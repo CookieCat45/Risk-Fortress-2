@@ -6,16 +6,20 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define BASE_NEXT_LEVEL_XP 150.0
+
 int g_iSurvivorCount = 1;
 int g_iSurvivorBaseHealth[TF_CLASSES];
 int g_iSavedItem[MAX_SURVIVORS][MAX_ITEMS];
 int g_iSavedLevel[MAX_SURVIVORS] = {1, ...};
 int g_iSavedEquipmentItem[MAX_SURVIVORS];
 int g_iSavedHauntedKeys[MAX_SURVIVORS];
+int g_iSurvivorGivenItems[MAX_SURVIVORS];
 
 float g_flSurvivorMaxSpeed[TF_CLASSES];
 float g_flSavedXP[MAX_SURVIVORS];
-float g_flSavedNextLevelXP[MAX_SURVIVORS] = {150.0, ...};
+float g_flTotalXP[MAX_SURVIVORS];
+float g_flSavedNextLevelXP[MAX_SURVIVORS] = {BASE_NEXT_LEVEL_XP, ...};
 
 char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
 bool g_bSurvivorInventoryClaimed[MAX_SURVIVORS];
@@ -105,7 +109,7 @@ bool CreateSurvivors()
 	bool indexTaken[MAX_SURVIVORS];
 	int survivorCount, client, index;
 	char steamId[MAX_AUTHID_LENGTH];
-	
+
 	for (int i = 0; i < survivorList.Length; i++)
 	{
 		client = survivorList.Get(i);
@@ -228,21 +232,32 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 5.0);
 	SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);
 	
+	char authId[MAX_AUTHID_LENGTH];
+	bool hasId = GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId));
+	bool wasSurvivor = hasId && g_hSurvivorPlayers.FindString(authId) != -1;
 	if (loadInventory)
 	{
 		// likely a mid-game join, so get us up to speed
 		int totalInvs = imax(1, GetTotalClaimedInventories());
 		int itemsToGive = (GetTotalSurvivorItems() / totalInvs) - GetTotalSurvivorItems(index);
-		itemsToGive += 6 * g_iStagesCompleted;
-		if (g_bGameInitialized && !DoesClientOwnInventory(client, index) && itemsToGive > 0)
+		itemsToGive += 3 * g_iStagesCompleted;
+		const int collectorLimit = 10;
+		int collectorItems;
+		itemsToGive -= g_iSurvivorGivenItems[index];
+		if (g_bGameInitialized && hasId && !wasSurvivor && itemsToGive > 0 && !DoesClientOwnInventory(client, index))
 		{
 			// if we join in a game and our inventory is empty, get us up to speed
-			g_iPlayerLevel[client] = GetHighestSurvivorLevel();
+			float highestXp = GetHighestSurvivorXP();
+			g_iPlayerLevel[client] = 1;
+			g_flPlayerXP[client] = 0.0;
+			g_flPlayerNextLevelXP[client] = BASE_NEXT_LEVEL_XP;
+			UpdatePlayerXP(client, highestXp);
 			for (int i = 1; i <= itemsToGive; i++)
 			{
-				if (GetRandomInt(1, 10) == 1)
+				if (collectorItems < collectorLimit && GetRandomInt(1, 10) == 1)
 				{
 					GiveItem(client, GetRandomCollectorItem(class));
+					collectorItems++;
 				}
 				else
 				{
@@ -250,11 +265,11 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 				}
 			}
 			
-			if (g_iLoopCount >= 2 && g_iSavedItem[index][Item_PrideScarf] < itemsToGive/2)
+			if (g_iLoopCount >= 2 && g_iSavedItem[index][Item_PrideScarf] < itemsToGive/3)
 			{
 				// Give a bunch of health otherwise the player just endlessly dies at this point
-				GiveItem(client, Item_PrideScarf, itemsToGive/2);
-				GiveItem(client, Item_SpiralSallet, 15);
+				GiveItem(client, Item_PrideScarf, imax((itemsToGive/3)-g_iSavedItem[index][Item_PrideScarf], 0));
+				GiveItem(client, Item_SpiralSallet, 10-imin(g_iSavedItem[index][Item_SpiralSallet], 10));
 				GiveItem(client, Item_ClassCrown);
 			}
 			
@@ -265,6 +280,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 			
 			// save now so it actually keeps our items
 			SaveSurvivorInventory(client, index);
+			g_iSurvivorGivenItems[index] += itemsToGive;
 		}
 		
 		LoadSurvivorInventory(client, index);
@@ -280,6 +296,11 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 		}
 	}
 	
+	if (hasId && g_hSurvivorPlayers.FindString(authId) == -1)
+	{
+		g_hSurvivorPlayers.PushString(authId);
+	}
+
 	if (!IsFakeClient(client) && !GetCookieBool(client, g_coTutorialSurvivor))
 	{
 		CreateTimer(1.0, Timer_SurvivorTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
@@ -480,16 +501,16 @@ int GetClientOwnedInventory(int client)
 	return -1;
 }
 
-int GetHighestSurvivorLevel()
+float GetHighestSurvivorXP()
 {
-	int highest = 1;
+	float highest;
 	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
 	{
-		if (g_iSavedLevel[i] <= 1)
+		if (g_flTotalXP[i] <= 0.0)
 			continue;
 	
-		if (highest <= 1 || g_iSavedLevel[i] > highest)
-			highest = g_iSavedLevel[i];
+		if (highest <= 1 || g_flTotalXP[i] > highest)
+			highest = g_flTotalXP[i];
 	}
 	
 	return highest;
@@ -625,6 +646,8 @@ void UpdatePlayerXP(int client, float xpAmount=0.0)
 			g_flPlayerXP[client] = xpRemaining;
 		}
 	}
+	
+	g_flTotalXP[RF2_GetSurvivorIndex(client)] += xpAmount;
 }
 
 void PlayerLevelUp(int client)

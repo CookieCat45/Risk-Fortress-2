@@ -24,6 +24,11 @@
 				"linux"		"168"
 				"windows"	"167"
 			}
+			"ILocomotion::ShouldCollideWith"
+			{
+				"linux"		"101"
+				"windows"	"100"
+			}
 		}
 		"Signatures"
 		{

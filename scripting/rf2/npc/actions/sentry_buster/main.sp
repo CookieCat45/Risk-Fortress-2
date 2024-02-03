@@ -69,9 +69,11 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 			target = owner;
 		}
 	}
-
+	
 	GetEntPos(target, targetPos);
-	if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) && actor.IsLOSClearFromTarget(target))
+	IVision vision = actor.MyNextBotPointer().GetVisionInterface();
+	if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) 
+		&& vision.IsLineOfSightClearToEntity(target))
 	{
 		return action.ChangeTo(RF2_SentryBusterDetonateAction(), "KABOOM");
 	}
@@ -81,18 +83,29 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	path.ComputeToPos(bot, targetPos);
 	path.Update(bot);
 	loco.Run();
-	
-	if (loco.IsStuck())
+	bool jumping = loco.IsClimbingOrJumping();
+	if (!jumping)
 	{
-		actor.RepathAttempts++;
-		if (actor.RepathAttempts >= 20)
-		{
-			loco.Jump();
-		}
-		
-		if (actor.RepathAttempts >= 60 && !loco.IsClimbingOrJumping())
+		actor.BaseNpc.flGravity = 800.0;
+	}
+	
+	if (loco.GetGroundSpeed() <= 85.0 && DistBetween(actor.index, target) <= g_cvSuicideBombRange.FloatValue 
+		|| loco.IsStuck())
+	{
+		int attempts = actor.RepathAttempts;
+		if (attempts >= 60)
 		{
 			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "Fuck we're stuck!");
+		}
+		else if (attempts >= 20 && !jumping)
+		{
+			loco.Jump();
+			actor.BaseNpc.flGravity = 400.0;
+			actor.RepathAttempts += 30;
+		}
+		else if (attempts < 20)
+		{
+			actor.RepathAttempts++;
 		}
 	}
 	else
@@ -105,10 +118,10 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 		action.TalkerTime = GetGameTime() + 4.0;
 		EmitGameSoundToAll("MVM.SentryBusterIntro", actor.index);
 	}
-
+	
 	bool onGround = (actor.GetFlags() & FL_ONGROUND) != 0;
 	float speed = loco.GetGroundSpeed();
-
+	
 	int sequence = actor.GetProp(Prop_Send, "m_nSequence");
 
 	if (speed < 0.01)
@@ -124,7 +137,7 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 		int runSequence = actor.GetProp(Prop_Data, "m_runSequence");
 		int airSequence = actor.GetProp(Prop_Data, "m_airSequence");
 
-		if (!onGround)
+		if (!onGround && !jumping)
 		{
 			if (airSequence != -1 && sequence != airSequence)
 			{

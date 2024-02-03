@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.4b"
+#define PLUGIN_VERSION "0.4.1b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -147,7 +147,6 @@ int g_iPlayerFootstepType[MAXTF2PLAYERS] = {FootstepType_Normal, ...};
 int g_iPlayerFireRateStacks[MAXTF2PLAYERS];
 int g_iPlayerAirDashCounter[MAXTF2PLAYERS];
 int g_iPlayerLastAttackedTank[MAXTF2PLAYERS] = {-1, ...};
-int g_iPlayerKillfeedItem[MAXTF2PLAYERS];
 int g_iItemsTaken[MAX_SURVIVORS];
 int g_iItemLimit[MAX_SURVIVORS];
 int g_iPlayerVampireSapperAttacker[MAXTF2PLAYERS] = {-1, ...};
@@ -161,10 +160,12 @@ ArrayList g_hPlayerExtraSentryList[MAXTF2PLAYERS];
 ArrayList g_hCachedPlayerSounds;
 ArrayList g_hInvalidPlayerSounds;
 StringMap g_hCrashedPlayerSteamIDs;
+ArrayList g_hSurvivorPlayers; // players who became Survivor at least once
 Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
 
 // Entities
 int g_iItemDamageProc[MAX_EDICTS];
+int g_iLastItemDamageProc[MAX_EDICTS];
 int g_iCashBombSize[MAX_EDICTS];
 
 bool g_bDontDamageOwner[MAX_EDICTS];
@@ -201,6 +202,7 @@ DHookSetup g_hSDKHandleRageGain;
 DynamicHook g_hSDKTakeHealth;
 DynamicHook g_hSDKStartUpgrading;
 DynamicHook g_hSDKVPhysicsCollision;
+DynamicHook g_hSDKShouldCollideWith;
 
 // Forwards
 GlobalForward g_fwTeleEventStart;
@@ -361,6 +363,7 @@ public void OnPluginStart()
 	LoadTranslations("rf2_achievements.phrases");
 	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
+	g_hSurvivorPlayers = new ArrayList(MAX_AUTHID_LENGTH);
 	g_iFileTime = GetPluginModifiedTime();
 }
 
@@ -457,6 +460,18 @@ void LoadGameData()
 		LogError("[DHooks] Failed to create virtual hook for CPhysicsProp::VPhysicsCollision");
 	}
 	
+	// ILocomotion::ShouldCollideWith
+	offset = GameConfGetOffset(gamedata, "ILocomotion::ShouldCollideWith");
+	g_hSDKShouldCollideWith = DHookCreate(offset, HookType_Raw, ReturnType_Bool, ThisPointer_Address);
+	if (g_hSDKShouldCollideWith)
+	{
+		DHookAddParam(g_hSDKShouldCollideWith, HookParamType_CBaseEntity); // colliding entity
+	}
+	else
+	{
+		LogError("[DHooks] Failed to create virtual hook for ILocomotion::ShouldCollideWith");
+	}
+	
 	// CBaseEntity::Intersects ---------------------------------------------------------------------------------------------------------------
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CBaseEntity::Intersects");
@@ -494,7 +509,7 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CBaseObject::DoQuickBuild");
 	}
-
+	
 	// CBaseObject::StartUpgrading -----------------------------------------------------------------------------------------------------------
 	offset = GameConfGetOffset(gamedata, "CBaseObject::StartUpgrading");
 	g_hSDKStartUpgrading = DHookCreate(offset, HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
@@ -581,6 +596,7 @@ public void OnMapStart()
 				if (IsClientInGame(i))
 				{
 					OnClientPutInServer(i);
+					OnClientPostAdminCheck(i);
 				}
 			}
 		}
@@ -624,7 +640,7 @@ public void OnMapStart()
 		// Round events
 		HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Pre);
 		HookEvent("teamplay_round_win", OnRoundEnd, EventHookMode_Post);
-
+		
 		// Player events
 		HookEvent("post_inventory_application", OnPostInventoryApplication, EventHookMode_Post);
 		HookEvent("player_death", OnPlayerDeath, EventHookMode_Pre);
@@ -1634,30 +1650,27 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int weaponId = event.GetInt("weaponid");
 	int damageType = event.GetInt("damagebits");
 	CritType critType = view_as<CritType>(event.GetInt("crit_type"));
-
+	
 	// No dominations
 	deathFlags &= ~(TF_DEATHFLAG_KILLERDOMINATION | TF_DEATHFLAG_ASSISTERDOMINATION | TF_DEATHFLAG_KILLERREVENGE | TF_DEATHFLAG_ASSISTERREVENGE);
 	event.SetInt("death_flags", deathFlags);
 	int victimTeam = GetClientTeam(victim);
 	Action action = Plugin_Continue;
 	
+	int itemProc;
+	if (inflictor > MaxClients)
+	{
+		itemProc = GetLastEntItemProc(inflictor);
+	}
+	else
+	{
+		// Reset next frame in case we have multiple kills at once
+		itemProc = GetLastEntItemProc(attacker);
+	}
+
 	if (attacker > 0)
 	{
 		DoItemDeathEffects(attacker, victim, damageType, critType);
-		
-		// Kill icons
-		int itemProc;
-		if (inflictor > MaxClients)
-		{
-			itemProc = GetEntItemProc(inflictor);
-		}
-		else
-		{
-			// Reset next frame in case we have multiple kills at once
-			itemProc = g_iPlayerKillfeedItem[attacker];
-			RequestFrame(RF_ResetKillfeedItem, attacker);
-		}
-		
 		switch (itemProc)
 		{
 			case ItemDemo_ConjurersCowl, ItemMedic_WeatherMaster: event.SetString("weapon", "spellbook_lightning");
@@ -1708,13 +1721,14 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					RequestFrame(RF_DeleteRagdoll, victim);
 				}
 			}
-
+			
 			cashAmount *= 1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvEnemyCashDropScale.FloatValue);
 			if (attacker > 0 && PlayerHasItem(attacker, Item_BanditsBoots))
 			{
 				cashAmount *= 1.0 + CalcItemMod(attacker, Item_BanditsBoots, 0);
 			}
-
+			
+			pos[2] += 20.0;
 			int cashEntity = SpawnCashDrop(cashAmount, pos, size);
 			if (attacker > 0 && TF2_GetPlayerClass(attacker) == TFClass_Sniper)
 			{
@@ -1738,7 +1752,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				}
 			}
 			
-			if (GetEntItemProc(attacker) == ItemScout_LongFallBoots && IsBoss(victim))
+			if (itemProc == ItemScout_LongFallBoots && IsBoss(victim))
 			{
 				TriggerAchievement(attacker, ACHIEVEMENT_GOOMBA);
 			}
@@ -1900,11 +1914,6 @@ public Action Timer_RespawnPlayerPreRound(Handle timer, int client)
 	return Plugin_Continue;
 }
 
-public void RF_ResetKillfeedItem(int client)
-{
-	g_iPlayerKillfeedItem[client] = Item_Null;
-}
-
 public Action OnPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 {
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
@@ -1940,11 +1949,6 @@ public Action OnPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 				TriggerAchievement(attacker, ACHIEVEMENT_BLOODHOUND);
 			}
 		}
-	}
-	
-	if (IsPlayerSurvivor(attacker) && damage >= 10000.0)
-	{
-		TriggerAchievement(attacker, ACHIEVEMENT_BIGDAMAGE);
 	}
 	
 	return Plugin_Continue;
@@ -3556,24 +3560,30 @@ public void RF_NextPrimaryAttack(int client)
 {
 	if ((client = GetClientOfUserId(client)) == 0)
 		return;
-
+	
 	int weapon;
 	if ((weapon = EntRefToEntIndex(g_iLastFiredWeapon[client])) == INVALID_ENT_REFERENCE)
 		return;
-
+	
 	// Calculate based on the time the weapon was fired at since that was in the last frame.
 	float gameTime = g_flWeaponFireTime[client];
 	float time = GetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack");
 
 	time -= gameTime;
 	time *= GetPlayerFireRateMod(client, weapon);
-
+	
 	// Melee weapons have a swing speed cap
-	if (time < 0.3 && GetPlayerWeaponSlot(client, WeaponSlot_Melee) == weapon)
+	bool melee = (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == weapon);
+	if (time < 0.3 && melee)
 	{
 		time = 0.3;
 	}
-
+	
+	if (!melee && IsPlayerSurvivor(client) && time <= GetTickInterval())
+	{
+		TriggerAchievement(client, ACHIEVEMENT_FIRERATECAP);
+	}
+	
 	SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", gameTime+time);
 }
 
@@ -3686,7 +3696,9 @@ public void OnEntityCreated(int entity, const char[] classname)
 	if (!RF2_IsEnabled() || entity < 0 || entity >= MAX_EDICTS)
 		return;
 	
+	g_flCashValue[entity] = 0.0;
 	g_iItemDamageProc[entity] = Item_Null;
+	g_iLastItemDamageProc[entity] = Item_Null;
 	g_bDontDamageOwner[entity] = false;
 	g_bDontRemoveWearable[entity] = false;
 	g_bItemWearable[entity] = false;
@@ -3726,7 +3738,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 			DHookEntity(g_hSDKStartUpgrading, false, entity, _, DHook_StartUpgrading);
 			DHookEntity(g_hSDKStartUpgrading, true, entity, _, DHook_StartUpgradingPost);
 		}
-
+		
 		SDKHook(entity, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamageAlive);
 		SDKHook(entity, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
 	}
@@ -3734,6 +3746,11 @@ public void OnEntityCreated(int entity, const char[] classname)
 	{
 		SDKHook(entity, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamageAlive);
 		SDKHook(entity, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
+		if (g_hSDKShouldCollideWith && !IsTank(entity))
+		{
+			ILocomotion loco = CBaseEntity(entity).MyNextBotPointer().GetLocomotionInterface();
+			DHookRaw(g_hSDKShouldCollideWith, true, view_as<Address>(loco), _, DHook_ShouldCollideWith);
+		}
 	}
 }
 
@@ -3741,7 +3758,7 @@ public void OnEntityDestroyed(int entity)
 {
 	if (!RF2_IsEnabled() || entity < 0 || entity >= MAX_EDICTS)
 		return;
-
+	
 	if (g_bCashBomb[entity])
 	{
 		float pos[3];
@@ -3762,6 +3779,20 @@ public void OnEntityDestroyed(int entity)
 			g_hPlayerExtraSentryList[builder].Erase(index);
 		}
 	}
+	
+	g_flCashValue[entity] = 0.0;
+}
+
+public MRESReturn DHook_ShouldCollideWith(Address loco, DHookReturn returnVal, DHookParam params)
+{
+	int client = params.Get(1);
+	if (client > 0 && client <= MaxClients)
+	{
+		returnVal.Value = false;
+		return MRES_Supercede;
+	}
+	
+	return MRES_Ignored;
 }
 
 bool IsEntityBlacklisted(const char[] classname)
@@ -3896,6 +3927,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	}
 	
 	float originalDamage = damage;
+	int originalDamageType = damageType;
 	bool ignoreResist;
 	if (attackerIsClient && weapon > -1)
 	{
@@ -3985,31 +4017,35 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			proc *= 0.5;
 		}
-		else if (strcmp2(inflictorClassname, "tf_projectile_rocket") || strcmp2(inflictorClassname, "tf_projectile_energy_ball") || strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
+		else if (inflictor > 0)
 		{
-			int offset = FindSendPropInfo("CTFProjectile_Rocket", "m_hLauncher") + 16;
-			int enemy = GetEntDataEnt2(inflictor, offset); // m_hEnemy
-			if (enemy != victim) // enemy == victim means direct damage was dealt, otherwise this is splash
+			if (strcmp2(inflictorClassname, "tf_projectile_rocket") || strcmp2(inflictorClassname, "tf_projectile_energy_ball") 
+				|| strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
+			{
+				int offset = FindSendPropInfo("CTFProjectile_Rocket", "m_hLauncher") + 16;
+				int enemy = GetEntDataEnt2(inflictor, offset); // m_hEnemy
+				if (enemy != victim) // enemy == victim means direct damage was dealt, otherwise this is splash
+				{
+					proc *= 0.5;
+				}
+			}
+			else if (strcmp2(inflictorClassname, "tf_projectile_pipe"))
+			{
+				int offset = FindSendPropInfo("CTFGrenadePipebombProjectile", "m_bDefensiveBomb") - 4;
+				float directDamage = GetEntDataFloat(inflictor, offset);
+				if (originalDamage < directDamage) // non direct hit
+				{
+					proc *= 0.5;
+				}
+			}
+			else if (strcmp2(inflictorClassname, "tf_projectile_pipe_remote"))
 			{
 				proc *= 0.5;
 			}
-		}
-		else if (strcmp2(inflictorClassname, "tf_projectile_pipe"))
-		{
-			int offset = FindSendPropInfo("CTFGrenadePipebombProjectile", "m_bDefensiveBomb") - 4;
-			float directDamage = GetEntDataFloat(inflictor, offset);
-			if (originalDamage < directDamage) // non direct hit
+			else if (strcmp2(inflictorClassname, "entity_medigun_shield"))
 			{
-				proc *= 0.5;
+				proc *= 0.02; // This thing does damage every damn tick
 			}
-		}
-		else if (strcmp2(inflictorClassname, "tf_projectile_pipe_remote"))
-		{
-			proc *= 0.5;
-		}
-		else if (strcmp2(inflictorClassname, "entity_medigun_shield"))
-		{
-			proc *= 0.02; // This thing does damage every damn tick
 		}
 
 		switch (damageCustom)
@@ -4274,12 +4310,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	}
 	
 	g_flDamageProc = proc; // carry over
-	if (damage != originalDamage)
-	{
-		return Plugin_Changed;
-	}
-
-	return Plugin_Continue;
+	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
+	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;
 }
 
 public void Hook_OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damageType, int weapon,
@@ -4355,10 +4387,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					pos[2] += 30.0;
 					enemyPos[2] += 30.0;
 					GetVectorAnglesTwoPoints(pos, enemyPos, angles);
-
 					float dmg = GetItemMod(Item_Law, 1) + CalcItemMod(attacker, Item_Law, 2, -1);
 					int rocket = ShootProjectile(attacker, "tf_projectile_sentryrocket", pos, angles, rocketSpeed, dmg);
-
 					SetShouldDamageOwner(rocket, false);
 					SetEntItemProc(rocket, Item_Law);
 					EmitSoundToAll(SND_LAW_FIRE, attacker, _, _, _, 0.6);
@@ -4372,6 +4402,19 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				int healAmount = imax(RoundToFloor(damage * CalcItemMod_Hyperbolic(attacker, Item_HorrificHeadsplitter, 0)), 1);
 				HealPlayer(attacker, healAmount, false);
 			}
+			
+			if (IsPlayerSurvivor(attacker))
+			{
+				if (damage >= 10000.0)
+				{
+					TriggerAchievement(attacker, ACHIEVEMENT_BIGDAMAGE);
+				}
+				
+				if (damage >= 32767.0)
+				{
+					TriggerAchievement(attacker, ACHIEVEMENT_DAMAGECAP);
+				}
+			}
 		}
 	}
 }
@@ -4384,13 +4427,15 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	
 	CritType originalCritType = critType;
 	float proc = g_flDamageProc;
+	float originalDamage = damage;
 	if (IsValidClient(attacker) && attacker != victim && inflictor != -1)
 	{
 		bool rolledCrit;
-		int itemProc = GetEntItemProc(inflictor);
+		int attackerProc = GetLastEntItemProc(attacker);
+		int inflictorProc = GetEntItemProc(inflictor);
 		static char classname[128];
 		GetEntityClassname(inflictor, classname, sizeof(classname));
-		bool canCrit = itemProc != ItemSniper_HolyHunter && !(StrContains(classname, "tf_proj") != -1 && HasEntProp(inflictor, Prop_Send, "m_bCritical"));
+		bool canCrit = attackerProc != ItemSniper_HolyHunter && !(StrContains(classname, "tf_proj") != -1 && HasEntProp(inflictor, Prop_Send, "m_bCritical"));
 		
 		// Check for full crits for any damage that isn't against a building and isn't from a weapon.
 		if (weapon < 0 && canCrit && !IsBuilding(victim))
@@ -4420,7 +4465,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			}
 		}
 		
-		if (itemProc == ItemStrange_HandsomeDevil && critType == CritType_MiniCrit)
+		if (inflictorProc == ItemStrange_HandsomeDevil && critType == CritType_MiniCrit)
 		{
 			critType = CritType_Crit;
 		}
@@ -4539,11 +4584,10 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 				}
 			}
 		}
-
-		return Plugin_Changed;
 	}
-
-	return Plugin_Continue;
+	
+	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
+	return damage != originalDamage ? Plugin_Changed : Plugin_Continue;
 }
 
 public Action Timer_ExecutionerBleedCooldown(Handle timer, int client)
@@ -4571,7 +4615,7 @@ public void Hook_WeaponSwitchPost(int client, int weapon)
 			g_bPlayerExtraSentryHint[client] = true;
 		}
 	}
-
+	
 	CalculatePlayerMaxSpeed(client);
 }
 
@@ -4601,6 +4645,9 @@ public void RF_CheckHealthForPocketMedic(int client)
 
 public void RF_ClearViewPunch(int client)
 {
+	if (!IsClientInGame(client))
+		return;
+	
 	SetEntPropVector(client, Prop_Send, "m_vecPunchAngle", {0.0, 0.0, 0.0});
 	SetEntPropVector(client, Prop_Send, "m_vecPunchAngleVel", {0.0, 0.0, 0.0});
 }

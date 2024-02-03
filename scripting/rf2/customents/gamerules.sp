@@ -128,24 +128,24 @@ int SpawnObjects()
 		delete teleporterSpawns;
 	}
 	
-	// now spawn objects
-	int spawnCount = g_cvObjectBaseCount.IntValue * RF2_GetSurvivorCount() + RoundToCeil(g_flDifficultyCoeff / (g_cvSubDifficultyIncrement.FloatValue / 5.0));
-	int maxSpawns = g_cvMaxObjects.IntValue;
-	
-	if (spawnCount > maxSpawns)
-		spawnCount = maxSpawns;
-	
+	// now spawn regular objects
+	int maxSurvivors = g_cvMaxSurvivors.IntValue;
+	int survivorCount = RF2_GetSurvivorCount();
+	float playerMultiplier = 1.0 + (float((survivorCount-1)) * 0.85);
+	int spawnCount = RoundToFloor(g_cvObjectBaseCount.FloatValue * playerMultiplier) + RoundToFloor(g_flDifficultyCoeff / (g_cvSubDifficultyIncrement.FloatValue / 5.0));
+	int maxSpawns = RoundToFloor(g_cvMaxObjects.FloatValue * fmin(1.0, 1.0 - 0.1*float(maxSurvivors-(survivorCount-1))));
+	spawnCount = imin(spawnCount, maxSpawns);
 	int spawns, attempts, nearestObject;
 	float spawnPos[3], nearestPos[3], worldCenter[3], worldMins[3], worldMaxs[3];
 	float spreadDistance = g_cvObjectSpreadDistance.FloatValue;
 	
-	GetWorldCenter(worldCenter);
 	// Need to get the size of the map so we know how far we can spawn objects
 	GetEntPropVector(0, Prop_Send, "m_WorldMins", worldMins);
 	GetEntPropVector(0, Prop_Send, "m_WorldMaxs", worldMaxs);
 	float length = FloatAbs(worldMins[0]) + FloatAbs(worldMaxs[0]);
 	float width = FloatAbs(worldMins[1]) + FloatAbs(worldMaxs[1]);
 	float distance = SquareRoot(length * width);
+	GetWorldCenter(worldCenter);
 	
 	ArrayList objectArray = CreateArray(128);
 	ArrayList crateArray = CreateArray();

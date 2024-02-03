@@ -20,6 +20,8 @@ enum
 	ACHIEVEMENT_BADMAGIC,
 	ACHIEVEMENT_TELEPORTER,
 	ACHIEVEMENT_TANKBUSTER,
+	ACHIEVEMENT_DAMAGECAP,
+	ACHIEVEMENT_FIRERATECAP,
 	MAX_ACHIEVEMENTS,
 }
 
@@ -132,6 +134,8 @@ int GetAchievementInternalName(int achievement, char[] buffer, int size)
 		case ACHIEVEMENT_BADMAGIC: return strcopy(buffer, size, "ACHIEVEMENT_BADMAGIC");
 		case ACHIEVEMENT_TELEPORTER: return strcopy(buffer, size, "ACHIEVEMENT_TELEPORTER");
 		case ACHIEVEMENT_TANKBUSTER: return strcopy(buffer, size, "ACHIEVEMENT_TANKBUSTER");
+		case ACHIEVEMENT_DAMAGECAP: return strcopy(buffer, size, "ACHIEVEMENT_DAMAGECAP");
+		case ACHIEVEMENT_FIRERATECAP: return strcopy(buffer, size, "ACHIEVEMENT_FIRERATECAP");
 	}
 	
 	return 0;

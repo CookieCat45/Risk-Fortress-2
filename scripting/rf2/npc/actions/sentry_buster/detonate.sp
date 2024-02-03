@@ -18,7 +18,7 @@ methodmap RF2_SentryBusterDetonateAction < NextBotAction
 		}
 		return view_as<RF2_SentryBusterDetonateAction>(g_Factory.Create());
 	}
-
+	
 	property float DetonateTime
 	{
 		public get()
@@ -42,7 +42,7 @@ static int OnStart(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor
 		actor.Detonate();
 		return action.Done();
 	}
-
+	
 	actor.ResetSequence(sequence);
 	actor.SetPropFloat(Prop_Data, "m_flCycle", 0.0);
 	actor.SetProp(Prop_Data, "m_takedamage", 0);

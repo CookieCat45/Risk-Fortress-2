@@ -2045,7 +2045,7 @@ public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &
 {
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
-
+	
 	if (PlayerHasItem(attacker, ItemScout_LongFallBoots) && CanUseCollectorItem(attacker, ItemScout_LongFallBoots))
 	{
 		// Goombas by default do the victim's health in damage, let's instead give it a base damage value

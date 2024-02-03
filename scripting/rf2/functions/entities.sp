@@ -249,7 +249,12 @@ void DoExplosionEffect(const float pos[3], bool sound=true)
 	AcceptEntityInput(explosion, "Explode");
 }
 
-int SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]=NULL_VECTOR)
+void SetEntityMoveCollide(int entity, int moveCollide)
+{
+	SetEntProp(entity, Prop_Send, "movecollide", moveCollide);
+}
+
+int SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]={0.0, 0.0, 500.0})
 {
 	char classname[128];
 	switch (size)
@@ -259,25 +264,42 @@ int SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]=NULL_V
 		case 3: classname = "item_currencypack_large";
 		default: classname = "item_currencypack_small";
 	}
-
+	
 	int entity = CreateEntityByName(classname);
 	g_flCashValue[entity] = cashValue;
-
-	SetEntityMoveType(entity, MOVETYPE_FLYGRAVITY);
-	SetEntityGravity(entity, 1.0);
-	TeleportEntity(entity, pos, _, vel);
+	DispatchKeyValueInt(entity, "spawnflags", SF_NORESPAWN);
+	SDKHook(entity, SDKHook_GroundEntChangedPost, Hook_CashGroundEntChangedPost);
+	TeleportEntity(entity, pos);
 	DispatchSpawn(entity);
-
+	SetEntityMoveType(entity, MOVETYPE_FLYGRAVITY);
+	SetEntityMoveCollide(entity, MOVECOLLIDE_FLY_BOUNCE);
+	CBaseEntity(entity).SetAbsVelocity(vel);
+	RequestFrame(RF_CashThinkRate, EntIndexToEntRef(entity));
 	CreateTimer(0.25, Timer_CashMagnet, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	CreateTimer(g_cvCashBurnTime.FloatValue, Timer_DeleteCash, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
 	return entity;
+}
+
+public void Hook_CashGroundEntChangedPost(int entity)
+{
+	SetEntPropEnt(entity, Prop_Data, "m_hGroundEntity", -1);
+	CBaseEntity(entity).RemoveFlag(FL_ONGROUND);
+}
+
+public void RF_CashThinkRate(int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+		return;
+	
+	CBaseEntity(entity).SetNextThink(GetGameTime()); // Fixes laggy movement
+	RequestFrame(RF_CashThinkRate, EntIndexToEntRef(entity));
 }
 
 public Action Timer_DeleteCash(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
 		return Plugin_Continue;
-
+	
 	float pos[3];
 	GetEntPos(entity, pos);
 	TE_TFParticle("mvm_cash_explosion", pos);
@@ -290,24 +312,30 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
 		return Plugin_Stop;
-
-	float pos[3], scoutPos[3];
+	
+	float pos[3], playerPos[3], angles[3], vel[3];
 	GetEntPos(entity, pos);
-
+	
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsPlayerSurvivor(i))
 			continue;
-
-		// Scouts pick up cash in a radius automatically, like in MvM. Though the healing is on an item: the Heart Of Gold.
-		if (TF2_GetPlayerClass(i) == TFClass_Scout)
+		
+		// Scouts pick up cash in a radius automatically, like in MvM.
+		if (PlayerHasItem(i, Item_BanditsBoots))
 		{
-			GetEntPos(i, scoutPos);
-
-			if (GetVectorDistance(pos, scoutPos, true) <= sq(450.0))
+			GetEntPos(i, playerPos);
+			playerPos[2] += 75.0;
+			if (GetVectorDistance(pos, playerPos, true) <= sq(CalcItemMod(i, Item_BanditsBoots, 2)))
 			{
-				EmitSoundToAll(SND_MONEY_PICKUP, entity);
-				PickupCash(i, entity);
+				GetVectorAnglesTwoPoints(pos, playerPos, angles);
+				GetAngleVectors(angles, vel, NULL_VECTOR, NULL_VECTOR);
+				NormalizeVector(vel, vel);
+				ScaleVector(vel, 550.0);
+				SetEntityMoveType(entity, MOVETYPE_FLYGRAVITY);
+				SetEntityMoveCollide(entity, MOVECOLLIDE_FLY_BOUNCE);
+				CBaseEntity(entity).RemoveFlag(FL_ONGROUND);
+				CBaseEntity(entity).SetAbsVelocity(vel);
 			}
 		}
 	}
@@ -473,15 +501,21 @@ int GetParticleEffectIndex(const char[] name)
 void SetEntItemProc(int entity, int item)
 {
 	g_iItemDamageProc[entity] = item;
-	if (IsValidClient(entity) && item != Item_Null)
+	if (item != Item_Null)
 	{
-		g_iPlayerKillfeedItem[entity] = item; // We have to reset our damage proc item, this is for killfeed icons
+		g_iLastItemDamageProc[entity] = item;
 	}
 }
 
 int GetEntItemProc(int entity)
 {
 	return g_iItemDamageProc[entity];
+}
+
+// Returns the last item damage proc that was set on the entity, since GetEntItemProc() commonly gets reset
+int GetLastEntItemProc(int entity)
+{
+	return g_iLastItemDamageProc[entity];
 }
 
 void SetShouldDamageOwner(int entity, bool value)

@@ -234,7 +234,7 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 	
 	int amountHealed = amount;
 	SetEntityHealth(client, health+amount);
-
+	
 	if (!allowOverheal && GetClientHealth(client) > maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
 	{
 		SetEntityHealth(client, allowOverheal ? RoundToFloor(float(maxHealth)*maxOverheal) : maxHealth);
@@ -480,7 +480,7 @@ void CalculatePlayerMiscStats(int client)
 	}
 }
 
-// This is for items, NOT ATTRIBUTES
+// This is for items, it has nothing to do with the attribute
 float GetPlayerFireRateMod(int client, int weapon=-1)
 {
 	float multiplier = 1.0;
@@ -489,7 +489,7 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	{
 		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_MaimLicense, 0);
 	}
-
+	
 	if (PlayerHasItem(client, Item_PointAndShoot) && g_iPlayerFireRateStacks[client] > 0)
 	{
 		multiplier *= (1.0 / (1.0 + (float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1))));
@@ -498,6 +498,11 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	if (PlayerHasItem(client, Item_MaxHead))
 	{
 		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_MaxHead, 2);
+	}
+	
+	if (g_flPlayerReloadBuffDuration[client] > 0.0)
+	{
+		multiplier *= GetItemMod(Item_SaintMark, 3);
 	}
 	
 	if (multiplier < 1.0 && weapon > 0)
@@ -510,7 +515,7 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 			multiplier = Pow(multiplier, penalty);
 		}
 	}
-
+	
 	return multiplier;
 }
 
@@ -925,7 +930,7 @@ float GetPlayerDamageMult(int client)
 	{
 		return 1.0 + (float(GetPlayerLevel(client)-1) * g_cvSurvivorDamageScale.FloatValue);
 	}
-
+	
 	return GetEnemyDamageMult();
 }
 
