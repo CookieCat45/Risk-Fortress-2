@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.4.1b"
+#define PLUGIN_VERSION "0.4.2b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -154,6 +154,7 @@ int g_iPlayerLastScrapMenuItem[MAXTF2PLAYERS];
 int g_iPlayerLastItemMenuItem[MAXTF2PLAYERS];
 int g_iPlayerLastDropMenuItem[MAXTF2PLAYERS];
 int g_iPlayerLastItemLogItem[MAXTF2PLAYERS];
+int g_iPlayerUnusualsUnboxed[MAXTF2PLAYERS];
 
 char g_szPlayerOriginalName[MAXTF2PLAYERS][MAX_NAME_LENGTH];
 ArrayList g_hPlayerExtraSentryList[MAXTF2PLAYERS];
@@ -407,14 +408,14 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CBasePlayer::EquipWearable");
 	}
-
+	
 	// CTFPlayer::CanBuild -------------------------------------------------------------------------------------------------------------------
 	g_hSDKCanBuild = DHookCreateFromConf(gamedata, "CTFPlayer::CanBuild");
 	if (!g_hSDKCanBuild || !DHookEnableDetour(g_hSDKCanBuild, true, DHook_CanBuild))
 	{
 		LogError("[DHooks] Failed to create detour for CTFPlayer::CanBuild");
 	}
-
+	
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFPlayer::TeamFortress_SetSpeed");
 	g_hSDKUpdateSpeed = EndPrepSDKCall();
@@ -565,7 +566,7 @@ public void OnMapStart()
 		g_bConVarsModified = false;
 	}
 	
-	// This was a reload map change (refresh so any newly added plugins can load)
+	// This was a reload map change
 	if (g_bPluginReloading)
 	{
 		InsertServerCommand("sm plugins load_unlock; sm plugins reload rf2");
@@ -577,7 +578,7 @@ public void OnMapStart()
 	char mapName[256], buffer[8];
 	GetCurrentMap(mapName, sizeof(mapName));
 	SplitString(mapName, "_", buffer, sizeof(buffer));
-
+	
 	if (strcmp2(buffer, "rf2", false))
 	{
 		g_bPluginEnabled = true;
@@ -600,7 +601,7 @@ public void OnMapStart()
 				}
 			}
 		}
-
+		
 		if (GetMaxHumanPlayers() < 32)
 		{
 			LogMessage("This server has only %i maxplayers. 32 maxplayers is recommended for Risk Fortress 2.", GetMaxHumanPlayers());
@@ -623,7 +624,7 @@ public void OnMapStart()
 		{
 			maxSpeed.FloatValue = 900.0;
 		}
-
+		
 		// These are ConVars we're OK with being set by server.cfg, but we'll set our personal defaults.
 		// If configs wish to change these, they will be overridden by them later.
 		FindConVar("sv_alltalk").SetBool(true);
@@ -631,6 +632,7 @@ public void OnMapStart()
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("tf_bot_force_class").SetString("scout"); // prevent console spam
+		FindConVar("sv_tags").Flags = 0;
 		
 		// Why is this a development only ConVar Valve?
 		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
@@ -649,8 +651,9 @@ public void OnMapStart()
 		HookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
 		HookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
 		HookEvent("player_team", OnChangeTeamMessage, EventHookMode_Pre);
-		HookEvent("player_connect", OnPlayerConnect, EventHookMode_Pre);
+		HookEvent("player_connect_client", OnPlayerConnect, EventHookMode_Pre);
 		HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
+		HookEvent("player_healonhit", OnPlayerHealOnHit, EventHookMode_Pre);
 		
 		// Command listeners
 		AddCommandListener(OnVoiceCommand, "voicemenu");
@@ -802,8 +805,9 @@ void CleanUp()
 	UnhookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
 	UnhookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
 	UnhookEvent("player_team", OnChangeTeamMessage, EventHookMode_Pre);
-	UnhookEvent("player_connect", OnPlayerConnect, EventHookMode_Pre);
+	UnhookEvent("player_connect_client", OnPlayerConnect, EventHookMode_Pre);
 	UnhookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
+	UnhookEvent("player_healonhit", OnPlayerHealOnHit, EventHookMode_Pre);
 	
 	RemoveCommandListener(OnVoiceCommand, "voicemenu");
 	RemoveCommandListener(OnChangeClass, "joinclass");
@@ -2034,7 +2038,7 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 		GetClientEyePosition(medic, eyePos);
 		float damage = CalcItemMod(medic, ItemMedic_WeatherMaster, 0) + CalcItemMod(medic, ItemMedic_WeatherMaster, 2);
 		float range = sq(CalcItemMod(medic, ItemMedic_WeatherMaster, 1) + CalcItemMod(medic, ItemMedic_WeatherMaster, 3, -1));
-
+		
 		if (vaccinator)
 		{
 			damage *= 0.25;
@@ -2042,7 +2046,7 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 		}
 
 		Handle trace;
-		int hitCount;
+		int hitCount, killCount;
 		int entity = -1;
 
 		while ((entity = FindEntityByClassname(entity, "*")) != -1)
@@ -2058,7 +2062,7 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 
 			GetEntPos(entity, enemyPos);
 			enemyPos[2] += 30.0;
-
+			
 			if (GetVectorDistance(eyePos, enemyPos, true) <= range)
 			{
 				trace = TR_TraceRayFilterEx(eyePos, enemyPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
@@ -2066,6 +2070,11 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 				{
 					SetEntItemProc(medic, ItemMedic_WeatherMaster);
 					SDKHooks_TakeDamage2(entity, medic, medic, damage, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE);
+					if (GetEntProp(entity, Prop_Data, "m_iHealth") <= 0)
+					{
+						killCount++;
+					}
+					
 					CopyVectors(enemyPos, beamPos);
 					beamPos[2]+=1500.0;
 					enemyPos[2] -= 30.0;
@@ -2073,11 +2082,10 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 					TE_SendToAll();
 					hitCount++;
 				}
-
+				
 				delete trace;
 			}
 		}
-
 
 		if (hitCount > 0)
 		{
@@ -2108,6 +2116,11 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 			{
 				SpeakResponseConcept(medic, "TLK_PLAYER_SPELL_PICKUP_RARE");
 			}
+		}
+
+		if (killCount >= 10)
+		{
+			TriggerAchievement(medic, ACHIEVEMENT_THUNDER);
 		}
 	}
 
@@ -2302,7 +2315,6 @@ public Action OnChangeTeamMessage(Event event, const char[] name, bool dontBroad
 
 public Action OnPlayerConnect(Event event, const char[] name, bool dontBroadcast)
 {
-	// doesn't work :/
 	char auth[MAX_AUTHID_LENGTH];
 	event.GetString("networkid", auth, sizeof(auth));
 	if (strcmp2(auth, "BOT"))
@@ -2318,6 +2330,22 @@ public Action OnPlayerDisconnect(Event event, const char[] name, bool dontBroadc
 		event.BroadcastDisabled = true;
 	
 	return Plugin_Continue;
+}
+
+public Action OnPlayerHealOnHit(Event event, const char[] name, bool dontBroadcast)
+{
+	if (event.GetBool("manual")) // manually called from HealPlayer()
+		return Plugin_Continue;
+	
+	int client = event.GetInt("entindex");
+	int amount = event.GetInt("amount");
+	if (IsPlayerSurvivor(client) && IsArtifactActive(REDArtifact_Restoration))
+	{
+		amount = RoundToFloor(float(amount) * 2.0);
+	}
+	
+	event.SetInt("amount", RoundToFloor(float(amount) * GetPlayerHealthMult(client)));
+	return Plugin_Changed;
 }
 
 public Action Timer_KillEnemyTeam(Handle timer)
@@ -2933,8 +2961,8 @@ public Action Timer_PlayerTimer(Handle timer)
 
 					if (healAmount < 1)
 						healAmount = 1;
-
-					HealPlayer(i, healAmount, false);
+					
+					HealPlayer(i, healAmount, false, _, false);
 				}
 			}
 		}
@@ -3568,7 +3596,7 @@ public void RF_NextPrimaryAttack(int client)
 	// Calculate based on the time the weapon was fired at since that was in the last frame.
 	float gameTime = g_flWeaponFireTime[client];
 	float time = GetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack");
-
+	
 	time -= gameTime;
 	time *= GetPlayerFireRateMod(client, weapon);
 	
@@ -3581,7 +3609,12 @@ public void RF_NextPrimaryAttack(int client)
 	
 	if (!melee && IsPlayerSurvivor(client) && time <= GetTickInterval())
 	{
-		TriggerAchievement(client, ACHIEVEMENT_FIRERATECAP);
+		static char classname[128];
+		GetEntityClassname(weapon, classname, sizeof(classname));
+		if (!strcmp2(classname, "tf_weapon_flamethrower") && !strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
+		{
+			TriggerAchievement(client, ACHIEVEMENT_FIRERATECAP);
+		}
 	}
 	
 	SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", gameTime+time);
@@ -3739,8 +3772,8 @@ public void OnEntityCreated(int entity, const char[] classname)
 			DHookEntity(g_hSDKStartUpgrading, true, entity, _, DHook_StartUpgradingPost);
 		}
 		
-		SDKHook(entity, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamageAlive);
-		SDKHook(entity, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
+		SDKHook(entity, SDKHook_OnTakeDamage, Hook_BuildingOnTakeDamage);
+		SDKHook(entity, SDKHook_OnTakeDamagePost, Hook_BuildingOnTakeDamagePost);
 	}
 	else if (IsNPC(entity))
 	{
@@ -3773,7 +3806,7 @@ public void OnEntityDestroyed(int entity)
 	{
 		int index;
 		int builder = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
-
+		
 		if (builder > 0 && g_hPlayerExtraSentryList[builder] && (index = g_hPlayerExtraSentryList[builder].FindValue(entity)) != -1)
 		{
 			g_hPlayerExtraSentryList[builder].Erase(index);
@@ -3956,6 +3989,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		damage *= 0.8;
 	}
 	
+	if ((victimIsBuilding || victimIsNpc) && attackerIsClient && PlayerHasItem(attacker, Item_Graybanns))
+	{
+		damage *= 1.0 + CalcItemMod(attacker, Item_Graybanns, 0);
+	}
+	
 	static char inflictorClassname[64];
 	if (inflictor > 0)
 	{
@@ -4047,12 +4085,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				proc *= 0.02; // This thing does damage every damn tick
 			}
 		}
-
+		
 		switch (damageCustom)
 		{
-			case TF_CUSTOM_SPELL_FIREBALL: proc *= 0.5;
 			case TF_CUSTOM_BURNING, TF_CUSTOM_BLEEDING: proc *= 0.75;
-			case TF_CUSTOM_PENETRATE_ALL_PLAYERS, TF_CUSTOM_PENETRATE_HEADSHOT, TF_CUSTOM_PENETRATE_MY_TEAM:
+			case TF_CUSTOM_PENETRATE_ALL_PLAYERS, TF_CUSTOM_PENETRATE_HEADSHOT:
 			{
 				if (PlayerHasItem(attacker, Item_MaxHead))
 				{
@@ -4061,7 +4098,16 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			}
 		}
 		
-		damage *= GetPlayerDamageMult(attacker);
+		// So here's an explanation for this. For a very long time, I did not realize
+		// that buildings don't call OnTakeDamageAlive when they take damage. So as a result,
+		// buildings went for a very long time without being affected by ANY damage modifications.
+		// It's fixed now, but to avoid severely disrupting Engineer's balancing,
+		// RED Team buildings are not affected by enemy damage multipliers.
+		if (!victimIsBuilding || GetEntProp(victim, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+		{
+			damage *= GetPlayerDamageMult(attacker);
+		}
+		
 		if (!selfDamage && inflictor > 0 && g_bFiredWhileRocketJumping[inflictor] 
 			&& PlayerHasItem(attacker, ItemSoldier_Compatriot) && CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
 		{
@@ -4315,14 +4361,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 }
 
 public void Hook_OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damageType, int weapon,
-float damageForce[3], float damagePosition[3], int damageCustom)
+const float damageForce[3], const float damagePosition[3], int damageCustom)
 {
 	bool attackerIsClient = IsValidClient(attacker);
 	bool victimIsClient = IsValidClient(victim);
 	bool invuln = victimIsClient && IsInvuln(victim);
 	bool selfDamage = victim == attacker;
 	float proc = g_flDamageProc;
-
+	
 	if (victimIsClient)
 	{
 		if (CanPlayerRegen(victim))
@@ -4355,10 +4401,18 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				RequestFrame(RF_CheckHealthForPocketMedic, victim);
 			}
 		}
-
+		
 		if (damage <= 0.0)
 		{
 			RequestFrame(RF_ClearViewPunch, victim);
+		}
+		
+		if (attackerIsClient && PlayerHasItem(attacker, Item_Antlers) && damageCustom != TF_CUSTOM_BLEEDING)
+		{
+			if (RandChanceFloatEx(attacker, 0.0, 1.0, CalcItemMod(attacker, Item_Antlers, 0)))
+			{
+				TF2_MakeBleed(victim, attacker, GetItemMod(Item_Antlers, 1));
+			}
 		}
 	}
 	else if (IsTank(victim))
@@ -4419,6 +4473,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	}
 }
 
+// NOTE: Buildings don't call this when they take damage, use the other damage hooks instead.
 public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
 float damageForce[3], float damagePosition[3], int damageCustom, CritType &critType)
 {
@@ -4588,6 +4643,18 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	
 	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
 	return damage != originalDamage ? Plugin_Changed : Plugin_Continue;
+}
+
+public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
+		float damageForce[3], float damagePosition[3], int damagecustom)
+{
+	return Hook_OnTakeDamageAlive(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
+}
+
+public void Hook_BuildingOnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon,
+		const float damageForce[3], const float damagePosition[3], int damagecustom)
+{
+	Hook_OnTakeDamageAlivePost(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
 }
 
 public Action Timer_ExecutionerBleedCooldown(Handle timer, int client)
@@ -4807,9 +4874,10 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	{
 		attack3Pressed[client] = false;
 	}
-
+	
 	static float nextFootstepTime[MAXTF2PLAYERS];
-	if (g_iPlayerFootstepType[client] == FootstepType_GiantRobot && GetTickedTime() >= nextFootstepTime[client] && !TF2_IsPlayerInCondition2(client, TFCond_Disguised))
+	if (g_iPlayerFootstepType[client] == FootstepType_GiantRobot && GetTickedTime() >= nextFootstepTime[client] 
+		&& !TF2_IsPlayerInCondition2(client, TFCond_Disguised) && !IsPlayerStunned(client))
 	{
 		if ((buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT) && GetEntityFlags(client) & FL_ONGROUND)
 		{

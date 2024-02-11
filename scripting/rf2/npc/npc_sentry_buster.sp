@@ -304,6 +304,8 @@ static void OnCreate(RF2_SentryBuster buster)
 	delete playerList;
 	buster.Spawn();
 	buster.Activate();
+	buster.SetGlow(true);
+	buster.SetGlowColor({0, 100, 255, 255});
 	npc.SetBodyMins(PLAYER_MINS);
 	npc.SetBodyMaxs(PLAYER_MAXS);
 }

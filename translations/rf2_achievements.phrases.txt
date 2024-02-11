@@ -76,6 +76,14 @@
 	{
 		"en"	"Cracked Shooter"
 	}
+	"ACHIEVEMENT_LUCKY"
+	{
+		"en"	"I'm Feeling Lucky"
+	}
+	"ACHIEVEMENT_THUNDER"
+	{
+		"en"	"PK Thunder Ω"
+	}
 	
 	//
 	// Descriptions
@@ -152,5 +160,13 @@
 	"ACHIEVEMENT_FIRERATECAP_DESC"
 	{
 		"en"	"As a Survivor, reach the maximum possible firing speed on any ranged weapon."
+	}
+	"ACHIEVEMENT_LUCKY_DESC"
+	{
+		"en"	"Unbox 3 Unusual items in a single stage."
+	}
+	"ACHIEVEMENT_THUNDER_DESC"
+	{
+		"en"	"As a Medic, kill 10+ enemies simultaneously using the Weather Master."
 	}
 }

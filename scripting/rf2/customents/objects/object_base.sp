@@ -173,8 +173,6 @@ methodmap RF2_Object_Base < CBaseAnimating
 		pos[2] += this.TextZOffset;
 		text.Teleport(pos);
 		text.Spawn();
-		SetVariantString("!activator");
-		text.AcceptInput("SetParent", this.index);
 	}
 	
 	property int GlowEnt
@@ -214,16 +212,27 @@ methodmap RF2_Object_Base < CBaseAnimating
 				glow.KeyValue("target", name);
 				SetVariantColor({255, 255, 255, 255});
 				glow.AcceptInput("SetGlowColor");
+				
 				float pos[3];
 				this.GetAbsOrigin(pos);
 				glow.Teleport(pos);
 				glow.Spawn();
 				glow.AcceptInput("Enable");
+				ParentEntity(glow.index, this.index);
 			}
 		}
 		else if (IsValidEntity2(this.GlowEnt))
 		{
 			RemoveEntity2(this.GlowEnt);
+		}
+	}
+	
+	public void SetGlowColor(int color[4])
+	{
+		if (IsValidEntity2(this.GlowEnt))
+		{
+			SetVariantColor(color);
+			AcceptEntityInput(this.GlowEnt, "SetGlowColor");
 		}
 	}
 }

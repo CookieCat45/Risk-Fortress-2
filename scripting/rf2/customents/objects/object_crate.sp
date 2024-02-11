@@ -292,10 +292,14 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 			EmitAmbientSound(SND_DROP_UNUSUAL, pos);
 			EmitAmbientSound(SND_DROP_UNUSUAL, pos);
 			effectName = "mvm_pow_gold_seq";
-			
 			removeTime = 2.9;
 			particleRemoveTime = 10.0;
 			CreateTimer(4.0, Timer_UltraRareResponse, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
+			g_iPlayerUnusualsUnboxed[attacker]++;
+			if (g_iPlayerUnusualsUnboxed[attacker] >= 3)
+			{
+				TriggerAchievement(attacker, ACHIEVEMENT_LUCKY);
+			}
 		}
 		case Quality_Haunted, Quality_HauntedStrange:
 		{

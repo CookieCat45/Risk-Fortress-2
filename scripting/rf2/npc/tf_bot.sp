@@ -1409,6 +1409,25 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		buttons &= ~IN_JUMP;
 	}
 	
+	if (bot.HasFlag(TFBOTFLAG_SPAMJUMP))
+	{
+		if (GetEntityFlags(client) & FL_ONGROUND)
+		{
+			static bool lastJumpState[MAXTF2PLAYERS];
+			if (!lastJumpState[client])
+			{
+				buttons |= IN_JUMP;
+				buttons &= ~IN_DUCK;
+			}
+			
+			lastJumpState[client] = !lastJumpState[client];
+		}
+		else
+		{
+			buttons &= ~IN_JUMP;
+		}
+	}
+	
 	buttons |= bot.ForcedButtons;
 	return Plugin_Continue;
 }

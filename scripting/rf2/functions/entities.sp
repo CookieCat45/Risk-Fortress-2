@@ -254,7 +254,7 @@ void SetEntityMoveCollide(int entity, int moveCollide)
 	SetEntProp(entity, Prop_Send, "movecollide", moveCollide);
 }
 
-int SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]={0.0, 0.0, 500.0})
+int SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]={0.0, 0.0, 400.0})
 {
 	char classname[128];
 	switch (size)
@@ -321,7 +321,6 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsPlayerSurvivor(i))
 			continue;
 		
-		// Scouts pick up cash in a radius automatically, like in MvM.
 		if (PlayerHasItem(i, Item_BanditsBoots))
 		{
 			GetEntPos(i, playerPos);
@@ -393,19 +392,12 @@ int SpawnInfoParticle(const char[] effectName, const float pos[3], float duratio
 	DispatchSpawn(particle);
 	ActivateEntity(particle);
 	AcceptEntityInput(particle, "start");
-
+	
 	if (parent != -1)
 	{
-		SetVariantString("!activator");
-		AcceptEntityInput(particle, "SetParent", parent);
-
-		if (attachment[0])
-		{
-			SetVariantString(attachment);
-			AcceptEntityInput(particle, "SetParentAttachment");
-		}
+		ParentEntity(particle, parent, attachment);
 	}
-
+	
 	if (duration > 0.0)
 	{
 		CreateTimer(duration, Timer_DeleteEntity, EntIndexToEntRef(particle), TIMER_FLAG_NO_MAPCHANGE);
@@ -617,4 +609,22 @@ public MRESReturn DHook_TakeHealth(int entity, Handle returnVal, Handle params)
 	}
 
 	return MRES_Ignored;
+}
+
+void ParentEntity(int child, int parent, const char[] attachment="", bool maintainOffset=false)
+{
+	SetVariantString("!activator");
+	AcceptEntityInput(child, "SetParent", parent);
+	if (attachment[0])
+	{
+		SetVariantString(attachment);
+		maintainOffset ? AcceptEntityInput(child, "SetParentAttachmentMaintainOffset") : AcceptEntityInput(child, "SetParentAttachment");
+	}
+}
+
+stock void PrintEntClassname(int entity)
+{
+	char classname[128];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	PrintToChatAll(classname);
 }

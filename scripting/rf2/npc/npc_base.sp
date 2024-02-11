@@ -29,7 +29,8 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		g_Factory.IsAbstract = true;
 		g_Factory.DeriveFromNPC();
 		g_Factory.BeginDataMapDesc()
-			.DefineEntityField("m_Target")
+			.DefineEntityField("m_hTarget")
+			.DefineEntityField("m_hGlow")
 			.DefineIntField("m_PathFollower")
 			.DefineIntField("m_iDefendTeam", _, "defendteam") // we won't target this team
 		.EndDataMapDesc();
@@ -41,12 +42,12 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 	{
 		public get()
 		{
-			return this.GetPropEnt(Prop_Data, "m_Target");
+			return this.GetPropEnt(Prop_Data, "m_hTarget");
 		}
 		
 		public set(int entity)
 		{
-			this.SetPropEnt(Prop_Data, "m_Target", entity);
+			this.SetPropEnt(Prop_Data, "m_hTarget", entity);
 		}
 	}
 	
@@ -95,6 +96,19 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		public set(int value)
 		{
 			this.SetProp(Prop_Data, "m_iTeamNum", value);
+		}
+	}
+
+	property int GlowEnt
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hGlow");
+		}
+		
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hGlow", value);
 		}
 	}
 
@@ -167,6 +181,44 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMaxs", maxs);
 		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMinsPreScaled", mins);
 		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMaxsPreScaled", maxs);
+	}
+
+	public void SetGlow(bool state)
+	{
+		if (state)
+		{
+			if (!IsValidEntity2(this.GlowEnt))
+			{
+				this.GlowEnt = CreateEntityByName("tf_glow");
+				CBaseEntity glow = CBaseEntity(this.GlowEnt);
+				char name[128];
+				FormatEx(name, sizeof(name), "rf2npc_%i", this.index);
+				this.SetPropString(Prop_Data, "m_iName", name);
+				glow.KeyValue("target", name);
+				SetVariantColor({255, 255, 255, 255});
+				glow.AcceptInput("SetGlowColor");
+				
+				float pos[3];
+				this.GetAbsOrigin(pos);
+				glow.Teleport(pos);
+				glow.Spawn();
+				glow.AcceptInput("Enable");
+				ParentEntity(glow.index, this.index);
+			}
+		}
+		else if (IsValidEntity2(this.GlowEnt))
+		{
+			RemoveEntity2(this.GlowEnt);
+		}
+	}
+	
+	public void SetGlowColor(int color[4])
+	{
+		if (IsValidEntity2(this.GlowEnt))
+		{
+			SetVariantColor(color);
+			AcceptEntityInput(this.GlowEnt, "SetGlowColor");
+		}
 	}
 }
 

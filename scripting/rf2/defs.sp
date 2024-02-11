@@ -112,6 +112,7 @@ enum
 #define TFBOTFLAG_ROCKETJUMP (1 << 1) // Bot should rocket jump
 #define TFBOTFLAG_STRAFING (1 << 2) // Bot is currently strafing
 #define TFBOTFLAG_HOLDFIRE (1 << 3) // Hold fire until fully reloaded
+#define TFBOTFLAG_SPAMJUMP (1 << 4) // Constantly jump around
 
 // Enemies/Bosses -------------------------------------------------------------------------------------------------------------------------------------
 #define MAX_ENEMIES 128

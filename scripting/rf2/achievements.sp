@@ -3,7 +3,6 @@
 
 enum
 {
-	// When adding new achievements, DO NOT insert new ones anywhere other than the end of this enum!
 	ACHIEVEMENT_BIGDAMAGE,
 	ACHIEVEMENT_FULLITEMLOG,
 	ACHIEVEMENT_DIE,
@@ -22,6 +21,10 @@ enum
 	ACHIEVEMENT_TANKBUSTER,
 	ACHIEVEMENT_DAMAGECAP,
 	ACHIEVEMENT_FIRERATECAP,
+	ACHIEVEMENT_LUCKY,
+	ACHIEVEMENT_THUNDER,
+	
+	// * * * INSERT NEW ACHIEVEMENTS DIRECTLY ABOVE THIS COMMENT ONLY! * * *
 	MAX_ACHIEVEMENTS,
 }
 
@@ -136,6 +139,13 @@ int GetAchievementInternalName(int achievement, char[] buffer, int size)
 		case ACHIEVEMENT_TANKBUSTER: return strcopy(buffer, size, "ACHIEVEMENT_TANKBUSTER");
 		case ACHIEVEMENT_DAMAGECAP: return strcopy(buffer, size, "ACHIEVEMENT_DAMAGECAP");
 		case ACHIEVEMENT_FIRERATECAP: return strcopy(buffer, size, "ACHIEVEMENT_FIRERATECAP");
+		case ACHIEVEMENT_THUNDER: return strcopy(buffer, size, "ACHIEVEMENT_THUNDER");
+		case ACHIEVEMENT_LUCKY: return strcopy(buffer, size, "ACHIEVEMENT_LUCKY");
+	}
+	
+	if (!buffer[0])
+	{
+		LogError("[GetAchievementInternalName] Achievement ID %i is missing!", achievement);
 	}
 	
 	return 0;

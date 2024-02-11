@@ -85,7 +85,7 @@ void LoadCommandsAndCvars()
 	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "12", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCost = CreateConVar("rf2_object_base_cost", "50.0", "The base cost to use objects such as crates. Scales with the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvItemShareEnabled = CreateConVar("rf2_item_share_enabled", "1", "Whether or not to enable item sharing. This prevents Survivors from hogging items in multiplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "7000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
+	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "6000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
 	g_cvTankHealthScale = CreateConVar("rf2_tank_health_scale", "0.1", "How much a Tank's health will scale per enemy level, in decimal percentage.");
 	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "75.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTankSpeedBoost = CreateConVar("rf2_tank_speed_boost", "1.5", "When a Tank falls below 50 percent health, speed it up by this much if the difficulty is above or equal to rf2_tank_boost_difficulty.", FCVAR_NOTIFY, true, 1.0);

@@ -22,6 +22,7 @@ static float g_flEnemyCashAward[MAX_ENEMIES];
 
 static bool g_bEnemyFullRage[MAX_ENEMIES];
 static bool g_bEnemyNoBleeding[MAX_ENEMIES];
+static bool g_bEnemyShouldGlow[MAX_ENEMIES];
 
 static char g_szEnemyName[MAX_ENEMIES][MAX_NAME_LENGTH];
 static char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
@@ -31,6 +32,7 @@ static int g_iEnemyBotSkill[MAX_ENEMIES];
 static bool g_bEnemyBotAggressive[MAX_ENEMIES];
 static bool g_bEnemyBotRocketJump[MAX_ENEMIES];
 static bool g_bEnemyBotHoldFireUntilReloaded[MAX_ENEMIES];
+static bool g_bEnemyBotAlwaysJump[MAX_ENEMIES];
 static float g_flEnemyBotMeleeDistance[MAX_ENEMIES];
 
 // Weapons
@@ -174,6 +176,12 @@ methodmap Enemy
 		public set(bool value)	{ g_bEnemyNoBleeding[this.Index] = value; }
 	}
 	
+	property bool ShouldGlow
+	{
+		public get()			{ return g_bEnemyShouldGlow[this.Index]; }
+		public set(bool value)	{ g_bEnemyShouldGlow[this.Index] = value; }
+	}
+	
 	property int BotSkill
 	{
 		public get()			{ return g_iEnemyBotSkill[this.Index];  }
@@ -196,6 +204,12 @@ methodmap Enemy
 	{
 		public get()			{ return g_bEnemyBotHoldFireUntilReloaded[this.Index];  }
 		public set(bool value)	{ g_bEnemyBotHoldFireUntilReloaded[this.Index] = value; }
+	}
+	
+	property bool BotAlwaysJump
+	{
+		public get()			{ return g_bEnemyBotAlwaysJump[this.Index];  }
+		public set(bool value)	{ g_bEnemyBotAlwaysJump[this.Index] = value; }
 	}
 	
 	property float BotMeleeDistance
@@ -463,6 +477,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.BotAggressive = asBool(enemyKey.GetNum("tf_bot_aggressive", false));
 		enemy.BotRocketJump = asBool(enemyKey.GetNum("tf_bot_rocketjump", false));
 		enemy.BotHoldFireReload = asBool(enemyKey.GetNum("tf_bot_hold_fire_until_reload", false));
+		enemy.BotAlwaysJump = asBool(enemyKey.GetNum("tf_bot_constant_jump", false));
 		enemy.BotMeleeDistance = enemyKey.GetFloat("tf_bot_melee_distance");
 		
 		// XP and cash awards on death
@@ -471,6 +486,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.Weight = imin(imax(enemyKey.GetNum("weight", 50), 1), 100);
 		enemy.FullRage = asBool(enemyKey.GetNum("full_rage", false));
 		enemy.NoBleeding = asBool(enemyKey.GetNum("no_bleeding", true));
+		enemy.ShouldGlow = asBool(enemyKey.GetNum("glow", enemy.IsBoss));
 		
 		enemy.WeaponCount = 0;
 		for (int w = 0; w < TF_WEAPON_SLOTS; w++)
@@ -655,6 +671,11 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		{
 			g_TFBot[client].AddFlag(TFBOTFLAG_HOLDFIRE);
 		}
+
+		if (enemy.BotAlwaysJump)
+		{
+			g_TFBot[client].AddFlag(TFBOTFLAG_SPAMJUMP);
+		}
 	}
 	
 	float checkPos[3];
@@ -787,6 +808,11 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		SetEntPropFloat(client, Prop_Send, "m_flRageMeter", 100.0);
 	}
 	
+	if (enemy.ShouldGlow)
+	{
+		SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);
+	}
+	
 	char conds[128];
 	enemy.GetConds(conds, sizeof(conds));
 	if (conds[0])
@@ -835,13 +861,9 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	
 	if (SpawnEnemy(client, type, pos, minDist, maxDist, false))
 	{
-		if (teleporterBoss)
-		{
-			g_bPlayerIsTeleporterBoss[client] = true;
-			SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);
-		}
-		
-		if (EnemyByIndex(type).BossGiantWeaponSounds)
+		Enemy boss = EnemyByIndex(type);
+		g_bPlayerIsTeleporterBoss[client] = teleporterBoss;
+		if (boss.BossGiantWeaponSounds)
 		{
 			int weapon = GetPlayerWeaponSlot(client, 0);
 			if (weapon != -1)
@@ -851,7 +873,8 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 			}
 		}
 		
-		g_flPlayerGiantFootstepInterval[client] = EnemyByIndex(type).BossFootstepInterval;
+		SetEntProp(client, Prop_Send, "m_bGlowEnabled", teleporterBoss);
+		g_flPlayerGiantFootstepInterval[client] = boss.BossFootstepInterval;
 		TF2Attrib_SetByDefIndex(client, 252, 0.2); // "damage force reduction"
 		TF2Attrib_SetByDefIndex(client, 329, 0.2); // "airblast vulnerability multiplier"
 		TF2Attrib_SetByDefIndex(client, 326, 1.35); // "increased jump height"

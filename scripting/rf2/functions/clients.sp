@@ -61,6 +61,7 @@ void RefreshClient(int client, bool force=false)
 		g_iPlayerSurvivorIndex[client] = -1;
 		g_iPlayerEquipmentItem[client] = Item_Null;
 		g_flPlayerEquipmentItemCooldown[client] = 0.0;
+		g_iPlayerUnusualsUnboxed[client] = 0;
 		SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
 	}
 	
@@ -215,13 +216,13 @@ int GetTotalHumans(bool inGameOnly=true)
 	return count;
 }
 
-int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverheal=1.5)
+int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverheal=1.5, bool display=true)
 {
 	int health = GetClientHealth(client);
 	int maxHealth = RF2_GetCalculatedMaxHealth(client);
 	bool capOverheal = maxOverheal > 0.0;
-
-	// we're already overhealed or at max health, don't do anything if we don't allow overheal
+	
+	// we're already overhealed or at max health, don't do anything
 	if (!allowOverheal && health >= maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
 	{
 		return 0;
@@ -240,7 +241,16 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 		SetEntityHealth(client, allowOverheal ? RoundToFloor(float(maxHealth)*maxOverheal) : maxHealth);
 		amountHealed = allowOverheal ? RoundToFloor(float(maxHealth)*maxOverheal) - health : maxHealth - health;
 	}
-
+	
+	if (display)
+	{
+		Event event = CreateEvent("player_healonhit", true);
+		event.SetBool("manual", true);
+		event.SetInt("entindex", client);
+		event.SetInt("amount", amountHealed);
+		event.Fire();
+	}
+	
 	return amountHealed;
 }
 
@@ -425,7 +435,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		int heal = actualMaxHealth - oldMaxHealth;
 		HealPlayer(client, heal, false);
 	}
-
+	
 	return actualMaxHealth;
 }
 

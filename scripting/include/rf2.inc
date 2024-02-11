@@ -89,6 +89,8 @@ enum
 	ItemStrange_PartyHat = 72,
 	ItemStrange_RobotChicken = 73,
 	Item_SpiralSallet = 74,
+	Item_Graybanns = 75,
+	Item_Antlers = 76,
 	Item_MaxValid,
 };
 
