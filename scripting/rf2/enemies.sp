@@ -934,7 +934,7 @@ void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 	}
 	
 	delete players;
-	EmitSoundToAll(SND_BOSS_SPAWN);
+	EmitSoundToAllEx(SND_BOSS_SPAWN);
 }
 
 public int SortBossSpawnList(int index1, int index2, ArrayList array, Handle hndl)

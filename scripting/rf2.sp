@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.4.2b"
+#define PLUGIN_VERSION "0.4.3b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -196,14 +196,16 @@ Handle g_hSDKGetMaxHealth;
 Handle g_hSDKPlayGesture;
 Handle g_hSDKIntersects;
 Handle g_hSDKWeaponSwitch;
-DHookSetup g_hSDKCanBuild;
-DHookSetup g_hSDKDoSwingTrace;
-DHookSetup g_hSDKSentryAttack;
-DHookSetup g_hSDKHandleRageGain;
-DynamicHook g_hSDKTakeHealth;
-DynamicHook g_hSDKStartUpgrading;
-DynamicHook g_hSDKVPhysicsCollision;
-DynamicHook g_hSDKShouldCollideWith;
+Handle g_hSDKRealizeSpy;
+DynamicDetour g_hDetourCanBuild;
+DynamicDetour g_hDetourDoSwingTrace;
+DynamicDetour g_hDetourSentryAttack;
+DynamicDetour g_hDetourHandleRageGain;
+DynamicHook g_hHookTakeHealth;
+DynamicHook g_hHookStartUpgrading;
+DynamicHook g_hHookVPhysicsCollision;
+DynamicHook g_hHookShouldCollideWith;
+DynamicHook g_hHookRiflePostFrame;
 
 // Forwards
 GlobalForward g_fwTeleEventStart;
@@ -304,7 +306,7 @@ ArrayList g_hActiveArtifacts;
 #include "rf2/stages.sp"
 
 #include "rf2/customents/gamerules.sp"
-#include "rf2/customents/item.sp"
+#include "rf2/customents/item_ent.sp"
 
 #include "rf2/customents/objects/object_base.sp"
 #include "rf2/customents/objects/object_teleporter.sp"
@@ -321,10 +323,10 @@ ArrayList g_hActiveArtifacts;
 
 #include "rf2/cookies.sp"
 #include "rf2/weapons.sp"
-#include "rf2/functions/general.sp"
-#include "rf2/functions/clients.sp"
-#include "rf2/functions/entities.sp"
-#include "rf2/functions/buildings.sp"
+#include "rf2/general_funcs.sp"
+#include "rf2/clients.sp"
+#include "rf2/entities.sp"
+#include "rf2/buildings.sp"
 #include "rf2/natives_forwards.sp"
 #include "rf2/commands_convars.sp"
 #include "rf2/artifacts.sp"
@@ -392,14 +394,12 @@ public void OnPluginEnd()
 
 void LoadGameData()
 {
-	GameData gamedata = LoadGameConfigFile("rf2");
+	GameData gamedata = new GameData("rf2");
 	if (!gamedata)
 	{
 		SetFailState("[SDK] Failed to locate gamedata file \"rf2.txt\"");
 	}
 	
-	int offset;
-	// CBasePlayer::EquipWearable ------------------------------------------------------------------------------------------------------------
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "CBasePlayer::EquipWearable");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
@@ -409,12 +409,13 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CBasePlayer::EquipWearable");
 	}
 	
-	// CTFPlayer::CanBuild -------------------------------------------------------------------------------------------------------------------
-	g_hSDKCanBuild = DHookCreateFromConf(gamedata, "CTFPlayer::CanBuild");
-	if (!g_hSDKCanBuild || !DHookEnableDetour(g_hSDKCanBuild, true, DHook_CanBuild))
+	
+	g_hDetourCanBuild = DynamicDetour.FromConf(gamedata, "CTFPlayer::CanBuild");
+	if (!g_hDetourCanBuild || !g_hDetourCanBuild.Enable(Hook_Post, Detour_CanBuild))
 	{
 		LogError("[DHooks] Failed to create detour for CTFPlayer::CanBuild");
 	}
+	
 	
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFPlayer::TeamFortress_SetSpeed");
@@ -423,8 +424,8 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CTFPlayer::TeamFortress_SetSpeed");
 	}
-
-	// CTFPlayer::PlayGesture ----------------------------------------------------------------------------------------------------------------
+	
+	
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFPlayer::PlayGesture");
 	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
@@ -435,45 +436,42 @@ void LoadGameData()
 		LogError("Failed to create call for CTFPlayer::PlayGesture");
 	}
 	
-	// CBaseEntity::TakeHealth ---------------------------------------------------------------------------------------------------------------
-	offset = GameConfGetOffset(gamedata, "CBaseEntity::TakeHealth");
-	g_hSDKTakeHealth = DHookCreate(offset, HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity, DHook_TakeHealth);
-	if (g_hSDKTakeHealth)
+	
+	g_hHookTakeHealth = new DynamicHook(gamedata.GetOffset("CBaseEntity::TakeHealth"), HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity);
+	if (g_hHookTakeHealth)
 	{
-		DHookAddParam(g_hSDKTakeHealth, HookParamType_Float); // amount to heal
-		DHookAddParam(g_hSDKTakeHealth, HookParamType_Int);   // "damagetype"? Doesn't seem to be used.
+		g_hHookTakeHealth.AddParam(HookParamType_Float); // amount to heal
+		g_hHookTakeHealth.AddParam(HookParamType_Int);   // "damagetype"? Doesn't seem to be used.
 	}
 	else
 	{
 		LogError("[DHooks] Failed to create virtual hook for CBaseEntity::TakeHealth");
 	}
 	
-	// CPhysicsProp::VPhysicsCollision -------------------------------------------------------------------------------------------------------
-	offset = GameConfGetOffset(gamedata, "CPhysicsProp::VPhysicsCollision");
-	g_hSDKVPhysicsCollision = DHookCreate(offset, HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
-	if (g_hSDKVPhysicsCollision)
+	
+	g_hHookVPhysicsCollision = new DynamicHook(gamedata.GetOffset("CPhysicsProp::VPhysicsCollision"), HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
+	if (g_hHookVPhysicsCollision)
 	{
-		DHookAddParam(g_hSDKVPhysicsCollision, HookParamType_Int); 			// index
-		DHookAddParam(g_hSDKVPhysicsCollision, HookParamType_ObjectPtr); 	// gamevcollisionevent_t
+		g_hHookVPhysicsCollision.AddParam(HookParamType_Int); 			// index
+		g_hHookVPhysicsCollision.AddParam(HookParamType_ObjectPtr); 	// gamevcollisionevent_t
 	}
 	else
 	{
 		LogError("[DHooks] Failed to create virtual hook for CPhysicsProp::VPhysicsCollision");
 	}
 	
-	// ILocomotion::ShouldCollideWith
-	offset = GameConfGetOffset(gamedata, "ILocomotion::ShouldCollideWith");
-	g_hSDKShouldCollideWith = DHookCreate(offset, HookType_Raw, ReturnType_Bool, ThisPointer_Address);
-	if (g_hSDKShouldCollideWith)
+	
+	g_hHookShouldCollideWith = new DynamicHook(gamedata.GetOffset("ILocomotion::ShouldCollideWith"), HookType_Raw, ReturnType_Bool, ThisPointer_Address);
+	if (g_hHookShouldCollideWith)
 	{
-		DHookAddParam(g_hSDKShouldCollideWith, HookParamType_CBaseEntity); // colliding entity
+		g_hHookShouldCollideWith.AddParam(HookParamType_CBaseEntity); // colliding entity
 	}
 	else
 	{
 		LogError("[DHooks] Failed to create virtual hook for ILocomotion::ShouldCollideWith");
 	}
 	
-	// CBaseEntity::Intersects ---------------------------------------------------------------------------------------------------------------
+
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CBaseEntity::Intersects");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // pOther
@@ -484,7 +482,7 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CBaseEntity::Intersects");
 	}
 	
-	// CTFWeaponBase::GetMaxClip1 ------------------------------------------------------------------------------------------------------------
+
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFWeaponBase::GetMaxClip1");
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
@@ -493,15 +491,15 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CTFWeaponBase::GetMaxClip1");
 	}
-
-	// CTFWeaponBaseMelee::DoSwingTraceInternal ----------------------------------------------------------------------------------------------
-	g_hSDKDoSwingTrace = DHookCreateFromConf(gamedata, "CTFWeaponBaseMelee::DoSwingTraceInternal");
-	if (!g_hSDKDoSwingTrace || !DHookEnableDetour(g_hSDKDoSwingTrace, false, DHook_DoSwingTrace) || !DHookEnableDetour(g_hSDKDoSwingTrace, true, DHook_DoSwingTracePost))
+	
+	
+	g_hDetourDoSwingTrace = DynamicDetour.FromConf(gamedata, "CTFWeaponBaseMelee::DoSwingTraceInternal");
+	if (!g_hDetourDoSwingTrace || !g_hDetourDoSwingTrace.Enable(Hook_Pre, DHook_DoSwingTrace) || !g_hDetourDoSwingTrace.Enable(Hook_Post, DHook_DoSwingTracePost))
 	{
 		LogError("[DHooks] Failed to create detour for CTFWeaponBaseMelee::DoSwingTraceInternal");
 	}
-
-	// CBaseObject::DoQuickBuild -------------------------------------------------------------------------------------------------------------
+	
+	
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CBaseObject::DoQuickBuild");
 	PrepSDKCall_AddParameter(SDKType_Bool, SDKPass_ByValue);
@@ -511,26 +509,44 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CBaseObject::DoQuickBuild");
 	}
 	
-	// CBaseObject::StartUpgrading -----------------------------------------------------------------------------------------------------------
-	offset = GameConfGetOffset(gamedata, "CBaseObject::StartUpgrading");
-	g_hSDKStartUpgrading = DHookCreate(offset, HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
-	if (!g_hSDKStartUpgrading)
+	
+	g_hHookStartUpgrading = new DynamicHook(gamedata.GetOffset("CBaseObject::StartUpgrading"), HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
+	if (!g_hHookStartUpgrading)
 	{
 		LogError("[DHooks] Failed to create virtual hook for CBaseObject::StartUpgrading");
 	}
-
-	// CObjectSentrygun::Attack --------------------------------------------------------------------------------------------------------------
-	g_hSDKSentryAttack = DHookCreateFromConf(gamedata, "CObjectSentrygun::Attack");
-	if (!g_hSDKSentryAttack || !DHookEnableDetour(g_hSDKSentryAttack, true, DHook_SentryGunAttack))
+	
+	
+	g_hDetourSentryAttack = DynamicDetour.FromConf(gamedata, "CObjectSentrygun::Attack");
+	if (!g_hDetourSentryAttack || !g_hDetourSentryAttack.Enable(Hook_Post, DHook_SentryGunAttack))
 	{
 		LogError("[DHooks] Failed to create detour for CObjectSentrygun::Attack");
 	}
 	
-	g_hSDKHandleRageGain = DHookCreateFromConf(gamedata, "HandleRageGain");
-	if (!g_hSDKHandleRageGain || !DHookEnableDetour(g_hSDKHandleRageGain, false, DHook_HandleRageGain))
+	
+	g_hDetourHandleRageGain = DynamicDetour.FromConf(gamedata, "HandleRageGain");
+	if (!g_hDetourHandleRageGain || !g_hDetourHandleRageGain.Enable(Hook_Pre, DHook_HandleRageGain))
 	{
 		LogError("[DHooks] Failed to create detour for HandleRageGain");
 	}
+	
+	
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFBot::RealizeSpy");
+	PrepSDKCall_AddParameter(SDKType_CBasePlayer, SDKPass_Pointer);
+	g_hSDKRealizeSpy = EndPrepSDKCall();
+	if (!g_hSDKRealizeSpy)
+	{
+		LogError("[SDK] Failed to create call for CTFBot::RealizeSpy");
+	}
+	
+	
+	g_hHookRiflePostFrame = new DynamicHook(gamedata.GetOffset("CTFSniperRifle::ItemPostFrame"), HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
+	if (!g_hHookRiflePostFrame)
+	{
+		LogError("[DHooks] Failed to create virtual hook for CTFSniperRifle::ItemPostFrame");
+	}
+
 	
 	delete gamedata;
 	gamedata = LoadGameConfigFile("sdkhooks.games");
@@ -543,6 +559,7 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CBasePlayer::GetMaxHealth from SDKHooks gamedata");
 	}
 	
+
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "Weapon_Switch");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
@@ -1049,8 +1066,8 @@ public void OnClientPutInServer(int client)
 		SDKHook(client, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
 		SDKHook(client, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
 		
-		if (g_hSDKTakeHealth)
-			DHookEntity(g_hSDKTakeHealth, false, client);
+		if (g_hHookTakeHealth)
+			DHookEntity(g_hHookTakeHealth, false, client, _, DHook_TakeHealth);
 		
 		g_hPlayerExtraSentryList[client] = CreateArray();
 	}
@@ -1216,19 +1233,19 @@ void CheckRedTeam(int client)
 
 void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 {
+	RefreshClient(client, true);
 	if (IsClientInGame(client) && teamChange >= 0)
 	{
 		ChangeClientTeam(client, teamChange);
 	}
 	
 	bool allowBots = g_cvBotsCanBeSurvivor.BoolValue;
-	int points[MAXTF2PLAYERS];
-	int playerPoints[MAXTF2PLAYERS];
+	int points[MAXTF2PLAYERS], playerPoints[MAXTF2PLAYERS];
 	bool valid[MAXTF2PLAYERS];
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (i == client || !IsClientInGame(i) || IsPlayerSurvivor(i) || !GetCookieBool(i, g_coBecomeSurvivor))
+		if (i == client || !IsClientInGame(i) || IsPlayerSurvivor(i) || !GetCookieBool(i, g_coBecomeSurvivor) || GetClientTeam(i) <= 1)
 			continue;
 		
 		// If we are allowing bots, they lose points in favor of players.
@@ -1236,10 +1253,10 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 		{
 			if (!allowBots)
 				continue;
-
+			
 			points[i] -= 2500;
 		}
-
+		
 		if (IsPlayerAFK(i))
 			points[i] -= 999;
 		
@@ -1252,20 +1269,20 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 		{
 			points[i] += 500;
 		}
-
+		
 		points[i] += GetRandomInt(1, 150);
 		playerPoints[i] = points[i];
 		valid[i] = true;
 	}
-
+	
 	SortIntegers(points, sizeof(points), Sort_Descending);
 	int highestPoints = points[0];
-
+	
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!valid[i] || i == client || !IsClientInGame(i) || IsFakeClient(i) && !allowBots)
 			continue;
-
+		
 		// We've found our winner
 		if (playerPoints[i] == highestPoints)
 		{
@@ -1274,7 +1291,7 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 			float pos[3], angles[3];
 			GetEntPos(client, pos);
 			GetClientEyeAngles(client, angles);
-			TeleportEntity(i, pos, angles, NULL_VECTOR);
+			TeleportEntity(i, pos, angles);
 			RF2_PrintToChat(i, "%t", "DisconnectChosenAsSurvivor", client);
 			break;
 		}
@@ -1421,7 +1438,7 @@ public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int par
 			}
 			else
 			{
-				EmitSoundToAll(SND_EVIL_LAUGH);
+				EmitSoundToAllEx(SND_EVIL_LAUGH);
 				RF2_PrintToChatAll("%t", "DifficultySetDeadly", difficultyName);
 			}
 		}
@@ -1695,8 +1712,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") != victim)
 				continue;
 
-			SetVariantInt(10);
-			AcceptEntityInput(entity, "SetHealth");
+			SetEntityHealth(entity, 10);
 			SDKHooks_TakeDamage2(entity, attacker, attacker, 99999.0, DMG_PREVENT_PHYSICS_FORCE);
 		}
 	}
@@ -1858,7 +1874,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			else if (alive == 1)
 			{
 				PrintHintText(lastMan, "%t", "LastMan");
-				EmitSoundToAll(SND_LASTMAN);
+				EmitSoundToAllEx(SND_LASTMAN);
 				SpeakResponseConcept_MVM(lastMan, "TLK_MVM_LAST_MAN_STANDING");
 			}
 			
@@ -2089,7 +2105,7 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 
 		if (hitCount > 0)
 		{
-			EmitSoundToAll(SND_THUNDER, medic);
+			EmitSoundToAllEx(SND_THUNDER, medic);
 			UTIL_ScreenShake(eyePos, 20.0, 5.0*hitCount, 8.0, range*3.0, SHAKE_START, true);
 			
 			if (!vaccinator)
@@ -2166,7 +2182,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 		SetEntProp(building, Prop_Send, "m_bMiniBuilding", true);
 
 		g_hPlayerExtraSentryList[client].Push(building);
-
+		
 		if (!carryDeploy)
 		{
 			// Need to set health. m_bDisposableBuilding being set also messes with the building health.
@@ -2203,7 +2219,7 @@ public void RF_TeleporterThink(int building)
 {
 	if ((building = EntRefToEntIndex(building)) == INVALID_ENT_REFERENCE || GetEntProp(building, Prop_Send, "m_bCarried"))
 		return;
-
+	
 	if (GetEntProp(building, Prop_Send, "m_bBuilding") || GetEntProp(building, Prop_Send, "m_bHasSapper"))
 	{
 		RequestFrame(RF_TeleporterThink, EntIndexToEntRef(building));
@@ -2261,7 +2277,7 @@ public void RF_TeleporterThink(int building)
 
 		if (spawns > 0)
 		{
-			EmitSoundToAll(SND_TELEPORTER_BLU, building, _, SNDLEVEL_TRAIN);
+			EmitSoundToAllEx(SND_TELEPORTER_BLU, building, _, SNDLEVEL_TRAIN);
 		}
 
 		g_flTeleporterNextSpawnTime[building] = spawns > 0 ? tickedTime+(36.0/float(GetEntProp(building, Prop_Send, "m_iUpgradeLevel"))) : tickedTime+2.0;
@@ -2881,7 +2897,7 @@ public Action Timer_Difficulty(Handle timer)
 		static float lastBellTime;
 		if (GetTickedTime() > lastBellTime+10.0)
 		{
-			EmitSoundToAll(SND_BELL);
+			EmitSoundToAllEx(SND_BELL);
 			lastBellTime = GetTickedTime();
 		}
 	}
@@ -3180,14 +3196,14 @@ public Action OnChangeClass(int client, const char[] command, int args)
 		{
 			SetEntProp(client, Prop_Send, "m_iDesiredPlayerClass", view_as<int>(desiredClass));
 		}
-
+		
 		return Plugin_Handled;
 	}
 	else if (IsPlayerSurvivor(client))
 	{
 		float pos[3];
 		GetEntPos(client, pos);
-
+		
 		SilentlyKillPlayer(client);
 		TF2_SetPlayerClass(client, desiredClass); // so stats update properly
 		MakeSurvivor(client, RF2_GetSurvivorIndex(client), false, false);
@@ -3208,7 +3224,7 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 {
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
-
+	
 	if (g_bRoundActive)
 	{
 		if (IsPlayerSurvivor(client) && IsSingleplayer())
@@ -3243,7 +3259,7 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 				return Plugin_Continue;
 			}
 		}
-
+		
 		if (team == TEAM_ENEMY && newTeam > 1 || IsTeleporterBoss(client)
 			|| team == TEAM_SURVIVOR && IsPlayerAlive(client) && !g_bGracePeriod)
 		{
@@ -3255,7 +3271,7 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 			ReshuffleSurvivor(client, newTeam);
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -3292,7 +3308,7 @@ public Action OnBuildCommand(int client, const char[] command, int args)
 	{
 		if (args == 1 || GetCmdArgInt(2) == view_as<int>(TFObjectMode_Entrance))
 		{
-			EmitSoundToClient(client, SND_NOPE);
+			EmitSoundToClientEx(client, SND_NOPE);
 			PrintCenterText(client, "%t", "OnlyBuildExit");
 			return Plugin_Handled;
 		}
@@ -3525,7 +3541,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	g_iLastFiredWeapon[client] = EntIndexToEntRef(weapon);
 	g_flWeaponFireTime[client] = GetGameTime(); // This is to prevent a desync issue, see RF_NextPrimaryAttack
 	RequestFrame(RF_NextPrimaryAttack, GetClientUserId(client));
-
+	
 	// Use our own crit logic
 	// we already do flamethrowers in our damage hook
 	if (!result)
@@ -3543,7 +3559,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 				result = true;
 				changed = true;
 				StopSound(client, SNDCHAN_AUTO, SND_WEAPON_CRIT);
-				EmitSoundToAll(SND_WEAPON_CRIT, client);
+				EmitSoundToAllEx(SND_WEAPON_CRIT, client);
 			}
 		}
 	}
@@ -3581,6 +3597,67 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 		}
 	}
 	
+	// A player is firing tf_weapon_sniperrifle_classic in midair.
+	// Because of the DHook that we use to get this to work, the weapon firing sound will not play as it is predicted, so we need to play it manually here.
+	if (g_bWasOffGround)
+	{
+		static char sound[PLATFORM_MAX_PATH];
+		switch (GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex"))
+		{
+			case 14, 201, 664, 792, 801, 881, 890, 899, 908, 957, 966: // Stock
+			{
+				sound = GSND_SNIPER_STOCK;
+			}
+			
+			case 230: // Sydney Sleeper
+			{
+				sound = GSND_SYDNEY;
+			}
+			
+			case 402: // Bazaar Bargain
+			{
+				sound = GSND_BAZAAR;
+			}
+			
+			case 526: // Machina
+			{
+				sound = GSND_MACHINA;
+			}
+
+			case 752: // Hitman's Heatmaker
+			{
+				sound = GSND_HEATMAKER;
+			}
+
+			case 851: // AWP
+			{
+				sound = GSND_AWP;
+			}
+
+			case 1098: // Classic
+			{
+				sound = GSND_CLASSIC;
+			}
+
+			case 30665: // Shooting Star
+			{
+				sound = GSND_SHOOTINGSTAR;
+			}
+			
+			default:
+			{
+				sound = GSND_SNIPER_STOCK;
+			}
+		}
+		
+		if (result)
+		{
+			StrCat(sound, sizeof(sound), "Crit");
+		}
+		
+		EmitGameSoundToAllEx(sound, client);
+	}
+
 	return changed ? Plugin_Changed : Plugin_Continue;
 }
 
@@ -3611,7 +3688,8 @@ public void RF_NextPrimaryAttack(int client)
 	{
 		static char classname[128];
 		GetEntityClassname(weapon, classname, sizeof(classname));
-		if (!strcmp2(classname, "tf_weapon_flamethrower") && !strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
+		if (!strcmp2(classname, "tf_weapon_flamethrower") && !strcmp2(classname, "tf_weapon_rocketlauncher_fireball")
+			&& !strcmp2(classname, "tf_weapon_minigun"))
 		{
 			TriggerAchievement(client, ACHIEVEMENT_FIRERATECAP);
 		}
@@ -3760,29 +3838,40 @@ public void OnEntityCreated(int entity, const char[] classname)
 			RemoveEntity2(entity);
 		}
 	}
+	else if (strcmp2(classname, "tf_projectile_balloffire"))
+	{
+		// Dragon's Fury is stupid and doesn't fire CalcIsAttackCritical()
+		RequestFrame(RF_DragonFuryCritCheck, EntIndexToEntRef(entity));
+	}
+	else if (g_hHookRiflePostFrame && StrContains(classname, "tf_weapon_sniperrifle") == 0)
+	{
+		DHookEntity(g_hHookRiflePostFrame, false, entity, _, DHook_RiflePostFrame);
+		DHookEntity(g_hHookRiflePostFrame, true, entity, _, DHook_RiflePostFramePost);
+	}
 	else if (IsEntityBlacklisted(classname))
 	{
 		RemoveEntity2(entity);
 	}
 	else if (IsBuilding(entity))
 	{
-		if (g_hSDKStartUpgrading)
+		if (g_hHookStartUpgrading)
 		{
-			DHookEntity(g_hSDKStartUpgrading, false, entity, _, DHook_StartUpgrading);
-			DHookEntity(g_hSDKStartUpgrading, true, entity, _, DHook_StartUpgradingPost);
+			DHookEntity(g_hHookStartUpgrading, false, entity, _, DHook_StartUpgrading);
+			DHookEntity(g_hHookStartUpgrading, true, entity, _, DHook_StartUpgradingPost);
 		}
 		
 		SDKHook(entity, SDKHook_OnTakeDamage, Hook_BuildingOnTakeDamage);
 		SDKHook(entity, SDKHook_OnTakeDamagePost, Hook_BuildingOnTakeDamagePost);
+		CreateTimer(0.5, Timer_BuildingHealthRegen, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else if (IsNPC(entity))
 	{
 		SDKHook(entity, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamageAlive);
 		SDKHook(entity, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
-		if (g_hSDKShouldCollideWith && !IsTank(entity))
+		if (g_hHookShouldCollideWith && !IsTank(entity))
 		{
 			ILocomotion loco = CBaseEntity(entity).MyNextBotPointer().GetLocomotionInterface();
-			DHookRaw(g_hSDKShouldCollideWith, true, view_as<Address>(loco), _, DHook_ShouldCollideWith);
+			DHookRaw(g_hHookShouldCollideWith, true, view_as<Address>(loco), _, DHook_ShouldCollideWith);
 		}
 	}
 }
@@ -3814,6 +3903,34 @@ public void OnEntityDestroyed(int entity)
 	}
 	
 	g_flCashValue[entity] = 0.0;
+}
+
+public void RF_DragonFuryCritCheck(int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+		return;
+	
+	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+	if (IsValidClient(owner))
+	{
+		if (RollAttackCrit(owner))
+		{
+			SetEntProp(entity, Prop_Send, "m_bCritical", true);
+			StopSound(owner, SNDCHAN_AUTO, SND_WEAPON_CRIT);
+			EmitSoundToAllEx(SND_WEAPON_CRIT, owner);
+		}
+		
+		int weapon = GetPlayerWeaponSlot(owner, 0);
+		if (weapon > 0)
+		{
+			float mult = GetPlayerFireRateMod(owner, weapon);
+			SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
+			if (0.8 / mult <= GetTickInterval())
+			{
+				TriggerAchievement(owner, ACHIEVEMENT_FIRERATECAP);
+			}
+		}
+	}
 }
 
 public MRESReturn DHook_ShouldCollideWith(Address loco, DHookReturn returnVal, DHookParam params)
@@ -4009,23 +4126,23 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	bool selfDamage = (attacker == victim || inflictor == victim);
 	bool rangedDamage = (damageType & DMG_BULLET || damageType & DMG_BLAST || damageType & DMG_IGNITE || damageType & DMG_SONIC);
 	bool invuln = victimIsClient && IsInvuln(victim);
-
+	
 	if (victimIsClient)
 	{
 		// because there's no fall damage, red team takes increased self blast damage
 		if (selfDamage && rangedDamage && IsPlayerSurvivor(victim))
 		{
-			damage *= 1.4;
+			damage *= 1.3;
 		}
 	}
 	else if (victimIsNpc)
 	{
 		static char classname[128];
 		GetEntityClassname(victim, classname, sizeof(classname));
-
+		
 		if (inflictorIsBuilding)
 		{
-			if (strcmp2(classname, "rf2_npc_sentry_buster"))
+			if (RF2_SentryBuster(victim).IsValid())
 			{
 				damage *= 0.25;
 				damage = fmax(damage, 1.0);
@@ -4057,28 +4174,36 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 		else if (inflictor > 0)
 		{
-			if (strcmp2(inflictorClassname, "tf_projectile_rocket") || strcmp2(inflictorClassname, "tf_projectile_energy_ball") 
-				|| strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
+			if (StrContains(inflictorClassname, "tf_projectile") == 0)
 			{
-				int offset = FindSendPropInfo("CTFProjectile_Rocket", "m_hLauncher") + 16;
-				int enemy = GetEntDataEnt2(inflictor, offset); // m_hEnemy
-				if (enemy != victim) // enemy == victim means direct damage was dealt, otherwise this is splash
+				if (victimIsClient && IsPlayerSurvivor(victim) && GetEntProp(inflictor, Prop_Send, "m_iDeflected"))
+				{
+					damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.5);
+				}
+				
+				if (strcmp2(inflictorClassname, "tf_projectile_rocket") || strcmp2(inflictorClassname, "tf_projectile_energy_ball") 
+					|| strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
+				{
+					int offset = FindSendPropInfo("CTFProjectile_Rocket", "m_hLauncher") + 16;
+					int enemy = GetEntDataEnt2(inflictor, offset); // m_hEnemy
+					if (enemy != victim) // enemy == victim means direct damage was dealt, otherwise this is splash
+					{
+						proc *= 0.5;
+					}
+				}
+				else if (strcmp2(inflictorClassname, "tf_projectile_pipe"))
+				{
+					int offset = FindSendPropInfo("CTFGrenadePipebombProjectile", "m_bDefensiveBomb") - 4;
+					float directDamage = GetEntDataFloat(inflictor, offset);
+					if (originalDamage < directDamage) // non direct hit
+					{
+						proc *= 0.5;
+					}
+				}
+				else if (strcmp2(inflictorClassname, "tf_projectile_pipe_remote"))
 				{
 					proc *= 0.5;
 				}
-			}
-			else if (strcmp2(inflictorClassname, "tf_projectile_pipe"))
-			{
-				int offset = FindSendPropInfo("CTFGrenadePipebombProjectile", "m_bDefensiveBomb") - 4;
-				float directDamage = GetEntDataFloat(inflictor, offset);
-				if (originalDamage < directDamage) // non direct hit
-				{
-					proc *= 0.5;
-				}
-			}
-			else if (strcmp2(inflictorClassname, "tf_projectile_pipe_remote"))
-			{
-				proc *= 0.5;
 			}
 			else if (strcmp2(inflictorClassname, "entity_medigun_shield"))
 			{
@@ -4089,11 +4214,20 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		switch (damageCustom)
 		{
 			case TF_CUSTOM_BURNING, TF_CUSTOM_BLEEDING: proc *= 0.75;
+
 			case TF_CUSTOM_PENETRATE_ALL_PLAYERS, TF_CUSTOM_PENETRATE_HEADSHOT:
 			{
 				if (PlayerHasItem(attacker, Item_MaxHead))
 				{
 					damage *= 1.0 + CalcItemMod(attacker, Item_MaxHead, 1);
+				}
+			}
+			
+			case TF_CUSTOM_STICKBOMB_EXPLOSION:
+			{
+				if (IsPlayerSurvivor(attacker) && !selfDamage)
+				{
+					damage *= 5.0;
 				}
 			}
 		}
@@ -4125,7 +4259,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			proc *= GetItemProcCoefficient(GetEntItemProc(inflictor));
 		}
-
+		
 		if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
 		{
 			if (victimIsClient && damageType & DMG_MELEE && (TF2_IsPlayerInCondition2(victim, TFCond_OnFire) || TF2_IsPlayerInCondition2(victim, TFCond_BurningPyro)))
@@ -4133,7 +4267,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				TF2_AddCondition(victim, TFCond_MarkedForDeathSilent, CalcItemMod(attacker, ItemPyro_LastBreath, 0), attacker);
 			}
 		}
-
+		
 		if (inflictorIsBuilding)
 		{
 			if (PlayerHasItem(attacker, ItemEngi_BrainiacHairpiece) && CanUseCollectorItem(attacker, ItemEngi_BrainiacHairpiece))
@@ -4162,13 +4296,13 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 						colors[1] = 100;
 						colors[2] = 255;
 					}
-
+					
 					float laserDamage = GetItemMod(ItemEngi_BrainiacHairpiece, 2);
 					float size = GetItemMod(ItemEngi_BrainiacHairpiece, 3);
-
+					
 					FireLaser(attacker, ItemEngi_BrainiacHairpiece, pos, angles, true, _,
-					laserDamage, DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE, size, colors);
-
+						laserDamage, DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE, size, colors);
+					
 					float time = GetItemMod(ItemEngi_BrainiacHairpiece, 0);
 					time *= CalcItemMod_HyperbolicInverted(attacker, ItemEngi_BrainiacHairpiece, 1, -1);
 					g_flSentryNextLaserTime[inflictor] = GetTickedTime()+time;
@@ -4185,7 +4319,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				damage = 0.0;
 				return Plugin_Changed;
 			}
-
+			
 			// backstabs do set damage against survivors and bosses
 			if (damageCustom == TF_CUSTOM_BACKSTAB)
 			{
@@ -4200,8 +4334,12 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					{
 						damage = float(RF2_GetCalculatedMaxHealth(victim)) * g_cvBossStabDamagePercent.FloatValue;
 					}
-
+					
 					damage *= 1.0 + CalcItemMod(attacker, ItemSpy_NohMercy, 0);
+					if (IsFakeClient(victim))
+					{
+						g_TFBot[victim].RealizeSpy(attacker);
+					}
 				}
 				else if (IsPlayerSurvivor(victim))
 				{
@@ -4375,7 +4513,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		{
 			const float regenTimeMin  = 0.5;
 			const float regenTimeMax  = 5.0;
-
+			
 			float seconds = 5.0 * (damage / float(RF2_GetCalculatedMaxHealth(victim)));
 			if (seconds > regenTimeMax)
 			{
@@ -4385,7 +4523,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			{
 				seconds = regenTimeMin;
 			}
-
+			
 			g_flPlayerHealthRegenTime[victim] += seconds;
 			if (g_flPlayerHealthRegenTime[victim] > regenTimeMax)
 			{
@@ -4407,9 +4545,11 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			RequestFrame(RF_ClearViewPunch, victim);
 		}
 		
-		if (attackerIsClient && PlayerHasItem(attacker, Item_Antlers) && damageCustom != TF_CUSTOM_BLEEDING)
+		if (attackerIsClient && PlayerHasItem(attacker, Item_Antlers) 
+			&& damageCustom != TF_CUSTOM_BLEEDING && attacker != victim && inflictor != victim)
 		{
-			if (RandChanceFloatEx(attacker, 0.0, 1.0, CalcItemMod(attacker, Item_Antlers, 0)))
+			float chance = CalcItemMod(attacker, Item_Antlers, 0) * proc;
+			if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
 			{
 				TF2_MakeBleed(victim, attacker, GetItemMod(Item_Antlers, 1));
 			}
@@ -4425,6 +4565,19 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 	
 	if (attackerIsClient)
 	{
+		if (weapon > 0)
+		{
+			if (damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING || damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE)
+			{
+				float mult = GetPlayerFireRateMod(attacker, weapon)*1.5;
+				SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
+				if (0.8 / mult <= GetTickInterval())
+				{
+					TriggerAchievement(attacker, ACHIEVEMENT_FIRERATECAP);
+				}
+			}
+		}
+		
 		if (!selfDamage && !invuln)
 		{
 			if (PlayerHasItem(attacker, Item_Law) && inflictor > 0 && GetEntItemProc(inflictor) != Item_Law && !g_bPlayerLawCooldown[attacker])
@@ -4445,7 +4598,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 					int rocket = ShootProjectile(attacker, "tf_projectile_sentryrocket", pos, angles, rocketSpeed, dmg);
 					SetShouldDamageOwner(rocket, false);
 					SetEntItemProc(rocket, Item_Law);
-					EmitSoundToAll(SND_LAW_FIRE, attacker, _, _, _, 0.6);
+					EmitSoundToAllEx(SND_LAW_FIRE, attacker, _, _, _, 0.6);
 					g_bPlayerLawCooldown[attacker] = true;
 					CreateTimer(0.4, Timer_LawCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 				}
@@ -4584,7 +4737,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					if (!bonked)
 					{
 						TE_TFParticle("crit_text", damagePosition, victim);
-						EmitGameSoundToClient(attacker, GSND_CRIT);
+						EmitGameSoundToClientEx(attacker, GSND_CRIT);
 					}
 
 					damage *= 3.0;
@@ -4594,7 +4747,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					if (!bonked)
 					{
 						TE_TFParticle("minicrit_text", damagePosition, victim);
-						EmitGameSoundToClient(attacker, GSND_MINICRIT);
+						EmitGameSoundToClientEx(attacker, GSND_MINICRIT);
 					}
 
 					damage *= 1.35;
@@ -4608,7 +4761,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					if (!bonked)
 					{
 						TE_TFParticle("crit_text", damagePosition, victim);
-						EmitGameSoundToClient(attacker, GSND_CRIT);
+						EmitGameSoundToClientEx(attacker, GSND_CRIT);
 					}
 
 					damage *= 0.741;
@@ -4627,7 +4780,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					if (!bonked)
 					{
 						TE_TFParticle("minicrit_text", damagePosition, victim);
-						EmitGameSoundToClient(attacker, GSND_MINICRIT);
+						EmitGameSoundToClientEx(attacker, GSND_MINICRIT);
 					}
 
 					damage /= 3.0;
@@ -4700,7 +4853,7 @@ public void RF_CheckHealthForPocketMedic(int client)
 	int maxHealth = RF2_GetCalculatedMaxHealth(client);
 	if (health < float(maxHealth) * GetItemMod(Item_PocketMedic, 0))
 	{
-		EmitSoundToAll(SND_SHIELD, client);
+		EmitSoundToAllEx(SND_SHIELD, client);
 		TF2_AddCondition(client, TFCond_UberchargedCanteen, GetItemMod(Item_PocketMedic, 2));
 		int heal = RoundToFloor(float(maxHealth) * GetItemMod(Item_PocketMedic, 1));
 		HealPlayer(client, heal, false);
@@ -4943,7 +5096,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 
 				if (valid)
 				{
-					EmitSoundToAll(sample, client);
+					EmitSoundToAllEx(sample, client);
 					float duration = g_flPlayerGiantFootstepInterval[client] * (RF2_GetCalculatedSpeed(client) / RF2_GetBaseSpeed(client));
 					nextFootstepTime[client] = GetTickedTime() + duration;
 				}
@@ -4992,7 +5145,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 
 				if (GetClientTeam(clients[i]) == GetClientTeam(client))
 				{
-					EmitSoundToClient(clients[i], sample, client, channel, level, flags, volume, pitch);
+					EmitSoundToClientEx(clients[i], sample, client, channel, level, flags, volume, pitch);
 					blacklist[clients[i]] = true;
 				}
 			}
@@ -5106,19 +5259,19 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				// Only works this way for some reason
 				if (TF2_IsPlayerInCondition2(client, TFCond_Disguised))
 				{
-					EmitSoundToClient(client, sample, client, channel, level, flags, volume, pitch);
+					EmitSoundToClientEx(client, sample, client, channel, level, flags, volume, pitch);
 
 					for (int i = 0; i < numClients; i++)
 					{
 						if (clients[i] != client && !blacklist[clients[i]])
 						{
-							EmitSoundToClient(clients[i], sample, client, channel, level, flags, volume, pitch);
+							EmitSoundToClientEx(clients[i], sample, client, channel, level, flags, volume, pitch);
 						}
 					}
 				}
 				else
 				{
-					EmitSoundToAll(sample, client, channel, level, flags, volume, pitch);
+					EmitSoundToAllEx(sample, client, channel, level, flags, volume, pitch);
 				}
 			}
 		}

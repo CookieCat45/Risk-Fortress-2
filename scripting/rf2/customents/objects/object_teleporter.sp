@@ -317,7 +317,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		this.TextSize = 6.0;
 		this.SetWorldText("Press [E] to go to the next stage!");
 		RemoveEntity2(this.Bubble.index);
-		EmitSoundToAll(SND_TELEPORTER_CHARGED);
+		EmitSoundToAllEx(SND_TELEPORTER_CHARGED);
 		StopMusicTrackAll();
 		
 		bool aliveEnemies;
@@ -332,7 +332,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		
 		if (aliveEnemies)
 		{
-			EmitSoundToAll(SND_ENEMY_STUN);
+			EmitSoundToAllEx(SND_ENEMY_STUN);
 		}
 		
 		int entity = -1;

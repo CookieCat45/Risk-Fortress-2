@@ -72,7 +72,7 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 		}
 		else if (message)
 		{
-			EmitSoundToClient(client, SND_NOPE);
+			EmitSoundToClientEx(client, SND_NOPE);
 			PrintCenterText(client, "%t", "NothingToScrap");
 		}
 	}
@@ -132,7 +132,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 						
 						if (total <= 0)
 						{
-							EmitSoundToClient(param1, SND_NOPE);
+							EmitSoundToClientEx(param1, SND_NOPE);
 							PrintCenterText(param1, "%t", "NoCollectorItems");
 							return 0;
 						}
@@ -161,7 +161,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 							RF2_PrintToChat(param1, "%t", "ReceivedCollectorItem", itemCount[randomItem], itemName);
 						}
 						
-						EmitSoundToClient(param1, SND_USE_SCRAPPER);
+						EmitSoundToClientEx(param1, SND_USE_SCRAPPER);
 						RF2_Object_Scrapper.ShowScrapMenu(param1, false);
 						delete itemList;
 					}
@@ -171,7 +171,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 						int randomItem = GetRandomCollectorItem(TF2_GetPlayerClass(param1));
 						GiveItem(param1, randomItem, _, true);
 						PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[randomItem]);
-						EmitSoundToClient(param1, SND_USE_SCRAPPER);
+						EmitSoundToClientEx(param1, SND_USE_SCRAPPER);
 						RF2_Object_Scrapper.ShowScrapMenu(param1, false);
 					}
 				}
@@ -199,7 +199,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 						PrintCenterText(param1, "%t", "UsedScrapperHaunted", g_szItemName[item]);
 					}
 					
-					EmitSoundToClient(param1, SND_USE_SCRAPPER);
+					EmitSoundToClientEx(param1, SND_USE_SCRAPPER);
 					RF2_Object_Scrapper.ShowScrapMenu(param1, false);
 				}
 			}

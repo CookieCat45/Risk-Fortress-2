@@ -659,6 +659,37 @@ public MRESReturn DHook_DoSwingTracePost(int client, DHookReturn returnVal, DHoo
 	return MRES_Ignored;
 }
 
+bool g_bWasOffGround;
+public MRESReturn DHook_RiflePostFrame(int entity)
+{
+	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+	if (IsValidClient(owner))
+	{
+		// Allow firing while in midair
+		if (!(GetEntityFlags(owner) & FL_ONGROUND))
+		{
+			g_bWasOffGround = true;
+			SetEntPropEnt(owner, Prop_Data, "m_hGroundEntity", 0);
+			SetEntPropEnt(owner, Prop_Send, "m_hGroundEntity", 0);
+		}
+	}
+	
+	return MRES_Ignored;
+}
+
+public MRESReturn DHook_RiflePostFramePost(int entity)
+{
+	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+	if (IsValidClient(owner) && g_bWasOffGround)
+	{
+		SetEntPropEnt(owner, Prop_Data, "m_hGroundEntity", -1);
+		SetEntPropEnt(owner, Prop_Send, "m_hGroundEntity", -1);
+	}
+	
+	g_bWasOffGround = false;
+	return MRES_Ignored;
+}
+
 bool IsVoodooCursedCosmetic(int wearable)
 {
 	int index = GetEntProp(wearable, Prop_Send, "m_iItemDefinitionIndex");

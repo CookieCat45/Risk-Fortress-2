@@ -46,7 +46,7 @@ static int OnStart(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor
 	actor.ResetSequence(sequence);
 	actor.SetPropFloat(Prop_Data, "m_flCycle", 0.0);
 	actor.SetProp(Prop_Data, "m_takedamage", 0);
-	EmitGameSoundToAll("MVM.SentryBusterSpin", actor.index);
+	EmitGameSoundToAllEx("MVM.SentryBusterSpin", actor.index);
 
 	float duration = actor.SequenceDuration(sequence);
 	

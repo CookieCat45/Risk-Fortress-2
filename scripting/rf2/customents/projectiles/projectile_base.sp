@@ -6,9 +6,9 @@ typedef OnCollideCallback = function void(RF2_Projectile_Base proj, int other);
 
 enum // Impact sound type
 {
-	SoundType_Fire,
-	SoundType_CharImpact,
-	SoundType_WorldImpact,
+	SoundType_Fire, // Projectile firing off
+	SoundType_CharImpact, // Projectile hit a player character
+	SoundType_WorldImpact, // Projectile hit world or non-player character
 };
 
 methodmap RF2_Projectile_Base < CBaseAnimating
@@ -355,11 +355,11 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		
 		if (StrContains(sound, ".mp3") == -1 && StrContains(sound, ".wav") == -1)
 		{
-			EmitGameSoundToAll(sound, soundEnt, flags, _, soundPos);
+			EmitGameSoundToAllEx(sound, soundEnt, flags, _, _, soundPos);
 		}
 		else
 		{
-			EmitSoundToAll(sound, soundEnt, channel, level, flags, volume, pitch, _, soundPos);
+			EmitSoundToAllEx(sound, soundEnt, channel, level, flags, volume, pitch, _, soundPos);
 		}
 	}
 	
@@ -421,9 +421,9 @@ static void OnCreate(RF2_Projectile_Base proj)
 	proj.HookOnCollide(Projectile_OnCollide);
 	SDKHook(proj.index, SDKHook_SpawnPost, OnSpawnPost);
 	SDKHook(proj.index, SDKHook_VPhysicsUpdate, OnVPhysicsUpdate);
-	if (g_hSDKVPhysicsCollision)
+	if (g_hHookVPhysicsCollision)
 	{
-		DHookEntity(g_hSDKVPhysicsCollision, true, proj.index, _, DHook_ProjectileCollision);
+		DHookEntity(g_hHookVPhysicsCollision, true, proj.index, _, DHook_ProjectileCollision);
 	}
 }
 

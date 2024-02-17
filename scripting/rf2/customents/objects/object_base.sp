@@ -173,6 +173,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 		pos[2] += this.TextZOffset;
 		text.Teleport(pos);
 		text.Spawn();
+		ParentEntity(text.index, this.index);
 	}
 	
 	property int GlowEnt

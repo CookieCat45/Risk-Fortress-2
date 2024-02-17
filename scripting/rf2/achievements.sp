@@ -103,7 +103,7 @@ void OnAchievementUnlocked(int client, int achievement)
 {
 	float pos[3];
 	TE_TFParticle("achieved", pos, client, PATTACH_POINT_FOLLOW, "partyhat");
-	EmitSoundToAll(SND_ACHIEVEMENT, client);
+	EmitSoundToAllEx(SND_ACHIEVEMENT, client);
 	char name[64];
 	for (int i = 1; i <= MaxClients; i++)
 	{

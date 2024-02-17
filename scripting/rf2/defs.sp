@@ -92,7 +92,14 @@
 // Game sounds
 #define GSND_CRIT "TFPlayer.CritHit"
 #define GSND_MINICRIT "TFPlayer.CritHitMini"
-
+#define GSND_SNIPER_STOCK "Weapon_SniperRifle.Single"
+#define GSND_HEATMAKER "Weapon_ProSniperRifle.Single"
+#define GSND_CLASSIC "Weapon_ClassicSniperRifle.Single"
+#define GSND_SYDNEY "Weapon_SydneySleeper.Single"
+#define GSND_BAZAAR "Weapon_Bazaar_Bargain.Single"
+#define GSND_MACHINA "Weapon_SniperRailgun.Single"
+#define GSND_SHOOTINGSTAR "Weapon_ShootingStar.Single"
+#define GSND_AWP "Weapon_AWP.Single"
 
 // Players ---------------------------------------------------------------------------------------------------------------------------------------
 #define PLAYER_MINS {-24.0, -24.0, 0.0}

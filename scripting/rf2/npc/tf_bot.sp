@@ -349,6 +349,14 @@ methodmap TFBot < Handle
 	{
 		CopyVectors(buffer, g_flTFBotLastPos[this.Client]);
 	}
+	
+	public void RealizeSpy(int spy)
+	{
+		if (g_hSDKRealizeSpy)
+		{
+			SDKCall(g_hSDKRealizeSpy, this.Client, spy);
+		}
+	}
 }
 
 void TFBot_Think(TFBot &bot)

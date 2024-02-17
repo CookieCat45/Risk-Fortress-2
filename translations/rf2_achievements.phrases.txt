@@ -159,7 +159,7 @@
 	}
 	"ACHIEVEMENT_FIRERATECAP_DESC"
 	{
-		"en"	"As a Survivor, reach the maximum possible firing speed on any ranged weapon."
+		"en"	"As a Survivor, reach the maximum possible firing speed on any ranged weapon other than a Minigun or Flamethrower."
 	}
 	"ACHIEVEMENT_LUCKY_DESC"
 	{

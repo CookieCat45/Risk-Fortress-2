@@ -171,7 +171,7 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=-1, float ownT
 		item.Subject = subject;
 		if (subject != client)
 		{
-			PrintHintText(subject, "%t", "DroppedItemForYou", client, g_szItemName[type]);
+			PrintCenterText(subject, "%t", "DroppedItemForYou", client, g_szItemName[type]);
 		}
 	}
 	
@@ -252,7 +252,7 @@ bool PickupItem(int client)
 		&& ((owner == client || originalOwner == client) || !IsValidClient(owner) 
 			|| !IsPlayerSurvivor(owner)) && g_iItemsTaken[survivorIndex] >= g_iItemLimit[survivorIndex])
 		{
-			EmitSoundToClient(client, SND_NOPE);
+			EmitSoundToClientEx(client, SND_NOPE);
 			PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[survivorIndex]);
 			return true;
 		}
@@ -260,7 +260,7 @@ bool PickupItem(int client)
 		if (IsValidClient(owner) && IsPlayerSurvivor(owner) 
 			&& client != owner && client != subject)
 		{
-			EmitSoundToClient(client, SND_NOPE);
+			EmitSoundToClientEx(client, SND_NOPE);
 			PrintCenterText(client, "%t", "NotForYou");
 			return true;
 		}
@@ -292,7 +292,7 @@ bool PickupItem(int client)
 			RF2_PrintToChatAll("%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, type));
 		}
 		
-		EmitSoundToAll(SND_ITEM_PICKUP, client);
+		EmitSoundToAllEx(SND_ITEM_PICKUP, client);
 		if (!dropped || owner == client || originalOwner == client)
 		{
 			if (!dropped)

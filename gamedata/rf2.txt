@@ -29,6 +29,11 @@
 				"linux"		"101"
 				"windows"	"100"
 			}
+			"CTFSniperRifle::ItemPostFrame"
+			{
+				"linux"		"278"
+				"windows"	"272"
+			}
 		}
 		"Signatures"
 		{
@@ -76,6 +81,11 @@
 			{
 				"linux"		"@_ZN16CObjectSentrygun6AttackEv"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x34\x56\x8B\xF1\x8B\x06\xFF\x90\x2A\x2A\x2A\x2A\x8B\xCE"
+			}
+			"CTFBot::RealizeSpy"
+			{
+				"linux"		"@_ZN6CTFBot10RealizeSpyEP9CTFPlayer"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x30\x53\x8B\x5D\x08\x57\x8B\xF9\x53\x89\x7D\xFC\x2A\x2A\x2A\xFF\xFF\x84\xC0"
 			}
 		}
 		

@@ -91,6 +91,7 @@ enum
 	Item_SpiralSallet = 74,
 	Item_Graybanns = 75,
 	Item_Antlers = 76,
+	ItemEngi_Toadstool = 77,
 	Item_MaxValid,
 };
 

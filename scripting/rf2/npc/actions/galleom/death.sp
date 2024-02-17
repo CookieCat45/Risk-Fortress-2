@@ -23,7 +23,7 @@ static int OnStart(RF2_GalleomDeathState action, RF2_RaidBoss_Galleom boss, Next
 	boss.GetAbsOrigin(pos);
 	pos[2] += 80.0;
 	TE_TFParticle("grenade_smoke", pos);
-	EmitSoundToAll(SND_BOSS_DEATH);
+	EmitSoundToAllEx(SND_BOSS_DEATH);
 	EmitSoundToAllEx(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
 	float time;
 	if (GetRandomInt(1, 2) == 1)
@@ -79,7 +79,7 @@ public Action Timer_GalleomDeathExplosion(Handle timer, int entity)
 	TE_TFParticle("hightower_explosion", pos);
 	TE_TFParticle("fireSmokeExplosion3", pos);
 	UTIL_ScreenShake(pos, 30.0, 40.0, 10.0, 9000.0, SHAKE_START, true);
-	EmitSoundToAll(SND_DOOMSDAY_EXPLODE);
+	EmitSoundToAllEx(SND_DOOMSDAY_EXPLODE);
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || IsFakeClient(i) || DistBetween(i, entity) > 9000.0)

@@ -41,7 +41,7 @@ stock void RollArtifacts()
 
 public Action Timer_ArtifactRoll(Handle timer)
 {
-    EmitSoundToAll(SND_ARTIFACT_ROLL);
+    EmitSoundToAllEx(SND_ARTIFACT_ROLL);
     g_flArtifactRollTime += 0.1;
     static char redName[64], blueName[64], redDesc[128], blueDesc[128];
     int redArtifact = GetRandomArtifact(TEAM_SURVIVOR);
@@ -54,7 +54,7 @@ public Action Timer_ArtifactRoll(Handle timer)
     
     if (g_flArtifactRollTime >= 10.0)
     {
-        EmitSoundToAll(SND_ARTIFACT_SELECT);
+        EmitSoundToAllEx(SND_ARTIFACT_SELECT);
         SetArtifactEnabled(redArtifact, true);
         SetArtifactEnabled(blueArtifact, true);
         g_flArtifactRollTime = 0.0;

@@ -837,6 +837,20 @@ void UpdatePlayerItem(int client, int item)
 				}
 			}
 		}
+		case ItemEngi_Toadstool:
+		{
+			if (CanUseCollectorItem(client, ItemEngi_Toadstool))
+			{
+				if (PlayerHasItem(client, ItemEngi_Toadstool))
+				{
+					TF2Attrib_SetByDefIndex(client, 345, 1.0 + CalcItemMod(client, ItemEngi_Toadstool, 1)); // "engy dispenser radius increased"
+				}
+				else
+				{
+					TF2Attrib_RemoveByDefIndex(client, 345);
+				}
+			}
+		}
 	}
 	
 	if (!PlayerHasItem(client, item) && !IsEquipmentItem(item) || IsEquipmentItem(item) && GetPlayerEquipmentItem(client) != item)
@@ -1174,7 +1188,7 @@ bool ActivateStrangeItem(int client)
 			DispatchKeyValueInt(shield, "skin", GetEntProp(client, Prop_Data, "m_iTeamNum")-2);
 			SetEntityModel2(shield, MODEL_MEDISHIELD);
 			DispatchSpawn(shield);
-			EmitSoundToAll(SND_MEDISHIELD, shield);
+			EmitSoundToAllEx(SND_MEDISHIELD, shield);
 		}
 
 		case ItemStrange_HeartOfGold:
@@ -1196,7 +1210,7 @@ bool ActivateStrangeItem(int client)
 				HealPlayer(i, heal, true);
 			}
 			
-			EmitSoundToAll(SND_SPELL_OVERHEAL, client);
+			EmitSoundToAllEx(SND_SPELL_OVERHEAL, client);
 		}
 		
 		case ItemStrange_Spellbook:
@@ -1319,7 +1333,7 @@ bool ActivateStrangeItem(int client)
 				
 				if (sound[0])
 				{
-					EmitSoundToAll(sound, client);
+					EmitSoundToAllEx(sound, client);
 				}
 				
 				if (response[0])
@@ -1401,7 +1415,7 @@ bool ActivateStrangeItem(int client)
 		{
 			if (TF2_IsPlayerInCondition2(client, TFCond_HasRune))
 			{
-				EmitSoundToClient(client, SND_NOPE);
+				EmitSoundToClientEx(client, SND_NOPE);
 				PrintCenterText(client, "%t", "AlreadyHasRune");
 				return false;
 			}
@@ -1409,7 +1423,7 @@ bool ActivateStrangeItem(int client)
 			char sound[PLATFORM_MAX_PATH];
 			TFCond rune = GetRandomMannpowerRune(sound, sizeof(sound));
 			TF2_AddCondition(client, rune, GetItemMod(ItemStrange_NastyNorsemann, 0));
-			EmitSoundToAll(sound, client);
+			EmitSoundToAllEx(sound, client);
 		}
 		
 		case ItemStrange_ScaryMask:
@@ -1420,7 +1434,7 @@ bool ActivateStrangeItem(int client)
 			float pos[3], victimPos[3];
 			char sound[PLATFORM_MAX_PATH];
 			FormatEx(sound, sizeof(sound), "vo/halloween_boss/knight_attack0%i.mp3", GetRandomInt(1, 4));
-			EmitSoundToAll(sound, client);
+			EmitSoundToAllEx(sound, client);
 			
 			GetClientAbsOrigin(client, pos);
 			for (int i = 1; i <= MaxClients; i++)
@@ -1443,7 +1457,7 @@ bool ActivateStrangeItem(int client)
 		
 		case ItemStrange_DarkHunter:
 		{
-			EmitSoundToAll(SND_SPELL_STEALTH, client);
+			EmitSoundToAllEx(SND_SPELL_STEALTH, client);
 			TF2_AddCondition(client, TFCond_StealthedUserBuffFade, GetItemMod(ItemStrange_DarkHunter, 0));
 		}
 		
@@ -1465,7 +1479,7 @@ bool ActivateStrangeItem(int client)
 				GetItemMod(ItemStrange_LegendaryLid, 2), GetItemMod(ItemStrange_LegendaryLid, 0), -2.0);
 			
 			ClientPlayGesture(client, "ACT_MP_THROW");
-			EmitSoundToAll(SND_THROW, client);
+			EmitSoundToAllEx(SND_THROW, client);
 		}
 		
 		case ItemStrange_CroneDome:
@@ -1478,7 +1492,7 @@ bool ActivateStrangeItem(int client)
 				GetItemMod(ItemStrange_CroneDome, 3), GetItemMod(ItemStrange_CroneDome, 1), -2.0);
 			
 			ClientPlayGesture(client, "ACT_MP_THROW");
-			EmitSoundToAll(SND_THROW, client);
+			EmitSoundToAllEx(SND_THROW, client);
 		}
 		
 		case ItemStrange_HandsomeDevil:
@@ -1491,7 +1505,7 @@ bool ActivateStrangeItem(int client)
 				GetItemMod(ItemStrange_HandsomeDevil, 2), GetItemMod(ItemStrange_HandsomeDevil, 0), -2.0);
 			
 			ClientPlayGesture(client, "ACT_MP_THROW");
-			EmitSoundToAll(SND_THROW, client);
+			EmitSoundToAllEx(SND_THROW, client);
 		}
 	}
 	
@@ -1647,7 +1661,7 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 	
 	TE_SetupBeamPoints(pos, end, g_iBeamModel, 0, 0, 0, 0.4, size, size, 0, 2.0, colors, 8);
 	TE_SendToAll();
-	EmitSoundToAll(SND_LASER, attacker);
+	EmitSoundToAllEx(SND_LASER, attacker);
 	
 	if (particleAttach[0])
 	{
@@ -1744,9 +1758,9 @@ public Action Timer_HalloweenThriller(Handle timer, int merasmus)
 			{
 				switch (GetRandomInt(1, 3))
 				{
-					case 1: EmitSoundToAll(SND_MERASMUS_DANCE1);
-					case 2: EmitSoundToAll(SND_MERASMUS_DANCE2);
-					case 3: EmitSoundToAll(SND_MERASMUS_DANCE3);
+					case 1: EmitSoundToAllEx(SND_MERASMUS_DANCE1);
+					case 2: EmitSoundToAllEx(SND_MERASMUS_DANCE2);
+					case 3: EmitSoundToAllEx(SND_MERASMUS_DANCE3);
 				}
 			}
 			
