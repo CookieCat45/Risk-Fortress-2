@@ -116,7 +116,7 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	if (action.TalkerTime < GetGameTime())
 	{
 		action.TalkerTime = GetGameTime() + 4.0;
-		EmitGameSoundToAllEx("MVM.SentryBusterIntro", actor.index);
+		EmitGameSoundToAll("MVM.SentryBusterIntro", actor.index);
 	}
 	
 	bool onGround = (actor.GetFlags() & FL_ONGROUND) != 0;

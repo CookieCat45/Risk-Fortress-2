@@ -1438,7 +1438,7 @@ public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int par
 			}
 			else
 			{
-				EmitSoundToAllEx(SND_EVIL_LAUGH);
+				EmitSoundToAll(SND_EVIL_LAUGH);
 				RF2_PrintToChatAll("%t", "DifficultySetDeadly", difficultyName);
 			}
 		}
@@ -1731,12 +1731,14 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			{
 				g_iTotalEnemiesKilled++;
 				cashAmount = Enemy(victim).CashAward;
-
+				
 				if (IsBoss(victim))
 				{
 					g_iTotalBossesKilled++;
 					size = 3;
-					EmitSoundToAllEx(SND_SENTRYBUSTER_BOOM, victim, _, _, _, 3.0);
+					EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
+					EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
+					EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim);
 					TE_TFParticle("fireSmokeExplosion", pos);
 					RequestFrame(RF_DeleteRagdoll, victim);
 				}
@@ -1874,7 +1876,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			else if (alive == 1)
 			{
 				PrintHintText(lastMan, "%t", "LastMan");
-				EmitSoundToAllEx(SND_LASTMAN);
+				EmitSoundToAll(SND_LASTMAN);
 				SpeakResponseConcept_MVM(lastMan, "TLK_MVM_LAST_MAN_STANDING");
 			}
 			
@@ -2105,7 +2107,7 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 
 		if (hitCount > 0)
 		{
-			EmitSoundToAllEx(SND_THUNDER, medic);
+			EmitSoundToAll(SND_THUNDER, medic);
 			UTIL_ScreenShake(eyePos, 20.0, 5.0*hitCount, 8.0, range*3.0, SHAKE_START, true);
 			
 			if (!vaccinator)
@@ -2277,7 +2279,7 @@ public void RF_TeleporterThink(int building)
 
 		if (spawns > 0)
 		{
-			EmitSoundToAllEx(SND_TELEPORTER_BLU, building, _, SNDLEVEL_TRAIN);
+			EmitSoundToAll(SND_TELEPORTER_BLU, building, _, SNDLEVEL_TRAIN);
 		}
 
 		g_flTeleporterNextSpawnTime[building] = spawns > 0 ? tickedTime+(36.0/float(GetEntProp(building, Prop_Send, "m_iUpgradeLevel"))) : tickedTime+2.0;
@@ -2897,7 +2899,7 @@ public Action Timer_Difficulty(Handle timer)
 		static float lastBellTime;
 		if (GetTickedTime() > lastBellTime+10.0)
 		{
-			EmitSoundToAllEx(SND_BELL);
+			EmitSoundToAll(SND_BELL);
 			lastBellTime = GetTickedTime();
 		}
 	}
@@ -3308,7 +3310,7 @@ public Action OnBuildCommand(int client, const char[] command, int args)
 	{
 		if (args == 1 || GetCmdArgInt(2) == view_as<int>(TFObjectMode_Entrance))
 		{
-			EmitSoundToClientEx(client, SND_NOPE);
+			EmitSoundToClient(client, SND_NOPE);
 			PrintCenterText(client, "%t", "OnlyBuildExit");
 			return Plugin_Handled;
 		}
@@ -3559,7 +3561,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 				result = true;
 				changed = true;
 				StopSound(client, SNDCHAN_AUTO, SND_WEAPON_CRIT);
-				EmitSoundToAllEx(SND_WEAPON_CRIT, client);
+				EmitSoundToAll(SND_WEAPON_CRIT, client);
 			}
 		}
 	}
@@ -3655,7 +3657,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			StrCat(sound, sizeof(sound), "Crit");
 		}
 		
-		EmitGameSoundToAllEx(sound, client);
+		EmitGameSoundToAll(sound, client);
 	}
 
 	return changed ? Plugin_Changed : Plugin_Continue;
@@ -3917,7 +3919,7 @@ public void RF_DragonFuryCritCheck(int entity)
 		{
 			SetEntProp(entity, Prop_Send, "m_bCritical", true);
 			StopSound(owner, SNDCHAN_AUTO, SND_WEAPON_CRIT);
-			EmitSoundToAllEx(SND_WEAPON_CRIT, owner);
+			EmitSoundToAll(SND_WEAPON_CRIT, owner);
 		}
 		
 		int weapon = GetPlayerWeaponSlot(owner, 0);
@@ -4598,7 +4600,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 					int rocket = ShootProjectile(attacker, "tf_projectile_sentryrocket", pos, angles, rocketSpeed, dmg);
 					SetShouldDamageOwner(rocket, false);
 					SetEntItemProc(rocket, Item_Law);
-					EmitSoundToAllEx(SND_LAW_FIRE, attacker, _, _, _, 0.6);
+					EmitSoundToAll(SND_LAW_FIRE, attacker, _, _, _, 0.6);
 					g_bPlayerLawCooldown[attacker] = true;
 					CreateTimer(0.4, Timer_LawCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 				}
@@ -4737,7 +4739,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					if (!bonked)
 					{
 						TE_TFParticle("crit_text", damagePosition, victim);
-						EmitGameSoundToClientEx(attacker, GSND_CRIT);
+						EmitGameSoundToClient(attacker, GSND_CRIT);
 					}
 
 					damage *= 3.0;
@@ -4747,7 +4749,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					if (!bonked)
 					{
 						TE_TFParticle("minicrit_text", damagePosition, victim);
-						EmitGameSoundToClientEx(attacker, GSND_MINICRIT);
+						EmitGameSoundToClient(attacker, GSND_MINICRIT);
 					}
 
 					damage *= 1.35;
@@ -4761,7 +4763,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					if (!bonked)
 					{
 						TE_TFParticle("crit_text", damagePosition, victim);
-						EmitGameSoundToClientEx(attacker, GSND_CRIT);
+						EmitGameSoundToClient(attacker, GSND_CRIT);
 					}
 
 					damage *= 0.741;
@@ -4780,7 +4782,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					if (!bonked)
 					{
 						TE_TFParticle("minicrit_text", damagePosition, victim);
-						EmitGameSoundToClientEx(attacker, GSND_MINICRIT);
+						EmitGameSoundToClient(attacker, GSND_MINICRIT);
 					}
 
 					damage /= 3.0;
@@ -4853,7 +4855,7 @@ public void RF_CheckHealthForPocketMedic(int client)
 	int maxHealth = RF2_GetCalculatedMaxHealth(client);
 	if (health < float(maxHealth) * GetItemMod(Item_PocketMedic, 0))
 	{
-		EmitSoundToAllEx(SND_SHIELD, client);
+		EmitSoundToAll(SND_SHIELD, client);
 		TF2_AddCondition(client, TFCond_UberchargedCanteen, GetItemMod(Item_PocketMedic, 2));
 		int heal = RoundToFloor(float(maxHealth) * GetItemMod(Item_PocketMedic, 1));
 		HealPlayer(client, heal, false);
@@ -5096,7 +5098,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 
 				if (valid)
 				{
-					EmitSoundToAllEx(sample, client);
+					EmitSoundToAll(sample, client);
 					float duration = g_flPlayerGiantFootstepInterval[client] * (RF2_GetCalculatedSpeed(client) / RF2_GetBaseSpeed(client));
 					nextFootstepTime[client] = GetTickedTime() + duration;
 				}
@@ -5145,7 +5147,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 
 				if (GetClientTeam(clients[i]) == GetClientTeam(client))
 				{
-					EmitSoundToClientEx(clients[i], sample, client, channel, level, flags, volume, pitch);
+					EmitSoundToClient(clients[i], sample, client, channel, level, flags, volume, pitch);
 					blacklist[clients[i]] = true;
 				}
 			}
@@ -5259,19 +5261,19 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				// Only works this way for some reason
 				if (TF2_IsPlayerInCondition2(client, TFCond_Disguised))
 				{
-					EmitSoundToClientEx(client, sample, client, channel, level, flags, volume, pitch);
+					EmitSoundToClient(client, sample, client, channel, level, flags, volume, pitch);
 
 					for (int i = 0; i < numClients; i++)
 					{
 						if (clients[i] != client && !blacklist[clients[i]])
 						{
-							EmitSoundToClientEx(clients[i], sample, client, channel, level, flags, volume, pitch);
+							EmitSoundToClient(clients[i], sample, client, channel, level, flags, volume, pitch);
 						}
 					}
 				}
 				else
 				{
-					EmitSoundToAllEx(sample, client, channel, level, flags, volume, pitch);
+					EmitSoundToAll(sample, client, channel, level, flags, volume, pitch);
 				}
 			}
 		}

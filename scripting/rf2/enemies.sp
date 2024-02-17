@@ -934,14 +934,14 @@ void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 	}
 	
 	delete players;
-	EmitSoundToAllEx(SND_BOSS_SPAWN);
+	EmitSoundToAll(SND_BOSS_SPAWN);
 }
 
 public int SortBossSpawnList(int index1, int index2, ArrayList array, Handle hndl)
 {
 	int client1 = array.Get(index1);
 	int client2 = array.Get(index2);
-
+	
 	if (!GetCookieBool(client1, g_coBecomeBoss))
 		return 1;
 	

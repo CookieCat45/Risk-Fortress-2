@@ -147,7 +147,7 @@ public MRESReturn Detour_CanBuild(int client, DHookReturn returnVal, DHookParam 
 			}
 			else
 			{
-				EmitSoundToClientEx(client, SND_NOPE);
+				EmitSoundToClient(client, SND_NOPE);
 				PrintCenterText(client, "You've already built your max number of sentries (%i)", RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0))+1);
 			}
 		}

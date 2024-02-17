@@ -355,11 +355,11 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		
 		if (StrContains(sound, ".mp3") == -1 && StrContains(sound, ".wav") == -1)
 		{
-			EmitGameSoundToAllEx(sound, soundEnt, flags, _, _, soundPos);
+			EmitGameSoundToAll(sound, soundEnt, flags, _, _, soundPos);
 		}
 		else
 		{
-			EmitSoundToAllEx(sound, soundEnt, channel, level, flags, volume, pitch, _, soundPos);
+			EmitSoundToAll(sound, soundEnt, channel, level, flags, volume, pitch, _, soundPos);
 		}
 	}
 	

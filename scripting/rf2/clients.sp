@@ -561,9 +561,10 @@ void ApplyVampireSapper(int client, int attacker, float damage=10.0, float durat
 	g_flPlayerVampireSapperDamage[client] = damage;
 	g_flPlayerVampireSapperDuration[client] = duration;
 	
-	EmitSoundToAllEx(SND_SAPPER_PLANT, client, _, _, _, 2.0);
+	EmitSoundToAll(SND_SAPPER_PLANT, client);
+	EmitSoundToAll(SND_SAPPER_PLANT, client);
 	StopSound(client, SNDCHAN_AUTO, SND_SAPPER_DRAIN);
-	EmitSoundToAllEx(SND_SAPPER_DRAIN, client);
+	EmitSoundToAll(SND_SAPPER_DRAIN, client);
 	
 	// spawn the sapper particle
 	float pos[3];

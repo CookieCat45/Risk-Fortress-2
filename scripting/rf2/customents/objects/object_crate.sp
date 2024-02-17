@@ -252,7 +252,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 		}
 		else
 		{
-			EmitSoundToClientEx(attacker, SND_NOPE);
+			EmitSoundToClient(attacker, SND_NOPE);
 			PrintCenterText(attacker, "%t", "NoKeys");
 			return Plugin_Continue;
 		}
@@ -263,7 +263,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	}
 	else
 	{
-		EmitSoundToClientEx(attacker, SND_NOPE);
+		EmitSoundToClient(attacker, SND_NOPE);
 		PrintCenterText(attacker, "%t", "NotEnoughMoney", crate.Cost, g_flPlayerCash[attacker]);
 		return Plugin_Continue;
 	}
@@ -310,7 +310,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 		}
 		default:
 		{
-			EmitSoundToAllEx(SND_DROP_DEFAULT, entity);
+			EmitSoundToAll(SND_DROP_DEFAULT, entity);
 			effectName = "mvm_loot_explosion";
 			removeTime = 0.0;
 			particleRemoveTime = 3.0;

@@ -67,7 +67,8 @@ static int Update(RF2_GalleomHopAttack action, RF2_RaidBoss_Galleom boss, float 
 			action.DoAttackHitbox(_, pos, {-350.0, -350.0, 0.0}, {350.0, 350.0, 100.0}, 300.0, DMG_CLUB, {0.0, 0.0, 850.0});
 			TE_TFParticle("hammer_impact_button_dust2", pos);
 			UTIL_ScreenShake(pos, 10.0, 20.0, 2.5, 800.0, SHAKE_START, true);
-			EmitSoundToAllEx(SND_JUMP_SLAM, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);		
+			EmitSoundToAll(SND_JUMP_SLAM, boss.index, _, SNDLEVEL_SCREAMING);
+			EmitSoundToAll(SND_JUMP_SLAM, boss.index, _, SNDLEVEL_SCREAMING);		
 			switch (action.HitCounter)
 			{
 				case 1: duration = boss.AddGesture("EnmGalleomHopLand1")-0.05;
@@ -93,7 +94,8 @@ static int Update(RF2_GalleomHopAttack action, RF2_RaidBoss_Galleom boss, float 
 				case 3: duration = boss.AddGesture("EnmGalleomHop4")-0.05;
 			}
 			
-			EmitSoundToAllEx(SND_JUMP, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
+			EmitSoundToAll(SND_JUMP, boss.index, _, SNDLEVEL_SCREAMING);
+			EmitSoundToAll(SND_JUMP, boss.index, _, SNDLEVEL_SCREAMING);
 			boss.SetHitboxSize({-150.0, -150.0, 0.0}, {150.0, 150.0, 600.0});
 		}
 		

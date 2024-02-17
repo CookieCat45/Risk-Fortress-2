@@ -112,9 +112,9 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		
 		TE_TFParticle("explosionTrail_seeds_mvm", pos);
 		TE_TFParticle("fluidSmokeExpl_ring_mvm", pos);
-		EmitGameSoundToAllEx("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
-		EmitGameSoundToAllEx("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
-		EmitGameSoundToAllEx("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
+		EmitGameSoundToAll("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
+		EmitGameSoundToAll("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
+		EmitGameSoundToAll("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
 		UTIL_ScreenShake(pos, 25.0, 5.0, 5.0, 1000.0, SHAKE_START, false);
 		ArrayList victims = new ArrayList();
 		int entity = -1;
@@ -320,7 +320,7 @@ static MRESReturn HandleAnimEvent(int actor, Handle params)
 	int event = DHookGetParamObjectPtrVar(params, 1, 0, ObjectValueType_Int);
 	if (event == 7001)
 	{
-		EmitGameSoundToAllEx("MVM.SentryBusterStep", actor);
+		EmitGameSoundToAll("MVM.SentryBusterStep", actor);
 	}
 
 	return MRES_Ignored;
@@ -389,8 +389,8 @@ void DoSentryBusterWave()
 		}
 		else
 		{
-			EmitGameSoundToAllEx("MVM.SentryBusterLoop", buster.index);
-			EmitGameSoundToAllEx("MVM.SentryBusterIntro", buster.index);
+			EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
+			EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
 		}
 	}
 	
@@ -398,11 +398,11 @@ void DoSentryBusterWave()
 	{
 		if (g_Busters == 0)
 		{
-			EmitGameSoundToAllEx("Announcer.MVM_Sentry_Buster_Alert");
+			EmitGameSoundToAll("Announcer.MVM_Sentry_Buster_Alert");
 		}
 		else
 		{
-			EmitGameSoundToAllEx("Announcer.MVM_Sentry_Buster_Alert_Another");
+			EmitGameSoundToAll("Announcer.MVM_Sentry_Buster_Alert_Another");
 		}
 		
 		g_Busters++;
@@ -423,8 +423,8 @@ public void RF_BusterSpawnRetry(int sentry)
 	}
 	else
 	{
-		EmitGameSoundToAllEx("MVM.SentryBusterLoop", buster.index);
-		EmitGameSoundToAllEx("MVM.SentryBusterIntro", buster.index);
+		EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
+		EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
 	}
 }
 

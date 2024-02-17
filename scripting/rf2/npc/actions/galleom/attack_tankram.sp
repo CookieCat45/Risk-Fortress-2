@@ -73,7 +73,8 @@ static int OnStart(RF2_GalleomTankRamAttack action, RF2_RaidBoss_Galleom boss, N
 	boss.SetSequence("EnmGalleomTankAttack1");
 	boss.BaseNpc.flAcceleration = 750.0;
 	boss.BaseNpc.flRunSpeed = 1500.0;
-	EmitSoundToAllEx(SND_TANKLOOP, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
+	EmitSoundToAll(SND_TANKLOOP, boss.index, _, SNDLEVEL_SCREAMING);
+	EmitSoundToAll(SND_TANKLOOP, boss.index, _, SNDLEVEL_SCREAMING);
 	return action.Continue();
 }
 
@@ -103,7 +104,7 @@ static int Update(RF2_GalleomTankRamAttack action, RF2_RaidBoss_Galleom boss, fl
 			action.RocketTrailR = CBaseEntity(SpawnInfoParticle("spell_fireball_small_blue", pos, _, boss.index, "jet_r"));
 			boss.GetAttachment(boss.LookupAttachment("jet_l"), pos, NULL_VECTOR);
 			action.RocketTrailL = CBaseEntity(SpawnInfoParticle("spell_fireball_small_blue", pos, _, boss.index, "jet_l"));
-			EmitSoundToAllEx(SND_JET_START, boss.index, _, SNDLEVEL_SCREAMING);
+			EmitSoundToAll(SND_JET_START, boss.index, _, SNDLEVEL_SCREAMING);
 			action.JetStartTime = GetEngineTime();
 		}
 		
@@ -121,7 +122,8 @@ static int Update(RF2_GalleomTankRamAttack action, RF2_RaidBoss_Galleom boss, fl
 			StopSound(boss.index, SNDCHAN_AUTO, SND_TANKLOOP);
 			StopSound(boss.index, SNDCHAN_AUTO, SND_JET_LOOP);
 			StopSound(boss.index, SNDCHAN_AUTO, SND_JET_LOOP);
-			EmitSoundToAllEx(SND_TANKEXIT, boss.index, _, SNDLEVEL_SCREAMING, _, 2.0);
+			EmitSoundToAll(SND_TANKEXIT, boss.index, _, SNDLEVEL_SCREAMING);
+			EmitSoundToAll(SND_TANKEXIT, boss.index, _, SNDLEVEL_SCREAMING);
 		}
 		
 		action.AttackTime = GetGameTime() + 0.2;
@@ -129,7 +131,7 @@ static int Update(RF2_GalleomTankRamAttack action, RF2_RaidBoss_Galleom boss, fl
 	
 	if (action.JetStartTime > 0.0 && GetEngineTime() >= action.JetStartTime+3.4)
 	{
-		EmitSoundToAllEx(SND_JET_LOOP, boss.index, _, SNDLEVEL_SCREAMING);
+		EmitSoundToAll(SND_JET_LOOP, boss.index, _, SNDLEVEL_SCREAMING);
 		action.JetStartTime = 0.0;
 	}
 	

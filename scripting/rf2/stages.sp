@@ -286,7 +286,7 @@ public Action Timer_PlayMusicDelaySingle(Handle timer, int client)
 	if (!(client = GetClientOfUserId(client)))
 		return Plugin_Continue;
 	
-	EmitSoundToClientEx(client, g_szClientBGM[client]);
+	EmitSoundToClient(client, g_szClientBGM[client]);
 	return Plugin_Continue;
 }
 

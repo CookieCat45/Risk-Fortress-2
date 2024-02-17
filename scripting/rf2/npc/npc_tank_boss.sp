@@ -167,7 +167,7 @@ void EndTankDestructionMode()
 	
 	if (aliveEnemies)
 	{
-		EmitSoundToAllEx(SND_ENEMY_STUN);
+		EmitSoundToAll(SND_ENEMY_STUN);
 	}
 	
 	int entity = -1;
@@ -315,7 +315,7 @@ static int CreateTankBoss(bool badass=false)
 		pitch = SNDPITCH_HIGH;
 	}
 	
-	EmitSoundToAllEx(SND_BOSS_SPAWN, _, _, _, _, _, pitch);
+	EmitSoundToAll(SND_BOSS_SPAWN, _, _, _, _, _, pitch);
 	return tankBoss;
 }
 
@@ -350,7 +350,7 @@ public void Hook_TankBossThink(int entity)
 				g_bTankSpeedBoost[entity] = true;
 				float speed = GetEntPropFloat(entity, Prop_Data, "m_speed");
 				SetEntPropFloat(entity, Prop_Data, "m_speed", speed * value);
-				EmitSoundToAllEx(SND_TANK_SPEED_UP, entity);
+				EmitSoundToAll(SND_TANK_SPEED_UP, entity);
 			}
 		}
 	}
@@ -429,7 +429,7 @@ public void Hook_BadassTankThink(int entity)
 				int rocket = ShootProjectile(entity, "tf_projectile_sentryrocket", pos, angles, speed, damage, -10.0);
 				SetEntityMoveType(rocket, MOVETYPE_FLYGRAVITY);
 				CreateTimer(0.1, Timer_TankRocketFixAngles, EntIndexToEntRef(rocket), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-				EmitSoundToAllEx(SND_LAW_FIRE, entity, _, _, _, _, _, _, pos);
+				EmitSoundToAll(SND_LAW_FIRE, entity, _, _, _, _, _, _, pos);
 
 				float attackRate, nextAttackTime;
 				switch (RF2_GetDifficulty())
@@ -492,8 +492,9 @@ public void Hook_BadassTankThink(int entity)
 						float duration = AddGesture(entity, "eye_rise", _, _, 0.25);
 						
 						int num = GetRandomInt(0, sizeof(g_szTankLaserVoices)-1);
-						EmitSoundToAllEx(g_szTankLaserVoices[num], entity, _, 120, _, 2.0);
-						EmitSoundToAllEx(SND_TANK_LASERRISE, entity, _, 120);
+						EmitSoundToAll(g_szTankLaserVoices[num], entity, _, 120);
+						EmitSoundToAll(g_szTankLaserVoices[num], entity, _, 120);
+						EmitSoundToAll(SND_TANK_LASERRISE, entity, _, 120);
 						
 						if (nextBarrageAttack - GetGameTime() <= 10.0)
 						{
@@ -514,8 +515,9 @@ public void Hook_BadassTankThink(int entity)
 							SetEntProp(entity, Prop_Data, "m_iSpecialAttack", special);
 							CBaseAnimatingOverlay(entity).RemoveAllGestures();
 							int num = GetRandomInt(0, sizeof(g_szTankBarrageVoices)-1);
-							EmitSoundToAllEx(g_szTankBarrageVoices[num], entity, _, 120, _, 2.0);
-							EmitSoundToAllEx(SND_TANK_LASERRISE, entity, _, 120);
+							EmitSoundToAll(g_szTankBarrageVoices[num], entity, _, 120);
+							EmitSoundToAll(g_szTankBarrageVoices[num], entity, _, 120);
+							EmitSoundToAll(SND_TANK_LASERRISE, entity, _, 120);
 							
 							float duration = AddGesture(entity, "rocket_turn_up", _, _, 0.2, 2);
 							if (nextLaserAttack - GetGameTime() <= 10.0)
@@ -549,7 +551,7 @@ public void Hook_BadassTankThink(int entity)
 					}
 					
 					StopSound(entity, SNDCHAN_AUTO, SND_TANK_LASERRISE);
-					EmitSoundToAllEx(SND_TANK_LASERRISE_END, entity, _, 120);
+					EmitSoundToAll(SND_TANK_LASERRISE_END, entity, _, 120);
 					CreateTimer(duration, Timer_EndLaserAttack, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
 					SetEntPropFloat(entity, Prop_Data, "m_flNextBarrageAttack", nextBarrageAttack+duration);
 				}
@@ -634,7 +636,7 @@ public void Hook_BadassTankThink(int entity)
 						
 						int laser = ShootProjectile(entity, "tf_projectile_rocket", pos, angles, speed, damage);
 						SetEntityModel2(laser, MODEL_INVISIBLE);
-						EmitSoundToAllEx(SND_TANK_LASERSHOOT, entity, _, 120);
+						EmitSoundToAll(SND_TANK_LASERSHOOT, entity, _, 120);
 						SpawnInfoParticle("drg_cow_rockettrail_fire_blue", pos, _, laser);
 						SpawnInfoParticle("teleported_flash", laserPos, 0.1);
 						
@@ -654,7 +656,7 @@ public void Hook_BadassTankThink(int entity)
 				{
 					AddGesture(entity, "rocket_up", _, false);
 					StopSound(entity, SNDCHAN_AUTO, SND_TANK_LASERRISE);
-					EmitSoundToAllEx(SND_TANK_LASERRISE_END, entity, _, 120);
+					EmitSoundToAll(SND_TANK_LASERRISE_END, entity, _, 120);
 					
 					// note that this is technically double, as the rockets are fired from both chambers each time
 					int rocketCount = 15;
@@ -704,7 +706,7 @@ public Action Timer_TankFireHomingRockets(Handle timer, int entity)
 		CreateTimer(0.1, Timer_TankRocketFixAngles, EntIndexToEntRef(rocket), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
-	EmitSoundToAllEx(SND_LAW_FIRE, entity);
+	EmitSoundToAll(SND_LAW_FIRE, entity);
 	AddGesture(entity, "rocket_shoot_up", _, _, _, 2);
 	return Plugin_Continue;
 }

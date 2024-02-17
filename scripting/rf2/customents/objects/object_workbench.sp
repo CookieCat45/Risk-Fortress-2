@@ -208,14 +208,14 @@ static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 	{
 		GiveItem(client, item, -1);
 		GiveItem(client, benchItem, 1, true);
-		EmitSoundToAllEx(SND_USE_WORKBENCH, client);
+		EmitSoundToAll(SND_USE_WORKBENCH, client);
 		PrintCenterText(client, "%t", "UsedWorkbench", g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item), g_szItemName[item]);
 	}
 	else
 	{
 		char qualityName[32];
 		GetQualityName(quality, qualityName, sizeof(qualityName));
-		EmitSoundToClientEx(client, SND_NOPE);
+		EmitSoundToClient(client, SND_NOPE);
 		PrintCenterText(client, "%t", "NoExchange", qualityName);
 	}
 
