@@ -188,7 +188,7 @@ methodmap TFBot < Handle
 				continue;
 			}
 			
-			if (TF2_GetObjectType(entity) == obj && TF2_GetObjectMode(entity) == mode)
+			if (TF2_GetObjectType2(entity) == obj && TF2_GetObjectMode(entity) == mode)
 				return entity;
 		}
 		
@@ -236,7 +236,7 @@ methodmap TFBot < Handle
 				}
 				else
 				{
-					if (TF2_GetObjectType(building) == TFObject_Sentry && GetEntProp(building, Prop_Send, "m_iUpgradeLevel") < 3)
+					if (TF2_GetObjectType2(building) == TFObject_Sentry && GetEntProp(building, Prop_Send, "m_iUpgradeLevel") < 3)
 						return building;
 				}
 			}
@@ -546,7 +546,7 @@ void TFBot_Think(TFBot &bot)
 					if (dist > 50.0 || GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon") == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Builder))
 						TFBot_PathToPos(bot, pos, 10000.0, true);
 					
-					if (TF2_GetObjectType(building) == TFObject_Teleporter && dist <= 50.0)
+					if (TF2_GetObjectType2(building) == TFObject_Teleporter && dist <= 50.0)
 					{
 						bot.AddButtonFlag(IN_DUCK);
 					}
@@ -719,7 +719,7 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 				
 				if (IsBuilding(threat))
 				{
-					return TF2_GetObjectType(threat) == TFObject_Sentry;
+					return TF2_GetObjectType2(threat) == TFObject_Sentry;
 				}
 				
 				return true;
@@ -1134,7 +1134,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		else if (melee > -1 && melee == activeWeapon)
 		{
 			// Melee bots need to crouch to attack teleporters, they won't realize this by default
-			if (threat > -1 && threat > MaxClients && IsBuilding(threat) && TF2_GetObjectType(threat) == TFObject_Teleporter)
+			if (threat > -1 && threat > MaxClients && IsBuilding(threat) && TF2_GetObjectType2(threat) == TFObject_Teleporter)
 			{
 				if (DistBetween(bot.Client, threat, true) <= sq(100.0))
 					buttons |= IN_DUCK;
@@ -1179,7 +1179,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			
 			if (sentry) // Stop searching for sap targets once we find a sentry, but keep adding sentries to our list
 			{
-				if (TF2_GetObjectType(entity) == TFObject_Sentry)
+				if (TF2_GetObjectType2(entity) == TFObject_Sentry)
 				{
 					sentryList.Push(entity);
 					
@@ -1229,7 +1229,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				}
 				
 				// Sentries are important
-				if (TF2_GetObjectType(entity) == TFObject_Sentry)
+				if (TF2_GetObjectType2(entity) == TFObject_Sentry)
 				{
 					sentry = true;
 					sentryList.Push(entity);

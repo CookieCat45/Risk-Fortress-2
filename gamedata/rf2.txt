@@ -52,11 +52,6 @@
     			"linux"		"@_ZN18CTFWeaponBaseMelee20DoSwingTraceInternalER10CGameTracebP10CUtlVectorIS0_10CUtlMemoryIS0_iEE"
 				"windows"	"\x53\x8B\xDC\x83\xEC\x08\x83\xE4\xF0\x83\xC4\x04\x55\x8B\x6B\x04\x89\x6C\x24\x04\x8B\xEC\x81\xEC\x38\x05\x00\x00\xA1"
 			}
-			"CTFPlayer::CanBuild"
-			{
-				"linux"		"@_ZN9CTFPlayer8CanBuildEii"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x0C\x53\x8B\x5D\x08\x57\x8B\xF9\x83\xFB\x03"
-			}
 			"CTFPlayer::TeamFortress_SetSpeed"
 			{
 				"linux"			"@_ZN9CTFPlayer21TeamFortress_SetSpeedEv"
@@ -114,26 +109,6 @@
 					}
 				}
 			}
-			
-			"CTFPlayer::CanBuild"
-            {
-                "signature"  	"CTFPlayer::CanBuild"
-                "callconv"  	"thiscall"
-                "return"  		"int"
-                "this"  		"entity"
-				
-                "arguments"
-                {
-                    "type"
-                    {
-						"type"    "int"
-                    }
-                    "mode"
-                    {
-                        "type"    "int"
-                    }
-                }
-            }
 			
 			"CObjectSentrygun::Attack"
 			{

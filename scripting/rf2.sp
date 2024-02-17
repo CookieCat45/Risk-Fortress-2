@@ -197,7 +197,6 @@ Handle g_hSDKPlayGesture;
 Handle g_hSDKIntersects;
 Handle g_hSDKWeaponSwitch;
 Handle g_hSDKRealizeSpy;
-DynamicDetour g_hDetourCanBuild;
 DynamicDetour g_hDetourDoSwingTrace;
 DynamicDetour g_hDetourSentryAttack;
 DynamicDetour g_hDetourHandleRageGain;
@@ -286,6 +285,7 @@ Cookie g_coSpecOnDeath;
 Cookie g_coBecomeEnemy;
 Cookie g_coItemsCollected[4];
 Cookie g_coAchievementCookies[MAX_ACHIEVEMENTS];
+Cookie g_coNewPlayer;
 
 // TFBots
 TFBot g_TFBot[MAXTF2PLAYERS];
@@ -407,13 +407,6 @@ void LoadGameData()
 	if(!g_hSDKEquipWearable)
 	{
 		LogError("[SDK] Failed to create call for CBasePlayer::EquipWearable");
-	}
-	
-	
-	g_hDetourCanBuild = DynamicDetour.FromConf(gamedata, "CTFPlayer::CanBuild");
-	if (!g_hDetourCanBuild || !g_hDetourCanBuild.Enable(Hook_Post, Detour_CanBuild))
-	{
-		LogError("[DHooks] Failed to create detour for CTFPlayer::CanBuild");
 	}
 	
 	
@@ -1396,13 +1389,13 @@ void StartDifficultyVote()
 {
 	Menu menu = new Menu(Menu_DifficultyVote);
 	menu.SetTitle("Vote for the game's difficulty level!");
-	menu.AddItem("0", "Scrap");
-	menu.AddItem("1", "Iron");
-	menu.AddItem("2", "Steel");
-
+	menu.AddItem("0", "Scrap (Normal)");
+	menu.AddItem("1", "Iron (Hard)");
+	menu.AddItem("2", "Steel (Very Hard)");
+	
 	if (GetRandomInt(1, 20) == 1)
 	{
-		menu.AddItem("3", "Titanium");
+		menu.AddItem("3", "Titanium (Impossible)");
 	}
 
 	int clients[MAXTF2PLAYERS] = {-1, ...};
@@ -1428,10 +1421,10 @@ public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int par
 			char info[8];
 			menu.GetItem(param1, info, sizeof(info));
 			g_iDifficultyLevel = StringToInt(info);
-
+			
 			char difficultyName[64];
-			GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName));
-
+			GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName), _, true);
+			
 			if (g_iDifficultyLevel != DIFFICULTY_TITANIUM)
 			{
 				RF2_PrintToChatAll("%t", "DifficultySet", difficultyName);
@@ -2152,7 +2145,7 @@ public Action OnPlayerDropObject(Event event, const char[] name, bool dontBroadc
 
 	if (CanTeamQuickBuild(GetClientTeam(client)))
 	{
-		if (TF2_GetObjectType(building) == TFObject_Dispenser) // must be delayed by a frame or else the screen will break
+		if (TF2_GetObjectType2(building) == TFObject_Dispenser) // must be delayed by a frame or else the screen will break
 		{
 			RequestFrame(RF_DispenserQuickBuild, building);
 		}
@@ -2175,35 +2168,35 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	int building = event.GetInt("index");
 	bool carryDeploy = asBool(GetEntProp(building, Prop_Send, "m_bCarryDeploy"));
-
-	// For some reason, extra sentries built (by detouring CTFPlayer::CanBuild) always have this netprop set,
-	// so we'll use it to detect extra sentries built with the Head of Defense.
-	if (GetEntProp(building, Prop_Send, "m_bDisposableBuilding") && !carryDeploy)
+	
+	if (!carryDeploy && GetPlayerBuildingCount(client, TFObject_Sentry, false) > 1)
 	{
-		SetEntProp(building, Prop_Send, "m_bDisposableBuilding", false);
 		SetEntProp(building, Prop_Send, "m_bMiniBuilding", true);
-
+		SetEntProp(building, Prop_Send, "m_iObjectMode", 1); // MODE_SENTRYGUN_DISPOSABLE, forces main sentry to always show in building HUD
+		SetEntPropFloat(building, Prop_Send, "m_flModelScale", 0.6);
 		g_hPlayerExtraSentryList[client].Push(building);
+		if (GetPlayerBuildingCount(client, TFObject_Sentry) >= RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0)) + 1)
+		{
+			SetSentryState(client, false);
+		}
 		
 		if (!carryDeploy)
 		{
-			// Need to set health. m_bDisposableBuilding being set also messes with the building health.
-			int maxHealth = GetEntProp(building, Prop_Send, "m_iMaxHealth");
-			maxHealth = RoundToFloor(float(maxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
-			maxHealth = imax(maxHealth, 1); // prevent 0, causes division by zero crash on client
-			SetEntProp(building, Prop_Send, "m_iMaxHealth", maxHealth);
-			SetVariantInt(maxHealth);
+			// We need to set the health before the max health here so that the health increases properly when the sentry is building itself up
+			int maxHealth = CalculateBuildingMaxHealth(client, building);
+			SetVariantInt(RoundToCeil(float(maxHealth)*0.5));
 			AcceptEntityInput(building, "SetHealth");
+			SetEntProp(building, Prop_Send, "m_iMaxHealth", maxHealth);
 		}
 	}
-	else if (GetClientTeam(client) == TEAM_ENEMY && TF2_GetObjectType(building) == TFObject_Teleporter)
+	else if (GetClientTeam(client) == TEAM_ENEMY && TF2_GetObjectType2(building) == TFObject_Teleporter)
 	{
 		if (g_flTeleporterNextSpawnTime[building] < 0.0)
 			g_flTeleporterNextSpawnTime[building] = GetTickedTime()+(36.0/float(GetEntProp(building, Prop_Send, "m_iUpgradeLevel")));
 
 		RequestFrame(RF_TeleporterThink, EntIndexToEntRef(building));
 	}
-
+	
 	if (!carryDeploy && GameRules_GetProp("m_bInSetup"))
 	{
 		SDK_DoQuickBuild(building, true);
@@ -2741,7 +2734,6 @@ public Action Timer_PlayerHud(Handle timer)
 		miscText = "";
 		char difficultyName[32];
 		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
-
 		if (IsPlayerSurvivor(i))
 		{
 			if (g_bTankBossMode && !g_bGracePeriod)
@@ -2774,12 +2766,19 @@ public Action Timer_PlayerHud(Handle timer)
 						g_iTanksKilledObjective, g_iTankKillRequirement);
 				}
 			}
-
-			if (g_flPlayerVampireSapperCooldown[i] > 0.0)
+			
+			TFClassType class = TF2_GetPlayerClass(i);
+			if (class == TFClass_Spy && g_flPlayerVampireSapperCooldown[i] > 0.0)
 			{
 				FormatEx(miscText, sizeof(miscText), "\nSapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
 			}
-
+			else if (class == TFClass_Engineer && PlayerHasItem(i, ItemEngi_HeadOfDefense))
+			{
+				FormatEx(miscText, sizeof(miscText), 
+					"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n																													Disposable Sentries: %i/%i", 
+					g_hPlayerExtraSentryList[i].Length, RoundToFloor(CalcItemMod(i, ItemEngi_HeadOfDefense, 0)));
+			}
+			
 			ShowSyncHudText(i, g_hMainHudSync, g_szSurvivorHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed,
 				hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i], g_flPlayerNextLevelXP[i],
 				g_flPlayerCash[i], g_iPlayerHauntedKeys[i], g_szHudDifficulty, strangeItemInfo, miscText);
@@ -3781,8 +3780,8 @@ public void OnGameFrame()
 				// if server is empty, we can just reload now
 				if (!g_bGameInitialized && GetTotalHumans(false) == 0)
 				{
-					LogMessage("A change to the plugin has been detected, reloading in 5 seconds.");
-					g_flAutoReloadTime = GetTickedTime()+5.0;
+					LogMessage("A change to the plugin has been detected, reloading in 8 seconds.");
+					g_flAutoReloadTime = GetTickedTime()+8.0;
 				}
 				else
 				{
@@ -3893,11 +3892,10 @@ public void OnEntityDestroyed(int entity)
 		TE_TFParticle("env_grinder_oilspray_cash", pos);
 		TE_TFParticle("mvm_cash_explosion", pos);
 	}
-	else if (IsBuilding(entity) && TF2_GetObjectType(entity) == TFObject_Sentry)
+	else if (IsBuilding(entity) && TF2_GetObjectType2(entity) == TFObject_Sentry)
 	{
 		int index;
 		int builder = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
-		
 		if (builder > 0 && g_hPlayerExtraSentryList[builder] && (index = g_hPlayerExtraSentryList[builder].FindValue(entity)) != -1)
 		{
 			g_hPlayerExtraSentryList[builder].Erase(index);
@@ -4827,14 +4825,26 @@ public void Hook_WeaponSwitchPost(int client, int weapon)
 	{
 		g_TFBot[client].RemoveButtonFlag(IN_RELOAD);
 	}
-	else if (!g_bPlayerExtraSentryHint[client] && PlayerHasItem(client, ItemEngi_HeadOfDefense) && CanUseCollectorItem(client, ItemEngi_HeadOfDefense))
+	else if (PlayerHasItem(client, ItemEngi_HeadOfDefense) && CanUseCollectorItem(client, ItemEngi_HeadOfDefense))
 	{
-		char classname[64];
-		GetEntityClassname(weapon, classname, sizeof(classname));
-		if (strcmp2(classname, "tf_weapon_pda_engineer_build")) // PDA won't allow us to build extra sentries using it
+		if (!g_bPlayerExtraSentryHint[client] && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) == weapon)
 		{
 			PrintHintText(client, "%t", "ExtraSentryHint");
 			g_bPlayerExtraSentryHint[client] = true;
+		}
+		
+		int builderWep = GetPlayerWeaponSlot(client, WeaponSlot_Builder);
+		if (builderWep != weapon && GetPlayerBuildingCount(client, TFObject_Sentry) >= RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0)) + 1)
+		{
+			SetSentryState(client, false);
+		}
+		else if (GetPlayerWeaponSlot(client, WeaponSlot_PDA) == weapon)
+		{
+			SetSentryState(client, true);
+		}
+		else if (builderWep != weapon)
+		{
+			SetSentryState(client, false);
 		}
 	}
 	
@@ -4947,7 +4957,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			}
 		}
 	}
-
+	
 	static bool reloadPressed[MAXTF2PLAYERS];
 	if (!bot && buttons & IN_RELOAD)
 	{
@@ -5004,25 +5014,18 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		{
 			if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 			{
-				if (buttons & IN_SCORE)
+				if (g_hPlayerExtraSentryList[client].Length > 0 && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon"))
 				{
-					if (g_hPlayerExtraSentryList[client].Length > 0)
+					int entity = g_hPlayerExtraSentryList[client].Get(0);
+					if (IsValidEntity2(entity))
 					{
-						int entity = g_hPlayerExtraSentryList[client].Get(0);
-						if (IsValidEntity2(entity))
-						{
-							SetVariantInt(GetEntProp(entity, Prop_Send, "m_iHealth")+9999);
-							AcceptEntityInput(entity, "RemoveHealth");
-						}
+						SetVariantInt(GetEntProp(entity, Prop_Send, "m_iHealth")+9999);
+						AcceptEntityInput(entity, "RemoveHealth");
 					}
-				}
-				else
-				{
-					FakeClientCommand(client, "build 2");
 				}
 			}
 		}
-
+		
 		attack3Pressed[client] = true;
 	}
 	else

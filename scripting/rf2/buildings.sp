@@ -6,16 +6,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-enum
-{
-	CB_CAN_BUILD,			// Player is allowed to build this object
-	CB_CANNOT_BUILD,		// Player is not allowed to build this object
-	CB_LIMIT_REACHED,		// Player has reached the limit of the number of these objects allowed
-	CB_NEED_RESOURCES,		// Player doesn't have enough resources to build this object
-	CB_NEED_ADRENALIN,		// Commando doesn't have enough adrenalin to build a rally flag
-	CB_UNKNOWN_OBJECT,		// Error message, tried to build unknown object
-};
-
 bool IsBuilding(int entity)
 {
 	static char classname[64];
@@ -28,7 +18,7 @@ int GetBuiltObject(int client, TFObjectType type, TFObjectMode mode=TFObjectMode
 	int entity = -1;
 	while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
 	{
-		if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client && TF2_GetObjectType(entity) == type)
+		if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client && TF2_GetObjectType2(entity) == type)
 		{
 			if (type == TFObject_Teleporter)
 			{
@@ -61,7 +51,8 @@ public Action Timer_BuildingHealthRegen(Handle timer, int building)
 		if (maxHealth-health > 0)
 		{
 			int heal = imin(health + RoundToFloor(CalcItemMod(builder, ItemEngi_Toadstool, 0)), maxHealth);
-			SetEntityHealth(building, heal);
+			SetVariantInt(heal);
+			AcceptEntityInput(building, "SetHealth");
 			Event event = CreateEvent("building_healed", true);
 			event.SetInt("priority", 1);
 			event.SetInt("building", building);
@@ -84,6 +75,34 @@ void SDK_DoQuickBuild(int building, bool forceMaxLevel=false)
 	if (g_hSDKDoQuickBuild)
 	{
 		SDKCall(g_hSDKDoQuickBuild, building, forceMaxLevel);
+	}
+}
+
+TFObjectType TF2_GetObjectType2(int entity)
+{
+	static char classname[32];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	if (strcmp2(classname, "obj_sentrygun"))
+	{
+		// Sometimes sentries are set to TFObject_Sapper to allow building multiple at once
+		return TFObject_Sentry;
+	}
+	
+	return TF2_GetObjectType(entity);
+}
+
+// True = Allow building (PDA out)
+// False = Allow destroying
+void SetSentryState(int client, bool state)
+{
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != -1)
+	{
+		if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
+		{
+			// Sapper object type makes game think that sentry is not built, but we need to set it back to allow destruction and show sentries in the HUD
+			SetEntProp(entity, Prop_Send, "m_iObjectType", state ? TFObject_Sapper : TFObject_Sentry);
+		}
 	}
 }
 
@@ -126,29 +145,6 @@ public MRESReturn DHook_SentryGunAttack(int entity)
 				time -= gameTime;
 				time *= GetPlayerFireRateMod(owner);
 				SetEntDataFloat(entity, offset, gameTime+time, true);
-			}
-		}
-	}
-	
-	return MRES_Ignored;
-}
-
-public MRESReturn Detour_CanBuild(int client, DHookReturn returnVal, DHookParam params)
-{
-	if (RF2_IsEnabled())
-	{
-		TFObjectType type = view_as<TFObjectType>(DHookGetParam(params, 1));
-		if (type == TFObject_Sentry && PlayerHasItem(client, ItemEngi_HeadOfDefense))
-		{
-			if (GetPlayerBuildingCount(client, TFObject_Sentry) <= RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0))+1)
-			{
-				DHookSetReturn(returnVal, CB_CAN_BUILD);
-				return MRES_Supercede;
-			}
-			else
-			{
-				EmitSoundToClient(client, SND_NOPE);
-				PrintCenterText(client, "You've already built your max number of sentries (%i)", RoundToFloor(CalcItemMod(client, ItemEngi_HeadOfDefense, 0))+1);
 			}
 		}
 	}

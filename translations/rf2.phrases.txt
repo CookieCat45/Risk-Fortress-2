@@ -129,7 +129,7 @@
 	
 	"ExtraSentryHint" // No color tags
 	{
-		"en"		"Press ATTACK3 (Middle Mouse Button) to build extra sentries. TAB + ATTACK3 to detonate them."
+		"en"		"Press ATTACK3 (Middle Mouse Button) to destroy your disposable Sentry Guns."
 	}
 	
 	"PocketMedic" // No color tags

@@ -584,7 +584,7 @@ public void Hook_BadassTankThink(int entity)
 					{
 						// should we target the player, or the building?
 						if (nearestPlayer != -1 && playerDist >= 0.0 && nearestBuilding <= 0 || 
-						(TF2_GetObjectType(nearestBuilding) != TFObject_Sentry || GetEntProp(nearestBuilding, Prop_Send, "m_iUpgradeLevel") == 1))
+						(TF2_GetObjectType2(nearestBuilding) != TFObject_Sentry || GetEntProp(nearestBuilding, Prop_Send, "m_iUpgradeLevel") == 1))
 						{
 							target = nearestPlayer;
 						}

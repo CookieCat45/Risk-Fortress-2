@@ -22,6 +22,7 @@ void BakeCookies()
 	g_coItemsCollected[3] = RegClientCookie("rf2_items_collected_4", "Items collected for logbook.", CookieAccess_Private);
 	g_coTutorialItemPickup = RegClientCookie("rf2_tutorial_item_pickup", "Item pickup tutorial.", CookieAccess_Public);
 	g_coTutorialSurvivor = RegClientCookie("rf2_tutorial_survivor", "Survivor tutorial.", CookieAccess_Public);
+	g_coNewPlayer = RegClientCookie("rf2_new_player", "New Player", CookieAccess_Private);
 	
 	char name[64];
 	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
@@ -105,11 +106,46 @@ public void OnClientCookiesCached(int client)
 	{
 		SetCookieInt(client, g_coSurvivorPoints, 0);
 	}
+
+	GetClientCookie(client, g_coNewPlayer, buffer, sizeof(buffer));
+	if (!buffer[0])
+	{
+		SetCookieBool(client, g_coNewPlayer, false);
+	}
 	
 	if (!g_bRoundActive && !GetCookieBool(client, g_coStayInSpecOnJoin) && GetTotalHumans(false) > 1)
 	{
 		CreateTimer(1.0, Timer_ChangeTeam, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
+	
+	if (!GetCookieBool(client, g_coNewPlayer))
+	{
+		RF2_SetSurvivorPoints(client, RF2_GetSurvivorPoints(client)+99999);
+		SetCookieBool(client, g_coNewPlayer, true);
+		if (g_bRoundActive)
+		{
+			CreateTimer(1.0, Timer_NewPlayerMessage, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		}
+	}
+}
+
+public Action Timer_NewPlayerMessage(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Stop;
+	
+	// Client may not be fully in game at this point, wait for them to be
+	if (!IsClientInGame(client))
+		return Plugin_Continue;
+	
+	// player is most likely going to join blue, wait for them to do so, so we can make sure they see the message
+	if (GetClientTeam(client) == TEAM_ENEMY)
+	{
+		PrintCenterText(client, "You will join RED Team shortly next map");
+		return Plugin_Stop;
+	}
+	
+	return Plugin_Continue;
 }
 
 public Action Timer_ChangeTeam(Handle timer, int client)

@@ -327,16 +327,30 @@ void OnDifficultyChanged(int newLevel)
 	}
 }
 
-int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=true)
+int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=true, bool hints=false)
 {
 	int cells;
-	switch (difficulty)
+	if (hints)
 	{
-		case DIFFICULTY_SCRAP: cells = strcopy(buffer, size, "{saddlebrown}Scrap{default}");
-		case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron{default}");
-		case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel{default}");
-		case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium{default}");
-		default:  cells = strcopy(buffer, size, "unknown");
+		switch (difficulty)
+		{
+			case DIFFICULTY_SCRAP: cells = strcopy(buffer, size, "{saddlebrown}Scrap (Normal){default}");
+			case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron (Hard){default}");
+			case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel (Very Hard){default}");
+			case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium (Impossible){default}");
+			default:  cells = strcopy(buffer, size, "unknown");
+		}
+	}
+	else
+	{
+		switch (difficulty)
+		{
+			case DIFFICULTY_SCRAP: cells = strcopy(buffer, size, "{saddlebrown}Scrap{default}");
+			case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron{default}");
+			case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel{default}");
+			case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium{default}");
+			default:  cells = strcopy(buffer, size, "unknown");
+		}
 	}
 	
 	if (!colorTags)

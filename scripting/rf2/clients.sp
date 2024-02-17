@@ -383,48 +383,32 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		{
 			if (entity <= MaxClients || !IsBuilding(entity))
 				continue;
-
+			
 			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
 			{
 				carried = asBool(GetEntProp(entity, Prop_Send, "m_bCarried"));
-
-				if (GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
-				{
-					buildingMaxHealth = 100;
-				}
-				else
-				{
-					switch (GetEntProp(entity, Prop_Send, "m_iUpgradeLevel"))
-					{
-						case 1: buildingMaxHealth = 150;
-						case 2: buildingMaxHealth = 180;
-						case 3: buildingMaxHealth = 216;
-					}
-				}
-				
 				if (!carried)
 				{
 					oldBuildingMaxHealth = GetEntProp(entity, Prop_Send, "m_iMaxHealth");
 				}
 				
-				buildingMaxHealth = RoundToFloor(float(buildingMaxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
-				buildingMaxHealth = imax(buildingMaxHealth, 1); // prevent 0, causes division by zero crash on client
+				buildingMaxHealth = CalculateBuildingMaxHealth(client, entity);
 				SetEntProp(entity, Prop_Send, "m_iMaxHealth", buildingMaxHealth);
-				
 				if (!carried && !GetEntProp(entity, Prop_Send, "m_bBuilding"))
 				{
 					buildingHealth = GetEntProp(entity, Prop_Send, "m_iHealth") + (buildingMaxHealth-oldBuildingMaxHealth);
-					SetEntityHealth(entity, imax(buildingHealth, 1));
+					SetVariantInt(imax(buildingHealth, 1));
+					AcceptEntityInput(entity, "SetHealth");
 				}
 			}
 		}
 	}
-
+	
 	int classMaxHealth = GetClassMaxHealth(TF2_GetPlayerClass(client));
 	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth)); // "max health additive bonus"
 	int actualMaxHealth = SDK_GetPlayerMaxHealth(client);
 	g_iPlayerCalculatedMaxHealth[client] = actualMaxHealth;
-
+	
 	if (fullHeal)
 	{
 		HealPlayer(client, actualMaxHealth, false);
@@ -436,6 +420,28 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	}
 	
 	return actualMaxHealth;
+}
+
+int CalculateBuildingMaxHealth(int client, int entity)
+{
+	int maxHealth;
+	if (GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
+	{
+		maxHealth = 100;
+	}
+	else
+	{
+		switch (GetEntProp(entity, Prop_Send, "m_iUpgradeLevel"))
+		{
+			case 1: maxHealth = 150;
+			case 2: maxHealth = 180;
+			case 3: maxHealth = 216;
+		}
+	}
+	
+	maxHealth = RoundToFloor(float(maxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
+	maxHealth = imax(maxHealth, 1); // prevent 0, causes division by zero crash on client
+	return maxHealth;
 }
 
 int SDK_GetPlayerMaxHealth(int client)
@@ -738,22 +744,19 @@ void GetClassString(TFClassType class, char[] buffer, int size, bool underScore=
 	}
 }
 
-int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-1))
+int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-1), bool allowMini=true)
 {
 	int count;
-	int entity = -1;
-
-	while ((entity = FindEntityByClassname(entity, "*")) != -1)
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
 	{
-		if (entity <= MaxClients || !IsBuilding(entity))
+		if (!allowMini && GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
 			continue;
-
-		if (view_as<int>(type) == -1 || view_as<TFObjectType>(GetEntProp(entity, Prop_Send, "m_iObjectType")) == type)
+		
+		if (view_as<int>(type) == -1 || TF2_GetObjectType2(entity) == type)
 		{
 			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
-			{
 				count++;
-			}
 		}
 	}
 

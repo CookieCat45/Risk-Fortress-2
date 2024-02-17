@@ -583,7 +583,7 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 public Action Timer_DelayHalloweenBossSpawn(Handle timer, int entity)
 {
 	DispatchSpawn(entity);
-	int health = 3000 + (RF2_GetEnemyLevel() * 400);
+	int health = 3000 + (RF2_GetEnemyLevel() * 500);
 	SetEntProp(entity, Prop_Data, "m_iMaxHealth", health);
 	SetEntProp(entity, Prop_Data, "m_iHealth", health);
 	return Plugin_Continue;
