@@ -2054,6 +2054,23 @@ bool IsItemInLogbook(int client, int item)
 	return StrContains(buffer, itemId, false) != -1;
 }
 
+bool IsItemSharingEnabled()
+{
+	if (!g_cvItemShareEnabled.BoolValue)
+		return false;
+	
+	if (g_iLoopCount >= 1 && g_cvItemShareEnabled.IntValue == 1)
+		return false;
+	
+	if (IsStageCleared() && g_cvItemShareEnabled.IntValue == 1)
+		return false;
+	
+	if (GetPlayersOnTeam(TEAM_SURVIVOR, true, true) <= 1)
+		return false;
+	
+	return true;
+}
+
 #if defined _goomba_included_
 public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &damageBonus, float &jumpPower)
 {

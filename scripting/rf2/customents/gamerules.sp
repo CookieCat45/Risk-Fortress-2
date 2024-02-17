@@ -237,7 +237,7 @@ int SpawnObjects()
 		spawns++;
 	}
 	
-	if (g_cvItemShareEnabled.BoolValue)
+	if (IsItemSharingEnabled())
 	{
 		CalculateSurvivorItemShare(false);	
 	}

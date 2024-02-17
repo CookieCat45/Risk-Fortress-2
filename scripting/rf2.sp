@@ -4176,7 +4176,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			if (StrContains(inflictorClassname, "tf_projectile") == 0)
 			{
-				if (victimIsClient && IsPlayerSurvivor(victim) && GetEntProp(inflictor, Prop_Send, "m_iDeflected"))
+				if (victimIsClient && IsPlayerSurvivor(victim) && HasEntProp(inflictor, Prop_Send, "m_iDeflected") && GetEntProp(inflictor, Prop_Send, "m_iDeflected"))
 				{
 					damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.5);
 				}
@@ -4567,7 +4567,9 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 	{
 		if (weapon > 0)
 		{
-			if (damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING || damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE)
+			static char wepClassname[64];
+			GetEntityClassname(weapon, wepClassname, sizeof(wepClassname));
+			if (strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball") && damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING || damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE)
 			{
 				float mult = GetPlayerFireRateMod(attacker, weapon)*1.5;
 				SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);

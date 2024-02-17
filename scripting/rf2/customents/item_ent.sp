@@ -232,7 +232,7 @@ bool PickupItem(int client)
 	item.GetAbsOrigin(pos);
 	if (GetVectorDistance(pos, endPos, true) <= sq(range))
 	{
-		bool itemShare = g_cvItemShareEnabled.BoolValue;
+		bool itemShare = IsItemSharingEnabled();
 		int survivorIndex = RF2_GetSurvivorIndex(client);
 		int type = item.Type;
 		int owner = item.Owner;

@@ -65,7 +65,7 @@ bool IsLOSClear(int ent1, int ent2, int mask=MASK_PLAYERSOLID_BRUSHONLY)
 	float pos1[3], pos2[3];
 	CBaseEntity(ent1).WorldSpaceCenter(pos1);
 	CBaseEntity(ent2).WorldSpaceCenter(pos2);
-	TR_TraceRayFilter(pos1, pos2, mask, RayType_EndPoint, INVALID_FUNCTION);
+	TR_TraceRayFilter(pos1, pos2, mask, RayType_EndPoint, TraceFilter_WallsOnly);
 	return !TR_DidHit();
 }
 

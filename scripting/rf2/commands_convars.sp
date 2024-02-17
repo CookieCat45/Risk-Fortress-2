@@ -84,7 +84,7 @@ void LoadCommandsAndCvars()
 	g_cvObjectSpreadDistance = CreateConVar("rf2_object_spread_distance", "80.0", "The minimum distance that spawned objects must be spread apart from eachother.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "12", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCost = CreateConVar("rf2_object_base_cost", "50.0", "The base cost to use objects such as crates. Scales with the difficulty.", FCVAR_NOTIFY, true, 0.0);
-	g_cvItemShareEnabled = CreateConVar("rf2_item_share_enabled", "1", "Whether or not to enable item sharing. This prevents Survivors from hogging items in multiplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvItemShareEnabled = CreateConVar("rf2_item_share_enabled", "1", "Whether or not to enable item sharing. This prevents Survivors from hogging items in multiplayer.\n0 = Always disabled, 1 = Disable after stage is cleared OR after looping at least once OR if only 1 player is on RED, 2 = Disable only if 1 player is on RED.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "6000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
 	g_cvTankHealthScale = CreateConVar("rf2_tank_health_scale", "0.1", "How much a Tank's health will scale per enemy level, in decimal percentage.");
 	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "75.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);
@@ -1407,7 +1407,7 @@ void ShowItemMenu(int client, int inspectTarget=-1)
 	int itemCount;
 	int lang = GetClientLanguage(client);
 	
-	if (!IsSingleplayer(false) && g_cvItemShareEnabled.BoolValue && target != inspectTarget)
+	if (IsItemSharingEnabled() && target != inspectTarget)
 	{
 		int index = RF2_GetSurvivorIndex(target);
 		menu.SetTitle("%T", "YourItemsShareEnabled", lang, g_iItemsTaken[index], g_iItemLimit[index]);
