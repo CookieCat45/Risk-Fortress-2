@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.4.3b"
+#define PLUGIN_VERSION "0.4.4b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -3437,7 +3437,7 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	g_bPlayerInCondition[client][condition] = true;
 	if (!RF2_IsEnabled())
 		return;
-
+	
 	if (condition == TFCond_Taunting && !g_bWaitingForPlayers)
 	{
 		if (IsFakeClient(client))
@@ -3466,9 +3466,9 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 			}
 		}
 	}
-	if (condition == TFCond_Jarated || condition == TFCond_Milked)
+	else if (condition == TFCond_Jarated || condition == TFCond_Milked)
 	{
-		if (GetClientTeam(client) == TEAM_ENEMY)
+		if (GetClientTeam(client) == TEAM_ENEMY && GetConditionDuration(client, condition) > 5.0)
 		{
 			TF2_RemoveCondition(client, condition);
 			TF2_AddCondition(client, condition, 5.0);
@@ -3689,8 +3689,7 @@ public void RF_NextPrimaryAttack(int client)
 	{
 		static char classname[128];
 		GetEntityClassname(weapon, classname, sizeof(classname));
-		if (!strcmp2(classname, "tf_weapon_flamethrower") && !strcmp2(classname, "tf_weapon_rocketlauncher_fireball")
-			&& !strcmp2(classname, "tf_weapon_minigun"))
+		if (!strcmp2(classname, "tf_weapon_flamethrower") && !strcmp2(classname, "tf_weapon_minigun"))
 		{
 			TriggerAchievement(client, ACHIEVEMENT_FIRERATECAP);
 		}

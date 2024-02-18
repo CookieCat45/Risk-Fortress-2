@@ -1008,7 +1008,7 @@ bool IsPlayerSpectator(int client)
 
 float GetPercentInvisible(int client)
 {
-    return GetEntDataFloat(client, FindSendPropInfo("CTFPlayer", "m_flInvisChangeCompleteTime") - 8);
+	return GetEntDataFloat(client, FindSendPropInfo("CTFPlayer", "m_flInvisChangeCompleteTime") - 8);
 }
 
 int GetPlayerWearableCount(int client, bool itemOnly=false)
@@ -1025,8 +1025,20 @@ int GetPlayerWearableCount(int client, bool itemOnly=false)
 
 		count++;
 	}
-
+	
 	return count;
+}
+
+float GetConditionDuration(int client, TFCond cond)
+{
+	if (!TF2_IsPlayerInCondition(client, cond)) 
+		return 0.0;
+	
+	int m_Shared = FindSendPropInfo("CTFPlayer", "m_Shared");
+	Address condSource = view_as<Address>(LoadFromAddress(GetEntityAddress(client) + view_as<Address>(m_Shared + 8), NumberType_Int32));
+	Address condDuration = view_as<Address>(view_as<int>(condSource) + (view_as<int>(cond) * 20) + (2 * 4));
+	
+	return view_as<float>(LoadFromAddress(condDuration, NumberType_Int32));
 }
 
 public bool TraceFilter_PlayerTeam(int entity, int mask, int client)
