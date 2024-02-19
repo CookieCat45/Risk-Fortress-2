@@ -21,10 +21,10 @@
 		"en"		"Grace period has ended. Death on RED will result in joining BLU."
 	}
 	
-	"HauntedKeyDrop"
+	"HauntedKeyDrop" // No color tags
 	{
 		"#format"	"{1:N}"
-		"en"		"{yellow}{1}{default} dropped a {haunted}Haunted Key!"
+		"en"		"{1}dropped a Haunted Key!"
 	}
 
 	"NoChangeClass"
@@ -42,7 +42,7 @@
 		"en"		"You are not allowed to suicide!"
 	}
 	
-	"AlreadyHasRune"
+	"AlreadyHasRune" // No color tags
 	{
 		"en"		"You can't use this when you already have a rune active!"
 	}
@@ -50,6 +50,11 @@
 	"OnlyBuildExit" // No color tags
 	{
 		"en"		"You can't build a Teleporter entrance. You only need to build an exit!"
+	}
+	
+	"ItemSharingDisabled" // No color tags
+	{
+		"en"		"Item Sharing has been disabled, feel free to loot the map"
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -88,24 +93,24 @@
 		"en"		"You've reached your item share limit of {1}.\nYou can no longer take items unless they are dropped for you."
 	}
 	
-	"YourItemsShareEnabled"
+	"YourItemsShareEnabled" // No color tags
 	{
 		"#format"	"{1:d},{2:d}"
 		"en"		"Your Items (select to drop). Item Share Limit: {1}/{2}"
 	}
 	
-	"YourItems"
+	"YourItems" // No color tags
 	{
 		"en"		"Your Items (select to drop)."
 	}
 
-	"InspectTargetItems"
+	"InspectTargetItems" // No color tags
 	{
 		"#format"	"{1:N}"
 		"en"		"{1}'s items"
 	}
 	
-	"NoItems"
+	"NoItems" // No color tags
 	{
 		"en"		"No items."
 	}
@@ -249,18 +254,12 @@
 	"NotEnoughMoney" // No color tags
 	{
 		"#format"	"{1:.0f},{2:.0f}"
-		"en"		"You can't afford to open this! (Cost: ${1}, you have: ${2})"
-	}
-	
-	"ThisCosts" // No color tags
-	{
-		"#format"	"{1:.0f}"
-		"en"		"This costs ${1}."
+		"en"		"You can't afford this! (Cost: ${1}, you have: ${2})"
 	}
 
 	"NoKeys" // No color tags
 	{
-		"en"		"You don't have any Haunted Keys to open this!"
+		"en"		"You don't have any Gargoyle Keys to open this!"
 	}
 	
 	// Workbench

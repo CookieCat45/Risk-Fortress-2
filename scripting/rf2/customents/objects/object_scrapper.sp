@@ -190,12 +190,12 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 					
 					if (scrap > Item_Null)
 					{
-						GiveItem(param1, scrap, _, true);
+						GiveItem(param1, scrap, 1, true);
 						PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[scrap]);
 					}
 					else // haunted item, give haunted key
 					{
-						g_iPlayerHauntedKeys[param1]++;
+						GiveItem(param1, Item_HauntedKey, 1, true);
 						PrintCenterText(param1, "%t", "UsedScrapperHaunted", g_szItemName[item]);
 					}
 					

@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.4.4b"
+#define PLUGIN_VERSION "0.5b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -55,6 +55,7 @@ int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
 float g_flAutoReloadTime;
 bool g_bChangeDetected;
+bool g_bHauntedKeyDrop;
 
 int g_iTotalEnemiesKilled;
 int g_iTotalBossesKilled;
@@ -89,11 +90,11 @@ int g_iMainHudR = 100;
 int g_iMainHudG = 255;
 int g_iMainHudB = 100;
 char g_szHudDifficulty[128] = "Difficulty: Easy";
-char g_szObjectiveHud[MAXTF2PLAYERS][64];
+char g_szObjectiveHud[MAXTF2PLAYERS][128];
 
 // g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i],
-// g_flPlayerNextLevelXP[i], g_flPlayerCash[i], g_iPlayerHauntedKeys[i], g_szHudDifficulty, strangeItemInfo, miscText
-char g_szSurvivorHudText[2048] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i | Your Level: %i\n%.0f/%.0f XP | Cash: $%.0f | Haunted Keys: %i\n%s\n%s\n\n%s";
+// g_flPlayerNextLevelXP[i], g_flPlayerCash[i], g_szHudDifficulty, strangeItemInfo, miscText
+char g_szSurvivorHudText[2048] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i | Your Level: %i\n%.0f/%.0f XP | Cash: $%.0f\n%s\n%s\n\n%s";
 
 // g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo
 char g_szEnemyHudText[1024] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i\n%s\n%s";
@@ -132,7 +133,6 @@ float g_flPlayerNextDemoSpellTime[MAXTF2PLAYERS];
 float g_flPlayerNextFireSpellTime[MAXTF2PLAYERS];
 
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
-int g_iPlayerHauntedKeys[MAXTF2PLAYERS];
 int g_iPlayerBaseHealth[MAXTF2PLAYERS] = {1, ...};
 int g_iPlayerCalculatedMaxHealth[MAXTF2PLAYERS] = {1, ...};
 int g_iPlayerSurvivorIndex[MAXTF2PLAYERS] = {-1, ...};
@@ -197,6 +197,7 @@ Handle g_hSDKPlayGesture;
 Handle g_hSDKIntersects;
 Handle g_hSDKWeaponSwitch;
 Handle g_hSDKRealizeSpy;
+Handle g_hSDKSetZombieType;
 DynamicDetour g_hDetourDoSwingTrace;
 DynamicDetour g_hDetourSentryAttack;
 DynamicDetour g_hDetourHandleRageGain;
@@ -307,12 +308,14 @@ ArrayList g_hActiveArtifacts;
 
 #include "rf2/customents/gamerules.sp"
 #include "rf2/customents/item_ent.sp"
+#include "rf2/customents/healthtext.sp"
 
 #include "rf2/customents/objects/object_base.sp"
 #include "rf2/customents/objects/object_teleporter.sp"
 #include "rf2/customents/objects/object_crate.sp"
 #include "rf2/customents/objects/object_workbench.sp"
 #include "rf2/customents/objects/object_scrapper.sp"
+#include "rf2/customents/objects/object_gravestone.sp"
 
 #include "rf2/customents/projectiles/projectile_base.sp"
 #include "rf2/customents/projectiles/projectile_shuriken.sp"
@@ -531,6 +534,16 @@ void LoadGameData()
 	if (!g_hSDKRealizeSpy)
 	{
 		LogError("[SDK] Failed to create call for CTFBot::RealizeSpy");
+	}
+	
+	
+	StartPrepSDKCall(SDKCall_Entity);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CZombie::SetSkeletonType");
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	g_hSDKSetZombieType = EndPrepSDKCall();
+	if (!g_hSDKSetZombieType)
+	{
+		LogError("[SDK] Failed to create call for CZombie::SetSkeletonType");
 	}
 	
 	
@@ -860,6 +873,7 @@ void CleanUp()
 	g_iMetalItemsDropped = 0;
 	g_flWaitRestartTime = 0.0;
 	g_bTeleporterEventReminder = false;
+	g_bHauntedKeyDrop = false;
 	
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
@@ -1477,8 +1491,8 @@ public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
 				continue;
 			
-			UpdatePlayerXP(i, g_flPlayerCash[i]/3.0);
-			g_flPlayerCash[i] = 0.0;
+			UpdatePlayerXP(i, GetPlayerCash(i)/3.0);
+			SetPlayerCash(i, 0.0);
 		}
 		
 		int nextStage = RF2_GetCurrentStage();
@@ -1755,17 +1769,23 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				}
 			}
 			
-			// For now, enemies have a chance to drop Haunted Keys, may implement a different way of obtaining them later
-			int max = g_cvHauntedKeyDropChanceMax.IntValue;
-			if (max > 0 && RandChanceIntEx(attacker, 1, max, 1))
+			if (!g_bHauntedKeyDrop)
 			{
-				RF2_PrintToChatAll("%t", "HauntedKeyDrop", victim);
-				for (int i = 1; i <= MaxClients; i++)
+				int max = g_cvHauntedKeyDropChanceMax.IntValue;
+				if (max > 0 && RandChanceIntEx(attacker, 1, max, 1))
 				{
-					if (IsPlayerSurvivor(i))
-						g_iPlayerHauntedKeys[i]++;
+					PrintHintTextToAll("%t", "HauntedKeyDrop", victim);
+					g_bHauntedKeyDrop = true;
+					for (int i = 1; i <= MaxClients; i++)
+					{
+						if (IsPlayerSurvivor(i))
+						{
+							GiveItem(i, Item_HauntedKey, 1, true);
+						}
+					}
 				}
 			}
+			
 			
 			if (itemProc == ItemScout_LongFallBoots && IsBoss(victim))
 			{
@@ -2781,7 +2801,7 @@ public Action Timer_PlayerHud(Handle timer)
 			
 			ShowSyncHudText(i, g_hMainHudSync, g_szSurvivorHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed,
 				hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i], g_flPlayerNextLevelXP[i],
-				g_flPlayerCash[i], g_iPlayerHauntedKeys[i], g_szHudDifficulty, strangeItemInfo, miscText);
+				g_flPlayerCash[i], g_szHudDifficulty, strangeItemInfo, miscText);
 		}
 		else
 		{
@@ -4440,12 +4460,35 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				}
 			}
 		}
+		
+		if (victimIsNpc)
+		{
+			static char victimClassname[64];
+			GetEntityClassname(victim, victimClassname, sizeof(victimClassname));
+			bool halloweenNpc = strcmp2(victimClassname, "headless_hatman") || strcmp2(victimClassname, "eyeball_boss") || strcmp2(victimClassname, "tf_zombie");
+			if (halloweenNpc && !(damageType & DMG_CRIT) && weapon < 0)
+			{
+				// Halloween NPCs don't fire TF2_OnTakeDamageModifyRules()
+				int attackerProc = GetLastEntItemProc(attacker);
+				bool canCrit = attackerProc != ItemSniper_HolyHunter && !(StrContains(inflictorClassname, "tf_proj") != -1 && HasEntProp(inflictor, Prop_Send, "m_bCritical"));
+				if (canCrit && RollAttackCrit(attacker))
+				{
+					damageType |= DMG_CRIT;
+				}
+			}
+			
+			if (halloweenNpc && damageType & DMG_CRIT && IsSkeleton(victim))
+			{
+				// Skeletons normally don't take crit damage
+				damage *= 3.0;
+			}
+		}
 	}
 	else if (attackerIsNpc)
 	{
 		if (strcmp2(inflictorClassname, "headless_hatman")) // this guy does 80% of victim HP by default, that is a big nono
 		{
-			damage = 350.0 * GetEnemyDamageMult();
+			damage = 300.0 * GetEnemyDamageMult();
 		}
 		else
 		{
@@ -4455,7 +4498,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				damage = 0.0;
 				return Plugin_Changed;
 			}
-
+			
 			damage *= GetEnemyDamageMult();
 		}
 	}
@@ -4508,7 +4551,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 	
 	if (victimIsClient)
 	{
-		if (CanPlayerRegen(victim))
+		if (CanPlayerRegen(victim) && damage > 0.0)
 		{
 			const float regenTimeMin  = 0.5;
 			const float regenTimeMax  = 5.0;
@@ -4559,6 +4602,30 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		if (IsValidClient(attacker) && GetEntProp(victim, Prop_Data, "m_iHealth") <= 0)
 		{
 			TriggerAchievement(attacker, ACHIEVEMENT_TANKBUSTER);
+		}
+	}
+	else if (IsSkeleton(victim))
+	{
+		Event event = CreateEvent("npc_hurt", true);
+		if (event)
+		{
+			int health = GetEntProp(victim, Prop_Data, "m_iHealth");
+			event.SetInt("entindex", victim);
+			event.SetInt("health", health > 0 ? health : 0);
+			event.SetInt("damageamount", RoundToFloor(damage));
+			event.SetBool("crit", (damageType & DMG_CRIT) ? true : false);
+			if (attacker > 0 && attacker <= MaxClients)
+			{
+				event.SetInt("attacker_player", GetClientUserId(attacker));
+				event.SetInt("weaponid", 0);
+			}
+			else
+			{
+				event.SetInt("attacker_player", 0);
+				event.SetInt("weaponid", 0);
+			}
+			
+			event.Fire();
 		}
 	}
 	

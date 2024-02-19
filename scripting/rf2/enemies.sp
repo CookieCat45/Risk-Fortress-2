@@ -878,6 +878,11 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		TF2Attrib_SetByDefIndex(client, 252, 0.2); // "damage force reduction"
 		TF2Attrib_SetByDefIndex(client, 329, 0.2); // "airblast vulnerability multiplier"
 		TF2Attrib_SetByDefIndex(client, 326, 1.35); // "increased jump height"
+		if (teleporterBoss)
+		{
+			CreateHealthText(client, 100.0*boss.ModelScale, 20.0, g_szEnemyName[type]);
+		}
+		
 		return true;
 	}
 	else if (recursive)
@@ -911,7 +916,7 @@ void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 	
 	players.SortCustom(SortBossSpawnList);
 	int count, client;
-	int bossCount = 1 + ((GetPlayersOnTeam(TEAM_SURVIVOR, true)-1)/2) + ((RF2_GetSubDifficulty()-1)/2);
+	int bossCount = 1 + ((GetPlayersOnTeam(TEAM_SURVIVOR, true)-1)/2) + ((RF2_GetSubDifficulty()-1)/3);
 	bossCount = imax(bossCount, 1);
 	float time;
 	

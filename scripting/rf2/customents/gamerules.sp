@@ -149,13 +149,18 @@ int SpawnObjects()
 	
 	ArrayList objectArray = CreateArray(128);
 	ArrayList crateArray = CreateArray();
+
+	const int objectCount = 8;
 	int crateWeight = 50;
 	int largeWeight = 8;
 	int strangeWeight = 8;
 	int hauntedWeight = 5;
 	int collectorWeight = 8;
+	
+	// Non-crate object weights are separate
 	int workbenchWeight = 16;
 	int scrapperWeight = 12;
+	int graveWeight = 12;
 	
 	if (g_iStagesCompleted <= 0)
 	{
@@ -164,17 +169,21 @@ int SpawnObjects()
 	
 	char name[64];
 	int count;
-	for (int i = 0; i <= 6; i++)
+	for (int i = 1; i <= objectCount; i++)
 	{
-		switch (i)
+		switch (i-1)
 		{
+			// Don't forget to increment objectCount when adding new objects here
 			case Crate_Normal: count = crateWeight;
 			case Crate_Large: count = largeWeight;
 			case Crate_Strange: count = strangeWeight;
 			case Crate_Haunted: count = hauntedWeight;
 			case Crate_Collectors: count = collectorWeight;
-			case 5: strcopy(name, sizeof(name), "rf2_object_workbench"), count = workbenchWeight;
-			case 6: strcopy(name, sizeof(name), "rf2_object_scrapper"), count = scrapperWeight;
+			
+			// Non-crate objects
+			case CrateType_Max: strcopy(name, sizeof(name), "rf2_object_workbench"), count = workbenchWeight;
+			case CrateType_Max+1: strcopy(name, sizeof(name), "rf2_object_scrapper"), count = scrapperWeight;
+			case CrateType_Max+2: strcopy(name, sizeof(name), "rf2_object_gravestone"), count = graveWeight;
 		}
 		
 		for (int j = 1; j <= count; j++)
@@ -192,7 +201,6 @@ int SpawnObjects()
 	
 	int minCrates = RoundToFloor(float(spawnCount) * 0.7);
 	int scrapperCount;
-	char name2[64];
 	while (spawns < spawnCount && attempts < 1000)
 	{
 		GetSpawnPoint(worldCenter, spawnPos, 0.0, distance, _, true);
@@ -215,16 +223,14 @@ int SpawnObjects()
 				scrapperCount++;
 				if (scrapperCount >= g_iStagesCompleted <= 0 && IsSingleplayer(false) ? 1 : 2)
 				{
-					for (int i = 0; i < objectArray.Length; i++)
-					{
-						objectArray.GetString(i, name2, sizeof(name2));
-						if (strcmp2(name2, "rf2_object_scrapper"))
-						{
-							objectArray.Erase(i);
-							i--;
-						}
-					}
+					// Only 1-2 scrappers
+					ClearStringFromArrayList(objectArray, "rf2_object_scrapper");
 				}
+			}
+			else if (strcmp2(name, "rf2_object_gravestone"))
+			{
+				// Only one gravestone
+				ClearStringFromArrayList(objectArray, "rf2_object_gravestone");
 			}
 			
 			CreateObject(name, spawnPos);

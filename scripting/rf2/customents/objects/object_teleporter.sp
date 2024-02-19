@@ -312,6 +312,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	
 	public void End()
 	{
+		bool wasSharingEnabled = IsItemSharingEnabled();
 		this.EventState = TELE_EVENT_COMPLETE;
 		this.Effects = EF_ITEM_BLINK;
 		this.TextSize = 6.0;
@@ -357,6 +358,11 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
 			RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
 			PrintHintText(i, "%t", "GotItemReward", name);
+			if (wasSharingEnabled)
+			{
+				PrintKeyHintText(i, "%t", "ItemSharingDisabled");
+			}
+			
 			TriggerAchievement(i, ACHIEVEMENT_TELEPORTER);
 		}
 		
@@ -583,8 +589,22 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 public Action Timer_DelayHalloweenBossSpawn(Handle timer, int entity)
 {
 	DispatchSpawn(entity);
-	int health = 3000 + (RF2_GetEnemyLevel() * 500);
+	int health = 3000 + ((RF2_GetEnemyLevel()-1) * 500);
 	SetEntProp(entity, Prop_Data, "m_iMaxHealth", health);
 	SetEntProp(entity, Prop_Data, "m_iHealth", health);
+	char classname[64];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	RF2_HealthText text;
+	if (strcmp2(classname, "headless_hatman"))
+	{
+		text = CreateHealthText(entity, 150.0, 20.0, "HORSELESS HEADLESS HORSEMANN");
+		text.SetHealthColor(HEALTHCOLOR_HIGH, {255, 75, 0, 255});
+	}
+	else if (strcmp2(classname, "eyeball_boss"))
+	{
+		text = CreateHealthText(entity, 120.0, 25.0, "MONOCULUS!");
+		text.SetHealthColor(HEALTHCOLOR_HIGH, {150, 0, 150, 255});
+	}
+	
 	return Plugin_Continue;
 }

@@ -354,7 +354,7 @@ public Action Command_GiveCash(int client, int args)
 				continue;
 			}
 			
-			g_flPlayerCash[clients[i]] += amount;
+			AddPlayerCash(clients[i], amount);
 			RF2_PrintToChatAll("%t", "GaveMoney", client, amount, clients[i]);
 		}
 	}

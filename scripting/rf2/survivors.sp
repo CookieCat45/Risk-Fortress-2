@@ -13,7 +13,6 @@ int g_iSurvivorBaseHealth[TF_CLASSES];
 int g_iSavedItem[MAX_SURVIVORS][MAX_ITEMS];
 int g_iSavedLevel[MAX_SURVIVORS] = {1, ...};
 int g_iSavedEquipmentItem[MAX_SURVIVORS];
-int g_iSavedHauntedKeys[MAX_SURVIVORS];
 int g_iSurvivorGivenItems[MAX_SURVIVORS];
 
 float g_flSurvivorMaxSpeed[TF_CLASSES];
@@ -433,10 +432,9 @@ void LoadSurvivorInventory(int client, int index)
 		}
 	}
 	
+	SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier());
 	g_iPlayerLevel[client] = g_iSavedLevel[index];
 	g_flPlayerXP[client] = g_flSavedXP[index];
-	g_iPlayerHauntedKeys[client] = g_iSavedHauntedKeys[index];
-	g_flPlayerCash[client] = 100.0 * RF2_Object_Crate.GetCostMultiplier();
 	g_iItemsTaken[index] = 0;
 	
 	if (g_iPlayerLevel[client] > 1)
@@ -468,7 +466,6 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 	g_flSavedXP[index] = g_flPlayerXP[client];
 	g_flSavedNextLevelXP[index] = g_flPlayerNextLevelXP[client];
 	g_iSavedEquipmentItem[index] = GetPlayerEquipmentItem(client);
-	g_iSavedHauntedKeys[index] = g_iPlayerHauntedKeys[client];
 	
 	char steamId[MAX_AUTHID_LENGTH];
 	if (saveSteamId && GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)))

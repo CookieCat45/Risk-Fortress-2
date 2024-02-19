@@ -304,6 +304,16 @@ static int CreateTankBoss(bool badass=false)
 	SetEntPropFloat(tankBoss, Prop_Data, "m_speed", speed);
 	TeleportEntity(tankBoss, pos, angles);
 	DispatchSpawn(tankBoss);
+	RF2_HealthText text = CreateHealthText(tankBoss, 230.0, 35.0, badass ? "BADASS TANK" : "TANK");
+	if (badass)
+	{
+		text.SetHealthColor(HEALTHCOLOR_HIGH, {0, 75, 200, 255});
+	}
+	else
+	{
+		text.SetHealthColor(HEALTHCOLOR_HIGH, {70, 150, 255, 255});
+	}
+	
 	g_bTankDeploying[tankBoss] = false;
 	g_bTankSpeedBoost[tankBoss] = false;
 	SDKHook(tankBoss, SDKHook_Think, Hook_TankBossThink);
@@ -391,10 +401,22 @@ public void Output_OnTankKilled(const char[] output, int caller, int activator, 
 		SpawnCashDrop(totalCash*0.1, pos, GetRandomInt(2, 3), vel);
 	}
 	
+	bool wasSharingEnabled = IsItemSharingEnabled();
 	g_iTanksKilledObjective++;
 	g_iTotalTanksKilled++;
 	if (g_iTanksKilledObjective >= g_iTankKillRequirement)
 	{
+		if (wasSharingEnabled)
+		{
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (IsClientInGame(i) && IsPlayerSurvivor(i))
+				{
+					PrintKeyHintText(i, "%t", "ItemSharingDisabled");
+				}
+			}
+		}
+
 		EndTankDestructionMode();
 	}
 }

@@ -46,7 +46,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 		g_Factory.BeginDataMapDesc()
 			.DefineIntField("m_iItem", _, "item")
 			.DefineIntField("m_iType", _, "type")
-			.DefineFloatField("m_flCost", _, "cost")
+			.DefineBoolField("m_bInitialized")
 		.EndDataMapDesc();
 		g_Factory.Install();
 		HookMapStart(Crate_OnMapStart);
@@ -64,7 +64,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 			this.SetProp(Prop_Data, "m_iItem", value);
 		}
 	}
-
+	
 	property int Type
 	{
 		public get()
@@ -77,29 +77,18 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 			this.SetProp(Prop_Data, "m_iType", value);
 		}
 	}
-
-	property float Cost
+	
+	property bool Initialized
 	{
 		public get()
 		{
-			return this.GetPropFloat(Prop_Data, "m_flCost");
+			return asBool(this.GetProp(Prop_Data, "m_bInitialized"));
 		}
 		
-		public set(float value)
+		public set(bool value)
 		{
-			this.SetPropFloat(Prop_Data, "m_flCost", value);
+			this.SetProp(Prop_Data, "m_bInitialized", value);
 		}
-	}
-	
-	public static float GetCostMultiplier()
-	{
-		float value = 1.0 + (g_flDifficultyCoeff / g_cvSubDifficultyIncrement.FloatValue);
-		value += FloatFraction(Pow(1.35, float(g_iStagesCompleted)));
-		
-		if (value < 1.0)
-			value = 1.0;
-			
-		return value;
 	}
 	
 	public float CalculateCost()
@@ -115,7 +104,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 			}
 		}
 		
-		float costMult = RF2_Object_Crate.GetCostMultiplier();
+		float costMult = RF2_Object_Base.GetCostMultiplier();
 		switch (this.Type)
 		{
 			case Crate_Normal: cost = g_cvObjectBaseCost.FloatValue * costMult;
@@ -126,30 +115,33 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 		return float(RoundToFloor(cost));
 	}
 	
-	public void InitType()
+	public void Initialize()
 	{
 		switch (this.Type)
 		{
 			case Crate_Normal:
 			{
 				this.SetModel(MODEL_CRATE);
-				this.Item = GetRandomItem(79, 20, 1);
+				if (this.Item == Item_Null)
+					this.Item = GetRandomItem(79, 20, 1);
 			}
 			
 			case Crate_Large:
 			{
 				this.SetModel(MODEL_CRATE);
 				this.SetPropFloat(Prop_Send, "m_flModelScale", 1.35);
-				this.Item = GetRandomItem(_, 85, 15);
 				this.TextZOffset = 90.0;
+				if (this.Item == Item_Null)
+					this.Item = GetRandomItem(_, 85, 15);
 			}
 			
 			case Crate_Strange:
 			{
 				this.SetModel(MODEL_CRATE_STRANGE);
 				this.SetRenderColor(255, 100, 0);
-				this.Item = GetRandomItemEx(Quality_Strange);
 				this.TextZOffset = 100.0;
+				if (this.Item == Item_Null)
+					this.Item = GetRandomItemEx(Quality_Strange);
 			}
 			
 			case Crate_Collectors:
@@ -161,9 +153,24 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 			case Crate_Haunted:
 			{
 				this.SetModel(MODEL_CRATE_HAUNTED);
-				this.Item = GetRandomItem(_, _, _, 1);
+				if (this.Item == Item_Null)
+					this.Item = GetRandomItem(_, _, _, 1);
 			}
 		}
+		
+		this.Cost = this.CalculateCost();
+		if (this.Type == Crate_Haunted)
+		{
+			this.SetWorldText("1 Haunted Key (Whack to Open)");
+		}
+		else
+		{
+			char text[256];
+			FormatEx(text, sizeof(text), "$%.0f (Whack to Open)", this.Cost);
+			this.SetWorldText(text);
+		}
+		
+		this.Initialized = true;
 	}
 }
 
@@ -171,19 +178,7 @@ RF2_Object_Crate SpawnCrate(int type, const float pos[3])
 {
 	RF2_Object_Crate crate = RF2_Object_Crate(CreateObject("rf2_object_crate", pos, false).index);
 	crate.Type = type;
-	crate.InitType();
-	crate.Cost = crate.CalculateCost();
-	if (crate.Type == Crate_Haunted)
-	{
-		crate.SetWorldText("1 Haunted Key (Whack to Open)");
-	}
-	else
-	{
-		char text[256];
-		FormatEx(text, sizeof(text), "$%.0f (Whack to Open)", crate.Cost);
-		crate.SetWorldText(text);
-	}
-	
+	crate.Initialize();
 	crate.Spawn();
 	return crate;
 }
@@ -200,38 +195,16 @@ void Crate_OnMapStart()
 static void OnCreate(RF2_Object_Crate crate)
 {
 	SDKHook(crate.index, SDKHook_OnTakeDamage, Hook_OnCrateHit);
-	SDKHook(crate.index, SDKHook_SpawnPost, OnSpawnPost);
+	SDKHook(crate.index, SDKHook_Spawn, OnSpawn);
 }
 
-static void OnSpawnPost(int entity)
+static void OnSpawn(int entity)
 {
-	// Change bounding box size to fix exploit where hiding inside some objects make TFBots unable to see you
 	RF2_Object_Crate crate = RF2_Object_Crate(entity);
-	switch (crate.Type)
+	if (!crate.Initialized)
 	{
-		case Crate_Large:
-		{
-			crate.SetPropVector(Prop_Send, "m_vecMins", {-30.0, -30.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxs", {30.0, 30.0, 65.0});
-			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-30.0, -30.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {30.0, 30.0, 65.0});
-		}
-		
-		case Crate_Strange:
-		{
-			crate.SetPropVector(Prop_Send, "m_vecMins", {-30.0, -30.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxs", {30.0, 30.0, 75.0});
-			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-30.0, -30.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {30.0, 30.0, 75.0});
-		}
-		
-		default:
-		{
-			crate.SetPropVector(Prop_Send, "m_vecMins", {-30.0, -30.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxs", {30.0, 30.0, 45.0});
-			crate.SetPropVector(Prop_Send, "m_vecMinsPreScaled", {-30.0, -30.0, 0.0});
-			crate.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", {30.0, 30.0, 45.0});
-		}
+		// Probably spawned with ent_create
+		crate.Initialize();
 	}
 }
 
@@ -246,9 +219,9 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	
 	if (crate.Type == Crate_Haunted)
 	{
-		if (g_iPlayerHauntedKeys[attacker] > 0)
+		if (PlayerHasItem(attacker, Item_HauntedKey))
 		{
-			g_iPlayerHauntedKeys[attacker]--;
+			GiveItem(attacker, Item_HauntedKey, -1);
 		}
 		else
 		{
@@ -257,14 +230,14 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 			return Plugin_Continue;
 		}
 	}
-	else if (g_flPlayerCash[attacker] >= crate.Cost)
+	else if (GetPlayerCash(attacker) >= crate.Cost)
 	{
-		g_flPlayerCash[attacker] -= crate.Cost;
+		AddPlayerCash(attacker, -crate.Cost);
 	}
 	else
 	{
 		EmitSoundToClient(attacker, SND_NOPE);
-		PrintCenterText(attacker, "%t", "NotEnoughMoney", crate.Cost, g_flPlayerCash[attacker]);
+		PrintCenterText(attacker, "%t", "NotEnoughMoney", crate.Cost, GetPlayerCash(attacker));
 		return Plugin_Continue;
 	}
 	

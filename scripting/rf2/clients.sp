@@ -57,7 +57,6 @@ void RefreshClient(int client, bool force=false)
 		g_flPlayerXP[client] = 0.0;
 		g_flPlayerCash[client] = 0.0;
 		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
-		g_iPlayerHauntedKeys[client] = 0;
 		g_iPlayerSurvivorIndex[client] = -1;
 		g_iPlayerEquipmentItem[client] = Item_Null;
 		g_flPlayerEquipmentItemCooldown[client] = 0.0;
@@ -495,6 +494,21 @@ void CalculatePlayerMiscStats(int client)
 	}
 }
 
+float GetPlayerCash(int client)
+{
+	return g_flPlayerCash[client];
+}
+
+void SetPlayerCash(int client, float amount)
+{
+	g_flPlayerCash[client] = amount;
+}
+
+void AddPlayerCash(int client, float amount)
+{
+	g_flPlayerCash[client] += amount;
+}
+
 // This is for items, it has nothing to do with the attribute
 float GetPlayerFireRateMod(int client, int weapon=-1)
 {
@@ -610,7 +624,7 @@ public Action Timer_VampireSapper(Handle timer, int client)
 	{
 		sapper = GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary);
 	}
-
+	
 	SDKHooks_TakeDamage2(client, attacker, attacker, g_flPlayerVampireSapperDamage[client], DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, sapper);
 	int totalHealing = RoundToFloor(g_flPlayerVampireSapperDamage[client]);
 	int team = GetClientTeam(client);
@@ -677,6 +691,11 @@ void OnPlayerAirDash(int client, int count)
 	if (count >= 8)
 	{
 		TriggerAchievement(client, ACHIEVEMENT_AIRJUMPS);
+	}
+	
+	if (PlayerHasItem(client, ItemScout_MonarchWings))
+	{
+		TF2_AddCondition(client, TFCond_Buffed, GetItemMod(ItemScout_MonarchWings, 1));
 	}
 }
 

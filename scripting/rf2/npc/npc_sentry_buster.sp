@@ -308,6 +308,8 @@ static void OnCreate(RF2_SentryBuster buster)
 	buster.SetGlowColor({0, 100, 255, 255});
 	npc.SetBodyMins(PLAYER_MINS);
 	npc.SetBodyMaxs(PLAYER_MAXS);
+	RF2_HealthText text = CreateHealthText(buster.index, 150.0, 20.0, "SENTRY BUSTER");
+	text.SetHealthColor(HEALTHCOLOR_HIGH, {70, 150, 255, 255});
 }
 
 static void OnRemove(RF2_SentryBuster buster)

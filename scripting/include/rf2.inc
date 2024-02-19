@@ -92,6 +92,7 @@ enum
 	Item_Graybanns = 75,
 	Item_Antlers = 76,
 	ItemEngi_Toadstool = 77,
+	Item_HauntedKey = 78,
 	Item_MaxValid,
 };
 

@@ -1997,7 +1997,7 @@ bool PlayerHasItem(int client, int item)
 
 bool IsScrapItem(int item)
 {
-	return item == Item_ScrapMetal || item == Item_ReclaimedMetal || item == Item_RefinedMetal;
+	return item == Item_ScrapMetal || item == Item_ReclaimedMetal || item == Item_RefinedMetal || item == Item_HauntedKey;
 }
 
 bool IsEquipmentItem(int item)

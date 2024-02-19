@@ -6,11 +6,13 @@ void InstallEnts()
 	g_fwOnMapStart = new PrivateForward(ET_Ignore);
 	RF2_GameRules.Init();
 	RF2_Item.Init();
+	RF2_HealthText.Init();
 	RF2_Object_Base.Init();
 	RF2_Object_Crate.Init();
 	RF2_Object_Teleporter.Init();
 	RF2_Object_Workbench.Init();
 	RF2_Object_Scrapper.Init();
+	RF2_Object_Gravestone.Init();
 	RF2_Projectile_Base.Init();
 	RF2_Projectile_Shuriken.Init();
 	RF2_Projectile_Bomb.Init();

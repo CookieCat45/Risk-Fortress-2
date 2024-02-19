@@ -35,12 +35,14 @@ methodmap RF2_Object_Base < CBaseAnimating
 		g_Factory.DeriveFromClass("prop_dynamic_override");
 		g_Factory.BeginDataMapDesc()
 			.DefineIntField("m_OnInteract")
+			.DefineFloatField("m_flCost", _, "cost")
 			.DefineBoolField("m_bActive", _, "active")
 			.DefineBoolField("m_bMapPlaced")
 			.DefineEntityField("m_hWorldTextEnt")
 			.DefineStringField("m_szWorldText")
 			.DefineFloatField("m_flTextZOffset")
 			.DefineFloatField("m_flTextSize")
+			.DefineColorField("m_TextColor")
 			.DefineEntityField("m_hGlow")
 			.DefineInputFunc("SetActive", InputFuncValueType_Boolean, Input_SetActive)
 		.EndDataMapDesc();
@@ -59,6 +61,19 @@ methodmap RF2_Object_Base < CBaseAnimating
 			this.SetProp(Prop_Data, "m_OnInteract", fwd);
 		}
 	}
+	
+	property float Cost
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flCost");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flCost", value);
+		}
+	}
 
 	property bool Active
 	{
@@ -69,6 +84,15 @@ methodmap RF2_Object_Base < CBaseAnimating
 		
 		public set(bool value)
 		{
+			if (value)
+			{
+				this.Effects |= EF_ITEM_BLINK;
+			}
+			else
+			{
+				this.Effects &= ~EF_ITEM_BLINK;
+			}
+			
 			this.SetProp(Prop_Data, "m_bActive", value);
 		}
 	}
@@ -111,7 +135,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 			this.SetPropEnt(Prop_Data, "m_hWorldTextEnt", value);
 		}
 	}
-
+	
 	property float TextZOffset
 	{
 		public get()
@@ -124,7 +148,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 			this.SetPropFloat(Prop_Data, "m_flTextZOffset", value);
 		}
 	}
-
+	
 	property float TextSize
 	{
 		public get()
@@ -141,6 +165,17 @@ methodmap RF2_Object_Base < CBaseAnimating
 				CBaseEntity(this.WorldText).AcceptInput("SetTextSize");
 			}
 		}
+	}
+	
+	public static float GetCostMultiplier()
+	{
+		float value = 1.0 + (g_flDifficultyCoeff / g_cvSubDifficultyIncrement.FloatValue);
+		value += FloatFraction(Pow(1.35, float(g_iStagesCompleted)));
+		
+		if (value < 1.0)
+			value = 1.0;
+			
+		return value;
 	}
 	
 	public int GetWorldText(char[] buffer, int size)
@@ -167,13 +202,26 @@ methodmap RF2_Object_Base < CBaseAnimating
 		text.KeyValue("message", worldText);
 		text.KeyValueFloat("textsize", this.TextSize);
 		text.KeyValue("orientation", "1");
-		text.KeyValue("color", "255 255 100 255");
+		int color[4];
+		this.GetTextColor(color);
+		SetVariantColor(color);
+		text.AcceptInput("SetColor");
 		float pos[3];
 		this.GetAbsOrigin(pos);
 		pos[2] += this.TextZOffset;
 		text.Teleport(pos);
 		text.Spawn();
 		ParentEntity(text.index, this.index);
+	}
+
+	public void GetTextColor(int buffer[4])
+	{
+		this.GetPropColor(Prop_Data, "m_TextColor", buffer[0], buffer[1], buffer[2], buffer[3]);
+	}
+
+	public void SetTextColor(int color[4])
+	{
+		this.SetPropColor(Prop_Data, "m_TextColor", color[0], color[1], color[2], color[3]);
 	}
 	
 	property int GlowEnt
@@ -201,31 +249,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 	
 	public void SetGlow(bool state)
 	{
-		if (state)
-		{
-			if (!IsValidEntity2(this.GlowEnt))
-			{
-				this.GlowEnt = CreateEntityByName("tf_glow");
-				CBaseEntity glow = CBaseEntity(this.GlowEnt);
-				char name[128];
-				FormatEx(name, sizeof(name), "rf2object_%i", this.index);
-				this.SetPropString(Prop_Data, "m_iName", name);
-				glow.KeyValue("target", name);
-				SetVariantColor({255, 255, 255, 255});
-				glow.AcceptInput("SetGlowColor");
-				
-				float pos[3];
-				this.GetAbsOrigin(pos);
-				glow.Teleport(pos);
-				glow.Spawn();
-				glow.AcceptInput("Enable");
-				ParentEntity(glow.index, this.index);
-			}
-		}
-		else if (IsValidEntity2(this.GlowEnt))
-		{
-			RemoveEntity2(this.GlowEnt);
-		}
+		this.GlowEnt = ToggleGlow(this.index, state);
 	}
 	
 	public void SetGlowColor(int color[4])
@@ -235,6 +259,51 @@ methodmap RF2_Object_Base < CBaseAnimating
 			SetVariantColor(color);
 			AcceptEntityInput(this.GlowEnt, "SetGlowColor");
 		}
+	}
+
+	// Fixed from baseentity.inc
+	/**
+	 * Gets a network property as a color.
+	 *
+	 * @param type          Property type.
+	 * @param prop          Property to use.
+	 * @param r             Red component
+	 * @param g             Green component
+	 * @param b             Blue component
+	 * @param a             Alpha component
+	 * @param element       Element # (starting from 0) if property is an array.
+	 * @error               Invalid entity, offset out of reasonable bounds, or property is not valid.
+	 */
+	public void GetPropColor(PropType type, const char[] prop, int &r = 0, int &g = 0, int &b = 0, int &a = 0, int element=0)
+	{
+		int value = this.GetProp(type, prop, _, element);
+		r = value & 0xff;
+		g = (value >> 8) & 0xff;
+		b = (value >> 16) & 0xff;
+		a = (value >> 24) & 0xff;
+	}
+	
+	/**
+	 * Sets a network property as a color.
+	 *
+	 * @param type          Property type.
+	 * @param prop          Property to use.
+	 * @param r             Red component
+	 * @param g             Green component
+	 * @param b             Blue component
+	 * @param a             Alpha component
+	 * @param element       Element # (starting from 0) if property is an array.
+	 * @return              Number of non-null bytes written.
+	 * @error               Invalid entity, offset out of reasonable bounds, or property is not valid.
+	 */
+	public void SetPropColor(PropType type, const char[] prop, int r = 255, int g = 255, int b = 255, int a = 255, int element=0)
+	{
+		r = r & 0xff;
+		g = (g & 0xff) << 8;
+		b = (b & 0xff) << 16;
+		a = (a & 0xff) << 24;
+		
+		this.SetProp(type, prop, r | g | b | a, _, element);
 	}
 }
 
@@ -284,6 +353,16 @@ public Action Timer_WorldText(Handle timer, int entity)
 		return Plugin_Stop;
 	
 	RF2_Object_Base obj = RF2_Object_Base(entity);
+	if (!obj.Active && !RF2_Object_Teleporter(obj.index).IsValid())
+	{
+		if (IsValidEntity2(obj.WorldText))
+		{
+			RemoveEntity2(obj.WorldText);
+		}
+		
+		return Plugin_Continue;
+	}
+	
 	float pos[3];
 	obj.GetAbsOrigin(pos);
 	if (GetNearestPlayer(pos, _, 500.0, TEAM_SURVIVOR, _, true) != -1)
@@ -295,7 +374,7 @@ public Action Timer_WorldText(Handle timer, int entity)
 	}
 	else if (IsValidEntity2(obj.WorldText))
 	{
-		if (obj.index != GetCurrentTeleporter().index || RF2_Object_Teleporter(obj.index).EventState != TELE_EVENT_ACTIVE)
+		if (!RF2_Object_Teleporter(obj.index).IsValid() || RF2_Object_Teleporter(obj.index).EventState != TELE_EVENT_ACTIVE)
 		{
 			RemoveEntity2(obj.WorldText);
 		}
@@ -330,6 +409,12 @@ static Action ObjectBase_OnInteract(int client, RF2_Object_Base obj)
 RF2_Object_Base CreateObject(const char[] classname, const float pos[3], bool spawn=true)
 {
 	RF2_Object_Base obj = RF2_Object_Base(CreateEntityByName(classname));
+	if (!obj.IsValid())
+	{
+		LogError("[CreateObject] Failed to create object: %s", classname);
+		return RF2_Object_Base(INVALID_ENT_REFERENCE);
+	}
+	
 	obj.Teleport(pos);
 	
 	if (spawn)
@@ -362,12 +447,4 @@ static void Input_SetActive(int entity, int activator, int caller, any value)
 {
 	RF2_Object_Base obj = RF2_Object_Base(entity);
 	obj.Active = value;
-	if (value)
-	{
-		obj.Effects |= EF_ITEM_BLINK;
-	}
-	else
-	{
-		obj.Effects &= ~EF_ITEM_BLINK;
-	}
 }

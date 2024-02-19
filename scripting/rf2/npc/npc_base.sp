@@ -182,34 +182,10 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMinsPreScaled", mins);
 		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMaxsPreScaled", maxs);
 	}
-
+	
 	public void SetGlow(bool state)
 	{
-		if (state)
-		{
-			if (!IsValidEntity2(this.GlowEnt))
-			{
-				this.GlowEnt = CreateEntityByName("tf_glow");
-				CBaseEntity glow = CBaseEntity(this.GlowEnt);
-				char name[128];
-				FormatEx(name, sizeof(name), "rf2npc_%i", this.index);
-				this.SetPropString(Prop_Data, "m_iName", name);
-				glow.KeyValue("target", name);
-				SetVariantColor({255, 255, 255, 255});
-				glow.AcceptInput("SetGlowColor");
-				
-				float pos[3];
-				this.GetAbsOrigin(pos);
-				glow.Teleport(pos);
-				glow.Spawn();
-				glow.AcceptInput("Enable");
-				ParentEntity(glow.index, this.index);
-			}
-		}
-		else if (IsValidEntity2(this.GlowEnt))
-		{
-			RemoveEntity2(this.GlowEnt);
-		}
+		this.GlowEnt = ToggleGlow(this.index, state);
 	}
 	
 	public void SetGlowColor(int color[4])
@@ -253,14 +229,13 @@ static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
 	RF2_NPC_Base npc = RF2_NPC_Base(victim);
 	int health = npc.GetProp(Prop_Data, "m_iHealth");
 	TE_TFParticle("bot_impact_heavy", damagePosition);
-	Event event = CreateEvent("npc_hurt");
+	Event event = CreateEvent("npc_hurt", true);
 	if (event)
 	{
 		event.SetInt("entindex", npc.index);
 		event.SetInt("health", health > 0 ? health : 0);
 		event.SetInt("damageamount", RoundToFloor(damage));
-		event.SetBool("crit", (damagetype & DMG_CRIT) == DMG_CRIT);
-		
+		event.SetBool("crit", (damagetype & DMG_CRIT) ? true : false);
 		if (attacker > 0 && attacker <= MaxClients)
 		{
 			event.SetInt("attacker_player", GetClientUserId(attacker));

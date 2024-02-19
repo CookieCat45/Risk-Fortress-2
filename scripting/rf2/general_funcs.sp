@@ -617,3 +617,21 @@ bool IsGoombaAvailable()
 {
 	return g_bGoombaAvailable;
 }
+
+// Returns number of strings found and removed from the list
+int ClearStringFromArrayList(ArrayList list, const char[] string)
+{
+	char[] str = new char[list.BlockSize];
+	int count;
+	for (int i = 0; i < list.Length; i++)
+	{
+		list.GetString(i, str, list.BlockSize);
+		if (strcmp2(str, string))
+		{
+			list.Erase(i);
+			count++;
+		}
+	}
+	
+	return count;
+}

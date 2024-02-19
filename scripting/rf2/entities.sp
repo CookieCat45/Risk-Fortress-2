@@ -372,12 +372,12 @@ void PickupCash(int client, int entity)
 				modifier += CalcItemMod(i, Item_ProofOfPurchase, 0);
 			}
 		}
-
+		
 		for (int i = 0; i < clientArray.Length; i++)
 		{
-			g_flPlayerCash[clientArray.Get(i)] += g_flCashValue[entity] * modifier;
+			AddPlayerCash(clientArray.Get(i), g_flCashValue[entity] * modifier);
 		}
-
+		
 		if (client > 0)
 		{
 			SpeakResponseConcept_MVM(client, "TLK_MVM_MONEY_PICKUP");
@@ -600,7 +600,7 @@ bool IsPlayingGesture(int entity, const char[] sequence)
 		LogError("[IsPlayingGesture] Couldn't find sequence \"%s\".", sequence);
 		return false;
 	}
-
+	
 	return (CBaseAnimatingOverlay(entity).FindGestureLayerBySequence(seq) >= 0);
 }
 
@@ -615,9 +615,63 @@ void ParentEntity(int child, int parent, const char[] attachment="", bool mainta
 	}
 }
 
+int ToggleGlow(int entity, bool state, int color[4]={255, 255, 255, 255})
+{
+	int glow = MaxClients+1;
+	char name[32], name2[32];
+	FormatEx(name2, sizeof(name2), "glowent%i", entity);
+	bool found;
+	while ((glow = FindEntityByClassname(glow, "tf_glow")) != -1)
+	{
+		GetEntPropString(glow, Prop_Data, "m_iName", name, sizeof(name));
+		if (strcmp2(name, name2))
+		{
+			found = true;
+			break;
+		}
+	}
+	
+	if (!found)
+	{
+		glow = CreateEntityByName("tf_glow");
+		DispatchKeyValue(glow, "targetname", name2);
+		char target[32];
+		FormatEx(target, sizeof(target), "glowtarget%i", entity);
+		DispatchKeyValue(entity, "targetname", target);
+		DispatchKeyValue(glow, "target", target);
+		SetVariantColor(color);
+		AcceptEntityInput(glow, "SetGlowColor");
+		float pos[3];
+		GetEntPos(entity, pos);
+		TeleportEntity(glow, pos);
+		DispatchSpawn(glow);
+		AcceptEntityInput(glow, "Enable");
+		ParentEntity(glow, entity);
+	}
+	
+	state ? AcceptEntityInput(glow, "Enable") : AcceptEntityInput(glow, "Disable");
+	return glow;
+}
+
 stock void PrintEntClassname(int entity)
 {
 	char classname[128];
 	GetEntityClassname(entity, classname, sizeof(classname));
 	PrintToChatAll(classname);
+}
+
+// Set type of tf_zombie (0 = normal, 1 = king, 2 = small)
+void SDK_SetSkeletonType(int entity, int type)
+{
+	if (g_hSDKSetZombieType)
+	{
+		SDKCall(g_hSDKSetZombieType, entity, type);
+	}
+}
+
+bool IsSkeleton(int entity)
+{
+	static char classname[16];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	return strcmp2(classname, "tf_zombie");
 }
