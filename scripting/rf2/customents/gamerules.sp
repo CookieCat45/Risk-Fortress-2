@@ -188,7 +188,7 @@ int SpawnObjects()
 		
 		for (int j = 1; j <= count; j++)
 		{
-			if (i < CrateType_Max)
+			if (i-1 < CrateType_Max)
 			{
 				crateArray.Push(i-1);
 			}

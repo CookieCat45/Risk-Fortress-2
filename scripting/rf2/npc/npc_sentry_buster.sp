@@ -88,6 +88,24 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		{
 			RemoveEntity2(buster.index);
 		}
+		else
+		{
+			ArrayList playerList = new ArrayList();
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (IsValidClient(i) && IsPlayerAlive(i) && IsPlayerSurvivor(i))
+				{
+					playerList.Push(i);
+				}
+			}
+			
+			if (playerList.Length > 0)
+			{
+				SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER");
+			}
+
+			delete playerList;
+		}
 		
 		return success ? buster : RF2_SentryBuster(INVALID_ENT_REFERENCE);
 	}
@@ -287,21 +305,6 @@ static void OnCreate(RF2_SentryBuster buster)
 	npc.flRunSpeed = 440.0;
 	npc.flDeathDropHeight = 2000.0;
 	
-	ArrayList playerList = new ArrayList();
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (IsValidClient(i) && IsPlayerAlive(i) && IsPlayerSurvivor(i))
-		{
-			playerList.Push(i);
-		}
-	}
-	
-	if (playerList.Length > 0)
-	{
-		SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER");
-	}
-	
-	delete playerList;
 	buster.Spawn();
 	buster.Activate();
 	buster.SetGlow(true);

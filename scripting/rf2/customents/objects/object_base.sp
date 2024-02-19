@@ -213,7 +213,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 		text.Spawn();
 		ParentEntity(text.index, this.index);
 	}
-
+	
 	public void GetTextColor(int buffer[4])
 	{
 		this.GetPropColor(Prop_Data, "m_TextColor", buffer[0], buffer[1], buffer[2], buffer[3]);
@@ -315,6 +315,7 @@ static void OnCreate(RF2_Object_Base obj)
 	obj.Active = true;
 	obj.TextZOffset = 50.0;
 	obj.TextSize = 6.0;
+	obj.SetTextColor({255, 255, 100, 255});
 	if (!RF2_Object_Teleporter(obj.index).IsValid())
 	{
 		obj.SetProp(Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER_TOUCH_DEBRIS|FSOLID_TRIGGER|FSOLID_NOT_SOLID|FSOLID_CUSTOMBOXTEST);
@@ -339,7 +340,7 @@ static void OnSpawnPost(int entity)
 		PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
 	}
 	
-	char worldText[256];
+	static char worldText[256];
 	obj.GetWorldText(worldText, sizeof(worldText));
 	if (worldText[0])
 	{
@@ -353,7 +354,7 @@ public Action Timer_WorldText(Handle timer, int entity)
 		return Plugin_Stop;
 	
 	RF2_Object_Base obj = RF2_Object_Base(entity);
-	if (!obj.Active && !RF2_Object_Teleporter(obj.index).IsValid())
+	if (!obj.Active && GetCurrentTeleporter().index != obj.index)
 	{
 		if (IsValidEntity2(obj.WorldText))
 		{
@@ -374,7 +375,7 @@ public Action Timer_WorldText(Handle timer, int entity)
 	}
 	else if (IsValidEntity2(obj.WorldText))
 	{
-		if (!RF2_Object_Teleporter(obj.index).IsValid() || RF2_Object_Teleporter(obj.index).EventState != TELE_EVENT_ACTIVE)
+		if (GetCurrentTeleporter().index != obj.index || RF2_Object_Teleporter(obj.index).EventState != TELE_EVENT_ACTIVE)
 		{
 			RemoveEntity2(obj.WorldText);
 		}

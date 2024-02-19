@@ -230,7 +230,7 @@ public void RF_UpdateText(int entity)
 		{
 			static char whitespace[256];
 			whitespace = "";
-			int spaceCount = len1 < len2 ? len2-len1 : len2 < len1/2 ? len1/2 : len1-len2;
+			int spaceCount = len1 < len2 ? len2/2 : len1/2;
 			for (int i = 0; i < spaceCount; i++)
 			{
 				whitespace[i] = ' ';

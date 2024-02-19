@@ -24,7 +24,7 @@
 	"HauntedKeyDrop" // No color tags
 	{
 		"#format"	"{1:N}"
-		"en"		"{1}dropped a Haunted Key!"
+		"en"		"{1} dropped a Gargoyle Key!"
 	}
 
 	"NoChangeClass"
