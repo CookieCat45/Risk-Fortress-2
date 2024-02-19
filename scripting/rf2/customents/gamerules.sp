@@ -190,7 +190,7 @@ int SpawnObjects()
 		{
 			if (i < CrateType_Max)
 			{
-				crateArray.Push(i);
+				crateArray.Push(i-1);
 			}
 			else
 			{

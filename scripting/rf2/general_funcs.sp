@@ -629,6 +629,7 @@ int ClearStringFromArrayList(ArrayList list, const char[] string)
 		if (strcmp2(str, string))
 		{
 			list.Erase(i);
+			i--;
 			count++;
 		}
 	}
