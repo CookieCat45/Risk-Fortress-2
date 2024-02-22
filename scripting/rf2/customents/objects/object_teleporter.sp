@@ -182,7 +182,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		DispatchSpawn(fog);
 		AcceptEntityInput(fog, "TurnOn");			
 		const float time = 3.0;
-		int oldFog[MAXTF2PLAYERS] = {-1, ...};
+		int oldFog[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
@@ -336,8 +336,8 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			EmitSoundToAll(SND_ENEMY_STUN);
 		}
 		
-		int entity = -1;
-		while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+		int entity = MaxClients+1;
+		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 		{
 			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
 			{
@@ -377,7 +377,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		}
 		
 		int boss = MaxClients+1;
-		while ((boss = FindEntityByClassname(boss, "headless_hatman")) != -1)
+		while ((boss = FindEntityByClassname(boss, "headless_hatman")) != INVALID_ENT)
 		{
 			// HHH team number is 0, set to something else so he actually takes damage and dies
 			SetEntProp(boss, Prop_Data, "m_iTeamNum", 1);
@@ -386,7 +386,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		}
 		
 		boss = MaxClients+1;
-		while ((boss = FindEntityByClassname(boss, "eyeball_boss")) != -1)
+		while ((boss = FindEntityByClassname(boss, "eyeball_boss")) != INVALID_ENT)
 		{
 			if (GetEntProp(boss, Prop_Data, "m_iTeamNum") != 5)
 				continue;
@@ -422,7 +422,7 @@ static void OnCreate(RF2_Object_Teleporter teleporter)
 		model = MODEL_TELEPORTER;
 	}
 	
-	teleporter.Bubble = CBaseAnimating(-1);
+	teleporter.Bubble = CBaseAnimating(INVALID_ENT);
 	teleporter.SetProp(Prop_Send, "m_nSolidType", SOLID_VPHYSICS);
 	teleporter.SetModel(model);
 	teleporter.HookInteract(Teleporter_OnInteract);
@@ -498,7 +498,7 @@ public int Menu_NextStageVote(Menu menu, MenuAction action, int param1, int para
 
 public Action Timer_StartTeleporterEvent(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Stop;
 	
 	RF2_Object_Teleporter(entity).Start();
@@ -507,7 +507,7 @@ public Action Timer_StartTeleporterEvent(Handle timer, int entity)
 
 public Action Timer_TeleporterThink(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Stop;
 	
 	RF2_Object_Teleporter teleporter = RF2_Object_Teleporter(entity);

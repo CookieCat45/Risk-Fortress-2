@@ -517,12 +517,12 @@ bool visible = true, const char[] model="", int quality=0, int level=0)
 // Remove ALL wearables, including plugin created ones.
 void TF2_RemoveAllWearables(int client)
 {
-	int entity = -1;
+	int entity = MaxClients+1;
 	char classname[64];
-	while ((entity = FindEntityByClassname(entity, "tf_*")) != -1)
+	while ((entity = FindEntityByClassname(entity, "tf_*")) != INVALID_ENT)
 	{
 		GetEntityClassname(entity, classname, sizeof(classname));
-		if (StrContains(classname, "tf_wearable") == -1 && !strcmp2(classname, "tf_powerup_bottle"))
+		if (StrContains(classname, "tf_wearable") == INVALID_ENT && !strcmp2(classname, "tf_powerup_bottle"))
 		{
 			continue;
 		}
@@ -537,15 +537,15 @@ void TF2_RemoveAllWearables(int client)
 // Removes any wearables not created by the plugin
 void TF2_RemoveLoadoutWearables(int client)
 {
-	int entity = -1;
+	int entity = MaxClients+1;
 	char classname[64];
-	while ((entity = FindEntityByClassname(entity, "tf_*")) != -1)
+	while ((entity = FindEntityByClassname(entity, "tf_*")) != INVALID_ENT)
 	{
 		if (g_bDontRemoveWearable[entity] || g_bItemWearable[entity])
 			continue;
 		
 		GetEntityClassname(entity, classname, sizeof(classname));
-		if (StrContains(classname, "tf_wearable") == -1 && !strcmp2(classname, "tf_powerup_bottle"))
+		if (StrContains(classname, "tf_wearable") == INVALID_ENT && !strcmp2(classname, "tf_powerup_bottle"))
 		{
 			continue;
 		}
@@ -610,8 +610,8 @@ bool IsEffectBarWeapon(int weapon)
 	static char classname[32];
 	GetEntityClassname(weapon, classname, sizeof(classname));
 	
-	return (StrContains(classname, "tf_weapon_lunchbox") != -1
-	|| StrContains(classname, "tf_weapon_jar") != -1
+	return (StrContains(classname, "tf_weapon_lunchbox") != INVALID_ENT
+	|| StrContains(classname, "tf_weapon_jar") != INVALID_ENT
 	|| strcmp2(classname, "tf_weapon_cleaver")
 	|| strcmp2(classname, "tf_weapon_bat_wood")
 	|| strcmp2(classname, "tf_weapon_bat_giftwrap")
@@ -682,8 +682,8 @@ public MRESReturn DHook_RiflePostFramePost(int entity)
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 	if (IsValidClient(owner) && g_bWasOffGround)
 	{
-		SetEntPropEnt(owner, Prop_Data, "m_hGroundEntity", -1);
-		SetEntPropEnt(owner, Prop_Send, "m_hGroundEntity", -1);
+		SetEntPropEnt(owner, Prop_Data, "m_hGroundEntity", INVALID_ENT);
+		SetEntPropEnt(owner, Prop_Send, "m_hGroundEntity", INVALID_ENT);
 	}
 	
 	g_bWasOffGround = false;

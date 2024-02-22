@@ -1033,7 +1033,7 @@ public Action Command_ForceBoss(int client, int args)
 	GetCmdArg(1, arg1, sizeof(arg1));
 	int target = FindTarget(client, arg1);
 	
-	if (target == -1)
+	if (target == INVALID_ENT)
 	{
 		ReplyToTargetError(client, COMMAND_TARGET_NONE);
 	}
@@ -1066,8 +1066,8 @@ public Action Command_ForceEnemy(int client, int args)
 	char arg1[32];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	int target = FindTarget(client, arg1);
-
-	if (target == -1)
+	
+	if (target == INVALID_ENT)
 	{
 		ReplyToTargetError(client, COMMAND_TARGET_NONE);
 	}
@@ -1396,9 +1396,9 @@ public Action Command_Items(int client, int args)
 	return Plugin_Handled;
 }
 
-void ShowItemMenu(int client, int inspectTarget=-1)
+void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 {
-	if (!IsPlayerSurvivor(client) && inspectTarget == -1)
+	if (!IsPlayerSurvivor(client) && inspectTarget == INVALID_ENT)
 		return;
 	
 	int target = IsValidClient(inspectTarget) ? inspectTarget : client;

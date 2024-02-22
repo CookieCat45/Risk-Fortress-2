@@ -23,6 +23,8 @@ void InstallEnts()
 	RF2_CustomHitbox.Init();
 	RF2_SentryBuster.Init();
 	RF2_RaidBoss_Galleom.Init();
+	RF2_Companion_Base.Init();
+	RF2_Companion_HeavyBot.Init();
 	BadassTank_Init(); // TODO: convert to methodmap
 }
 

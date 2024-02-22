@@ -350,7 +350,7 @@ static void OnSpawnPost(int entity)
 
 public Action Timer_WorldText(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Stop;
 	
 	RF2_Object_Base obj = RF2_Object_Base(entity);
@@ -413,7 +413,7 @@ RF2_Object_Base CreateObject(const char[] classname, const float pos[3], bool sp
 	if (!obj.IsValid())
 	{
 		LogError("[CreateObject] Failed to create object: %s", classname);
-		return RF2_Object_Base(INVALID_ENT_REFERENCE);
+		return RF2_Object_Base(INVALID_ENT);
 	}
 	
 	obj.Teleport(pos);

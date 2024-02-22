@@ -297,7 +297,7 @@ public void Hook_CashGroundEntChangedPost(int entity)
 
 public void RF_CashThinkRate(int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return;
 	
 	CBaseEntity(entity).SetNextThink(GetGameTime()); // Fixes laggy movement
@@ -306,7 +306,7 @@ public void RF_CashThinkRate(int entity)
 
 public Action Timer_DeleteCash(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Continue;
 	
 	float pos[3];
@@ -319,7 +319,7 @@ public Action Timer_DeleteCash(Handle timer, int entity)
 
 public Action Timer_CashMagnet(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Stop;
 	
 	float pos[3], playerPos[3], angles[3], vel[3];
@@ -592,6 +592,19 @@ float AddGesture(int entity, const char[] sequence, float duration=0.0, bool aut
 	return duration;
 }
 
+float AddGestureByIndex(int entity, int seq, float duration=0.0, bool autokill=true, float playbackrate=1.0, int priority=1)
+{
+	if (duration <= 0.0)
+	{
+		duration = CBaseAnimating(entity).SequenceDuration(seq);
+	}
+	
+	int layer = CBaseAnimatingOverlay(entity).AddGestureSequence(seq, duration, autokill);
+	CBaseAnimatingOverlay(entity).SetLayerPlaybackRate(layer, playbackrate);
+	CBaseAnimatingOverlay(entity).SetLayerPriority(layer, priority);
+	return duration;
+}
+
 bool IsPlayingGesture(int entity, const char[] sequence)
 {
 	int seq = CBaseAnimating(entity).LookupSequence(sequence);
@@ -601,6 +614,11 @@ bool IsPlayingGesture(int entity, const char[] sequence)
 		return false;
 	}
 	
+	return (CBaseAnimatingOverlay(entity).FindGestureLayerBySequence(seq) >= 0);
+}
+
+bool IsPlayingGestureByIndex(int entity, int seq)
+{
 	return (CBaseAnimatingOverlay(entity).FindGestureLayerBySequence(seq) >= 0);
 }
 

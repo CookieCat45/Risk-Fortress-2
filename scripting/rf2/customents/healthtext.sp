@@ -182,7 +182,7 @@ static void OnSpawnPost(int entity)
 
 public void RF_UpdateText(int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return;
 	
 	RF2_HealthText text = RF2_HealthText(entity);

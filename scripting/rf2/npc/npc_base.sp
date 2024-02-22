@@ -25,7 +25,7 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 	
 	public static void Init()
 	{
-		g_Factory = new CEntityFactory("rf2_npc_raidboss_base", OnCreate, OnRemove);
+		g_Factory = new CEntityFactory("rf2_npc_base", OnCreate, OnRemove);
 		g_Factory.IsAbstract = true;
 		g_Factory.DeriveFromNPC();
 		g_Factory.BeginDataMapDesc()
@@ -72,6 +72,46 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		}
 	}
 	
+	property INextBot Bot
+	{
+		public get()
+		{
+			return this.MyNextBotPointer();
+		}
+	}
+	
+	property NextBotGroundLocomotion Locomotion
+	{
+		public get()
+		{
+			return this.BaseNpc.GetLocomotion();
+		}
+	}
+
+	property IVision Vision
+	{
+		public get()
+		{
+			return this.Bot.GetVisionInterface();
+		}
+	}
+
+	property IBody Body
+	{
+		public get()
+		{
+			return this.Bot.GetBodyInterface();
+		}
+	}
+
+	property IIntention Intention
+	{
+		public get()
+		{
+			return this.Bot.GetIntentionInterface();
+		}
+	}
+
 	// Do not target this team
 	property int DefendTeam
 	{
@@ -124,22 +164,32 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		return AddGesture(this.index, sequence, duration, autokill, playbackrate, priority);
 	}
 	
+	public float AddGestureByIndex(int seq, float duration=0.0, bool autokill=true, float playbackrate=1.0, int priority=1)
+	{
+		return AddGestureByIndex(this.index, seq, duration, autokill, playbackrate, priority);
+	}
+	
 	public bool IsPlayingSequence(const char[] sequence)
 	{
 		int seq = this.GetProp(Prop_Send, "m_nSequence");
 		return seq >= 0 && this.LookupSequence(sequence) == seq;
 	}
 	
+	public bool IsPlayingGestureByIndex(int seq)
+	{
+		return IsPlayingGestureByIndex(this.index, seq);
+	}
+	
 	public int GetNewTarget(float maxDist=0.0)
 	{
 		float pos[3];
 		this.WorldSpaceCenter(pos);
-		int entity = -1;
+		int entity = MaxClients+1;
 		int targetTeam, target;
 		float dist;
 		float nearestDist = -1.0;
 		maxDist = sq(maxDist);
-		while ((entity = FindEntityByClassname(entity, "*")) != -1)
+		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
 			if (!IsCombatChar(entity))
 				continue;

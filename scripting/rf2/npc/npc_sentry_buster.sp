@@ -107,7 +107,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 			delete playerList;
 		}
 		
-		return success ? buster : RF2_SentryBuster(INVALID_ENT_REFERENCE);
+		return success ? buster : RF2_SentryBuster(INVALID_ENT);
 	}
 	
 	property int RepathAttempts
@@ -135,8 +135,8 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		EmitGameSoundToAll("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
 		UTIL_ScreenShake(pos, 25.0, 5.0, 5.0, 1000.0, SHAKE_START, false);
 		ArrayList victims = new ArrayList();
-		int entity = -1;
-		while ((entity = FindEntityByClassname(entity, "*")) != -1)
+		int entity = MaxClients+1;
+		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
 			if (entity < 1 || entity == this.index)
 			{
@@ -291,7 +291,7 @@ static void OnCreate(RF2_SentryBuster buster)
 	buster.SetProp(Prop_Data, "m_idleSequence", buster.LookupSequence("Stand_MELEE"));
 	buster.SetProp(Prop_Data, "m_runSequence", buster.LookupSequence("Run_MELEE"));
 	buster.SetProp(Prop_Data, "m_airSequence", buster.LookupSequence("a_jumpfloat_ITEM1"));
-	buster.Target = INVALID_ENT_REFERENCE;
+	buster.Target = INVALID_ENT;
 	
 	buster.Hook_HandleAnimEvent(HandleAnimEvent);
 	buster.SetProp(Prop_Data, "m_iTeamNum", TEAM_ENEMY);
@@ -368,9 +368,9 @@ void DoSentryBusterWave()
 {
 	ArrayList sentryList = CreateArray();
 	int builder;
-	int entity = -1;
+	int entity = MaxClients+1;
 
-	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != -1)
+	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)
 	{
 		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != TEAM_SURVIVOR)
 			continue;
@@ -379,7 +379,7 @@ void DoSentryBusterWave()
 		if (builder <= 0)
 			continue;
 		
-		if (g_hPlayerExtraSentryList[builder].FindValue(entity) != -1) // Don't count disposable sentries
+		if (g_hPlayerExtraSentryList[builder].FindValue(entity) != INVALID_ENT) // Don't count disposable sentries
 			continue;
 		
 		sentryList.Push(entity);
@@ -418,7 +418,7 @@ void DoSentryBusterWave()
 
 public void RF_BusterSpawnRetry(int sentry)
 {
-	if (IsStageCleared() || (sentry = EntRefToEntIndex(sentry)) == INVALID_ENT_REFERENCE)
+	if (IsStageCleared() || (sentry = EntRefToEntIndex(sentry)) == INVALID_ENT)
 		return;
 	
 	RF2_SentryBuster buster = RF2_SentryBuster.Create(sentry);
@@ -435,5 +435,5 @@ public void RF_BusterSpawnRetry(int sentry)
 
 bool IsSentryBusterActive()
 {
-	return FindEntityByClassname(MaxClients + 1, "rf2_npc_sentry_buster") != -1;
+	return FindEntityByClassname(MaxClients + 1, "rf2_npc_sentry_buster") != INVALID_ENT;
 }

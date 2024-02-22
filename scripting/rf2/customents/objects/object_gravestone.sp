@@ -67,7 +67,7 @@ methodmap RF2_Object_Gravestone < RF2_Object_Base
 			return king;
 		}
 		
-		return INVALID_ENT_REFERENCE;
+		return INVALID_ENT;
 	}
 }
 
@@ -101,7 +101,7 @@ static Action Gravestone_OnInteract(int client, RF2_Object_Gravestone grave)
 	if (GetPlayerCash(client) >= grave.Cost)
 	{
 		AddPlayerCash(client, -grave.Cost);
-		if (grave.SummonSkeletonKing() == INVALID_ENT_REFERENCE)
+		if (grave.SummonSkeletonKing() == INVALID_ENT)
 		{
 			RequestFrame(RF_GraveSpawnRetry, EntIndexToEntRef(grave.index));
 		}
@@ -132,11 +132,11 @@ static Action Gravestone_OnInteract(int client, RF2_Object_Gravestone grave)
 
 public void RF_GraveSpawnRetry(int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return;
 	
 	RF2_Object_Gravestone grave = RF2_Object_Gravestone(entity);
-	if (grave.SummonSkeletonKing() == INVALID_ENT_REFERENCE)
+	if (grave.SummonSkeletonKing() == INVALID_ENT)
 	{
 		RequestFrame(RF_GraveSpawnRetry, EntIndexToEntRef(grave.index));
 	}

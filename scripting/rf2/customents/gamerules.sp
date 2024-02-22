@@ -100,7 +100,7 @@ int SpawnObjects()
 		ArrayList teleporterSpawns = CreateArray();
 		// Find our teleporter spawnpoints
 		entity = MaxClients+1;
-		while ((entity = FindEntityByClassname(entity, "rf2_teleporter_spawn")) != -1)
+		while ((entity = FindEntityByClassname(entity, "rf2_teleporter_spawn")) != INVALID_ENT)
 		{
 			teleporterSpawns.Push(entity);
 		}
@@ -205,7 +205,7 @@ int SpawnObjects()
 	{
 		GetSpawnPoint(worldCenter, spawnPos, 0.0, distance, _, true);
 		nearestObject = GetNearestEntity(spawnPos, "rf2_object*");
-		if (nearestObject != -1)
+		if (nearestObject != INVALID_ENT)
 		{
 			GetEntPos(nearestObject, nearestPos);
 			if (GetVectorDistance(spawnPos, nearestPos, true) <= sq(spreadDistance)) // Too close to another object.
@@ -257,7 +257,7 @@ void DespawnObjects()
 {
 	char classname[128];
 	int entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "*")) != -1)
+	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
 		GetEntityClassname(entity, classname, sizeof(classname));
 		if (strcmp2(classname, "rf2_item") || StrContains(classname, "rf2_object") == 0 && !RF2_Object_Base(entity).MapPlaced)
@@ -269,7 +269,7 @@ void DespawnObjects()
 
 void GetWorldCenter(float vec[3])
 {
-	if (EntRefToEntIndex(g_iWorldCenterEntity) != INVALID_ENT_REFERENCE)
+	if (EntRefToEntIndex(g_iWorldCenterEntity) != INVALID_ENT)
 	{
 		GetEntPos(EntRefToEntIndex(g_iWorldCenterEntity), vec);
 		return;
@@ -279,7 +279,7 @@ void GetWorldCenter(float vec[3])
 	char targetName[128];
 	bool found;
 	
-	while ((entity = FindEntityByClassname(entity, "info_target")) != -1)
+	while ((entity = FindEntityByClassname(entity, "info_target")) != INVALID_ENT)
 	{
 		GetEntPropString(entity, Prop_Data, "m_iName", targetName, sizeof(targetName));
 		if (strcmp2(targetName, WORLD_CENTER))

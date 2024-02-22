@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.5b"
+#define PLUGIN_VERSION "0.5.1b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -65,9 +65,9 @@ int g_iTanksKilledObjective;
 int g_iTankKillRequirement;
 int g_iTanksSpawned;
 int g_iMetalItemsDropped;
-int g_iWorldCenterEntity = INVALID_ENT_REFERENCE;
-int g_iTeleporterEntRef = INVALID_ENT_REFERENCE;
-int g_iRF2GameRulesEntRef = INVALID_ENT_REFERENCE;
+int g_iWorldCenterEntity = INVALID_ENT;
+int g_iTeleporterEntRef = INVALID_ENT;
+int g_iRF2GameRulesEntRef = INVALID_ENT;
 
 // Difficulty
 float g_flSecondsPassed;
@@ -342,6 +342,7 @@ ArrayList g_hActiveArtifacts;
 #include "rf2/npc/npc_tank_boss.sp"
 #include "rf2/npc/npc_sentry_buster.sp"
 #include "rf2/npc/npc_raidboss_galleom.sp"
+#include "rf2/npc/npc_companion_base.sp"
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
@@ -842,12 +843,12 @@ void CleanUp()
 	RemoveCommandListener(OnChangeSpec, "spec_next");
 	RemoveCommandListener(OnChangeSpec, "spec_prev");
 	RemoveCommandListener(OnBuildCommand, "build");
-
+	
 	UnhookEntityOutput("tank_boss", "OnKilled", Output_OnTankKilled);
 	UnhookUserMessage(GetUserMessageId("SayText2"), UserMessageHook_SayText2, true);
 	RemoveNormalSoundHook(PlayerSoundHook);
 	RemoveTempEntHook("TFBlood", TEHook_TFBlood);
-
+	
 	g_bRoundActive = false;
 	g_bGracePeriod = false;
 	g_bWaitingForPlayers = false;
@@ -857,13 +858,13 @@ void CleanUp()
 	g_hPlayerTimer = null;
 	g_hHudTimer = null;
 	g_hDifficultyTimer = null;
-	g_iRF2GameRulesEntRef = -1;
+	g_iRF2GameRulesEntRef = INVALID_ENT;
 	g_iRespawnWavesCompleted = 0;
 	g_szEnemyPackName = "";
 	g_szBossPackName = "";
-	g_iTeleporterEntRef = INVALID_ENT_REFERENCE;
-	g_iWorldCenterEntity = INVALID_ENT_REFERENCE;
-	g_iRF2GameRulesEntRef = INVALID_ENT_REFERENCE;
+	g_iTeleporterEntRef = INVALID_ENT;
+	g_iWorldCenterEntity = INVALID_ENT;
+	g_iRF2GameRulesEntRef = INVALID_ENT;
 	g_bTankBossMode = false;
 	g_iTanksKilledObjective = 0;
 	g_iTankKillRequirement = 0;
@@ -1330,13 +1331,13 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	
 	g_flRoundStartSeconds = g_flSecondsPassed;
 	CreateTimer(0.5, Timer_KillEnemyTeam, _, TIMER_FLAG_NO_MAPCHANGE);
-
+	
 	int gamerules = FindEntityByClassname(-1, "tf_gamerules");
-	if (gamerules == -1)
+	if (gamerules == INVALID_ENT)
 	{
 		gamerules = CreateEntityByName("tf_gamerules");
 	}
-
+	
 	SetVariantInt(9999);
 	AcceptEntityInput(gamerules, "SetRedTeamRespawnWaveTime");
 	SetVariantInt(9999);
@@ -1581,8 +1582,8 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
-		int entity = -1;
-		while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+		int entity = MaxClients+1;
+		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 		{
 			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
 				SDKHooks_TakeDamage2(entity, 0, 0, 999999.0, DMG_PREVENT_PHYSICS_FORCE);
@@ -1713,12 +1714,12 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	
 	if (TF2_GetPlayerClass(victim) == TFClass_Engineer && IsPlayerSurvivor(victim))
 	{
-		int entity = -1;
-		while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+		int entity = MaxClients+1;
+		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 		{
 			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") != victim)
 				continue;
-
+			
 			SetEntityHealth(entity, 10);
 			SDKHooks_TakeDamage2(entity, attacker, attacker, 99999.0, DMG_PREVENT_PHYSICS_FORCE);
 		}
@@ -2009,7 +2010,7 @@ public Action Timer_ChangeTeamOnDeath(Handle timer, int client)
 
 public Action Timer_KillFog(Handle timer, int fog)
 {
-	if (EntRefToEntIndex(fog) == INVALID_ENT_REFERENCE)
+	if (EntRefToEntIndex(fog) == INVALID_ENT)
 		return Plugin_Continue;
 
 	AcceptEntityInput(fog, "TurnOff");
@@ -2027,7 +2028,7 @@ public Action Timer_RestorePlayerFog(Handle timer, DataPack pack)
 		return Plugin_Continue;
 
 	int fog = EntRefToEntIndex(pack.ReadCell());
-	if (fog != INVALID_ENT_REFERENCE)
+	if (fog != INVALID_ENT)
 	{
 		SetEntPropEnt(client, Prop_Data, "m_hCtrl", fog);
 	}
@@ -2039,17 +2040,14 @@ public void RF_DeleteRagdoll(int client)
 {
 	if (!IsClientInGame(client))
 		return;
-
-	char classname[16];
-	int entity = -1;
-
-	while ((entity = FindEntityByClassname(entity, "*")) != -1)
+	
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "tf_ragdoll")) != INVALID_ENT)
 	{
 		if (entity <= MaxClients)
 			continue;
-
-		GetEntityClassname(entity, classname, sizeof(classname));
-		if (strcmp2(classname, "tf_ragdoll") && GetEntPropEnt(entity, Prop_Send, "m_hPlayer") == client)
+		
+		if (GetEntPropEnt(entity, Prop_Send, "m_hPlayer") == client)
 		{
 			RemoveEntity2(entity);
 			break;
@@ -2075,19 +2073,19 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 			damage *= 0.25;
 			range *= 0.75;
 		}
-
+		
 		Handle trace;
 		int hitCount, killCount;
 		int entity = -1;
-
-		while ((entity = FindEntityByClassname(entity, "*")) != -1)
+		
+		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
 			if (entity < 1 || entity == medic)
 				continue;
-
-			if (!IsValidClient(entity) && !IsBuilding(entity) && !IsNPC(entity))
+			
+			if (!IsCombatChar(entity))
 				continue;
-
+			
 			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
 				continue;
 
@@ -2205,8 +2203,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 			// We need to set the health before the max health here so that the health increases properly when the sentry is building itself up
 			int maxHealth = CalculateBuildingMaxHealth(client, building);
 			SetVariantInt(RoundToCeil(float(maxHealth)*0.5));
-			AcceptEntityInput(building, "SetHealth");
-			SetEntProp(building, Prop_Send, "m_iMaxHealth", maxHealth);
+			AcceptEntityInput(building, "AddHealth");
 		}
 	}
 	else if (GetClientTeam(client) == TEAM_ENEMY && TF2_GetObjectType2(building) == TFObject_Teleporter)
@@ -2232,7 +2229,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 
 public void RF_TeleporterThink(int building)
 {
-	if ((building = EntRefToEntIndex(building)) == INVALID_ENT_REFERENCE || GetEntProp(building, Prop_Send, "m_bCarried"))
+	if ((building = EntRefToEntIndex(building)) == INVALID_ENT || GetEntProp(building, Prop_Send, "m_bCarried"))
 		return;
 	
 	if (GetEntProp(building, Prop_Send, "m_bBuilding") || GetEntProp(building, Prop_Send, "m_bHasSapper"))
@@ -2313,7 +2310,7 @@ public Action Timer_SpawnEnemyTeleporter(Handle timer, DataPack pack)
 		return Plugin_Continue;
 
 	int teleporter = EntRefToEntIndex(pack.ReadCell());
-	if (teleporter == INVALID_ENT_REFERENCE)
+	if (teleporter == INVALID_ENT)
 	{
 		g_iPlayerEnemySpawnType[client] = -1;
 		g_iPlayerBossSpawnType[client] = -1;
@@ -2570,7 +2567,7 @@ public int SortEnemySpawnArray(int index1, int index2, ArrayList array, Handle h
 
 	if (IsFakeClient(client2))
 		return -1;
-
+	
 	if (g_iEnemySpawnPoints[client1] == g_iEnemySpawnPoints[client2])
 		return 0;
 
@@ -2606,15 +2603,15 @@ public Action Timer_BusterSpawnWave(Handle timer)
 		return Plugin_Continue;
 	
 	bool sentryActive;
-	int entity = -1;
+	int entity = MaxClients+1;
 	int owner;
-	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != -1)
+	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)
 	{
 		owner = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
 		if (IsValidClient(owner) && IsPlayerSurvivor(owner))
 		{
 			// don't count disposable sentries because we don't care about them
-			if (g_hPlayerExtraSentryList[owner] && g_hPlayerExtraSentryList[owner].FindValue(entity) != -1)
+			if (g_hPlayerExtraSentryList[owner] && g_hPlayerExtraSentryList[owner].FindValue(entity) != INVALID_ENT)
 				continue;
 			
 			sentryActive = true;
@@ -2781,7 +2778,7 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 				else
 				{
-					g_iPlayerLastAttackedTank[i] = -1;
+					g_iPlayerLastAttackedTank[i] = INVALID_ENT;
 					FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Tanks Destroyed: %i/%i",
 						g_iTanksKilledObjective, g_iTankKillRequirement);
 				}
@@ -2943,7 +2940,7 @@ public Action Timer_PlayerTimer(Handle timer)
 
 		// All players have infinite reserve ammo
 		weapon = GetEntPropEnt(i, Prop_Send, "m_hActiveWeapon");
-		if (weapon > -1)
+		if (weapon != INVALID_ENT)
 		{
 			ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType");
 
@@ -3055,7 +3052,7 @@ public Action Timer_DeleteEntity(Handle timer, int entity)
 {
 	entity = EntRefToEntIndex(entity);
 
-	if (entity != INVALID_ENT_REFERENCE)
+	if (entity != INVALID_ENT)
 		RemoveEntity2(entity);
 
 	return Plugin_Continue;
@@ -3480,7 +3477,7 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 		{
 			float meleeRangeBonus = fmin(1.0 + CalcItemMod(client, ItemSoldier_HawkWarrior, 1), 1.0 + GetItemMod(ItemSoldier_HawkWarrior, 2));
 			int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-			if (melee != -1)
+			if (melee != INVALID_ENT)
 			{
 				TF2Attrib_SetByDefIndex(melee, 264, meleeRangeBonus);
 			}
@@ -3524,7 +3521,7 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	if (condition == TFCond_BlastJumping && CanUseCollectorItem(client, ItemSoldier_HawkWarrior))
 	{
 		int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-		if (melee != -1)
+		if (melee != INVALID_ENT)
 		{
 			TF2Attrib_RemoveByDefIndex(melee, 264);
 		}
@@ -3547,7 +3544,7 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	}
 }
 
-int g_iLastFiredWeapon[MAXTF2PLAYERS] = {-1, ...};
+int g_iLastFiredWeapon[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 float g_flWeaponFireTime[MAXTF2PLAYERS];
 public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName, bool &result)
 {
@@ -3688,7 +3685,7 @@ public void RF_NextPrimaryAttack(int client)
 		return;
 	
 	int weapon;
-	if ((weapon = EntRefToEntIndex(g_iLastFiredWeapon[client])) == INVALID_ENT_REFERENCE)
+	if ((weapon = EntRefToEntIndex(g_iLastFiredWeapon[client])) == INVALID_ENT)
 		return;
 	
 	// Calculate based on the time the weapon was fired at since that was in the last frame.
@@ -3751,7 +3748,7 @@ public void TF2_OnWaitingForPlayersStart()
 	
 	// Hide any map spawned objects
 	int entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "rf2_object*")) != -1)
+	while ((entity = FindEntityByClassname(entity, "rf2_object*")) != INVALID_ENT)
 	{
 		if (RF2_Object_Base(entity).MapPlaced)
 		{
@@ -3915,7 +3912,7 @@ public void OnEntityDestroyed(int entity)
 	{
 		int index;
 		int builder = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
-		if (builder > 0 && g_hPlayerExtraSentryList[builder] && (index = g_hPlayerExtraSentryList[builder].FindValue(entity)) != -1)
+		if (builder > 0 && g_hPlayerExtraSentryList[builder] && (index = g_hPlayerExtraSentryList[builder].FindValue(entity)) != INVALID_ENT)
 		{
 			g_hPlayerExtraSentryList[builder].Erase(index);
 		}
@@ -3926,7 +3923,7 @@ public void OnEntityDestroyed(int entity)
 
 public void RF_DragonFuryCritCheck(int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return;
 	
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
@@ -3942,11 +3939,16 @@ public void RF_DragonFuryCritCheck(int entity)
 		int weapon = GetPlayerWeaponSlot(owner, 0);
 		if (weapon > 0)
 		{
-			float mult = GetPlayerFireRateMod(owner, weapon);
-			SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
-			if (0.8 / mult <= GetTickInterval())
+			static char classname[64];
+			GetEntityClassname(weapon, classname, sizeof(classname));
+			if (strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
 			{
-				TriggerAchievement(owner, ACHIEVEMENT_FIRERATECAP);
+				float mult = GetPlayerFireRateMod(owner, weapon);
+				SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
+				if (0.8 / mult <= GetTickInterval())
+				{
+					TriggerAchievement(owner, ACHIEVEMENT_FIRERATECAP);
+				}
 			}
 		}
 	}
@@ -3978,7 +3980,7 @@ public void Hook_ProjectileSpawnPost(int entity)
 
 public void RF_ProjectileSpawnPost(int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return;
 
 	int launcher = GetEntPropEnt(entity, Prop_Send, "m_hLauncher");
@@ -4098,10 +4100,10 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	float originalDamage = damage;
 	int originalDamageType = damageType;
 	bool ignoreResist;
-	if (attackerIsClient && weapon > -1)
+	if (attackerIsClient && weapon != INVALID_ENT)
 	{
 		int initial;
-		if (weapon > 0 && TF2Attrib_HookValueInt(initial, "mod_pierce_resists_absorbs", weapon) > 0)
+		if (weapon != INVALID_ENT && TF2Attrib_HookValueInt(initial, "mod_pierce_resists_absorbs", weapon) > 0)
 		{
 			ignoreResist = true;
 		}
@@ -4292,7 +4294,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			if (PlayerHasItem(attacker, ItemEngi_BrainiacHairpiece) && CanUseCollectorItem(attacker, ItemEngi_BrainiacHairpiece))
 			{
 				if (g_flSentryNextLaserTime[inflictor] <= GetTickedTime()
-					&& g_hPlayerExtraSentryList[attacker].FindValue(inflictor) == -1)
+					&& g_hPlayerExtraSentryList[attacker].FindValue(inflictor) == INVALID_ENT)
 				{
 					float pos[3], victimPos[3], angles[3];
 					GetEntPos(inflictor, pos);
@@ -4635,7 +4637,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		{
 			static char wepClassname[64];
 			GetEntityClassname(weapon, wepClassname, sizeof(wepClassname));
-			if (strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball") && damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING || damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE)
+			if (strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball") && (damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING || damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE))
 			{
 				float mult = GetPlayerFireRateMod(attacker, weapon)*1.5;
 				SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
@@ -4704,7 +4706,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	CritType originalCritType = critType;
 	float proc = g_flDamageProc;
 	float originalDamage = damage;
-	if (IsValidClient(attacker) && attacker != victim && inflictor != -1)
+	if (IsValidClient(attacker) && attacker != victim && inflictor != INVALID_ENT)
 	{
 		bool rolledCrit;
 		int attackerProc = GetLastEntItemProc(attacker);
@@ -5038,7 +5040,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			if (TF2_GetPlayerClass(client) == TFClass_Medic)
 			{
 				int medigun = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-				if (medigun > -1 && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == medigun)
+				if (medigun != INVALID_ENT && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == medigun)
 				{
 					initial = TF2Attrib_HookValueInt(0, "set_charge_type", medigun);
 
@@ -5051,7 +5053,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			else if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 			{
 				int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-				if (wrench > -1 && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == wrench)
+				if (wrench != INVALID_ENT && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == wrench)
 				{
 					initial = TF2Attrib_HookValueInt(0, "alt_fire_teleport_to_spawn", wrench);
 

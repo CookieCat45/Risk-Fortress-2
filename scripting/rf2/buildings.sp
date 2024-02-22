@@ -15,8 +15,8 @@ bool IsBuilding(int entity)
 
 int GetBuiltObject(int client, TFObjectType type, TFObjectMode mode=TFObjectMode_Entrance)
 {
-	int entity = -1;
-	while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 	{
 		if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client && TF2_GetObjectType2(entity) == type)
 		{
@@ -32,12 +32,12 @@ int GetBuiltObject(int client, TFObjectType type, TFObjectMode mode=TFObjectMode
 		}
 	}
 	
-	return -1;
+	return INVALID_ENT;
 }
 
 public Action Timer_BuildingHealthRegen(Handle timer, int building)
 {
-	if ((building = EntRefToEntIndex(building)) == INVALID_ENT_REFERENCE)
+	if ((building = EntRefToEntIndex(building)) == INVALID_ENT)
 		return Plugin_Stop;
 	
 	int builder = GetEntPropEnt(building, Prop_Send, "m_hBuilder");
@@ -52,7 +52,7 @@ public Action Timer_BuildingHealthRegen(Handle timer, int building)
 		{
 			int heal = imin(health + RoundToFloor(CalcItemMod(builder, ItemEngi_Toadstool, 0)), maxHealth);
 			SetVariantInt(heal);
-			AcceptEntityInput(building, "SetHealth");
+			AcceptEntityInput(building, "AddHealth");
 			Event event = CreateEvent("building_healed", true);
 			event.SetInt("priority", 1);
 			event.SetInt("building", building);
@@ -96,7 +96,7 @@ TFObjectType TF2_GetObjectType2(int entity)
 void SetSentryState(int client, bool state)
 {
 	int entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != -1)
+	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)
 	{
 		if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
 		{

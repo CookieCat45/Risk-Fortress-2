@@ -1078,12 +1078,14 @@ int GetActiveEnemiesOfType(int type)
 	int count;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsEnemy(i))
+		if (!IsClientInGame(i))
 			continue;
 		
-		if (Enemy(i).Index == type || g_iPlayerEnemySpawnType[i] == type || g_iPlayerBossSpawnType[i] == type)
+		if (IsEnemy(i) && Enemy(i).Index == type && IsPlayerAlive(i) || g_iPlayerEnemySpawnType[i] == type || g_iPlayerBossSpawnType[i] == type)
+		{
 			count++;
+		}
 	}
-
+	
 	return count;
 }

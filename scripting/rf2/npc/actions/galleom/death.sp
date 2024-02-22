@@ -71,7 +71,7 @@ public Action Timer_HostTimescaleReset(Handle timer)
 
 public Action Timer_GalleomDeathExplosion(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Continue;
 	
 	RF2_RaidBoss_Galleom boss = RF2_RaidBoss_Galleom(entity);

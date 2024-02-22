@@ -170,8 +170,8 @@ void EndTankDestructionMode()
 		EmitSoundToAll(SND_ENEMY_STUN);
 	}
 	
-	int entity = -1;
-	while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 	{
 		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
 		{
@@ -248,12 +248,12 @@ public Action Timer_CreateTankBoss(Handle timer, bool badass)
 static int CreateTankBoss(bool badass=false)
 {
 	ArrayList spawnPoints = CreateArray();
-	int tankBoss = -1;
+	int tankBoss = INVALID_ENT;
 	int spawn;
 	int entity = MaxClients+1;
 	char name[32];
 	
-	while ((entity = FindEntityByClassname(entity, "path_track")) != -1)
+	while ((entity = FindEntityByClassname(entity, "path_track")) != INVALID_ENT)
 	{
 		GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
 		if (StrContains(name, PATH_TRACK_START) != -1)
@@ -268,7 +268,7 @@ static int CreateTankBoss(bool badass=false)
 		char mapName[128];
 		GetCurrentMap(mapName, sizeof(mapName));
 		LogError("[CreateTankBoss] Map \"%s\" has no path_track entities named \"%s\"! Tanks cannot be spawned!", mapName, PATH_TRACK_START);
-		return -1;
+		return INVALID_ENT;
 	}
 	
 	spawn = spawnPoints.Get(GetRandomInt(0, spawnPoints.Length-1));
@@ -368,7 +368,7 @@ public void Hook_TankBossThink(int entity)
 
 public Action Timer_TankDeployBomb(Handle timer, int entity)
 {
-	if (g_bGameOver || (entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if (g_bGameOver || (entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Continue;
 	
 	// RIP
@@ -705,7 +705,7 @@ public void Hook_BadassTankThink(int entity)
 
 public Action Timer_TankFireHomingRockets(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Continue;
 	
 	int attachment[2];
@@ -735,7 +735,7 @@ public Action Timer_TankFireHomingRockets(Handle timer, int entity)
 
 public Action Timer_EndLaserAttack(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Continue;
 
 	SetEntProp(entity, Prop_Data, "m_iSpecialAttack", SPECIAL_NONE);
@@ -746,7 +746,7 @@ public Action Timer_EndLaserAttack(Handle timer, int entity)
 
 public Action Timer_EndBarrageAttack(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Continue;
 
 	SetEntProp(entity, Prop_Data, "m_iSpecialAttack", SPECIAL_NONE);
@@ -757,7 +757,7 @@ public Action Timer_EndBarrageAttack(Handle timer, int entity)
 
 public Action Timer_TankRocketFixAngles(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Stop;
 
 	// MOVETYPE_FLYGRAVITY does not update angles on rockets; we do it ourselves

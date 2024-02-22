@@ -84,7 +84,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 	else
 	{
 		int randomCell;
-		int sentry = -1;
+		int sentry = INVALID_ENT;
 		float spawnPos[3], playerPos[3], sentryPos[3];
 		bool canSpawn = true;
 		int team = -1;
@@ -125,10 +125,10 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 						// Don't spawn near this player's non-disposable sentry
 						if (TF2_GetPlayerClass(i) == TFClass_Engineer)
 						{
-							while ((sentry = FindEntityByClassname(sentry, "obj_sentrygun")) != -1)
+							while ((sentry = FindEntityByClassname(sentry, "obj_sentrygun")) != INVALID_ENT)
 							{
 								if (GetEntProp(sentry, Prop_Data, "m_iTeamNum") == filterTeam && GetEntPropEnt(sentry, Prop_Send, "m_hBuilder") == i 
-								&& g_hPlayerExtraSentryList[i].FindValue(sentry) == -1)
+								&& g_hPlayerExtraSentryList[i].FindValue(sentry) == INVALID_ENT)
 								{
 									GetEntPos(sentry, sentryPos);
 									

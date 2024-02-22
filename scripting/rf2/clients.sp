@@ -82,8 +82,8 @@ void RefreshClient(int client, bool force=false)
 	g_TFBot[client].HasBuilt = false;
 	g_TFBot[client].AttemptingBuild = false;
 	g_TFBot[client].SentryArea = view_as<CTFNavArea>(NULL_AREA);
-	g_TFBot[client].BuildingTarget = -1;
-	g_TFBot[client].RepairTarget = -1;
+	g_TFBot[client].BuildingTarget = INVALID_ENT;
+	g_TFBot[client].RepairTarget = INVALID_ENT;
 	g_TFBot[client].DesiredWeaponSlot = -1;
 	
 	if (g_hTFBotEngineerBuildings[client])
@@ -156,7 +156,7 @@ int GetNearestPlayer(float pos[3], float minDist=-1.0, float maxDist=-1.0, int t
 	float playerPos[3];
 	float distance;
 	float nearestDist = -1.0;
-	int nearestPlayer = -1;
+	int nearestPlayer = INVALID_ENT;
 
 	float minDistSq = sq(minDist);
 	float maxDistSq = sq(maxDist);
@@ -376,13 +376,10 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		// If we have any buildings up, update their max health now
 		int buildingMaxHealth, oldBuildingMaxHealth, buildingHealth;
 		bool carried;
-
-		int entity = -1;
-		while ((entity = FindEntityByClassname(entity, "*")) != -1)
+		
+		int entity = MaxClients+1;
+		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 		{
-			if (entity <= MaxClients || !IsBuilding(entity))
-				continue;
-			
 			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
 			{
 				carried = asBool(GetEntProp(entity, Prop_Send, "m_bCarried"));
@@ -397,6 +394,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 				{
 					buildingHealth = GetEntProp(entity, Prop_Send, "m_iHealth") + (buildingMaxHealth-oldBuildingMaxHealth);
 					SetVariantInt(imax(buildingHealth, 1));
+					// NOTE: The SetHealth input is very misleading. It sets the building's MAX HEALTH, not the HEALTH value. Use AddHealth to change building health.
 					AcceptEntityInput(entity, "SetHealth");
 				}
 			}
@@ -618,7 +616,7 @@ public Action Timer_VampireSapper(Handle timer, int client)
 	if ((client = GetClientOfUserId(client)) == 0 || !g_bPlayerHasVampireSapper[client] || !IsPlayerAlive(client))
 		return Plugin_Stop;
 	
-	int sapper = -1;
+	int sapper = INVALID_ENT;
 	int attacker = GetClientOfUserId(g_iPlayerVampireSapperAttacker[client]);
 	if (IsValidClient(attacker))
 	{
@@ -767,7 +765,7 @@ int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-
 {
 	int count;
 	int entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "obj_*")) != -1)
+	while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 	{
 		if (!allowMini && GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
 			continue;
@@ -785,13 +783,13 @@ int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-
 int GetPlayerShield(int client)
 {
 	int entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "tf_wearable_demoshield")) != -1)
+	while ((entity = FindEntityByClassname(entity, "tf_wearable_demoshield")) != INVALID_ENT)
 	{
 		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
 			return entity;
 	}
 	
-	return -1;
+	return INVALID_ENT;
 }
 
 TFCond GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0)
@@ -1033,12 +1031,12 @@ float GetPercentInvisible(int client)
 int GetPlayerWearableCount(int client, bool itemOnly=false)
 {
 	int count;
-	int entity = -1;
-	while ((entity = FindEntityByClassname(entity, "tf_wearable*")) != -1)
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "tf_wearable*")) != INVALID_ENT)
 	{
 		if (itemOnly && !g_bItemWearable[entity])
 			continue;
-
+		
 		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") != client)
 			continue;
 

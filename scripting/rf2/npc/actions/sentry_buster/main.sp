@@ -150,18 +150,18 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 			{
 				actor.ResetSequence(runSequence);
 			}
-
+			
 			float fwd[3], right[3];
 			actor.GetVectors(fwd, right, NULL_VECTOR);
-
+			
 			float motion[3];
 			loco.GetGroundMotionVector(motion);
-
+			
 			actor.SetPoseParameter(actor.GetProp(Prop_Data, "m_moveXPoseParameter"), GetVectorDotProduct(motion, fwd));
 			actor.SetPoseParameter(actor.GetProp(Prop_Data, "m_moveYPoseParameter"), GetVectorDotProduct(motion, right));
 		}
 	}
-
+	
 	return action.Continue();
 }
 

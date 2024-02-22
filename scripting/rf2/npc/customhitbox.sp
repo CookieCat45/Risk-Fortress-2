@@ -39,6 +39,8 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 			.DefineVectorField("m_vecDamageForce")
 			.DefineVectorField("m_vecCustomMins")
 			.DefineVectorField("m_vecCustomMaxs")
+			.DefineEntityField("m_hAttacker")
+			.DefineEntityField("m_hInflictor")
 		.EndDataMapDesc();
 		g_Factory.Install();
 	}
@@ -69,6 +71,32 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		}
 	}
 	
+	property int Attacker
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hAttacker");
+		}
+		
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hAttacker", value);
+		}
+	}
+
+	property int Inflictor
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hInflictor");
+		}
+		
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hInflictor", value);
+		}
+	}
+	
 	property bool ReturnHitEnts
 	{
 		public get()
@@ -96,15 +124,15 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 	{
 		this.GetPropVector(Prop_Data, "m_vecCustomMins", buffer);
 	}
-	
-	public void SetMins(const float vec[3])
-	{
-		this.SetPropVector(Prop_Data, "m_vecCustomMins", vec);
-	}
 
 	public void GetMaxs(float buffer[3])
 	{
 		this.GetPropVector(Prop_Data, "m_vecCustomMaxs", buffer);
+	}
+	
+	public void SetMins(const float vec[3])
+	{
+		this.SetPropVector(Prop_Data, "m_vecCustomMins", vec);
 	}
 	
 	public void SetMaxs(const float vec[3])
@@ -114,8 +142,18 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 	
 	public ArrayList DoDamage(bool remove=true)
 	{
-		int entity = -1;
+		int entity = MaxClients+1;
 		int owner = GetEntPropEnt(this.index, Prop_Data, "m_hOwnerEntity");
+		if (!IsValidEntity2(this.Attacker))
+		{
+			this.Attacker = owner;
+		}
+		
+		if (!IsValidEntity2(this.Inflictor))
+		{
+			this.Inflictor = owner;
+		}
+		
 		int team = GetEntProp(owner, Prop_Data, "m_iTeamNum");
 		float force[3], vel[3];
 		this.GetDamageForce(force);
@@ -125,7 +163,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		}
 		g_hHitEntities.Clear();
 		
-		while ((entity = FindEntityByClassname(entity, "*")) != -1)
+		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
 			if (!IsCombatChar(entity))
 				continue;
@@ -135,7 +173,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 			
 			if (DoEntitiesIntersect(this.index, entity))
 			{
-				SDKHooks_TakeDamage2(entity, owner, owner, this.Damage, this.DamageFlags);
+				SDKHooks_TakeDamage2(entity, this.Inflictor, this.Attacker, this.Damage, this.DamageFlags);
 				this.GetDamageForce(force);
 				if (VectorSum(force, true) > 0.0)
 				{

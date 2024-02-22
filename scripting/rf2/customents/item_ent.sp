@@ -101,8 +101,8 @@ methodmap RF2_Item < CBaseEntity
 
 static void OnCreate(RF2_Item item)
 {
-	item.Owner = -1;
-	item.Subject = -1;
+	item.Owner = INVALID_ENT;
+	item.Subject = INVALID_ENT;
 	item.KeyValue("rendermode", "9");
 	SDKHook(item.index, SDKHook_Spawn, OnSpawn); // should wait for item index to be set
 }
@@ -114,7 +114,7 @@ static void OnSpawn(int entity)
 	item.KeyValueFloat("scale", g_flItemSpriteScale[item.Type]);
 }
 
-RF2_Item SpawnItem(int type, const float pos[3], int spawner=-1, float ownTime=0.0)
+RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float ownTime=0.0)
 {
 	RF2_Item item = RF2_Item(CreateEntityByName("rf2_item"));
 	item.Type = type;
@@ -153,14 +153,14 @@ RF2_Item SpawnItem(int type, const float pos[3], int spawner=-1, float ownTime=0
 	return item;
 }
 
-// Subject is who we're dropping the item for, or -1 if we don't care
-RF2_Item DropItem(int client, int type, float pos[3], int subject=-1, float ownTime=0.0)
+// Subject is who we're dropping the item for, or INVALID_ENT if we don't care
+RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, float ownTime=0.0)
 {
 	if (GetPlayerItemCount(client, type) <= 0 && !IsEquipmentItem(type))
-		return view_as<RF2_Item>(-1);
+		return view_as<RF2_Item>(INVALID_ENT);
 	
 	if (IsEquipmentItem(type) && GetPlayerEquipmentItem(client) != type)
-		return view_as<RF2_Item>(-1);
+		return view_as<RF2_Item>(INVALID_ENT);
 	
 	RF2_Item item = SpawnItem(type, pos, client);
 	item.Dropped = true;
@@ -181,7 +181,7 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=-1, float ownT
 	}
 	else
 	{
-		item.Owner = -1;
+		item.Owner = INVALID_ENT;
 	}
 	
 	if (IsEquipmentItem(type))
@@ -344,7 +344,7 @@ public Action Timer_ClearItemOwner(Handle timer, int entity)
 	if (!item.IsValid())
 		return Plugin_Continue;
 	
-	item.Owner = -1;
-	item.Subject = -1;	
+	item.Owner = INVALID_ENT;
+	item.Subject = INVALID_ENT;	
 	return Plugin_Continue;
 }

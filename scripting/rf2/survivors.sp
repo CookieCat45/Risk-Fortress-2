@@ -561,8 +561,8 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	}
 	
 	char classname[32];
-	int entity = -1;
-	while ((entity = FindEntityByClassname(entity, "*")) != -1)
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
 		if (entity < 1)
 			continue;
@@ -573,7 +573,7 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 		if (!recalculate)
 		{
 			GetEntityClassname(entity, classname, sizeof(classname));
-			if (StrContains(classname, "rf2_object_crate") == 0)
+			if (strcmp2(classname, "rf2_object_crate"))
 			{
 				objectCount++;
 			}
