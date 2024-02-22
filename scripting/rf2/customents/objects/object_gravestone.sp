@@ -5,7 +5,7 @@
 #define SND_BOSS_RUMBLE "ui/halloween_boss_summon_rumble.wav"
 #define SND_BOSS_DEFEATED "ui/halloween_boss_defeated.wav"
 #define MODEL_GRAVESTONE "models/props_manor/gravestone_03.mdl"
-#define KING_BASE_HEALTH 3000.0
+#define KING_BASE_HEALTH 4000.0
 static CEntityFactory g_Factory;
 
 methodmap RF2_Object_Gravestone < RF2_Object_Base
@@ -56,7 +56,7 @@ methodmap RF2_Object_Gravestone < RF2_Object_Base
 			DispatchSpawn(king);
 			SDK_SetSkeletonType(king, 1); // Seems to reset after spawning, causing a bug where he t-poses after the ground slam attack
 			
-			int health = RoundToFloor(KING_BASE_HEALTH * GetEnemyHealthMult());
+			int health = RoundToFloor(KING_BASE_HEALTH + ((RF2_GetEnemyLevel()-1)*250));
 			SetEntProp(king, Prop_Data, "m_iMaxHealth", health);
 			SetEntProp(king, Prop_Data, "m_iHealth", health);
 			ToggleGlow(king, true, {0, 200, 50, 255});
