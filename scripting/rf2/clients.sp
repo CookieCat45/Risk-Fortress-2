@@ -351,6 +351,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 {
 	int oldMaxHealth = RF2_GetCalculatedMaxHealth(client);
 	float healthScale = GetPlayerHealthMult(client);
+	float buildingHealthScale = healthScale;
 	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * healthScale);
 	
 	// Bosses have less health in single player (for now) to avoid overly long fights
@@ -361,22 +362,23 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	
 	if (PlayerHasItem(client, Item_PrideScarf))
 	{
+		buildingHealthScale += 1.0 + CalcItemMod(client, Item_PrideScarf, 0);
 		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_PrideScarf, 0))) - maxHealth;
 	}
-
+	
 	if (PlayerHasItem(client, Item_ClassCrown))
 	{
+		buildingHealthScale += 1.0 + CalcItemMod(client, Item_ClassCrown, 0);
 		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_ClassCrown, 0))) - maxHealth;
 	}
-
+	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
-		TF2Attrib_SetByDefIndex(client, 286, healthScale); // building health
-
+		TF2Attrib_SetByDefIndex(client, 286, buildingHealthScale); // building health
+		
 		// If we have any buildings up, update their max health now
 		int buildingMaxHealth, oldBuildingMaxHealth, buildingHealth;
 		bool carried;
-		
 		int entity = MaxClients+1;
 		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 		{
@@ -408,7 +410,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	
 	if (fullHeal)
 	{
-		HealPlayer(client, actualMaxHealth, false);
+		HealPlayer(client, actualMaxHealth, false, _, false);
 	}
 	else if (partialHeal)
 	{
