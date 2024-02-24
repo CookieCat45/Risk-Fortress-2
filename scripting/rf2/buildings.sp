@@ -50,7 +50,7 @@ public Action Timer_BuildingHealthRegen(Handle timer, int building)
 		int maxHealth = GetEntProp(building, Prop_Send, "m_iMaxHealth");
 		if (maxHealth-health > 0)
 		{
-			int heal = imin(health + RoundToFloor(CalcItemMod(builder, ItemEngi_Toadstool, 0)), maxHealth);
+			int heal = RoundToFloor(CalcItemMod(builder, ItemEngi_Toadstool, 0));
 			SetVariantInt(heal);
 			AcceptEntityInput(building, "AddHealth");
 			Event event = CreateEvent("building_healed", true);

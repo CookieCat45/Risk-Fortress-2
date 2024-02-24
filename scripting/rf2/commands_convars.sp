@@ -41,6 +41,7 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_itemlog", Command_ItemLog, "Shows a list of items that you've collected.");
 	RegConsoleCmd("rf2_logbook", Command_ItemLog, "Shows a list of items that you've collected.");
 	RegConsoleCmd("rf2_achievements", Command_Achievements, "Shows a list of achievements in Risk Fortress 2.");
+	//RegConsoleCmd("rf2_helpmenu", Command_HelpMenu, "Shows the help menu.");
 	
 	char buffer[8];
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
@@ -1715,6 +1716,47 @@ public Action Command_ResetTutorial(int client, int args)
 	SetClientCookie(client, g_coTutorialItemPickup, "0");
 	RF2_ReplyToCommand(client, "%t", "TutorialReset");
 	return Plugin_Handled;
+}
+
+public Action Command_HelpMenu(int client, int args)
+{
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	Menu menu = new Menu(Menu_HelpMenu);
+	char msg[512];
+	FormatEx(msg, sizeof(msg), "%T", "Help1", client);
+	menu.AddItem("help1", msg, ITEMDRAW_DISABLED);
+	for (int i = 1; i <= 6; i++)
+		menu.AddItem("dummy", "", ITEMDRAW_DISABLED);
+	FormatEx(msg, sizeof(msg), "%T", "Help2", client);
+	for (int i = 1; i <= 6; i++)
+		menu.AddItem("dummy", "", ITEMDRAW_DISABLED);
+	menu.AddItem("help2", msg, ITEMDRAW_DISABLED);
+	FormatEx(msg, sizeof(msg), "%T", "Help3", client);
+	menu.AddItem("help3", msg, ITEMDRAW_DISABLED);
+	FormatEx(msg, sizeof(msg), "%T", "Help4", client);
+	menu.AddItem("help4", msg, ITEMDRAW_DISABLED);
+	FormatEx(msg, sizeof(msg), "%T", "Help5", client);
+	menu.AddItem("help5", msg, ITEMDRAW_DISABLED);
+	menu.Display(client, MENU_TIME_FOREVER);
+	return Plugin_Handled;
+}
+
+public int Menu_HelpMenu(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_Cancel:
+		{
+			PrintCenterText(param1, "%t", "HelpMenu");
+		}
+	}
+	
+	return 0;
 }
 
 public Action Command_PlayGesture(int client, int args)

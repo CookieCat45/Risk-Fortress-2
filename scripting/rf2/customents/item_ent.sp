@@ -29,6 +29,7 @@ methodmap RF2_Item < CBaseEntity
 			.DefineEntityField("m_hItemOwner")
 			.DefineEntityField("m_hSubject")
 			.DefineEntityField("m_hOriginalItemOwner")
+			.DefineEntityField("m_hWorldTextEnt")
 		.EndDataMapDesc();
 		g_Factory.Install();
 	}
@@ -97,12 +98,55 @@ methodmap RF2_Item < CBaseEntity
 			this.SetPropEnt(Prop_Data, "m_hOriginalItemOwner", entity);
 		}
 	}
+
+	property int WorldText
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hWorldTextEnt");
+		}
+		
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hWorldTextEnt", value);
+		}
+	}
+	
+	public void CreateWorldText()
+	{
+		this.WorldText = CreateEntityByName("point_worldtext");
+		CBaseEntity text = CBaseEntity(this.WorldText);
+		char worldText[256];
+		FormatEx(worldText, sizeof(worldText), "%s\nPress [E] to pick up", g_szItemName[this.Type]);
+		text.KeyValue("message", worldText);
+		text.KeyValueFloat("textsize", 6.0);
+		text.KeyValue("orientation", "1");
+		switch (g_iItemQuality[this.Type])
+		{
+			case Quality_Normal:		SetVariantColor({255, 255, 255, 160});
+			case Quality_Genuine:		SetVariantColor({125, 255, 125, 160});
+			case Quality_Unusual: 		SetVariantColor({200, 125, 255, 160});
+			case Quality_Strange:		SetVariantColor({200, 150, 0, 160});
+			case Quality_Collectors:	SetVariantColor({255, 100, 100, 160});
+			case Quality_Haunted, 
+				Quality_HauntedStrange:	SetVariantColor({125, 255, 255, 160});
+		}
+		
+		text.AcceptInput("SetColor");
+		float pos[3];
+		this.GetAbsOrigin(pos);
+		pos[2] += 35.0;
+		text.Teleport(pos);
+		text.Spawn();
+		ParentEntity(text.index, this.index);
+	}
 }
 
 static void OnCreate(RF2_Item item)
 {
 	item.Owner = INVALID_ENT;
 	item.Subject = INVALID_ENT;
+	item.WorldText = INVALID_ENT;
 	item.KeyValue("rendermode", "9");
 	SDKHook(item.index, SDKHook_Spawn, OnSpawn); // should wait for item index to be set
 }
@@ -112,6 +156,8 @@ static void OnSpawn(int entity)
 	RF2_Item item = RF2_Item(entity);
 	item.KeyValue("model", g_szItemSprite[item.Type]);
 	item.KeyValueFloat("scale", g_flItemSpriteScale[item.Type]);
+	item.CreateWorldText();
+	CreateTimer(0.5, Timer_WorldText, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
 RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float ownTime=0.0)
@@ -151,6 +197,30 @@ RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float 
 	}
 	
 	return item;
+}
+
+static Action Timer_WorldText(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+		return Plugin_Stop;
+	
+	RF2_Item item = RF2_Item(entity);
+	float pos[3];
+	item.GetAbsOrigin(pos);
+	int nearestPlayer = GetNearestPlayer(pos, _, 275.0, TEAM_SURVIVOR, _, true);
+	if (nearestPlayer != INVALID_ENT)
+	{
+		if (!IsValidEntity2(item.WorldText))
+		{
+			item.CreateWorldText();
+		}
+	}
+	else if (IsValidEntity2(item.WorldText))
+	{
+		RemoveEntity2(item.WorldText);
+	}
+	
+	return Plugin_Continue;
 }
 
 // Subject is who we're dropping the item for, or INVALID_ENT if we don't care

@@ -161,7 +161,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 		this.Cost = this.CalculateCost();
 		if (this.Type == Crate_Haunted)
 		{
-			this.SetWorldText("1 Haunted Key (Whack to Open)");
+			this.SetWorldText("1 Gargoyle Key (Whack to Open)");
 		}
 		else
 		{

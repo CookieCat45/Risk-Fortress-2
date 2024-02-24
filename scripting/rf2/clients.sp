@@ -30,6 +30,7 @@ void RefreshClient(int client, bool force=false)
 	g_iPlayerAirDashCounter[client] = 0;
 	g_iPlayerEnemySpawnType[client] = -1;
 	g_iPlayerBossSpawnType[client] = -1;
+	g_flPlayerRegenBuffTime[client] = 0.0;
 	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
@@ -262,7 +263,7 @@ bool RollAttackCrit(int client, int damageType=DMG_GENERIC, int damageCustom=-1)
 	bool melee = damageType & DMG_MELEE && damageCustom != TF_CUSTOM_BACKSTAB;
 	rollTimes += RoundToFloor(CalcItemMod(client, Item_LuckyCatHat, 0));
 	rollTimes -= RoundToFloor(CalcItemMod(client, Item_MisfortuneFedora, 0));
-
+	
 	if (rollTimes < 0)
 	{
 		badRolls = rollTimes * -1;
@@ -351,7 +352,6 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 {
 	int oldMaxHealth = RF2_GetCalculatedMaxHealth(client);
 	float healthScale = GetPlayerHealthMult(client);
-	float buildingHealthScale = healthScale;
 	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * healthScale);
 	
 	// Bosses have less health in single player (for now) to avoid overly long fights
@@ -362,19 +362,17 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	
 	if (PlayerHasItem(client, Item_PrideScarf))
 	{
-		buildingHealthScale += 1.0 + CalcItemMod(client, Item_PrideScarf, 0);
 		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_PrideScarf, 0))) - maxHealth;
 	}
 	
 	if (PlayerHasItem(client, Item_ClassCrown))
 	{
-		buildingHealthScale += 1.0 + CalcItemMod(client, Item_ClassCrown, 0);
 		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_ClassCrown, 0))) - maxHealth;
 	}
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
-		TF2Attrib_SetByDefIndex(client, 286, buildingHealthScale); // building health
+		TF2Attrib_SetByDefIndex(client, 286, healthScale); // building health
 		
 		// If we have any buildings up, update their max health now
 		int buildingMaxHealth, oldBuildingMaxHealth, buildingHealth;
@@ -436,6 +434,16 @@ int CalculateBuildingMaxHealth(int client, int entity)
 			case 2: maxHealth = 180;
 			case 3: maxHealth = 216;
 		}
+	}
+	
+	if (PlayerHasItem(client, Item_PrideScarf))
+	{
+		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_PrideScarf, 0))) - maxHealth;
+	}
+	
+	if (PlayerHasItem(client, Item_ClassCrown))
+	{
+		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_ClassCrown, 0))) - maxHealth;
 	}
 	
 	maxHealth = RoundToFloor(float(maxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
@@ -964,9 +972,14 @@ void ResetAFKTime(int client, bool message=true)
 {
 	if (IsClientInGame(client) && IsPlayerAFK(client))
 	{
-		if (message)
+		if (message && g_cvEnableAFKManager.BoolValue)
 		{
 			PrintCenterText(client, "%t", "NoLongerAFK");
+		}
+		
+		if (g_bWaitingForPlayers && !GetCookieBool(client, g_coStayInSpecOnJoin))
+		{
+			ChangeClientTeam(client, GetRandomInt(TEAM_SURVIVOR, TEAM_ENEMY));
 		}
 	}
 
@@ -977,6 +990,10 @@ void ResetAFKTime(int client, bool message=true)
 void OnPlayerEnterAFK(int client)
 {
 	SetClientName(client, g_szPlayerOriginalName[client]);
+	if (g_bWaitingForPlayers)
+	{
+		ChangeClientTeam(client, 1);
+	}
 }
 
 bool IsValidClient(int client)
@@ -1048,6 +1065,7 @@ int GetPlayerWearableCount(int client, bool itemOnly=false)
 	return count;
 }
 
+/*
 float GetConditionDuration(int client, TFCond cond)
 {
 	if (!TF2_IsPlayerInCondition(client, cond)) 
@@ -1056,9 +1074,9 @@ float GetConditionDuration(int client, TFCond cond)
 	int m_Shared = FindSendPropInfo("CTFPlayer", "m_Shared");
 	Address condSource = view_as<Address>(LoadFromAddress(GetEntityAddress(client) + view_as<Address>(m_Shared + 8), NumberType_Int32));
 	Address condDuration = view_as<Address>(view_as<int>(condSource) + (view_as<int>(cond) * 20) + (2 * 4));
-	
 	return view_as<float>(LoadFromAddress(condDuration, NumberType_Int32));
 }
+*/
 
 public bool TraceFilter_PlayerTeam(int entity, int mask, int client)
 {

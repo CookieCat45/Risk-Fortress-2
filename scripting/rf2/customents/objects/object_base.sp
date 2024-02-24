@@ -348,7 +348,7 @@ static void OnSpawnPost(int entity)
 	}
 }
 
-public Action Timer_WorldText(Handle timer, int entity)
+static Action Timer_WorldText(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Stop;
@@ -366,7 +366,7 @@ public Action Timer_WorldText(Handle timer, int entity)
 	
 	float pos[3];
 	obj.GetAbsOrigin(pos);
-	if (GetNearestPlayer(pos, _, 500.0, TEAM_SURVIVOR, _, true) != -1)
+	if (GetNearestPlayer(pos, _, 500.0, TEAM_SURVIVOR, _, true) != INVALID_ENT)
 	{
 		if (!IsValidEntity2(obj.WorldText))
 		{

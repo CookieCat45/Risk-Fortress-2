@@ -916,7 +916,7 @@ void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 	
 	players.SortCustom(SortBossSpawnList);
 	int count, client;
-	int bossCount = 1 + ((GetPlayersOnTeam(TEAM_SURVIVOR, true)-1)/2) + ((RF2_GetSubDifficulty()-1)/3);
+	int bossCount = 1 + ((GetPlayersOnTeam(TEAM_SURVIVOR, true)-1)/2) + RoundToFloor(g_flDifficultyCoeff/(g_cvSubDifficultyIncrement.FloatValue*2.5));
 	bossCount = imax(bossCount, 1);
 	float time;
 	

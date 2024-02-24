@@ -513,14 +513,10 @@ void UpdatePlayerItem(int client, int item)
 		{
 			CalculatePlayerMaxHealth(client);
 		}
-		case Item_RoundedRifleman, Item_WhaleBoneCharm, Item_PrinnyPouch:
+		case Item_RoundedRifleman, Item_WhaleBoneCharm:
 		{
 			float amount;
-			if (item == Item_RoundedRifleman || item == Item_PrinnyPouch)
-			{
-				amount = CalcItemMod_HyperbolicInverted(client, item, 0);
-			}
-			else
+			if (item == Item_WhaleBoneCharm)
 			{
 				amount = 1.0 + CalcItemMod(client, Item_WhaleBoneCharm, 0);
 			}
@@ -534,45 +530,23 @@ void UpdatePlayerItem(int client, int item)
 				if (weapon <= 0)
 					continue;
 					
-				if (item == Item_PrinnyPouch)
+				ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType"); // we may not need to waste an attribute slot here
+				
+				if (ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetEntProp(weapon, Prop_Send, "m_iClip1") >= 0)
 				{
-					if (class == TFClass_Spy && i == WeaponSlot_InvisWatch)
+					if (item == Item_RoundedRifleman)
 					{
-						TF2Attrib_SetByDefIndex(weapon, 35, amount); // "mult cloak meter regen rate"
+						TF2Attrib_SetByDefIndex(weapon, 548, amount); // "halloween reload time decreased"
 					}
-				}
-				else
-				{
-					ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType"); // we may not need to waste an attribute slot here
-					
-					if (ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetEntProp(weapon, Prop_Send, "m_iClip1") >= 0)
+					else if (item == Item_WhaleBoneCharm)
 					{
-						if (item == Item_RoundedRifleman)
-						{
-							TF2Attrib_SetByDefIndex(weapon, 548, amount); // "halloween reload time decreased"
-						}
-						else if (item == Item_WhaleBoneCharm)
-						{
-							TF2Attrib_SetByDefIndex(weapon, 424, amount); // "clip size penalty HIDDEN"
-						}
+						TF2Attrib_SetByDefIndex(weapon, 424, amount); // "clip size penalty HIDDEN"
 					}
 				}
 			}
 			
 			int wearable = MaxClients+1;
-			if (class == TFClass_DemoMan)
-			{
-				while ((wearable = FindEntityByClassname(wearable, "tf_wearable_demoshield")) != -1)
-				{
-					if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
-						continue;
-					
-					// This attribute is a regular percentage, yet attribute 278 is an inverted percentage. Okay Valve, whatever you say.
-					TF2Attrib_SetByDefIndex(wearable, 249, 1.0+CalcItemMod(client, Item_PrinnyPouch, 0)); // "charge recharge rate increased"
-					break;
-				}
-			}
-			else if (class == TFClass_Sniper)
+			if (class == TFClass_Sniper)
 			{
 				while ((wearable = FindEntityByClassname(wearable, "tf_wearable_razorback")) != -1)
 				{
@@ -1030,7 +1004,28 @@ void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cr
 		int heal = RoundToFloor(GetItemMod(Item_BruiserBandana, 0)) * GetPlayerItemCount(attacker, Item_BruiserBandana);
 		HealPlayer(attacker, heal);
 	}
-
+	
+	if (PlayerHasItem(attacker, Item_DapperTopper))
+	{
+		g_flPlayerRegenBuffTime[attacker] = GetItemMod(Item_DapperTopper, 1);
+		g_flPlayerHealthRegenTime[attacker] = 0.0;
+		if (GetClientHealth(attacker) >= RF2_GetCalculatedMaxHealth(attacker) && RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(Item_DapperTopper, 2)))
+		{
+			float healPercent = CalcItemMod(attacker, Item_DapperTopper, 3);
+			float radius = GetItemMod(Item_DapperTopper, 4);
+			int team = GetClientTeam(attacker);
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == team && DistBetween(attacker, i) <= radius)
+				{
+					HealPlayer(i, RoundToFloor(float(RF2_GetCalculatedMaxHealth(i))*healPercent), true);
+				}
+			}
+			
+			EmitSoundToAll(SND_SPELL_OVERHEAL, attacker);
+		}
+	}
+	
 	if (GetClientTeam(victim) == TEAM_ENEMY)
 	{
 		int total;
@@ -1193,7 +1188,7 @@ bool ActivateStrangeItem(int client)
 
 		case ItemStrange_HeartOfGold:
 		{
-			const float range = 250.0;
+			const float range = 500.0;
 			int team = GetClientTeam(client);
 			
 			// Heal me and teammates around me
@@ -1207,7 +1202,7 @@ bool ActivateStrangeItem(int client)
 				
 				int maxHealth = RF2_GetCalculatedMaxHealth(i);
 				int heal = RoundToFloor(maxHealth * GetItemMod(ItemStrange_HeartOfGold, 0));
-				HealPlayer(i, heal, true);
+				HealPlayer(i, heal);
 			}
 			
 			EmitSoundToAll(SND_SPELL_OVERHEAL, client);
@@ -1618,7 +1613,6 @@ public Action Timer_EquipmentCooldown(Handle timer, int client)
 		if (g_iPlayerEquipmentItemCharges[client] < maxCharges)
 		{
 			g_iPlayerEquipmentItemCharges[client]++;
-			
 			if (g_iPlayerEquipmentItemCharges[client] < maxCharges) // still lower? start cooldown again
 			{
 				g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);

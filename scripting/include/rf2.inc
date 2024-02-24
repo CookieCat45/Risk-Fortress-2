@@ -55,7 +55,7 @@ enum
 	Item_UFO = 38,
 	Item_Goalkeeper = 39,
 	ItemSpy_CounterfeitBillycock = 40,
-	Item_PrinnyPouch = 41,
+	Item_DapperTopper = 41,
 	ItemStrange_HeartOfGold = 42,
 	ItemScout_MonarchWings = 43,
 	ItemMedic_BlightedBeak = 44,

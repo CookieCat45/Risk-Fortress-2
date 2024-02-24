@@ -403,9 +403,44 @@
 		"en"		"Join the official Risk Fortress 2 Discord: {yellow}https://discord.gg/jXje8aKMQK"
 	}
 	
+	"TipNewPlayer"
+	{
+		"en"		"Are you new to this gamemode? Are you wondering what's going on? Use the {yellow}/rf2_helpmenu {default}command."
+	}
+	
 	"TipAchievements"
 	{
 		"en"		"To view your unlocked achievements, use the {yellow}/rf2_achievements {default}command."
+	}
+	
+	"Help1"
+	{
+		"en"		"What the hell is going on? What's 'Risk Fortress 2'?\n\n(No, it's NOT the board game!)\nRisk Fortress 2 is a custom TF2 game mode created in SourceMod that takes heavy inspiration from the roguelike game Risk of Rain 2.\nIn Risk Fortress, you either play as the Survivors on RED or the Robots on BLU.\nThe goal of RED is to scavenge the map for boxes that contain items which provide passive upgrades.\nThese boxes cost money to open, which is earned by killing robots."
+	}
+	
+	"Help2"
+	{
+		"en"		"Once RED is equipped with enough items, they can take on the Teleporter event and fight a boss to proceed to the next map. RED must stay inside the giant red bubble to charge the Teleporter. Once the Teleporter is fully charged, they can interact with it again to proceed onwards. This process repeats until all of RED is killed and a Game Over happens. Some levels have different objectives that don't involve charging the Teleporter, such as destroying a massive number of Tanks."
+	}
+	
+	"Help3"
+	{
+		"en"		"Like in Risk of Rain 2, the clock works against RED. The more time that passes, the stronger that BLU Team will get, so don't take too long! The higher the difficulty (as in Scrap, Iron, Steel, shown next to the stage number at the top of the HUD), the less time it will take for BLU to become stronger."
+	}
+	
+	"Help4"
+	{
+		"en"		"Here are some tips to get you started!\n* If you're playing with others on RED, try to stick together if you can. You'll be less likely to die this way, as you'll have eachother's backs.\n* If you find a table with an item displayed on top of it, that is a workbench. You can use it to exchange items of the same tier for a random item from your inventory."
+	}
+	
+	"Help5"
+	{
+		"en"		"* If you find an object that looks like a furnace, that is a Scrapper. You can use it to turn unwanted items to metal.\nWhen using workbenches while having metal in your inventory, metal that matches the quality of the workbench is exchanged first.\n* Items are carried over between maps. If there are a lot of players in the server, you may end up sharing someone's previous items, but otherwise, you'll always have your own.\n* Remember, the longer you take, the stronger BLU gets. Don't waste time!"
+	}
+	
+	"HelpMenu"
+	{
+		"en"		"To bring up the help menu again, use the /rf2_helpmenu command."
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

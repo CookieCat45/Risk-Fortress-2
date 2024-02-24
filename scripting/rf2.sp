@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.5.1b"
+#define PLUGIN_VERSION "0.5.2b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -76,7 +76,7 @@ float g_flRoundStartSeconds;
 bool g_bTeleporterEventReminder;
 
 int g_iMinutesPassed;
-int g_iDifficultyLevel = DIFFICULTY_IRON;
+int g_iDifficultyLevel = DIFFICULTY_SCRAP;
 int g_iSubDifficulty = SubDifficulty_Easy;
 int g_iStagesCompleted;
 int g_iLoopCount;
@@ -131,6 +131,7 @@ float g_flPlayerVampireSapperDuration[MAXTF2PLAYERS];
 float g_flPlayerReloadBuffDuration[MAXTF2PLAYERS];
 float g_flPlayerNextDemoSpellTime[MAXTF2PLAYERS];
 float g_flPlayerNextFireSpellTime[MAXTF2PLAYERS];
+float g_flPlayerRegenBuffTime[MAXTF2PLAYERS];
 
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
 int g_iPlayerBaseHealth[MAXTF2PLAYERS] = {1, ...};
@@ -1804,27 +1805,24 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			action = Plugin_Stop;
 		}
 
-		if (attacker > 0)
+		if (attacker > 0 && IsPlayerSurvivor(attacker))
 		{
-			if (victimTeam == TEAM_ENEMY && IsPlayerSurvivor(attacker))
+			float xp;
+			if (IsEnemy(victim))
 			{
-				float xp;
-				if (IsEnemy(victim))
+				xp = Enemy(victim).XPAward;
+			}
+			
+			if (xp > 0.0)
+			{
+				xp *= 1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvEnemyXPDropScale.FloatValue);
+				UpdatePlayerXP(attacker, xp);
+				for (int i = 1; i <= MaxClients; i++)
 				{
-					xp = Enemy(victim).XPAward;
-				}
+					if (!IsClientInGame(i) || attacker == i || !IsPlayerSurvivor(i))
+						continue;
 
-				if (xp > 0.0)
-				{
-					xp *= 1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvEnemyXPDropScale.FloatValue);
-					UpdatePlayerXP(attacker, xp);
-					for (int i = 1; i <= MaxClients; i++)
-					{
-						if (!IsClientInGame(i) || attacker == i || !IsPlayerSurvivor(i))
-							continue;
-
-						UpdatePlayerXP(i, xp);
-					}
+					UpdatePlayerXP(i, xp);
 				}
 			}
 		}
@@ -2932,7 +2930,6 @@ public Action Timer_PlayerTimer(Handle timer)
 	}
 
 	int maxHealth, health, healAmount, weapon, ammoType;
-
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerAlive(i))
@@ -2949,34 +2946,40 @@ public Action Timer_PlayerTimer(Handle timer)
 				GivePlayerAmmo(i, 999999, ammoType, true);
 			}
 		}
-
+		
 		// Make sure our max health is up to date (mainly for things like the GRU)
 		maxHealth = SDK_GetPlayerMaxHealth(i);
 		if (g_iPlayerCalculatedMaxHealth[i] != maxHealth)
 		{
 			g_iPlayerCalculatedMaxHealth[i] = maxHealth;
 		}
-
+		
 		// Health Regen
 		if (CanPlayerRegen(i))
 		{
+			if (g_flPlayerRegenBuffTime[i] > 0.0)
+				g_flPlayerRegenBuffTime[i] -= 0.1;
+
 			g_flPlayerHealthRegenTime[i] -= 0.1;
 			if (g_flPlayerHealthRegenTime[i] <= 0.0 && !TF2_IsPlayerInCondition2(i, TFCond_Overhealed))
 			{
 				g_flPlayerHealthRegenTime[i] = 0.0;
 				health = GetClientHealth(i);
 				maxHealth = RF2_GetCalculatedMaxHealth(i);
-
+				
 				if (health < maxHealth)
 				{
 					healAmount = RoundToFloor(float(maxHealth) * 0.0025);
-
+					
 					if (PlayerHasItem(i, Item_Archimedes))
-						healAmount = RoundToFloor(float(healAmount) * (1.0 + CalcItemMod(i, Item_Archimedes, 0)));
-
+						healAmount += RoundToFloor(CalcItemMod(i, Item_Archimedes, 0));
+					
 					if (PlayerHasItem(i, Item_ClassCrown))
-						healAmount = RoundToFloor(float(healAmount) * (1.0 + CalcItemMod(i, Item_ClassCrown, 1)));
-
+						healAmount += RoundToFloor(CalcItemMod(i, Item_ClassCrown, 1));
+					
+					if (g_flPlayerRegenBuffTime[i] > 0.0)
+						healAmount += RoundToFloor(CalcItemMod(i, Item_DapperTopper, 0));
+					
 					if (IsPlayerSurvivor(i))
 					{
 						if (RF2_GetDifficulty() == DIFFICULTY_STEEL)
@@ -2992,33 +2995,38 @@ public Action Timer_PlayerTimer(Handle timer)
 							healAmount = RoundFloat(float(healAmount) * 1.5);
 						}
 					}
-
-					if (healAmount < 1)
-						healAmount = 1;
 					
+					healAmount = imax(healAmount, 1);
 					HealPlayer(i, healAmount, false, _, false);
 				}
 			}
 		}
-
+		
 		if (PlayerHasItem(i, Item_HorrificHeadsplitter) && !TF2_IsPlayerInCondition2(i, TFCond_Bleeding))
 		{
 			TF2_MakeBleed(i, i, 60.0);
 		}
-
+		
 		if (g_flPlayerVampireSapperCooldown[i] > 0.0)
 		{
 			g_flPlayerVampireSapperCooldown[i] -= 0.1;
 		}
-
+		
 		// hotfix - start equipment cooldown if it stops for some reason?
-		if (!g_bEquipmentCooldownActive[i] && g_flPlayerEquipmentItemCooldown[i] > 0.0)
+		if (!g_bEquipmentCooldownActive[i])
 		{
-			g_bEquipmentCooldownActive[i] = true;
-			CreateTimer(0.1, Timer_EquipmentCooldown, i, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+			if (g_flPlayerEquipmentItemCooldown[i] > 0.0)
+			{
+				g_bEquipmentCooldownActive[i] = true;
+				CreateTimer(0.1, Timer_EquipmentCooldown, i, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+			}
+		}
+		else if (g_flPlayerEquipmentItemCooldown[i] <= 0.0)
+		{
+			g_bEquipmentCooldownActive[i] = false;
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -3026,7 +3034,7 @@ public Action Timer_PluginMessage(Handle timer)
 {
 	if (!RF2_IsEnabled())
 		return Plugin_Stop;
-
+	
 	static int message;
 	const int maxMessages = 6;
 	
@@ -3060,7 +3068,7 @@ public Action Timer_DeleteEntity(Handle timer, int entity)
 
 public Action Timer_AFKManager(Handle timer)
 {
-	if (!RF2_IsEnabled() || IsSingleplayer() || !g_cvEnableAFKManager.BoolValue)
+	if (!RF2_IsEnabled() || IsSingleplayer())
 		return Plugin_Continue;
 
 	int kickPriority[MAXTF2PLAYERS];
@@ -3071,54 +3079,56 @@ public Action Timer_AFKManager(Handle timer)
 	int minHumans = g_cvAFKMinHumans.IntValue;
 	float afkKickTime = g_cvAFKManagerKickTime.FloatValue;
 	bool kickAdmins = g_cvAFKKickAdmins.BoolValue;
-
+	bool managerEnabled = g_cvEnableAFKManager.BoolValue;
+	
 	// first we need to count our AFKs to see if anyone needs kicking
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || IsFakeClient(i))
 			continue;
-
-		if (IsPlayerAFK(i))
+		
+		if (IsPlayerAFK(i) && managerEnabled)
 		{
 			kickPriority[i] += RoundToFloor(g_flPlayerAFKTime[i]); // kick whoever has been AFK the longest first
 			if (kickPriority[i] > highestKickPriority || highestKickPriority < 0)
 			{
 				highestKickPriority = kickPriority[i];
 			}
-
+			
 			afkCount++;
 		}
 	}
-
+	
+	float time = g_bWaitingForPlayers ? afkKickTime * 0.35 : afkKickTime * 0.5;
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || IsFakeClient(i))
 			continue;
-
+		
 		g_flPlayerAFKTime[i] += 1.0;
-		if (g_flPlayerAFKTime[i] >= afkKickTime * 0.5)
+		if (g_flPlayerAFKTime[i] >= afkKickTime * time)
 		{
-			if (!IsPlayerAlive(i) && GetClientTeam(i) > 0)
+			if (!IsPlayerAlive(i) && GetClientTeam(i) > 1)
 			{
-				ChangeClientTeam(i, 0);
+				ChangeClientTeam(i, 1);
 			}
 			else if (IsPlayerSurvivor(i) && g_bGracePeriod)
 			{
 				ReshuffleSurvivor(i, 0);
 			}
-
+			
 			if (!g_bPlayerIsAFK[i])
 			{
 				g_bPlayerIsAFK[i] = true;
 				OnPlayerEnterAFK(i);
 			}
-			else
+			else if (managerEnabled)
 			{
 				PrintCenterText(i, "%t", "AFKDetected");
 			}
 		}
-
-		if (afkCount >= afkLimit && g_flPlayerAFKTime[i] >= afkKickTime && kickPriority[i] >= highestKickPriority && humanCount >= minHumans)
+		
+		if (managerEnabled && afkCount >= afkLimit && g_flPlayerAFKTime[i] >= afkKickTime && kickPriority[i] >= highestKickPriority && humanCount >= minHumans)
 		{
 			if (kickAdmins || GetUserAdmin(i) == INVALID_ADMIN_ID)
 			{
@@ -3139,7 +3149,7 @@ public Action OnVoiceCommand(int client, const char[] command, int args)
 
 	int num1 = GetCmdArgInt(1);
 	int num2 = GetCmdArgInt(2);
-
+	
 	if (IsPlayerSurvivor(client))
 	{
 		if (num1 == 0 && num2 == 0) // Medic!
@@ -3339,7 +3349,7 @@ public Action OnSuicide(int client, const char[] command, int args)
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive)
 		return Plugin_Continue;
-
+	
 	if (g_bGracePeriod && IsPlayerSurvivor(client))
 	{
 		// Teleport the player back to their last position in grace period
@@ -3481,14 +3491,6 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 			{
 				TF2Attrib_SetByDefIndex(melee, 264, meleeRangeBonus);
 			}
-		}
-	}
-	else if (condition == TFCond_Jarated || condition == TFCond_Milked)
-	{
-		if (GetClientTeam(client) == TEAM_ENEMY && GetConditionDuration(client, condition) > 5.0)
-		{
-			TF2_RemoveCondition(client, condition);
-			TF2_AddCondition(client, condition, 5.0);
 		}
 	}
 	else if (condition == TFCond_Dazed)
@@ -4100,10 +4102,10 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	float originalDamage = damage;
 	int originalDamageType = damageType;
 	bool ignoreResist;
-	if (attackerIsClient && weapon != INVALID_ENT)
+	if (attackerIsClient && weapon > 0)
 	{
 		int initial;
-		if (weapon != INVALID_ENT && TF2Attrib_HookValueInt(initial, "mod_pierce_resists_absorbs", weapon) > 0)
+		if (TF2Attrib_HookValueInt(initial, "mod_pierce_resists_absorbs", weapon) > 0)
 		{
 			ignoreResist = true;
 		}
@@ -4183,10 +4185,20 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	if (attackerIsClient)
 	{
 		proc *= GetDamageCustomProcCoefficient(damageCustom);
-		
 		if (weapon > 0)
 		{
 			proc *= GetWeaponProcCoefficient(weapon);
+			if (victimIsClient)
+			{
+				if (GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex") == 173) // Vita-Saw
+				{
+					TF2_AddCondition(victim, TFCond_Milked, 5.0, attacker);
+				}
+				else if (GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex") == 413) // Solemn Vow
+				{
+					TF2_AddCondition(victim, TFCond_Jarated, 5.0);
+				}
+			}
 		}
 		
 		if (inflictorIsBuilding)
@@ -4706,7 +4718,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	CritType originalCritType = critType;
 	float proc = g_flDamageProc;
 	float originalDamage = damage;
-	if (IsValidClient(attacker) && attacker != victim && inflictor != INVALID_ENT)
+	if (IsValidClient(attacker) && attacker != victim && IsValidEntity2(inflictor))
 	{
 		bool rolledCrit;
 		int attackerProc = GetLastEntItemProc(attacker);
@@ -5043,7 +5055,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 				if (medigun != INVALID_ENT && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == medigun)
 				{
 					initial = TF2Attrib_HookValueInt(0, "set_charge_type", medigun);
-
+					
 					if (initial == 3)
 					{
 						tabRequired = true;

@@ -118,14 +118,11 @@ public void OnClientCookiesCached(int client)
 		CreateTimer(1.0, Timer_ChangeTeam, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
-	if (!GetCookieBool(client, g_coNewPlayer))
+	if (!GetCookieBool(client, g_coNewPlayer) && g_bRoundActive)
 	{
 		RF2_SetSurvivorPoints(client, RF2_GetSurvivorPoints(client)+99999);
 		SetCookieBool(client, g_coNewPlayer, true);
-		if (g_bRoundActive)
-		{
-			CreateTimer(1.0, Timer_NewPlayerMessage, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		}
+		CreateTimer(1.0, Timer_NewPlayerMessage, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
@@ -138,8 +135,24 @@ public Action Timer_NewPlayerMessage(Handle timer, int client)
 	if (!IsClientInGame(client))
 		return Plugin_Continue;
 	
+	/*
+	Menu menu = new Menu(Menu_HelpMenu);
+	char msg[512];
+	FormatEx(msg, sizeof(msg), "%T", "Help1", client);
+	menu.AddItem("help1", msg, ITEMDRAW_DISABLED);
+	FormatEx(msg, sizeof(msg), "%T", "Help2", client);
+	menu.AddItem("help2", msg, ITEMDRAW_DISABLED);
+	FormatEx(msg, sizeof(msg), "%T", "Help3", client);
+	menu.AddItem("help3", msg, ITEMDRAW_DISABLED);
+	FormatEx(msg, sizeof(msg), "%T", "Help4", client);
+	menu.AddItem("help4", msg, ITEMDRAW_DISABLED);
+	FormatEx(msg, sizeof(msg), "%T", "Help5", client);
+	menu.AddItem("help5", msg, ITEMDRAW_DISABLED);
+	menu.Display(client, MENU_TIME_FOREVER);
+	*/
+	
 	// player is most likely going to join blue, wait for them to do so, so we can make sure they see the message
-	if (GetClientTeam(client) == TEAM_ENEMY)
+	if (g_bRoundActive && GetClientTeam(client) == TEAM_ENEMY)
 	{
 		PrintCenterText(client, "You will join RED Team shortly next map");
 		return Plugin_Stop;
