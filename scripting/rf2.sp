@@ -4081,6 +4081,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	bool attackerIsClient = IsValidClient(attacker);
 	bool inflictorIsBuilding = inflictor > 0 && IsBuilding(inflictor);
 	bool attackerIsNpc = IsNPC(attacker);
+	bool validWeapon = weapon > 0 && !IsValidClient(weapon); // Apparently the weapon can be a client index??
 	if (!attackerIsClient && !inflictorIsBuilding && !attackerIsNpc)
 	{
 		return Plugin_Continue;
@@ -4102,7 +4103,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	float originalDamage = damage;
 	int originalDamageType = damageType;
 	bool ignoreResist;
-	if (attackerIsClient && weapon > 0)
+	if (attackerIsClient && validWeapon)
 	{
 		int initial;
 		if (TF2Attrib_HookValueInt(initial, "mod_pierce_resists_absorbs", weapon) > 0)
@@ -4185,7 +4186,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	if (attackerIsClient)
 	{
 		proc *= GetDamageCustomProcCoefficient(damageCustom);
-		if (weapon > 0)
+		if (validWeapon)
 		{
 			proc *= GetWeaponProcCoefficient(weapon);
 			if (victimIsClient)
@@ -4480,7 +4481,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			static char victimClassname[64];
 			GetEntityClassname(victim, victimClassname, sizeof(victimClassname));
 			bool halloweenNpc = strcmp2(victimClassname, "headless_hatman") || strcmp2(victimClassname, "eyeball_boss") || strcmp2(victimClassname, "tf_zombie");
-			if (halloweenNpc && !(damageType & DMG_CRIT) && weapon < 0)
+			if (halloweenNpc && !(damageType & DMG_CRIT) && !validWeapon)
 			{
 				// Halloween NPCs don't fire TF2_OnTakeDamageModifyRules()
 				int attackerProc = GetLastEntItemProc(attacker);
@@ -4560,6 +4561,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 	bool attackerIsClient = IsValidClient(attacker);
 	bool victimIsClient = IsValidClient(victim);
 	bool invuln = victimIsClient && IsInvuln(victim);
+	bool validWeapon = weapon > 0 && !IsValidClient(weapon); // Apparently the weapon can be a client index??
 	bool selfDamage = victim == attacker;
 	float proc = g_flDamageProc;
 	
@@ -4645,7 +4647,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 	
 	if (attackerIsClient)
 	{
-		if (weapon > 0)
+		if (validWeapon)
 		{
 			static char wepClassname[64];
 			GetEntityClassname(weapon, wepClassname, sizeof(wepClassname));
@@ -4718,6 +4720,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	CritType originalCritType = critType;
 	float proc = g_flDamageProc;
 	float originalDamage = damage;
+	bool validWeapon = weapon > 0 && !IsValidClient(weapon); // Apparently the weapon can be a client index??
 	if (IsValidClient(attacker) && attacker != victim && IsValidEntity2(inflictor))
 	{
 		bool rolledCrit;
@@ -4728,7 +4731,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		bool canCrit = attackerProc != ItemSniper_HolyHunter && !(StrContains(classname, "tf_proj") != -1 && HasEntProp(inflictor, Prop_Send, "m_bCritical"));
 		
 		// Check for full crits for any damage that isn't against a building and isn't from a weapon.
-		if (weapon < 0 && canCrit && !IsBuilding(victim))
+		if (!validWeapon && canCrit && !IsBuilding(victim))
 		{
 			if (critType != CritType_Crit || critType == CritType_MiniCrit && !PlayerHasItem(attacker, Item_Executioner))
 			{
@@ -4740,7 +4743,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			}
 		}
 		
-		if (weapon > 0)
+		if (validWeapon)
 		{
 			if (critType == CritType_Crit && !rolledCrit && IsValidClient(attacker) && IsPlayerSurvivor(attacker))
 			{

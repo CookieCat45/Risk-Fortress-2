@@ -520,6 +520,10 @@ void UpdatePlayerItem(int client, int item)
 			{
 				amount = 1.0 + CalcItemMod(client, Item_WhaleBoneCharm, 0);
 			}
+			else
+			{
+				amount = CalcItemMod_HyperbolicInverted(client, Item_RoundedRifleman, 0);
+			}
 			
 			int weapon, ammoType;
 			TFClassType class = TF2_GetPlayerClass(client);
