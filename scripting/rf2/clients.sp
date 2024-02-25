@@ -467,13 +467,18 @@ float CalculatePlayerMaxSpeed(int client)
 	{
 		return GetClassMaxSpeed(TF2_GetPlayerClass(client));
 	}
-
+	
 	float speed = g_flPlayerMaxSpeed[client];
 	float classMaxSpeed = GetClassMaxSpeed(TF2_GetPlayerClass(client));
 	
 	if (PlayerHasItem(client, Item_RobinWalkers))
 	{
 		speed *= 1.0 + CalcItemMod(client, Item_RobinWalkers, 0);
+	}
+	
+	if (PlayerHasItem(client, Item_TripleA))
+	{
+		speed *= 1.0 + CalcItemMod(client, Item_TripleA, 2);
 	}
 	
 	float mult = speed / classMaxSpeed;
@@ -533,6 +538,7 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 			multiplier += float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1);
 			multiplier += CalcItemMod(client, Item_MaxHead, 2);
 			multiplier += CalcItemMod(client, Item_SaintMark, 3);
+			multiplier += CalcItemMod(client, Item_TripleA, 1);
 			return multiplier;
 		}
 	}
@@ -552,6 +558,11 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_MaxHead, 2);
 	}
 	
+	if (PlayerHasItem(client, Item_TripleA))
+	{
+		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_TripleA, 1);
+	}
+	
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)
 	{
 		multiplier *= GetItemMod(Item_SaintMark, 3);
@@ -567,6 +578,19 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	}
 	
 	return multiplier;
+}
+
+float GetPlayerReloadMod(int client)
+{
+	float reloadMult = 1.0;
+	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_RoundedRifleman, 0);
+	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_TripleA, 0);
+	if (g_flPlayerReloadBuffDuration[client] > 0.0)
+	{
+		reloadMult *= GetItemMod(Item_SaintMark, 0);
+	}
+	
+	return reloadMult;
 }
 
 int GetPlayerLuckStat(int client)

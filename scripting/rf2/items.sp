@@ -513,16 +513,12 @@ void UpdatePlayerItem(int client, int item)
 		{
 			CalculatePlayerMaxHealth(client);
 		}
-		case Item_RoundedRifleman, Item_WhaleBoneCharm:
+		case Item_WhaleBoneCharm:
 		{
 			float amount;
 			if (item == Item_WhaleBoneCharm)
 			{
 				amount = 1.0 + CalcItemMod(client, Item_WhaleBoneCharm, 0);
-			}
-			else
-			{
-				amount = CalcItemMod_HyperbolicInverted(client, Item_RoundedRifleman, 0);
 			}
 			
 			int weapon, ammoType;
@@ -535,17 +531,9 @@ void UpdatePlayerItem(int client, int item)
 					continue;
 					
 				ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType"); // we may not need to waste an attribute slot here
-				
 				if (ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetEntProp(weapon, Prop_Send, "m_iClip1") >= 0)
 				{
-					if (item == Item_RoundedRifleman)
-					{
-						TF2Attrib_SetByDefIndex(weapon, 548, amount); // "halloween reload time decreased"
-					}
-					else if (item == Item_WhaleBoneCharm)
-					{
-						TF2Attrib_SetByDefIndex(weapon, 424, amount); // "clip size penalty HIDDEN"
-					}
+					TF2Attrib_SetByDefIndex(weapon, 424, amount); // "clip size penalty HIDDEN"
 				}
 			}
 			
@@ -562,7 +550,7 @@ void UpdatePlayerItem(int client, int item)
 				}
 			}
 		}
-		case Item_RobinWalkers:
+		case Item_RobinWalkers, Item_TripleA:
 		{
 			CalculatePlayerMaxSpeed(client);
 		}
@@ -1523,23 +1511,9 @@ bool ActivateStrangeItem(int client)
 	
 	if (PlayerHasItem(client, Item_SaintMark))
 	{
-		float buff = GetItemMod(Item_SaintMark, 0);
 		float duration = GetItemMod(Item_SaintMark, 1) + CalcItemMod(client, Item_SaintMark, 2, -1);
 		if (g_flPlayerReloadBuffDuration[client] <= 0.0)
 		{
-			int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-			int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-			
-			if (primary > 0)
-			{
-				TF2Attrib_SetByDefIndex(primary, 318, buff); // "faster reload rate"
-			}
-			
-			if (secondary > 0)
-			{
-				TF2Attrib_SetByDefIndex(secondary, 318, buff);
-			}
-			
 			g_flPlayerReloadBuffDuration[client] = duration;
 			CreateTimer(0.1, Timer_ReloadBuffEnd, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
@@ -1560,22 +1534,7 @@ public Action Timer_ReloadBuffEnd(Handle timer, int client)
 	
 	g_flPlayerReloadBuffDuration[client] -= 0.1;
 	if (g_flPlayerReloadBuffDuration[client] <= 0.0)
-	{
-		int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-		int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-		
-		if (primary > 0)
-		{
-			TF2Attrib_RemoveByDefIndex(primary, 318);
-		}
-		
-		if (secondary > 0)
-		{
-			TF2Attrib_RemoveByDefIndex(secondary, 318);
-		}
-		
 		return Plugin_Stop;
-	}
 	
 	return Plugin_Continue;
 }

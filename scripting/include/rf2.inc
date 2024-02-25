@@ -25,7 +25,7 @@ enum
 	Item_PointAndShoot = 8,
 	Item_PocketMedic = 9,
 	Item_BanditsBoots = 10,
-	Item_BoomBoxers = 11,
+	Item_TripleA = 11,
 	Item_ClassCrown = 12,
 	Item_ProofOfPurchase = 13,
 	Item_Dangeresque = 14,

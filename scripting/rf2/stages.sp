@@ -48,24 +48,23 @@ void LoadMapSettings(const char[] mapName)
 			if (StrContains(mapName, mapString) == 0)
 			{
 				found = true;
-				
 				mapKey.GetString("theme", g_szStageBGM, sizeof(g_szStageBGM), NULL);
 				g_flStageBGMDuration = mapKey.GetFloat("theme_duration", 0.0);
 				mapKey.GetString("boss_theme", g_szBossBGM, sizeof(g_szBossBGM), NULL);
 				g_flBossBGMDuration = mapKey.GetFloat("boss_theme_duration", 0.0);
-				if (g_iLoopCount > 0)
+				if (g_iLoopCount > 0 || g_cvDebugUseAltMapSettings.BoolValue)
 				{
 					char stageTheme[PLATFORM_MAX_PATH], bossTheme[PLATFORM_MAX_PATH];
 					float stageThemeTime, bossThemeTime;
-					mapKey.GetString("theme_loop", stageTheme, sizeof(stageTheme), g_szStageBGM);
-					mapKey.GetString("boss_theme_loop", bossTheme, sizeof(bossTheme), g_szBossBGM);
+					mapKey.GetString("theme_alt", stageTheme, sizeof(stageTheme), g_szStageBGM);
+					mapKey.GetString("boss_theme_alt", bossTheme, sizeof(bossTheme), g_szBossBGM);
 					strcopy(g_szStageBGM, sizeof(g_szStageBGM), stageTheme);
 					strcopy(g_szBossBGM, sizeof(g_szBossBGM), bossTheme);
 					
 					stageThemeTime = g_flStageBGMDuration;
 					bossThemeTime = g_flBossBGMDuration;
-					g_flStageBGMDuration = mapKey.GetFloat("theme_loop_duration", stageThemeTime);
-					g_flBossBGMDuration = mapKey.GetFloat("boss_theme_loop_duration", bossThemeTime);
+					g_flStageBGMDuration = mapKey.GetFloat("theme_alt_duration", stageThemeTime);
+					g_flBossBGMDuration = mapKey.GetFloat("boss_theme_alt_duration", bossThemeTime);
 				}
 				
 				if (g_szStageBGM[0])
@@ -82,7 +81,7 @@ void LoadMapSettings(const char[] mapName)
 				
 				mapKey.GetString("enemy_pack", g_szEnemyPackName, sizeof(g_szEnemyPackName), INVALID_PACK);
 				mapKey.GetString("boss_pack", g_szBossPackName, sizeof(g_szBossPackName), INVALID_PACK);
-				if (g_iLoopCount > 0)
+				if (g_iLoopCount > 0 || g_cvDebugUseAltMapSettings.BoolValue)
 				{
 					char enemyPack[64], bossPack[64];
 					mapKey.GetString("enemy_pack_loop", enemyPack, sizeof(enemyPack), g_szEnemyPackName);

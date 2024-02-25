@@ -253,14 +253,14 @@ int SpawnObjects()
 	return spawns;
 }
 
-void DespawnObjects()
+void DespawnObjects(bool force=false)
 {
 	char classname[128];
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
 		GetEntityClassname(entity, classname, sizeof(classname));
-		if (strcmp2(classname, "rf2_item") || StrContains(classname, "rf2_object") == 0 && !RF2_Object_Base(entity).MapPlaced)
+		if (strcmp2(classname, "rf2_item") || StrContains(classname, "rf2_object") == 0 && (force || !RF2_Object_Base(entity).MapPlaced))
 		{
 			RemoveEntity2(entity);
 		}

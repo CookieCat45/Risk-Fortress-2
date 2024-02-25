@@ -640,7 +640,7 @@ void SDK_EquipWearable(int client, int entity)
 	}
 }
 
-public MRESReturn DHook_DoSwingTrace(int client, DHookReturn returnVal, DHookParam params)
+public MRESReturn Detour_DoSwingTrace(int client, DHookReturn returnVal, DHookParam params)
 {
 	if (!RF2_IsEnabled())
 		return MRES_Ignored;
@@ -650,13 +650,52 @@ public MRESReturn DHook_DoSwingTrace(int client, DHookReturn returnVal, DHookPar
 	return MRES_Ignored;
 }
 
-public MRESReturn DHook_DoSwingTracePost(int client, DHookReturn returnVal, DHookParam params)
+public MRESReturn Detour_DoSwingTracePost(int client, DHookReturn returnVal, DHookParam params)
 {
 	if (!RF2_IsEnabled())
 		return MRES_Ignored;
 	
 	GameRules_SetProp("m_bPlayingMannVsMachine", false);
 	return MRES_Ignored;
+}
+
+public MRESReturn Detour_SetReloadTimer(int weapon, DHookParam params)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
+	if (!IsValidClient(owner))
+		return MRES_Ignored;
+	
+	float reloadTime = params.Get(1);
+	float mult = GetPlayerReloadMod(owner);
+	int viewModel = GetEntPropEnt(owner, Prop_Send, "m_hViewModel");
+	if (IsValidEntity2(viewModel))
+	{
+		DataPack pack = new DataPack();
+		pack.WriteCell(EntIndexToEntRef(viewModel));
+		pack.WriteFloat(reloadTime/(reloadTime*mult));
+		RequestFrame(RF_VMPlaybackRate, pack);
+	}
+	
+	params.Set(1, reloadTime*mult);
+	return MRES_ChangedHandled;
+}
+
+public void RF_VMPlaybackRate(DataPack pack)
+{
+	pack.Reset();
+	int viewModel = EntRefToEntIndex(pack.ReadCell());
+	if (viewModel == INVALID_ENT)
+	{
+		delete pack;
+		return;
+	}
+	
+	float rate = pack.ReadFloat();
+	delete pack;
+	SetEntPropFloat(viewModel, Prop_Send, "m_flPlaybackRate", fmin(rate, 12.0));
 }
 
 bool g_bWasOffGround;

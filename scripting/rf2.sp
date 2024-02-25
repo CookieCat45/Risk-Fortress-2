@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.5.2b"
+#define PLUGIN_VERSION "0.5.3b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -202,6 +202,7 @@ Handle g_hSDKSetZombieType;
 DynamicDetour g_hDetourDoSwingTrace;
 DynamicDetour g_hDetourSentryAttack;
 DynamicDetour g_hDetourHandleRageGain;
+DynamicDetour g_hDetourSetReloadTimer;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookVPhysicsCollision;
@@ -273,6 +274,7 @@ ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
 ConVar g_cvDebugShowObjectSpawns;
+ConVar g_cvDebugUseAltMapSettings;
 
 // Cookies
 Cookie g_coMusicEnabled;
@@ -480,7 +482,7 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CBaseEntity::Intersects");
 	}
 	
-
+	
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFWeaponBase::GetMaxClip1");
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
@@ -491,8 +493,15 @@ void LoadGameData()
 	}
 	
 	
+	g_hDetourSetReloadTimer = DynamicDetour.FromConf(gamedata, "CTFWeaponBase::SetReloadTimer");
+	if (!g_hDetourSetReloadTimer || !g_hDetourSetReloadTimer.Enable(Hook_Pre, Detour_SetReloadTimer))
+	{
+		LogError("[DHooks] Failed to create detour for CTFWeaponBase::SetReloadTimer");
+	}
+	
+	
 	g_hDetourDoSwingTrace = DynamicDetour.FromConf(gamedata, "CTFWeaponBaseMelee::DoSwingTraceInternal");
-	if (!g_hDetourDoSwingTrace || !g_hDetourDoSwingTrace.Enable(Hook_Pre, DHook_DoSwingTrace) || !g_hDetourDoSwingTrace.Enable(Hook_Post, DHook_DoSwingTracePost))
+	if (!g_hDetourDoSwingTrace || !g_hDetourDoSwingTrace.Enable(Hook_Pre, Detour_DoSwingTrace) || !g_hDetourDoSwingTrace.Enable(Hook_Post, Detour_DoSwingTracePost))
 	{
 		LogError("[DHooks] Failed to create detour for CTFWeaponBaseMelee::DoSwingTraceInternal");
 	}
@@ -557,7 +566,7 @@ void LoadGameData()
 
 	
 	delete gamedata;
-	gamedata = LoadGameConfigFile("sdkhooks.games");
+	gamedata = new GameData("sdkhooks.games");
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "GetMaxHealth");
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_ByValue);
@@ -567,7 +576,7 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CBasePlayer::GetMaxHealth from SDKHooks gamedata");
 	}
 	
-
+	
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "Weapon_Switch");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
@@ -578,7 +587,7 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CBasePlayer::Weapon_Switch from SDKHooks gamedata");
 	}
-
+	
 	delete gamedata;
 }
 
@@ -3467,9 +3476,9 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	
 	if (condition == TFCond_Taunting && !g_bWaitingForPlayers)
 	{
-		if (IsFakeClient(client))
+		if (IsFakeClient(client) && GetEntProp(client, Prop_Send, "m_iTauntIndex"))
 		{
-			// Bots never taunt
+			// Bots never do non-weapon taunts
 			TF2_RemoveCondition(client, TFCond_Taunting);
 		}
 		else if (!GetEntProp(client, Prop_Send, "m_iTauntIndex")) // Weapon taunts are always 0
@@ -4081,7 +4090,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	bool attackerIsClient = IsValidClient(attacker);
 	bool inflictorIsBuilding = inflictor > 0 && IsBuilding(inflictor);
 	bool attackerIsNpc = IsNPC(attacker);
-	bool validWeapon = weapon > 0 && !IsValidClient(weapon); // Apparently the weapon can be a client index??
+	bool validWeapon = weapon > 0 && !IsCombatChar(weapon); // Apparently the weapon can be the attacker??
 	if (!attackerIsClient && !inflictorIsBuilding && !attackerIsNpc)
 	{
 		return Plugin_Continue;
@@ -4561,7 +4570,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 	bool attackerIsClient = IsValidClient(attacker);
 	bool victimIsClient = IsValidClient(victim);
 	bool invuln = victimIsClient && IsInvuln(victim);
-	bool validWeapon = weapon > 0 && !IsValidClient(weapon); // Apparently the weapon can be a client index??
+	bool validWeapon = weapon > 0 && !IsCombatChar(weapon); // Apparently the weapon can be the attacker??
 	bool selfDamage = victim == attacker;
 	float proc = g_flDamageProc;
 	
@@ -4720,7 +4729,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	CritType originalCritType = critType;
 	float proc = g_flDamageProc;
 	float originalDamage = damage;
-	bool validWeapon = weapon > 0 && !IsValidClient(weapon); // Apparently the weapon can be a client index??
+	bool validWeapon = weapon > 0 && !IsCombatChar(weapon); // Apparently the weapon can be the attacker??
 	if (IsValidClient(attacker) && attacker != victim && IsValidEntity2(inflictor))
 	{
 		bool rolledCrit;

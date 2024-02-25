@@ -1052,7 +1052,6 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	
 	static bool reloading[MAXTF2PLAYERS];
 	int activeWep = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-	
 	if (activeWep != INVALID_ENT && activeWep != GetPlayerWeaponSlot(client, WeaponSlot_Melee))
 	{
 		int clip = GetEntProp(activeWep, Prop_Send, "m_iClip1");
@@ -1114,11 +1113,10 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	
 	if (!reloading[client] && (buttons & IN_ATTACK || buttons & IN_ATTACK2))
 	{
-		int activeWeapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 		int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
 		int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
 		
-		if (secondary != INVALID_ENT && secondary == activeWeapon)
+		if (secondary != INVALID_ENT && secondary == activeWep)
 		{
 			// TFBots have a stupid bug where they won't switch off certain weapons after use. Forcing them to let go of IN_ATTACK fixes this.
 			static char classname[32];
@@ -1129,14 +1127,14 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				buttons &= ~IN_ATTACK;
 			}
 			
-			if ((StrContains(classname, "tf_weapon_jar") == 0 || strcmp2(classname, "tf_weapon_cleaver"))
+			if ((StrContains(classname, "tf_weapon_jar") == 0 || strcmp2(classname, "tf_weapon_cleaver") || StrContains(classname, "tf_weapon_lunchbox") == 0)
 				&& GetEntProp(client, Prop_Send, "m_iAmmo", _, GetEntProp(secondary, Prop_Send, "m_iPrimaryAmmoType")) == 0)
 			{
 				buttons &= ~IN_ATTACK;
 				buttons &= ~IN_ATTACK2;
 			}
 		}
-		else if (melee != INVALID_ENT && melee == activeWeapon)
+		else if (melee != INVALID_ENT && melee == activeWep)
 		{
 			// Melee bots need to crouch to attack teleporters, they won't realize this by default
 			if (threat != INVALID_ENT && threat > MaxClients && IsBuilding(threat) && TF2_GetObjectType2(threat) == TFObject_Teleporter)
@@ -1149,8 +1147,8 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	
 	bool rocketJumping;
 	bool onGround = asBool((GetEntityFlags(client) & FL_ONGROUND));
-	
-	if (TF2_GetPlayerClass(client) == TFClass_Spy)
+	TFClassType class = TF2_GetPlayerClass(client);
+	if (class == TFClass_Spy)
 	{
 		// if we are not in our player threat's FOV, go for stab instead
 		bool inFov;
@@ -1482,6 +1480,44 @@ int TFBot_GetDesiredWeapon(TFBot bot, int &slot=0)
 		return GetPlayerWeaponSlot(bot.Client, bot.DesiredWeaponSlot);
 	}
 	
+	if (TF2_GetPlayerClass(bot.Client) == TFClass_Scout)
+	{
+		int drink = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Secondary);
+		bool bonk;
+		if (drink != INVALID_ENT)
+		{
+			static char classname[32];
+			GetEntityClassname(drink, classname, sizeof(classname));
+			if (strcmp2(classname, "tf_weapon_lunchbox_drink"))
+			{
+				bonk = true;
+			}
+		}
+		
+		if (bonk)
+		{
+			float drinkEnergy = GetEntPropFloat(bot.Client, Prop_Send, "m_flEnergyDrinkMeter");
+			if (drinkEnergy < 100.0 || TF2_IsPlayerInCondition2(bot.Client, TFCond_Bonked) || TF2_IsPlayerInCondition2(bot.Client, TFCond_CritCola))
+			{
+				// Switch to primary if available
+				int weapon = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Primary);
+				slot = WeaponSlot_Primary;
+				if (weapon == -1)
+				{
+					weapon = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
+					slot = WeaponSlot_Melee;
+				}
+				
+				return weapon;
+			}
+			else if (drinkEnergy >= 100.0)
+			{
+				slot = WeaponSlot_Secondary;
+				return drink;
+			}
+		}
+	}
+
 	if (TF2_IsPlayerInCondition2(bot.Client, TFCond_Charging) 
 		|| threat != INVALID_ENT && IsEnemy(bot.Client) && Enemy(bot.Client).BotMeleeDistance > 0.0 && DistBetween(bot.Client, threat) <= Enemy(bot.Client).BotMeleeDistance)
 	{

@@ -313,6 +313,7 @@ static void OnCreate(RF2_Object_Base obj)
 	obj.HookInteract(ObjectBase_OnInteract);
 	obj.Effects |= EF_ITEM_BLINK;
 	obj.Active = true;
+	obj.MapPlaced = true; // Assume this object is map placed, set to false in CreateObject()
 	obj.TextZOffset = 50.0;
 	obj.TextSize = 6.0;
 	obj.SetTextColor({255, 255, 100, 255});
@@ -340,7 +341,7 @@ static void OnSpawnPost(int entity)
 		PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
 	}
 	
-	static char worldText[256];
+	static char worldText[512];
 	obj.GetWorldText(worldText, sizeof(worldText));
 	if (worldText[0])
 	{
@@ -410,6 +411,7 @@ static Action ObjectBase_OnInteract(int client, RF2_Object_Base obj)
 RF2_Object_Base CreateObject(const char[] classname, const float pos[3], bool spawn=true)
 {
 	RF2_Object_Base obj = RF2_Object_Base(CreateEntityByName(classname));
+	obj.MapPlaced = false;
 	if (!obj.IsValid())
 	{
 		LogError("[CreateObject] Failed to create object: %s", classname);
