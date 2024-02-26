@@ -4398,11 +4398,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				}
 			}
 		}
-
+		
 		// Horrific Headsplitter
 		if (victimIsClient && PlayerHasItem(victim, Item_HorrificHeadsplitter) && damageCustom == TF_CUSTOM_BLEEDING)
 		{
-			if (!g_bGracePeriod)
+			if (!g_bGracePeriod && !IsStageCleared() && (!IsPlayerSurvivor(victim) || GetPlayersOnTeam(TEAM_ENEMY, true) >= 1))
 			{
 				damage *= 1.0 + CalcItemMod(victim, Item_HorrificHeadsplitter, 1) * (1.0 + (float(GetPlayerLevel(victim)-1) * GetItemMod(Item_HorrificHeadsplitter, 0)));
 			}
