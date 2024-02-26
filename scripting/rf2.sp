@@ -4561,10 +4561,10 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 	}
 	
-	// Self damage is capped at 15% max health
+	// Self damage is capped at 20% max health
 	if (victimIsClient && selfDamage && validWeapon && IsPlayerSurvivor(victim))
 	{
-		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.15);
+		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.2);
 	}
 	
 	g_flDamageProc = proc; // carry over
