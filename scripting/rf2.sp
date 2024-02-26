@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.5.3b"
+#define PLUGIN_VERSION "0.5.4b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -1688,6 +1688,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int weaponIndex = event.GetInt("weapon_def_index");
 	int weaponId = event.GetInt("weaponid");
 	int damageType = event.GetInt("damagebits");
+	int customkill = event.GetInt("customkill");
 	CritType critType = view_as<CritType>(event.GetInt("crit_type"));
 	
 	// No dominations
@@ -1797,7 +1798,6 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				}
 			}
 			
-			
 			if (itemProc == ItemScout_LongFallBoots && IsBoss(victim))
 			{
 				TriggerAchievement(attacker, ACHIEVEMENT_GOOMBA);
@@ -1813,7 +1813,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			RequestFrame(RF_DeleteRagdoll, victim);
 			action = Plugin_Stop;
 		}
-
+		
 		if (attacker > 0 && IsPlayerSurvivor(attacker))
 		{
 			float xp;
@@ -1841,8 +1841,8 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		if (!g_bGracePeriod)
 		{
 			SaveSurvivorInventory(victim, RF2_GetSurvivorIndex(victim));
-			PrintDeathMessage(victim);
-
+			PrintDeathMessage(victim, customkill);
+			
 			int fog = CreateEntityByName("env_fog_controller");
 			DispatchKeyValue(fog, "spawnflags", "1");
 			DispatchKeyValueInt(fog, "fogenabled", 1);
@@ -2469,7 +2469,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		return Plugin_Continue;
 	
 	int survivorCount = RF2_GetSurvivorCount();
-	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.0 * float(survivorCount-1);
+	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
 	
 	if (GetCurrentTeleporter().IsValid() && GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE)
@@ -3487,6 +3487,8 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 			if (activeWeapon > 0 && IsWeaponTauntBanned(activeWeapon))
 			{
 				TF2_RemoveCondition(client, TFCond_Taunting);
+				SlapPlayer(client);
+				EmitSoundToClient(client, SND_NOPE);
 			}
 		}
 	}
@@ -4162,7 +4164,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (victimIsClient)
 	{
-		// because there's no fall damage, red team takes increased self blast damage
+		// because there's no fall damage, red team takes increased self blast damage, although it is capped at 15% max hp due to damage scaling
 		if (selfDamage && rangedDamage && IsPlayerSurvivor(victim))
 		{
 			damage *= 1.3;
@@ -4559,6 +4561,12 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 	}
 	
+	// Self damage is capped at 15% max health
+	if (victimIsClient && selfDamage && validWeapon && IsPlayerSurvivor(victim))
+	{
+		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.15);
+	}
+	
 	g_flDamageProc = proc; // carry over
 	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
 	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;
@@ -4876,7 +4884,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 						TE_TFParticle("minicrit_text", damagePosition, victim);
 						EmitGameSoundToClient(attacker, GSND_MINICRIT);
 					}
-
+					
 					damage /= 3.0;
 					damage *= 1.35;
 				}

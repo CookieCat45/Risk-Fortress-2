@@ -1362,7 +1362,7 @@ bool ActivateStrangeItem(int client)
 						}
 					}
 				}
-
+				
 				TriggerAchievement(client, ACHIEVEMENT_BADMAGIC);
 			}
 		}

@@ -306,7 +306,7 @@
 	"UsedScrapperHaunted" // No color tags
 	{
 		"#format"	"{1:s}"
-		"en"		"You scrapped 1 {1} for 1 Haunted Key."
+		"en"		"You scrapped 1 {1} for 1 Gargoyle Key."
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -505,6 +505,12 @@
 	{
 		"#format"	"{1:N}"
 		"en"		"{red}{1}'s body was gone an hour later."
+	}
+	
+	"HeadsplitterDeath"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} was surprised to find themselves choking to death on their own blood after making the wise decision to split their own head open with a cleaver."
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

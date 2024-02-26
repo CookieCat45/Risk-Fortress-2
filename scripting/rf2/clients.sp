@@ -335,14 +335,23 @@ bool CanPlayerRegen(int client)
 	PlayerHasItem(client, Item_ClassCrown));
 }
 
-void PrintDeathMessage(int client)
+void PrintDeathMessage(int client, int customkill=0)
 {
-	char message[256];
+	char message[512];
+	if (customkill == TF_CUSTOM_BLEEDING && PlayerHasItem(client, Item_HorrificHeadsplitter))
+	{
+		FormatEx(message, sizeof(message), "HeadsplitterDeath");
+		CPrintToChatAll("%t", message, client);
+		Format(message, sizeof(message), "%T", message, LANG_SERVER, client);
+		CRemoveTags(message, sizeof(message));
+		PrintToServer(message);
+		return;
+	}
+	
 	const int maxMessages = 10;
 	int randomMessage = GetRandomInt(1, maxMessages);
 	FormatEx(message, sizeof(message), "DeathMessage%i", randomMessage);
 	CPrintToChatAll("%t", message, client);
-
 	Format(message, sizeof(message), "%T", message, LANG_SERVER, client);
 	CRemoveTags(message, sizeof(message));
 	PrintToServer(message);
