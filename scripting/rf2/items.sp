@@ -1153,31 +1153,9 @@ bool ActivateStrangeItem(int client)
 	{
 		case ItemStrange_RobotChicken:
 		{
-			TF2_AddCondition(client, TFCond_CritCanteen, GetItemMod(ItemStrange_RobotChicken, 0));
+			TF2_AddCondition(client, TFCond_CritOnFlagCapture, GetItemMod(ItemStrange_RobotChicken, 0));
 		}
 		
-		case ItemStrange_RoBro:
-		{
-			// This messes with things like banners and phlog. We can at least restore the client's old rage value after.
-			float oldRage = GetEntPropFloat(client, Prop_Send, "m_flRageMeter");
-			DataPack pack;
-			CreateDataTimer(GetItemMod(ItemStrange_RoBro, 0)+0.1, Timer_RestoreRage, pack, TIMER_FLAG_NO_MAPCHANGE);
-			pack.WriteCell(GetClientUserId(client));
-			pack.WriteCell(GetClientTeam(client));
-			pack.WriteFloat(oldRage);
-			
-			int shield = CreateEntityByName("entity_medigun_shield");
-			SetEntityOwner(shield, client);
-			SetEntProp(shield, Prop_Send, "m_iTeamNum", GetClientTeam(client));
-			SetEntPropFloat(client, Prop_Send, "m_flRageMeter", GetItemMod(ItemStrange_RoBro, 0)*10.0);
-			SetEntProp(client, Prop_Send, "m_bRageDraining", true);
-			
-			DispatchKeyValueInt(shield, "skin", GetEntProp(client, Prop_Data, "m_iTeamNum")-2);
-			SetEntityModel2(shield, MODEL_MEDISHIELD);
-			DispatchSpawn(shield);
-			EmitSoundToAll(SND_MEDISHIELD, shield);
-		}
-
 		case ItemStrange_HeartOfGold:
 		{
 			const float range = 500.0;

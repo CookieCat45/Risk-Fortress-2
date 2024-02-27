@@ -221,6 +221,7 @@ public void RF_UpdateText(int entity)
 	static char str[256], name[128];
 	FormatEx(str, sizeof(str), "%i / %i", health, maxHealth);
 	text.GetDisplayName(name, sizeof(name));
+	/*
 	if (name[0])
 	{
 		// Center the text
@@ -239,6 +240,7 @@ public void RF_UpdateText(int entity)
 			len1 < len2 ? Format(str, sizeof(str), "%s%s\n%s", whitespace, str, name) : Format(str, sizeof(str), "%s\n%s%s", str, whitespace, name);
 		}
 	}
+	*/
 	
 	SetVariantString(str);
 	text.AcceptInput("SetText");

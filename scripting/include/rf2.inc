@@ -31,7 +31,7 @@ enum
 	Item_Dangeresque = 14,
 	Item_Law = 15,
 	ItemStrange_VirtualViewfinder = 16,
-	ItemStrange_RoBro = 17,
+	Item_RoBro = 17,
 	ItemStrange_Spellbook = 18,
 	Item_HorsemannHead = 19,
 	Item_Monoculus = 20,

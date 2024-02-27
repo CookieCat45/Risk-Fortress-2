@@ -703,8 +703,6 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 				return threat > 0 && !invuln && vision.IsLookingAtTarget(threat);
 			}
 			
-			case ItemStrange_RoBro: return threat > 0 && GetClientHealth(bot.Client) < RF2_GetCalculatedMaxHealth(bot.Client) / 2;
-			
 			case ItemStrange_HeartOfGold: return true; // we check when we use this item instead, so always try to use
 			
 			case ItemStrange_LegendaryLid, ItemStrange_CroneDome, ItemStrange_HandsomeDevil:

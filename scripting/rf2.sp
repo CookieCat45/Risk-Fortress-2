@@ -441,7 +441,7 @@ void LoadGameData()
 	if (g_hHookTakeHealth)
 	{
 		g_hHookTakeHealth.AddParam(HookParamType_Float); // amount to heal
-		g_hHookTakeHealth.AddParam(HookParamType_Int);   // "damagetype"? Doesn't seem to be used.
+		g_hHookTakeHealth.AddParam(HookParamType_Int);   // "damagetype"
 	}
 	else
 	{
@@ -1714,11 +1714,11 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		switch (itemProc)
 		{
 			case ItemDemo_ConjurersCowl, ItemMedic_WeatherMaster: event.SetString("weapon", "spellbook_lightning");
-
+			
 			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, ItemStrange_CroneDome: event.SetString("weapon", "pumpkindeath");
-
-			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder: event.SetString("weapon", "merasmus_zap");
-
+			
+			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder, Item_RoBro: event.SetString("weapon", "merasmus_zap");
+			
 			case ItemStrange_LegendaryLid: event.SetString("weapon", "kunai");
 		}
 	}
@@ -2389,16 +2389,15 @@ public Action Timer_KillEnemyTeam(Handle timer)
 	{
 		if (!IsClientInGame(i) || IsPlayerSurvivor(i))
 			continue;
-
+		
 		SilentlyKillPlayer(i);
-
 		if (IsFakeClient(i))
 		{
 			// hotfix
 			TF2_SetPlayerClass(i, TFClass_Scout);
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -2406,7 +2405,7 @@ public Action Output_GraceTimerFinished(const char[] output, int caller, int act
 {
 	if (!g_bGracePeriod) // grace period was probably ended early by /rf2_skipgrace (which still calls this timer function)
 		return Plugin_Continue;
-
+	
 	EndGracePeriod();
 	RemoveEntity2(caller);
 	return Plugin_Continue;
@@ -2416,9 +2415,9 @@ void EndGracePeriod()
 {
 	g_bGracePeriod = false;
 	int entity = MaxClients+1;
-
-	// Must do this or else bots will misbehave, thinking it's still setup time. They won't attack players and will randomly taunt.
-	while ((entity = FindEntityByClassname(entity, "team_round_timer")) != -1)
+	
+	// Have to do this or else bots will misbehave, thinking it's still setup time. They won't attack players and will randomly taunt.
+	while ((entity = FindEntityByClassname(entity, "team_round_timer")) != INVALID_ENT)
 	{
 		if (GetEntProp(entity, Prop_Send, "m_nState") == 0)
 		{
@@ -2428,16 +2427,14 @@ void EndGracePeriod()
 			CreateTimer(2.0, Timer_DeleteEntity, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
-
+	
 	// Begin our enemy spawning
 	CreateTimer(5.0, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
-
 	g_flBusterSpawnTime = g_cvBusterSpawnInterval.FloatValue;
 	CreateTimer(1.0, Timer_BusterSpawnWave, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-
 	Call_StartForward(g_fwGracePeriodEnded);
 	Call_Finish();
-
+	
 	if (!g_bTankBossMode)
 	{
 		RF2_PrintToChatAll("%t", "GracePeriodEnded");
@@ -2473,17 +2470,24 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
 	
 	if (GetCurrentTeleporter().IsValid() && GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE)
+	{
 		duration *= 0.8;
+	}
+	
+	if (IsSingleplayer(false))
+	{
+		if (g_iStagesCompleted == 0)
+			duration *= 1.25;
+	}
+	else
+	{
+		duration *= GetRandomFloat(0.85, 1.0);
+	}
 	
 	duration = fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue);
 	if (IsArtifactActive(BLUArtifact_Swarm))
 	{
 		duration *= 0.6;
-	}
-	
-	if (IsSingleplayer(false) && g_iStagesCompleted == 0)
-	{
-		duration *= 1.25;
 	}
 	
 	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -4297,7 +4301,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		if (procItem > Item_Null)
 		{
 			proc *= GetItemProcCoefficient(procItem);
-			SetEntItemProc(attacker, Item_Null);
 		}
 		
 		if (inflictor > 0 && GetEntItemProc(inflictor) != Item_Null)
@@ -4664,6 +4667,9 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 	
 	if (attackerIsClient)
 	{
+		int procItem = GetEntItemProc(attacker);
+		SetEntItemProc(attacker, Item_Null);
+		
 		if (validWeapon)
 		{
 			static char wepClassname[64];
@@ -4685,7 +4691,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			{
 				float random = GetItemMod(Item_Law, 0);
 				random *= proc;
-
+				
 				if (RandChanceFloatEx(attacker, 0.0, 1.0, random))
 				{
 					const float rocketSpeed = 1200.0;
@@ -4709,6 +4715,70 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			{
 				int healAmount = imax(RoundToFloor(damage * CalcItemMod_Hyperbolic(attacker, Item_HorrificHeadsplitter, 0)), 1);
 				HealPlayer(attacker, healAmount, false);
+			}
+			
+			if (PlayerHasItem(attacker, Item_RoBro) && procItem != Item_RoBro)
+			{
+				float chance = GetItemMod(Item_RoBro, 0) * proc;
+				if (RandChanceFloatEx(attacker, 0.0, 100.0, chance))
+				{
+					int limit = RoundToFloor(CalcItemMod(attacker, Item_RoBro, 1));
+					float range = GetItemMod(Item_RoBro, 2) + CalcItemMod(attacker, Item_RoBro, 3, -1);
+					float dmg = GetItemMod(Item_RoBro, 4);
+					ArrayList hitEnemies = new ArrayList();
+					int lastHitEnemy = victim; // use victim as a starting point
+					int team = GetClientTeam(attacker);
+					bool foundEnemy = true;
+					int entity = INVALID_ENT;
+					int closestEnemy = INVALID_ENT;
+					float closestRange, dist;
+					float pos1[3], pos2[3];
+					while (foundEnemy)
+					{
+						entity = INVALID_ENT;
+						closestEnemy = INVALID_ENT;
+						closestRange = range;
+						while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
+						{
+							if (entity == victim || !IsCombatChar(entity) || hitEnemies.FindValue(entity) != INVALID_ENT)
+								continue;
+							
+							if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
+								continue;
+							
+							if (IsValidClient(entity) && !IsPlayerAlive(entity))
+								continue;
+							
+							dist = DistBetween(lastHitEnemy, entity);
+							if (dist <= closestRange && IsLOSClear(lastHitEnemy, entity))
+							{
+								closestEnemy = entity;
+								closestRange = dist;
+							}
+						}
+						
+						foundEnemy = (closestEnemy != INVALID_ENT);
+						if (foundEnemy)
+						{
+							EmitGameSoundToAll("Weapon_BarretsArm.Zap", closestEnemy);
+							CBaseEntity(lastHitEnemy).WorldSpaceCenter(pos1);
+							CBaseEntity(closestEnemy).WorldSpaceCenter(pos2);
+							TE_SetupBeamPoints(pos1, pos2, g_iBeamModel, 0, 0, 0, 0.5, 8.0, 8.0, 0, 10.0, {100, 100, 255, 200}, 20);
+							TE_SendToAll();
+							
+							SetEntItemProc(attacker, Item_RoBro);
+							SDKHooks_TakeDamage2(closestEnemy, attacker, attacker, dmg, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE);
+							hitEnemies.Push(closestEnemy);
+							lastHitEnemy = closestEnemy;
+							if (hitEnemies.Length-1 >= limit)
+							{
+								break;
+							}
+						}
+					}
+					
+					delete hitEnemies;
+				}
 			}
 			
 			if (IsPlayerSurvivor(attacker))
@@ -5018,7 +5088,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			ResetAFKTime(client);
 		}
 	}
-
+	
 	if (g_bWaitingForPlayers || !IsPlayerAlive(client))
 		return Plugin_Continue;
 
@@ -5108,7 +5178,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	{
 		reloadPressed[client] = false;
 	}
-
+	
 	static bool attack3Pressed[MAXTF2PLAYERS];
 	if (!bot && buttons & IN_ATTACK3)
 	{
