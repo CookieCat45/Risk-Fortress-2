@@ -39,7 +39,7 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerLawCooldown[client] = false;
 	g_bPlayerTookCollectorItem[client] = false;
 	g_bExecutionerBleedCooldown[client] = false;
-	SetAllInArray(g_bPlayerInCondition[client], sizeof(g_bPlayerInCondition[]), false);
+	g_bPlayerHealBurstCooldown[client] = false;
 	g_szObjectiveHud[client] = "";
 	
 	if (IsClientInGame(client) && !g_bMapChanging)
@@ -261,8 +261,7 @@ bool RollAttackCrit(int client, int damageType=DMG_GENERIC, int damageCustom=-1)
 	int badRolls;
 	bool success;
 	bool melee = damageType & DMG_MELEE && damageCustom != TF_CUSTOM_BACKSTAB;
-	rollTimes += RoundToFloor(CalcItemMod(client, Item_LuckyCatHat, 0));
-	rollTimes -= RoundToFloor(CalcItemMod(client, Item_MisfortuneFedora, 0));
+	rollTimes = GetPlayerLuckStat(client);
 	
 	if (rollTimes < 0)
 	{
@@ -604,10 +603,7 @@ float GetPlayerReloadMod(int client)
 
 int GetPlayerLuckStat(int client)
 {
-	int luck;
-	luck += RoundToFloor(CalcItemMod(client, Item_LuckyCatHat, 0));
-	luck -= RoundToFloor(CalcItemMod(client, Item_MisfortuneFedora, 0));
-	return luck;
+	return CalcItemModInt(client, Item_LuckyCatHat, 0) - CalcItemModInt(client, Item_MisfortuneFedora, 0);
 }
 
 void ApplyVampireSapper(int client, int attacker, float damage=10.0, float duration=8.0)
@@ -666,7 +662,7 @@ public Action Timer_VampireSapper(Handle timer, int client)
 		sapper = GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary);
 	}
 	
-	SDKHooks_TakeDamage2(client, attacker, attacker, g_flPlayerVampireSapperDamage[client], DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, sapper);
+	RF_TakeDamage(client, attacker, attacker, g_flPlayerVampireSapperDamage[client], DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, _, sapper);
 	int totalHealing = RoundToFloor(g_flPlayerVampireSapperDamage[client]);
 	int team = GetClientTeam(client);
 	float pos[3], victimPos[3];
@@ -682,7 +678,7 @@ public Action Timer_VampireSapper(Handle timer, int client)
 		GetEntPos(i, victimPos);
 		if (GetVectorDistance(pos, victimPos, true) <= Pow(range, 2.0))
 		{
-			SDKHooks_TakeDamage2(i, attacker, attacker, g_flPlayerVampireSapperDamage[client]*0.5, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, sapper);
+			RF_TakeDamage(i, attacker, attacker, g_flPlayerVampireSapperDamage[client]*0.5, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, _, sapper);
 			
 			if (!IsBoss(i))
 			{
@@ -860,10 +856,10 @@ TFCond GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0
 
 bool IsPlayerMiniCritBuffed(int client)
 {
-	return TF2_IsPlayerInCondition2(client, TFCond_CritCola)
-		|| TF2_IsPlayerInCondition2(client, TFCond_Buffed)
-		|| TF2_IsPlayerInCondition2(client, TFCond_NoHealingDamageBuff)
-		|| TF2_IsPlayerInCondition2(client, TFCond_MiniCritOnKill);
+	return TF2_IsPlayerInCondition(client, TFCond_CritCola)
+		|| TF2_IsPlayerInCondition(client, TFCond_Buffed)
+		|| TF2_IsPlayerInCondition(client, TFCond_NoHealingDamageBuff)
+		|| TF2_IsPlayerInCondition(client, TFCond_MiniCritOnKill);
 }
 
 void SDK_ForceSpeedUpdate(int client)
@@ -919,27 +915,27 @@ public MRESReturn DHook_TakeHealth(int entity, Handle returnVal, Handle params)
 
 bool IsInvuln(int client)
 {
-	return (TF2_IsPlayerInCondition2(client, TFCond_Ubercharged) ||
-		TF2_IsPlayerInCondition2(client, TFCond_UberchargedCanteen) ||
-		TF2_IsPlayerInCondition2(client, TFCond_UberchargedHidden) ||
-		TF2_IsPlayerInCondition2(client, TFCond_UberchargedOnTakeDamage) ||
-		TF2_IsPlayerInCondition2(client, TFCond_Bonked) ||
-		TF2_IsPlayerInCondition2(client, TFCond_HalloweenGhostMode) ||
+	return (TF2_IsPlayerInCondition(client, TFCond_Ubercharged) ||
+		TF2_IsPlayerInCondition(client, TFCond_UberchargedCanteen) ||
+		TF2_IsPlayerInCondition(client, TFCond_UberchargedHidden) ||
+		TF2_IsPlayerInCondition(client, TFCond_UberchargedOnTakeDamage) ||
+		TF2_IsPlayerInCondition(client, TFCond_Bonked) ||
+		TF2_IsPlayerInCondition(client, TFCond_HalloweenGhostMode) ||
 		!GetEntProp(client, Prop_Data, "m_takedamage"));
 }
 
 /*
 bool IsInvis(int client, bool fullyInvis=true)
 {
-	return ((TF2_IsPlayerInCondition2(client, TFCond_Cloaked) ||
-		TF2_IsPlayerInCondition2(client, TFCond_Stealthed) ||
-		TF2_IsPlayerInCondition2(client, TFCond_StealthedUserBuffFade))
-		&& (!fullyInvis || !TF2_IsPlayerInCondition2(client, TFCond_CloakFlicker)
-		&& !TF2_IsPlayerInCondition2(client, TFCond_OnFire)
-		&& !TF2_IsPlayerInCondition2(client, TFCond_Jarated)
-		&& !TF2_IsPlayerInCondition2(client, TFCond_Milked)
-		&& !TF2_IsPlayerInCondition2(client, TFCond_Bleeding)
-		&& !TF2_IsPlayerInCondition2(client, TFCond_Gas)));
+	return ((TF2_IsPlayerInCondition(client, TFCond_Cloaked) ||
+		TF2_IsPlayerInCondition(client, TFCond_Stealthed) ||
+		TF2_IsPlayerInCondition(client, TFCond_StealthedUserBuffFade))
+		&& (!fullyInvis || !TF2_IsPlayerInCondition(client, TFCond_CloakFlicker)
+		&& !TF2_IsPlayerInCondition(client, TFCond_OnFire)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Jarated)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Milked)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Bleeding)
+		&& !TF2_IsPlayerInCondition(client, TFCond_Gas)));
 }
 */
 
@@ -1037,7 +1033,7 @@ bool IsValidClient(int client)
 bool IsPlayerStunned(int client)
 {
 	int stunFlags = GetEntProp(client, Prop_Send, "m_iStunFlags");
-	return TF2_IsPlayerInCondition2(client, TFCond_Dazed) && (stunFlags & TF_STUNFLAG_THIRDPERSON || stunFlags & TF_STUNFLAG_BONKSTUCK);
+	return TF2_IsPlayerInCondition(client, TFCond_Dazed) && (stunFlags & TF_STUNFLAG_THIRDPERSON || stunFlags & TF_STUNFLAG_BONKSTUCK);
 }
 
 float GetPlayerHealthMult(int client)

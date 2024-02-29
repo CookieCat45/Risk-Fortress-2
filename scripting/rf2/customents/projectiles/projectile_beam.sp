@@ -53,5 +53,5 @@ public void Beam_OnCollide(RF2_Projectile_Beam beam, int other)
 	if (!IsCombatChar(other))
 		return;
 	
-	SDKHooks_TakeDamage2(other, beam.index, beam.Owner, beam.Damage, DMG_SONIC);
+	RF_TakeDamage(other, beam.index, beam.Owner, beam.Damage, DMG_SONIC, GetEntItemProc(beam.index));
 }

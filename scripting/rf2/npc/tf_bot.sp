@@ -1459,7 +1459,7 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 void UpdateBotQuota()
 {
 	ConVar quota = FindConVar("tf_bot_quota");
-	quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue)+GetTotalHumans(false), MaxClients);
+	quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue)+GetTotalHumans(false), MaxClients-1);
 }
 
 // -1 = let bot decide
@@ -1495,7 +1495,7 @@ int TFBot_GetDesiredWeapon(TFBot bot, int &slot=0)
 		if (bonk)
 		{
 			float drinkEnergy = GetEntPropFloat(bot.Client, Prop_Send, "m_flEnergyDrinkMeter");
-			if (drinkEnergy < 100.0 || TF2_IsPlayerInCondition2(bot.Client, TFCond_Bonked) || TF2_IsPlayerInCondition2(bot.Client, TFCond_CritCola))
+			if (drinkEnergy < 100.0 || TF2_IsPlayerInCondition(bot.Client, TFCond_Bonked) || TF2_IsPlayerInCondition(bot.Client, TFCond_CritCola))
 			{
 				// Switch to primary if available
 				int weapon = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Primary);
@@ -1516,7 +1516,7 @@ int TFBot_GetDesiredWeapon(TFBot bot, int &slot=0)
 		}
 	}
 
-	if (TF2_IsPlayerInCondition2(bot.Client, TFCond_Charging) 
+	if (TF2_IsPlayerInCondition(bot.Client, TFCond_Charging) 
 		|| threat != INVALID_ENT && IsEnemy(bot.Client) && Enemy(bot.Client).BotMeleeDistance > 0.0 && DistBetween(bot.Client, threat) <= Enemy(bot.Client).BotMeleeDistance)
 	{
 		slot = WeaponSlot_Melee;

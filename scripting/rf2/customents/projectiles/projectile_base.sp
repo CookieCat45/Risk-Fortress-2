@@ -388,7 +388,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		ArrayList blacklist, hitEnts;
 		if (IsValidEntity2(this.ImpactTarget) && IsCombatChar(this.ImpactTarget))
 		{
-			SDKHooks_TakeDamage2(this.ImpactTarget, this.index, this.Owner, this.DirectDamage, DMG_BLAST);
+			RF_TakeDamage(this.ImpactTarget, this.index, this.Owner, this.DirectDamage, DMG_BLAST, GetEntItemProc(this.index));
 			blacklist = new ArrayList();
 			blacklist.Push(this.ImpactTarget);
 		}

@@ -6,6 +6,20 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+void RF_TakeDamage(int entity, int inflictor, int attacker, float damage, int damageType=DMG_GENERIC, int procItem=Item_Null, int weapon=-1, const float damageForce[3]=NULL_VECTOR, const float damagePosition[3]=NULL_VECTOR)
+{
+	if (procItem > Item_Null)
+	{
+		if (attacker > 0)
+			SetEntItemProc(attacker, procItem);
+		
+		if (inflictor > 0)
+			SetEntItemProc(inflictor, procItem);
+	}
+	
+	SDKHooks_TakeDamage(entity, inflictor, attacker, damage, damageType, weapon, damageForce, damagePosition, false);
+}
+
 int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0, float maxDist=-1.0, int team=-1, bool trace=false)
 {
 	int nearestEntity = -1;
@@ -229,14 +243,11 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 				}
 				
 				calculatedDamage = baseDamage * falloffMultiplier;
-				if (IsValidClient(attacker) && item > Item_Null)
-				{
-					SetEntItemProc(attacker, item);
-				}
-				
-				SDKHooks_TakeDamage2(entity, inflictor, attacker, calculatedDamage, damageFlags);
+				RF_TakeDamage(entity, inflictor, attacker, calculatedDamage, damageFlags, item);
 				if (returnHitEnts)
+				{
 					hitEnts.Push(entity);
+				}
 			}
 		}
 	}
@@ -381,10 +392,10 @@ void PickupCash(int client, int entity)
 		if (client > 0)
 		{
 			SpeakResponseConcept_MVM(client, "TLK_MVM_MONEY_PICKUP");
-
+			
 			if (PlayerHasItem(client, Item_BanditsBoots))
 			{
-				HealPlayer(client, RoundToFloor(CalcItemMod(client, Item_BanditsBoots, 1)));
+				HealPlayer(client, CalcItemModInt(client, Item_BanditsBoots, 1));
 			}
 		}
 		

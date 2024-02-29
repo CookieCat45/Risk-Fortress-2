@@ -1334,7 +1334,7 @@ void ShowClientSettingsMenu(int client)
 	FormatEx(buffer, sizeof(buffer), "%T", "ToggleMusic", lang, GetCookieBool(client, g_coMusicEnabled) ? on : off);
 	menu.AddItem("rf2_music_enabled", buffer);
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "AutoItemMenu", lang, GetCookieBool(client, g_coAutomaticItemMenu) ? on : off);
+	FormatEx(buffer, sizeof(buffer), "%T", "AutoItemMenu", lang, GetCookieBool(client, g_coDisableSpecMenu) ? on : off);
 	menu.AddItem("rf2_auto_item_menu", buffer);
 	
 	menu.Display(client, MENU_TIME_FOREVER);
@@ -1585,10 +1585,13 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 		case MenuAction_Cancel:
 		{
 			g_iPlayerLastDropMenuItem[param1] = 0;
-			
 			if (param2 == MenuCancel_ExitBack)
 			{
 				ShowItemMenu(param1);
+			}
+			else
+			{
+				g_bPlayerViewingItemMenu[param1] = false;
 			}
 		}
 		case MenuAction_End:

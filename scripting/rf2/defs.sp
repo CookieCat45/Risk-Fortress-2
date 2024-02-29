@@ -6,6 +6,7 @@
 #define MAX_EDICTS 2048
 #define MAX_COOKIE_LENGTH 100
 #define MAX_MAP_SIZE 32768.0
+#define MAX_DAMAGE 32767.0 // Maximum possible single-instance damage in TF2
 #define WAIT_TIME_DEFAULT 120 // Waiting For Players time
 #define TF_CLASSES 9+1 // because arrays
 #define MAX_TF_CONDITIONS 150

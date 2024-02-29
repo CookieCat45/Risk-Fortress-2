@@ -53,11 +53,11 @@ static void OnCollide(RF2_Projectile_Kunai kunai, int other)
 	int damageType = DMG_SLASH;
 	if (IsValidClient(other))
 	{
-		if (TF2_IsPlayerInCondition2(other, TFCond_MarkedForDeath) || TF2_IsPlayerInCondition2(other, TFCond_MarkedForDeathSilent))
+		if (TF2_IsPlayerInCondition(other, TFCond_MarkedForDeath) || TF2_IsPlayerInCondition(other, TFCond_MarkedForDeathSilent))
 			damageType |= DMG_CRIT;
 	}
 	
-	SDKHooks_TakeDamage2(other, kunai.index, kunai.Owner, kunai.Damage, damageType);
+	RF_TakeDamage(other, kunai.index, kunai.Owner, kunai.Damage, damageType, GetEntItemProc(kunai.index));
 	if (IsValidClient(other))
 	{
 		TF2_AddCondition(other, TFCond_MarkedForDeath, GetItemMod(ItemStrange_HandsomeDevil, 1), IsValidClient(kunai.Owner) ? kunai.Owner : 0);

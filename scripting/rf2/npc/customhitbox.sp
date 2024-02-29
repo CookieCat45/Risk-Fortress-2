@@ -173,7 +173,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 			
 			if (DoEntitiesIntersect(this.index, entity))
 			{
-				SDKHooks_TakeDamage2(entity, this.Inflictor, this.Attacker, this.Damage, this.DamageFlags);
+				RF_TakeDamage(entity, this.Inflictor, this.Attacker, this.Damage, this.DamageFlags);
 				this.GetDamageForce(force);
 				if (VectorSum(force, true) > 0.0)
 				{

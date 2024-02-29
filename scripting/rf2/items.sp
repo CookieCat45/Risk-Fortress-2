@@ -15,6 +15,7 @@ int g_iCollectorItemClass[MAX_ITEMS];
 float g_flItemModifier[MAX_ITEMS][MAX_ITEM_MODIFIERS];
 float g_flEquipmentItemCooldown[MAX_ITEMS] = {40.0, ...};
 float g_flItemSpriteScale[MAX_ITEMS] = {1.0, ...};
+float g_flItemProcCoeff[MAX_ITEMS] = {1.0, ...};
 
 char g_szItemName[MAX_ITEMS][MAX_NAME_LENGTH];
 char g_szItemDesc[MAX_ITEMS][512];
@@ -138,9 +139,9 @@ void LoadItems()
 				g_flItemModifier[item][n] = itemKey.GetFloat(buffer, 0.1);
 			}
 			
+			g_flItemProcCoeff[item] = itemKey.GetFloat("proc_coeff", 1.0);
 			g_iItemSchemaIndex[item] = itemKey.GetNum("schema_index", -1);
 			g_flItemSpriteScale[item] = itemKey.GetFloat("sprite_scale", 0.5);
-			
 			g_iItemQuality[item] = itemKey.GetNum("quality", Quality_Normal);
 			switch (g_iItemQuality[item])
 			{
@@ -687,7 +688,7 @@ void UpdatePlayerItem(int client, int item)
 			int equipment = GetPlayerEquipmentItem(client);
 			if (equipment > Item_Null && g_flPlayerEquipmentItemCooldown[client] <= 0.0)
 			{
-				int maxCharges = RoundToFloor(CalcItemMod(client, Item_BatteryCanteens, 1, 1));
+				int maxCharges = CalcItemModInt(client, Item_BatteryCanteens, 1, 1);
 				if (g_iPlayerEquipmentItemCharges[client] < maxCharges)
 				{
 					g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
@@ -856,8 +857,10 @@ void UpdatePlayerItem(int client, int item)
 			if (!IsClientInGame(i) || IsFakeClient(i) || IsPlayerAlive(i))
 				continue;
 			
-			if (GetEntPropEnt(i, Prop_Send, "m_hObserverTarget") == client)
+			if (GetEntPropEnt(i, Prop_Send, "m_hObserverTarget") == client && !GetCookieBool(i, g_coDisableSpecMenu))
+			{
 				ShowItemMenu(i, client);
+			}
 		}
 	}
 }
@@ -933,7 +936,7 @@ bool RandChanceFloatEx(int client, float min, float max, float goal, float &resu
 	return success;
 }
 
-void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, CritType critType)
+void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, CritType critType)
 {
 	if (damageType & DMG_MELEE)
 	{
@@ -942,7 +945,7 @@ void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cr
 			if (critType == CritType_Crit)
 			{
 				// Must be done a frame later to prevent bugs with player_death event
-				DataPack pack = CreateDataPack();
+				DataPack pack = new DataPack();
 				pack.WriteCell(attacker);
 				pack.WriteCell(victim);
 				RequestFrame(RF_SaxtonRadiusDamage, pack);
@@ -972,7 +975,6 @@ void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cr
 		float victimPos[3], enemyPos[3];
 		GetEntPos(victim, victimPos);
 		victimPos[2] += 30.0;
-		
 		EmitAmbientSound(SND_BLEED_EXPLOSION, victimPos, _, SNDLEVEL_TRAIN);
 		TE_TFParticle("env_sawblood", victimPos);
 		
@@ -993,11 +995,11 @@ void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cr
 	
 	if (PlayerHasItem(attacker, Item_BruiserBandana))
 	{
-		int heal = RoundToFloor(GetItemMod(Item_BruiserBandana, 0)) * GetPlayerItemCount(attacker, Item_BruiserBandana);
+		int heal = CalcItemModInt(attacker, Item_BruiserBandana, 0);
 		HealPlayer(attacker, heal);
 	}
 	
-	if (PlayerHasItem(attacker, Item_DapperTopper))
+	if (PlayerHasItem(attacker, Item_DapperTopper) && !g_bPlayerHealBurstCooldown[attacker])
 	{
 		g_flPlayerRegenBuffTime[attacker] = GetItemMod(Item_DapperTopper, 1);
 		g_flPlayerHealthRegenTime[attacker] = 0.0;
@@ -1015,13 +1017,15 @@ void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cr
 			}
 			
 			EmitSoundToAll(SND_SPELL_OVERHEAL, attacker);
+			g_bPlayerHealBurstCooldown[attacker] = true;
+			CreateTimer(0.5, Timer_HealBurstCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 	
 	if (GetClientTeam(victim) == TEAM_ENEMY)
 	{
 		int total;
-		int limit = RoundToFloor(GetItemMod(Item_PillarOfHats, 3));
+		int limit = GetItemModInt(Item_PillarOfHats, 3);
 		for (int i = 1; i <= MaxClients; i++)
 		{
 			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
@@ -1031,7 +1035,7 @@ void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cr
 			{
 				if (total >= 1)
 				{
-					limit += RoundToFloor(CalcItemMod(i, Item_PillarOfHats, 4));
+					limit += CalcItemModInt(i, Item_PillarOfHats, 4);
 				}
 
 				total++;
@@ -1109,6 +1113,15 @@ void DoItemDeathEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cr
 			}
 		}
 	}
+}
+
+public Action Timer_HealBurstCooldown(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Continue;
+
+	g_bPlayerHealBurstCooldown[client] = false;
+	return Plugin_Continue;
 }
 
 public void RF_SaxtonRadiusDamage(DataPack pack)
@@ -1378,7 +1391,7 @@ bool ActivateStrangeItem(int client)
 		
 		case ItemStrange_NastyNorsemann:
 		{
-			if (TF2_IsPlayerInCondition2(client, TFCond_HasRune))
+			if (TF2_IsPlayerInCondition(client, TFCond_HasRune))
 			{
 				EmitSoundToClient(client, SND_NOPE);
 				PrintCenterText(client, "%t", "AlreadyHasRune");
@@ -1624,12 +1637,7 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
 				continue;
 			
-			if (item > Item_Null && IsValidClient(attacker))
-			{
-				SetEntItemProc(attacker, item);
-			}
-			
-			SDKHooks_TakeDamage2(entity, attacker, attacker, damage, damageFlags);
+			RF_TakeDamage(entity, attacker, attacker, damage, damageFlags, item);
 		}
 	}
 }
@@ -1829,6 +1837,12 @@ float GetItemMod(int item, int slot)
 {
 	return g_flItemModifier[item][slot];
 }
+
+int GetItemModInt(int item, int slot)
+{
+	return RoundToFloor(g_flItemModifier[item][slot]);
+}
+
 /*
 int GetItemModInt(int item, int slot)
 {
@@ -1868,14 +1882,28 @@ float CalcItemMod_HyperbolicInverted(int client, int item, int slot, int extraAm
 	return 1.0 / (1.0 + g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
 }
 
-float GetItemProcCoefficient(int item)
+int CalcItemModInt(int client, int item, int slot, int extraAmount=0)
 {
-	switch (item)
-	{
-		//case ItemStrange_VirtualViewfinder: return 0.75;
-	}
-	
-	return 1.0;
+	return RoundToFloor(g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
+}
+
+/*
+int CalcItemModInt_Hyperbolic(int client, int item, int slot, int extraAmount=0)
+{
+	return RoundToFloor(1.0 - 1.0 / (1.0 + g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount)));
+}
+*/
+
+/*
+int CalcItemModInt_HyperbolicInverted(int client, int item, int slot, int extraAmount=0)
+{
+	return RoundToFloor(1.0 / (1.0 + g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount)));
+}
+*/
+
+float GetItemProcCoeff(int item)
+{
+	return g_flItemProcCoeff[item];
 }
 
 // Returns a list of items sorted by quality

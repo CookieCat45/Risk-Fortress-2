@@ -380,7 +380,7 @@ bool PickupItem(int client)
 			}
 		}
 		
-		if (GetCookieBool(client, g_coAutomaticItemMenu) || g_bPlayerViewingItemMenu[client])
+		if (g_bPlayerViewingItemMenu[client])
 		{
 			ShowItemMenu(client);
 		}

@@ -6,12 +6,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-bool g_bPlayerInCondition[MAXTF2PLAYERS][MAX_TF_CONDITIONS];
-bool TF2_IsPlayerInCondition2(int client, TFCond condition)
-{
-	return g_bPlayerInCondition[client][condition];
-}
-
 public void RemoveEntity2(int entity)
 {
 	if (entity == 0)
@@ -21,11 +15,6 @@ public void RemoveEntity2(int entity)
 	}
 	
 	RemoveEntity(entity);
-}
-
-void SDKHooks_TakeDamage2(int entity, int inflictor, int attacker, float damage, int damageType=DMG_GENERIC, int weapon=-1, const float damageForce[3]=NULL_VECTOR, const float damagePosition[3]=NULL_VECTOR)
-{
-	SDKHooks_TakeDamage(entity, inflictor, attacker, damage, damageType, weapon, damageForce, damagePosition, false);
 }
 
 bool PrecacheSound2(const char[] sound, bool preload=false)

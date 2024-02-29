@@ -50,14 +50,14 @@ public Action Timer_BuildingHealthRegen(Handle timer, int building)
 		int maxHealth = GetEntProp(building, Prop_Send, "m_iMaxHealth");
 		if (maxHealth-health > 0)
 		{
-			int heal = RoundToFloor(CalcItemMod(builder, ItemEngi_Toadstool, 0));
+			int heal = CalcItemModInt(builder, ItemEngi_Toadstool, 0);
 			SetVariantInt(heal);
 			AcceptEntityInput(building, "AddHealth");
 			Event event = CreateEvent("building_healed", true);
 			event.SetInt("priority", 1);
 			event.SetInt("building", building);
 			event.SetInt("healer", builder);
-			event.SetInt("amount", heal-health);
+			event.SetInt("amount", heal);
 			event.Fire();
 		}
 	}
@@ -93,7 +93,7 @@ TFObjectType TF2_GetObjectType2(int entity)
 
 // True = Allow building (PDA out)
 // False = Allow destroying
-void SetSentryState(int client, bool state)
+void SetSentryBuildState(int client, bool state)
 {
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)

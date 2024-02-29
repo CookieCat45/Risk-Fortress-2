@@ -175,7 +175,8 @@ void EndTankDestructionMode()
 	{
 		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
 		{
-			SDKHooks_TakeDamage2(entity, 0, 0, 9999999.0, DMG_PREVENT_PHYSICS_FORCE);
+			SetEntityHealth(entity, 1);
+			RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
 		}
 	}
 	

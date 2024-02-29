@@ -61,11 +61,11 @@ static void OnCollide(RF2_Projectile_Shuriken shuriken, int other)
 	int damageType = DMG_SLASH;
 	if (IsValidClient(other))
 	{
-		if (TF2_IsPlayerInCondition2(other, TFCond_Bleeding))
+		if (TF2_IsPlayerInCondition(other, TFCond_Bleeding))
 			damageType |= DMG_CRIT;
 			
 		TF2_MakeBleed(other, shuriken.Owner, GetItemMod(ItemStrange_LegendaryLid, 1));
 	}
 	
-	SDKHooks_TakeDamage2(other, shuriken.index, shuriken.Owner, shuriken.Damage, damageType);
+	RF_TakeDamage(other, shuriken.index, shuriken.Owner, shuriken.Damage, damageType, GetEntItemProc(shuriken.index));
 }

@@ -194,11 +194,11 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 				{
 					float force[3];
 					CalculateMeleeDamageForce(damage, delta, 1.0, force);
-					SDKHooks_TakeDamage2(victim.index, this.index, this.index, damage, DMG_BLAST, _, force, center);
+					RF_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST, _, _, force, center);
 				}
 				else
 				{
-					SDKHooks_TakeDamage2(victim.index, this.index, this.index, damage, DMG_BLAST|DMG_PREVENT_PHYSICS_FORCE, _, _, center);
+					RF_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST|DMG_PREVENT_PHYSICS_FORCE, _, _, _, center);
 				}
 			}
 		}

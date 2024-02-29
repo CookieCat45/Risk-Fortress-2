@@ -341,7 +341,8 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		{
 			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
 			{
-				SDKHooks_TakeDamage2(entity, 0, 0, 9999999.0, DMG_PREVENT_PHYSICS_FORCE);
+				SetEntityHealth(entity, 1);
+				RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
 			}
 		}
 		
@@ -382,7 +383,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			// HHH team number is 0, set to something else so he actually takes damage and dies
 			SetEntProp(boss, Prop_Data, "m_iTeamNum", 1);
 			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
-			SDKHooks_TakeDamage2(boss, 0, 0, 32000.0, DMG_PREVENT_PHYSICS_FORCE);
+			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
 		}
 		
 		boss = MaxClients+1;
@@ -392,7 +393,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 				continue;
 			
 			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
-			SDKHooks_TakeDamage2(boss, 0, 0, 32000.0, DMG_PREVENT_PHYSICS_FORCE);
+			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
 		}
 	}
 }
