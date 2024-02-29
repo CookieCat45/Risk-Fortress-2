@@ -78,7 +78,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		buster.BaseNpc.GetBodyMins(mins);
 		buster.BaseNpc.GetBodyMaxs(maxs);
 		bool success;
-		if (GetSpawnPoint(targetPos, pos, 2000.0, 10000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID, 50.0, TFClass_Engineer))
+		if (GetSpawnPoint(targetPos, pos, 1750.0, 20000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID_BRUSHONLY, 50.0, true))
 		{
 			buster.Teleport(pos);
 			success = true;
@@ -360,7 +360,7 @@ public bool SentryBusterPath_FilterOnlyActors(int entity, int contentsMask, int 
 {
 	if (RF2_Object_Base(entity).IsValid())
 		return false;
-
+	
 	return ((entity > 0 && entity <= MaxClients) || IsCombatChar(entity));
 }
 
@@ -369,7 +369,7 @@ void DoSentryBusterWave()
 	ArrayList sentryList = CreateArray();
 	int builder;
 	int entity = MaxClients+1;
-
+	
 	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)
 	{
 		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != TEAM_SURVIVOR)
@@ -390,7 +390,7 @@ void DoSentryBusterWave()
 		RF2_SentryBuster buster = RF2_SentryBuster.Create(sentryList.Get(i));
 		if (!buster.IsValid())
 		{
-			CreateTimer(0.1, Timer_BusterSpawnRetry, EntIndexToEntRef(sentryList.Get(i)), TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(1.0, Timer_BusterSpawnRetry, EntIndexToEntRef(sentryList.Get(i)), TIMER_FLAG_NO_MAPCHANGE);
 		}
 		else
 		{
@@ -424,14 +424,14 @@ public Action Timer_BusterSpawnRetry(Handle timer, int sentry)
 	RF2_SentryBuster buster = RF2_SentryBuster.Create(sentry);
 	if (!buster.IsValid())
 	{
-		CreateTimer(0.1, Timer_BusterSpawnRetry, EntIndexToEntRef(sentry), TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(1.0, Timer_BusterSpawnRetry, EntIndexToEntRef(sentry), TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else
 	{
 		EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
 		EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
 	}
-
+	
 	return Plugin_Continue;
 }
 

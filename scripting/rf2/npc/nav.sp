@@ -20,11 +20,12 @@
  * @param maxs					Hull maxs for the trace hull spawn check.
  * @param traceFlags			Trace flags.
  * @param zOffset				Offset the Z position of the result spawn position by this much.
+ * @param onlyFilterSentries	Only filter sentries, not players (Sentry Busters)
  * @return			CNavArea associated with the spawn point if found. NULL_AREA otherwise.
  */
 CNavArea GetSpawnPoint(const float pos[3], float resultPos[3], 
 float minDist=650.0, float maxDist=1650.0, int filterTeam=-1, 
-bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLAYER_MAXS, int traceFlags=MASK_PLAYERSOLID, float zOffset=0.0, TFClassType filterClass=TFClass_Unknown)
+bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLAYER_MAXS, int traceFlags=MASK_PLAYERSOLID, float zOffset=0.0, bool onlyFilterSentries=false)
 {
 	float navPos[3];
 	CopyVectors(pos, navPos);
@@ -123,9 +124,6 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 							continue;
 						
 						class = TF2_GetPlayerClass(i);
-						if (filterClass != TFClass_Unknown && class != filterClass)
-							continue;
-						
 						// Don't spawn near this player's non-disposable sentry
 						if (class == TFClass_Engineer)
 						{
@@ -150,7 +148,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 							}
 						}
 						
-						if (canSpawn)
+						if (canSpawn && !onlyFilterSentries)
 						{
 							GetEntPos(i, playerPos);
 							if (GetVectorDistance(spawnPos, playerPos, true) <= sq(minDist))

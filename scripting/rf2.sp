@@ -1037,7 +1037,7 @@ public bool OnClientConnect(int client, char[] rejectmsg, int maxlen)
 {
 	if (RF2_IsEnabled())
 	{
-		if (GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue+1)
+		if (!g_bMapChanging && GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue+1)
 		{
 			FormatEx(rejectmsg, maxlen, "Max human player limit of %i has been reached", g_cvMaxHumanPlayers.IntValue);
 			return false;
