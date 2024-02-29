@@ -347,13 +347,15 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		}
 		
 		int randomItem;
+		bool collector;
 		char name[MAX_NAME_LENGTH], quality[32];
 		for (int i = 1; i <= MaxClients; i++)
 		{
 			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
 				continue;
 			
-			randomItem = GetRandomInt(1, 10) > 2 ? GetRandomItemEx(Quality_Genuine) : GetRandomCollectorItem(TF2_GetPlayerClass(i));
+			collector = (!IsSingleplayer(false) && !g_bPlayerTookCollectorItem[i] || GetRandomInt(1, 10) <= 2);
+			randomItem = collector ? GetRandomCollectorItem(TF2_GetPlayerClass(i)) : GetRandomItemEx(Quality_Genuine);
 			GiveItem(i, randomItem, _, true);
 			GetItemName(randomItem, name, sizeof(name));
 			GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));

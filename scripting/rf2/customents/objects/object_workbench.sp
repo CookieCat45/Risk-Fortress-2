@@ -203,6 +203,8 @@ static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 		item = itemArray.Get(GetRandomInt(0, itemArray.Length-1));
 	}
 	
+	char qualityName[32];
+	GetQualityName(quality, qualityName, sizeof(qualityName));
 	delete itemArray;
 	if (item > Item_Null)
 	{
@@ -210,11 +212,10 @@ static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 		GiveItem(client, benchItem, 1, true);
 		EmitSoundToAll(SND_USE_WORKBENCH, client);
 		PrintCenterText(client, "%t", "UsedWorkbench", g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item), g_szItemName[item]);
+		PrintKeyHintText(client, "%s (%s)\n%s", g_szItemName[benchItem], qualityName, g_szItemDesc[benchItem]);
 	}
 	else
 	{
-		char qualityName[32];
-		GetQualityName(quality, qualityName, sizeof(qualityName));
 		EmitSoundToClient(client, SND_NOPE);
 		PrintCenterText(client, "%t", "NoExchange", qualityName);
 	}

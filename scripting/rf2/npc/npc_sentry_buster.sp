@@ -78,7 +78,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		buster.BaseNpc.GetBodyMins(mins);
 		buster.BaseNpc.GetBodyMaxs(maxs);
 		bool success;
-		if (GetSpawnPoint(targetPos, pos, 2500.0, 30000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID, 40.0))
+		if (GetSpawnPoint(targetPos, pos, 2000.0, 10000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID, 50.0, TFClass_Engineer))
 		{
 			buster.Teleport(pos);
 			success = true;
@@ -390,7 +390,7 @@ void DoSentryBusterWave()
 		RF2_SentryBuster buster = RF2_SentryBuster.Create(sentryList.Get(i));
 		if (!buster.IsValid())
 		{
-			RequestFrame(RF_BusterSpawnRetry, EntIndexToEntRef(sentryList.Get(i)));
+			CreateTimer(0.1, Timer_BusterSpawnRetry, EntIndexToEntRef(sentryList.Get(i)), TIMER_FLAG_NO_MAPCHANGE);
 		}
 		else
 		{
@@ -416,21 +416,23 @@ void DoSentryBusterWave()
 	delete sentryList;
 }
 
-public void RF_BusterSpawnRetry(int sentry)
+public Action Timer_BusterSpawnRetry(Handle timer, int sentry)
 {
 	if (IsStageCleared() || (sentry = EntRefToEntIndex(sentry)) == INVALID_ENT)
-		return;
+		return Plugin_Continue;
 	
 	RF2_SentryBuster buster = RF2_SentryBuster.Create(sentry);
 	if (!buster.IsValid())
 	{
-		RequestFrame(RF_BusterSpawnRetry, EntIndexToEntRef(sentry));
+		CreateTimer(0.1, Timer_BusterSpawnRetry, EntIndexToEntRef(sentry), TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else
 	{
 		EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
 		EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
 	}
+
+	return Plugin_Continue;
 }
 
 bool IsSentryBusterActive()

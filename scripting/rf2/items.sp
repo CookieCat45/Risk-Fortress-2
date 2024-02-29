@@ -848,23 +848,6 @@ void UpdatePlayerItem(int client, int item)
 	{
 		EquipItemAsWearable(client, item);
 	}
-	
-	/*
-	if (IsPlayerSurvivor(client))
-	{
-		// update for spectators
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (!IsClientInGame(i) || IsFakeClient(i) || IsPlayerAlive(i))
-				continue;
-			
-			if (GetEntPropEnt(i, Prop_Send, "m_hObserverTarget") == client && !GetCookieBool(i, g_coDisableSpecMenu))
-			{
-				ShowItemMenu(i, client);
-			}
-		}
-	}
-	*/
 }
 
 // If the result of GetRandomInt(min, max) is below or equal to goal, returns true. Factors in luck stat from client.

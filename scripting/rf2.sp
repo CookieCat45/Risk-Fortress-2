@@ -1051,7 +1051,7 @@ public void OnClientConnected(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
+		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false)-1 >= g_cvMaxHumanPlayers.IntValue));
 		UpdateGameDescription();
 		UpdateBotQuota();
 	}
@@ -1179,8 +1179,6 @@ public void OnClientDisconnect(int client)
 				ReshuffleSurvivor(client, -1);
 			}
 		}
-
-		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false)-1 >= g_cvMaxHumanPlayers.IntValue));
 	}
 	
 	g_bPlayerTimingOut[client] = false;
@@ -1202,6 +1200,7 @@ public void OnClientDisconnect_Post(int client)
 	g_TFBot[client] = null;
 	RefreshClient(client);
 	ResetAFKTime(client, false);
+	FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
 	UpdateGameDescription();
 	UpdateBotQuota();
 }
@@ -1248,6 +1247,7 @@ void CheckRedTeam(int client)
 
 void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 {
+	int index = RF2_GetSurvivorIndex(client);
 	RefreshClient(client, true);
 	if (IsClientInGame(client) && teamChange >= 0)
 	{
@@ -1302,7 +1302,7 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 		if (playerPoints[i] == highestPoints)
 		{
 			// Lucky you - your points won't be getting reset.
-			MakeSurvivor(i, RF2_GetSurvivorIndex(client), false);
+			MakeSurvivor(i, index, false);
 			float pos[3], angles[3];
 			GetEntPos(client, pos);
 			GetClientEyeAngles(client, angles);
@@ -5278,7 +5278,6 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 					}
 				}
 				
-				PrecacheSound2(sample);
 				EmitSoundToAll(sample, client);
 				float duration = g_flPlayerGiantFootstepInterval[client] * (RF2_GetCalculatedSpeed(client) / RF2_GetBaseSpeed(client));
 				nextFootstepTime[client] = GetTickedTime() + duration;
@@ -5351,11 +5350,11 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 			if (voiceType == VoiceType_Robot)
 			{
 				action = Plugin_Changed;
-
+				
 				bool noGiantLines = (class == TFClass_Sniper || class == TFClass_Medic || class == TFClass_Engineer || class == TFClass_Spy);
 				char classString[16], newString[32];
 				GetClassString(class, classString, sizeof(classString), true);
-
+				
 				if (IsBoss(client) && !noGiantLines)
 				{
 					ReplaceStringEx(sample, sizeof(sample), "vo/", "vo/mvm/mght/");
@@ -5369,7 +5368,6 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				
 				ReplaceStringEx(sample, sizeof(sample), classString, newString, _, _, false);
 				PrecacheSound2(sample);
-				EmitSoundToAll(sample, client);
 			}
 		}
 		else if (StrContains(sample, "player/footsteps/") != -1)
@@ -5404,7 +5402,6 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 					}
 						
 					PrecacheSound2(sample);
-					EmitSoundToAll(sample, client);
 				}
 
 				// Only works this way for some reason

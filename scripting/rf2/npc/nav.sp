@@ -24,7 +24,7 @@
  */
 CNavArea GetSpawnPoint(const float pos[3], float resultPos[3], 
 float minDist=650.0, float maxDist=1650.0, int filterTeam=-1, 
-bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLAYER_MAXS, int traceFlags=MASK_PLAYERSOLID, float zOffset=0.0)
+bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLAYER_MAXS, int traceFlags=MASK_PLAYERSOLID, float zOffset=0.0, TFClassType filterClass=TFClass_Unknown)
 {
 	float navPos[3];
 	CopyVectors(pos, navPos);
@@ -55,13 +55,12 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 	
 	SurroundingAreasCollector collector = TheNavMesh.CollectSurroundingAreas(area, maxDist, maxDist, maxDist);
 	int areaCount = collector.Count();
-	ArrayList areaArray = CreateArray(1, areaCount);
+	ArrayList areaArray = new ArrayList(1, areaCount);
 	int validAreaCount, randomArea;
 	
 	for (int i = 0; i < areaCount; i++)
 	{
 		area = collector.Get(i);
-		
 		if (view_as<CTFNavArea>(area).HasAttributeTF(NO_SPAWNING))
 			continue;
 		
@@ -88,6 +87,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 		float spawnPos[3], playerPos[3], sentryPos[3];
 		bool canSpawn = true;
 		int team = -1;
+		TFClassType class;
 		team = filterTeam == view_as<int>(TFTeam_Red) ? view_as<int>(TFTeam_Blue) : view_as<int>(TFTeam_Red);
 		
 		while (validAreaCount > 0)
@@ -117,13 +117,17 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 					for (int i = 1; i <= MaxClients; i++)
 					{
 						if (!canSpawn)
-							continue;
+							break;
 						
 						if (!IsClientInGame(i) || !IsPlayerAlive(i) || filterTeam <= view_as<int>(TFTeam_Blue) && GetClientTeam(i) != filterTeam)
 							continue;
 						
+						class = TF2_GetPlayerClass(i);
+						if (filterClass != TFClass_Unknown && class != filterClass)
+							continue;
+						
 						// Don't spawn near this player's non-disposable sentry
-						if (TF2_GetPlayerClass(i) == TFClass_Engineer)
+						if (class == TFClass_Engineer)
 						{
 							while ((sentry = FindEntityByClassname(sentry, "obj_sentrygun")) != INVALID_ENT)
 							{
@@ -131,7 +135,6 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 								&& g_hPlayerExtraSentryList[i].FindValue(sentry) == INVALID_ENT)
 								{
 									GetEntPos(sentry, sentryPos);
-									
 									if (GetVectorDistance(spawnPos, sentryPos, true) <= sq(minDist))
 									{
 										area = NULL_AREA;
@@ -184,7 +187,7 @@ public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 	if (RF2_Object_Base(entity).IsValid() && GetEntProp(entity, Prop_Send, "m_CollisionGroup") == COLLISION_GROUP_DEBRIS_TRIGGER)
 		return false;
 	
-	if (team > 0 && (IsValidClient(entity) || IsBuilding(entity) || IsNPC(entity)))
+	if (team > 0 && IsCombatChar(entity))
 	{
 		if (team == GetEntProp(entity, Prop_Data, "m_iTeamNum"))
 			return false;
