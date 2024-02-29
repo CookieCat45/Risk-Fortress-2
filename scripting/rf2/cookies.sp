@@ -15,7 +15,6 @@ void BakeCookies()
 	g_coSurvivorPoints = RegClientCookie("rf2_survivor_points", "Survivor queue points.", CookieAccess_Protected);
 	g_coStayInSpecOnJoin = RegClientCookie("rf2_stay_in_spec", "Stay in spectate upon joining.", CookieAccess_Protected);
 	g_coSpecOnDeath = RegClientCookie("rf2_spec_on_death", "Join spectator after dying on RED.", CookieAccess_Protected);
-	g_coDisableSpecMenu = RegClientCookie("rf2_disable_spec_menu", "Enables or disables viewing player items from spectate", CookieAccess_Protected);
 	g_coItemsCollected[0] = RegClientCookie("rf2_items_collected_1", "Items collected for logbook.", CookieAccess_Private);
 	g_coItemsCollected[1] = RegClientCookie("rf2_items_collected_2", "Items collected for logbook.", CookieAccess_Private);
 	g_coItemsCollected[2] = RegClientCookie("rf2_items_collected_3", "Items collected for logbook.", CookieAccess_Private);
@@ -73,13 +72,6 @@ public void OnClientCookiesCached(int client)
 		SetCookieBool(client, g_coBecomeBoss, true);
 	}
 	
-	// Spec Menu Preference
-	GetClientCookie(client, g_coDisableSpecMenu, buffer, sizeof(buffer));
-	if (!buffer[0])
-	{
-		SetCookieBool(client, g_coDisableSpecMenu, false);
-	}
-	
 	// Spectate Preference
 	GetClientCookie(client, g_coStayInSpecOnJoin, buffer, sizeof(buffer));
 	if (!buffer[0])
@@ -120,7 +112,7 @@ public void OnClientCookiesCached(int client)
 	
 	if (!GetCookieBool(client, g_coNewPlayer) && g_bRoundActive)
 	{
-		//RF2_SetSurvivorPoints(client, RF2_GetSurvivorPoints(client)+99999);
+		RF2_SetSurvivorPoints(client, RF2_GetSurvivorPoints(client)+99999);
 		SetCookieBool(client, g_coNewPlayer, true);
 		CreateTimer(1.0, Timer_NewPlayerMessage, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}

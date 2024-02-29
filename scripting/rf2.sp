@@ -160,8 +160,6 @@ int g_iPlayerUnusualsUnboxed[MAXTF2PLAYERS];
 
 char g_szPlayerOriginalName[MAXTF2PLAYERS][MAX_NAME_LENGTH];
 ArrayList g_hPlayerExtraSentryList[MAXTF2PLAYERS];
-ArrayList g_hCachedPlayerSounds;
-ArrayList g_hInvalidPlayerSounds;
 StringMap g_hCrashedPlayerSteamIDs;
 ArrayList g_hSurvivorPlayers; // players who became Survivor at least once
 Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
@@ -282,7 +280,6 @@ ConVar g_cvDebugUseAltMapSettings;
 Cookie g_coMusicEnabled;
 Cookie g_coBecomeSurvivor;
 Cookie g_coBecomeBoss;
-Cookie g_coDisableSpecMenu;
 Cookie g_coSurvivorPoints;
 Cookie g_coTutorialItemPickup;
 Cookie g_coTutorialSurvivor;
@@ -708,11 +705,9 @@ public void OnMapStart()
 		HookUserMessage(GetUserMessageId("SayText2"), UserMessageHook_SayText2, true);
 		AddNormalSoundHook(PlayerSoundHook);
 		AddTempEntHook("TFBlood", TEHook_TFBlood);
-
+		
 		g_hMainHudSync = CreateHudSynchronizer();
 		g_hObjectiveHudSync = CreateHudSynchronizer();
-		g_hCachedPlayerSounds = CreateArray(PLATFORM_MAX_PATH);
-		g_hInvalidPlayerSounds = CreateArray(PLATFORM_MAX_PATH);
 		g_hParticleEffectTable = CreateArray(128);
 		
 		g_iMaxStages = FindMaxStages();
@@ -890,8 +885,6 @@ void CleanUp()
 	
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
-	delete g_hCachedPlayerSounds;
-	delete g_hInvalidPlayerSounds;
 	delete g_hParticleEffectTable;
 	g_hCrashedPlayerSteamIDs.Clear();
 	SetAllInArray(g_hCrashedPlayerTimers, sizeof(g_hCrashedPlayerTimers), INVALID_HANDLE);
@@ -1056,7 +1049,7 @@ public bool OnClientConnect(int client, char[] rejectmsg, int maxlen)
 
 public void OnClientConnected(int client)
 {
-	if (RF2_IsEnabled())
+	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
 		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
 		UpdateGameDescription();
@@ -1186,9 +1179,10 @@ public void OnClientDisconnect(int client)
 				ReshuffleSurvivor(client, -1);
 			}
 		}
+
+		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false)-1 >= g_cvMaxHumanPlayers.IntValue));
 	}
 	
-	FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false)-1 >= g_cvMaxHumanPlayers.IntValue));
 	g_bPlayerTimingOut[client] = false;
 }
 
@@ -1612,6 +1606,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	
 	g_bPlayerViewingItemMenu[client] = false;
 	CancelClientMenu(client, true);
+	ClientCommand(client, "slot10");
 	TF2Attrib_SetByDefIndex(client, 269, 1.0); // "mod see enemy health"
 	TF2Attrib_SetByDefIndex(client, 275, 1.0); // "cancel falling damage"
 
@@ -2460,7 +2455,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		return Plugin_Continue;
 	
 	int survivorCount = RF2_GetSurvivorCount();
-	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 1.5 * float(survivorCount-1);
+	float duration = g_cvEnemyBaseSpawnWaveTime.FloatValue - 2.0 * float(survivorCount-1);
 	duration -= float(RF2_GetEnemyLevel()-1) * 0.2;
 	
 	if (GetCurrentTeleporter().IsValid() && GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE)
@@ -2475,7 +2470,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	}
 	else
 	{
-		duration *= GetRandomFloat(0.85, 1.0);
+		duration *= GetRandomFloat(0.8, 1.0);
 	}
 	
 	duration = fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue);
@@ -2485,8 +2480,12 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	}
 	
 	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
-	
 	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + RF2_GetSubDifficulty() / 3;
+	if (GetPlayersOnTeam(TEAM_SURVIVOR, true) >= 4)
+	{
+		spawnCount++;
+	}
+	
 	spawnCount = imax(imin(spawnCount, g_cvEnemyMaxSpawnWaveCount.IntValue), g_cvEnemyMinSpawnWaveCount.IntValue);
 	float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
 	ArrayList respawnArray = CreateArray();
@@ -3151,11 +3150,31 @@ public Action Timer_AFKManager(Handle timer)
 
 public Action OnVoiceCommand(int client, const char[] command, int args)
 {
-	if (!RF2_IsEnabled() || !IsPlayerAlive(client))
+	if (!RF2_IsEnabled())
 		return Plugin_Continue;
-
+	
 	int num1 = GetCmdArgInt(1);
 	int num2 = GetCmdArgInt(2);
+	
+	if (!IsPlayerAlive(client))
+	{
+		if (num1 == 0 && num2 == 0)
+		{
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (i == client || !IsClientInGame(i) || !IsPlayerSurvivor(i))
+					continue;
+				
+				if (GetEntPropEnt(client, Prop_Send, "m_hObserverTarget") == i)
+				{
+					ShowItemMenu(client, i);
+					break;
+				}
+			}
+		}
+		
+		return Plugin_Continue;
+	}
 	
 	if (IsPlayerSurvivor(client))
 	{
@@ -3327,11 +3346,12 @@ public void RF_CheckSpecTarget(int client)
 	if (!IsValidClient(client))
 		return;
 	
-	int specTarget = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
+	/*int specTarget = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
 	if (IsValidClient(specTarget) && IsPlayerSurvivor(specTarget) && !GetCookieBool(specTarget, g_coDisableSpecMenu))
 	{
 		ShowItemMenu(client, specTarget);
 	}
+	*/
 }
 
 public Action OnBuildCommand(int client, const char[] command, int args)
@@ -5257,32 +5277,11 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 						sample = "misc/null.wav";
 					}
 				}
-
-				// avoid repeatedly calling PrecacheSound2()
-				bool valid = true;
-				if (g_hInvalidPlayerSounds.FindString(sample) >= 0)
-				{
-					valid = false;
-				}
-				else if (g_hCachedPlayerSounds.FindString(sample) < 0)
-				{
-					if (PrecacheSound2(sample))
-					{
-						g_hCachedPlayerSounds.PushString(sample);
-					}
-					else
-					{
-						g_hInvalidPlayerSounds.PushString(sample);
-						valid = false;
-					}
-				}
-
-				if (valid)
-				{
-					EmitSoundToAll(sample, client);
-					float duration = g_flPlayerGiantFootstepInterval[client] * (RF2_GetCalculatedSpeed(client) / RF2_GetBaseSpeed(client));
-					nextFootstepTime[client] = GetTickedTime() + duration;
-				}
+				
+				PrecacheSound2(sample);
+				EmitSoundToAll(sample, client);
+				float duration = g_flPlayerGiantFootstepInterval[client] * (RF2_GetCalculatedSpeed(client) / RF2_GetBaseSpeed(client));
+				nextFootstepTime[client] = GetTickedTime() + duration;
 			}
 		}
 	}
@@ -5367,26 +5366,10 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 					ReplaceStringEx(sample, sizeof(sample), "vo/", "vo/mvm/norm/", _, _, false);
 					FormatEx(newString, sizeof(newString), "%smvm_", classString);
 				}
-
+				
 				ReplaceStringEx(sample, sizeof(sample), classString, newString, _, _, false);
-
-				// avoid repeatedly calling PrecacheSound2()
-				if (g_hInvalidPlayerSounds.FindString(sample) >= 0)
-				{
-					return Plugin_Stop;
-				}
-				else if (g_hCachedPlayerSounds.FindString(sample) < 0)
-				{
-					if (PrecacheSound2(sample))
-					{
-						g_hCachedPlayerSounds.PushString(sample);
-					}
-					else
-					{
-						g_hInvalidPlayerSounds.PushString(sample);
-						return Plugin_Stop;
-					}
-				}
+				PrecacheSound2(sample);
+				EmitSoundToAll(sample, client);
 			}
 		}
 		else if (StrContains(sample, "player/footsteps/") != -1)
@@ -5419,24 +5402,9 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 					{
 						FormatEx(sample, sizeof(sample), "mvm/player/footsteps/robostep_0%i.wav", random);
 					}
-
-					// avoid repeatedly calling PrecacheSound2()
-					if (g_hInvalidPlayerSounds.FindString(sample) >= 0)
-					{
-						return Plugin_Stop;
-					}
-					else if (g_hCachedPlayerSounds.FindString(sample) < 0)
-					{
-						if (PrecacheSound2(sample))
-						{
-							g_hCachedPlayerSounds.PushString(sample);
-						}
-						else
-						{
-							g_hInvalidPlayerSounds.PushString(sample);
-							return Plugin_Stop;
-						}
-					}
+						
+					PrecacheSound2(sample);
+					EmitSoundToAll(sample, client);
 				}
 
 				// Only works this way for some reason

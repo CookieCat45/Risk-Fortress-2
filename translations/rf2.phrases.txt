@@ -717,12 +717,6 @@
 		"en"		"Join spectate after dying as a Survivor ({1})"
 	}
 	
-	"AutoItemMenu"
-	{
-		"#format"	"{1:s}"
-		"en"		"Enable automatic item menu ({1})"
-	}
-	
 	"ItemsReloaded"
 	{
 		"en"		"All items reloaded successfully."

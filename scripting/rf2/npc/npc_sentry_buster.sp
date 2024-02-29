@@ -78,7 +78,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		buster.BaseNpc.GetBodyMins(mins);
 		buster.BaseNpc.GetBodyMaxs(maxs);
 		bool success;
-		if (GetSpawnPoint(targetPos, pos, 2000.0, 9000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID, 40.0))
+		if (GetSpawnPoint(targetPos, pos, 2500.0, 30000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID, 40.0))
 		{
 			buster.Teleport(pos);
 			success = true;

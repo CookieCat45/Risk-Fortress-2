@@ -849,6 +849,7 @@ void UpdatePlayerItem(int client, int item)
 		EquipItemAsWearable(client, item);
 	}
 	
+	/*
 	if (IsPlayerSurvivor(client))
 	{
 		// update for spectators
@@ -863,6 +864,7 @@ void UpdatePlayerItem(int client, int item)
 			}
 		}
 	}
+	*/
 }
 
 // If the result of GetRandomInt(min, max) is below or equal to goal, returns true. Factors in luck stat from client.
