@@ -17,9 +17,9 @@ float g_flEquipmentItemCooldown[MAX_ITEMS] = {40.0, ...};
 float g_flItemSpriteScale[MAX_ITEMS] = {1.0, ...};
 float g_flItemProcCoeff[MAX_ITEMS] = {1.0, ...};
 
-char g_szItemName[MAX_ITEMS][MAX_NAME_LENGTH];
+char g_szItemName[MAX_ITEMS][64];
 char g_szItemDesc[MAX_ITEMS][512];
-char g_szItemUnusualEffectName[MAX_ITEMS][MAX_NAME_LENGTH];
+char g_szItemUnusualEffectName[MAX_ITEMS][64];
 
 bool g_bItemInDropPool[MAX_ITEMS];
 bool g_bLaserHitDetected[MAX_EDICTS];
@@ -30,8 +30,8 @@ int g_iItemUnusualEffect[MAX_ITEMS] = {-1, ...};
 int g_iItemSpriteUnusualEffect[MAX_ITEMS] = {-1, ...};
 int g_iUnusualEffectType[MAX_UNUSUAL_EFFECTS]; // Unusual effects have IDs for use with the attribute
 
-char g_szUnusualEffectName[MAX_UNUSUAL_EFFECTS][MAX_NAME_LENGTH];
-char g_szUnusualEffectDisplayName[MAX_UNUSUAL_EFFECTS][MAX_NAME_LENGTH];
+char g_szUnusualEffectName[MAX_UNUSUAL_EFFECTS][64];
+char g_szUnusualEffectDisplayName[MAX_UNUSUAL_EFFECTS][64];
 char g_szItemEquipRegion[MAX_ITEMS][64];
 char g_szItemSprite[MAX_ITEMS][PLATFORM_MAX_PATH];
 
@@ -614,14 +614,14 @@ void UpdatePlayerItem(int client, int item)
 				{
 					if (PlayerHasItem(client, ItemEngi_Teddy))
 					{
-						float firingSpeed = CalcItemMod_HyperbolicInverted(client, item, 0);
+						float maxMetal = CalcItemMod(client, item, 0);
 						float constructRate = 1.0 + CalcItemMod(client, item, 1);
-						TF2Attrib_SetByDefIndex(wrench, 343, firingSpeed); // "engy sentry fire rate increased"
+						TF2Attrib_SetByDefIndex(wrench, 80, maxMetal); // "maxammo metal increased"
 						TF2Attrib_SetByDefIndex(wrench, 92, constructRate); // "Construction rate increased"
 					}
 					else
 					{
-						TF2Attrib_RemoveByDefIndex(wrench, 343);
+						TF2Attrib_RemoveByDefIndex(wrench, 80);
 						TF2Attrib_RemoveByDefIndex(wrench, 92);
 					}
 				}

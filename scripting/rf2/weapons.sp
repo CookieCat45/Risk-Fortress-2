@@ -6,7 +6,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define MAX_STRING_ATTRIBUTES 16
+#define MAX_STRING_ATTRIBUTES 8
 
 int g_iWeaponCount[TF_CLASSES];
 
@@ -19,10 +19,11 @@ char g_szWeaponClassnameReplacement[TF_CLASSES][MAX_WEAPONS][64];
 
 bool g_bWeaponStaticAttributes[TF_CLASSES][MAX_WEAPONS];
 bool g_bWeaponStripAttributes[TF_CLASSES][MAX_WEAPONS];
+/*
 bool g_bWeaponHasStringAttributes[TF_CLASSES][MAX_WEAPONS];
-
 char g_szWeaponStringAttributeName[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][128];
 char g_szWeaponStringAttributeValue[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][PLATFORM_MAX_PATH];
+*/
 
 void LoadWeapons()
 {
@@ -35,8 +36,8 @@ void LoadWeapons()
 	}
 	
 	bool firstKey = true;
-	bool firstAttrib = true;
-	int count, strAttribCount;
+	//bool firstAttrib = true;
+	int count;//, strAttribCount;
 	char tfClassName[32];
 	
 	for (int i = 1; i < TF_CLASSES; i++)
@@ -56,6 +57,7 @@ void LoadWeapons()
 				g_bWeaponStaticAttributes[i][count] = asBool(weaponKey.GetNum("static_attributes", false));
 				g_bWeaponStripAttributes[i][count] = asBool(weaponKey.GetNum("strip_attributes", false));
 				
+				/*
 				// do we have any string attributes?
 				if (weaponKey.JumpToKey("string_attributes"))
 				{
@@ -86,6 +88,7 @@ void LoadWeapons()
 					firstAttrib = true;
 					weaponKey.GoBack();
 				}
+				*/
 				
 				count++;
 				firstKey = false;
@@ -102,9 +105,9 @@ void LoadWeapons()
 	delete weaponKey;
 }
 
-static bool g_bSetStringAttributes;
-static TFClassType g_StringAttributeClass;
-static int g_iStringAttributeWeapon; // Not to be confused with entity indexes
+//static bool g_bSetStringAttributes;
+//static TFClassType g_StringAttributeClass;
+//static int g_iStringAttributeWeapon; // Not to be confused with entity indexes
 static bool g_bDisableGiveItemForward;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
 {
@@ -204,6 +207,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			}
 		}
 		
+		/*
 		if (g_bWeaponHasStringAttributes[class][i])
 		{
 			// we'll have to set these in Post because we don't have the weapon entity yet
@@ -211,7 +215,8 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			g_StringAttributeClass = class;
 			g_iStringAttributeWeapon = i;
 		}
-		
+		*/
+
 		if (totalAttribs > MAX_ATTRIBUTES)
 		{
 			LogError("[TF2Items_OnGiveNamedItem] Item %i (%s) reached attribute limit of %i", index, classname, MAX_ATTRIBUTES);
@@ -271,6 +276,7 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int inde
 	if (!IsValidEntity2(entity))
 		return;
 	
+	/*
 	if (g_bSetStringAttributes)
 	{
 		TFClassType class = g_StringAttributeClass;
@@ -296,7 +302,8 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int inde
 		
 		g_bSetStringAttributes = false;
 	}
-	
+	*/
+
 	SetEntProp(entity, Prop_Send, "m_bValidatedAttachedEntity", true);
 }
 

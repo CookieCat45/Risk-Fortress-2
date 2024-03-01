@@ -9,7 +9,6 @@
 #define MAX_DAMAGE 32767.0 // Maximum possible single-instance damage in TF2
 #define WAIT_TIME_DEFAULT 120 // Waiting For Players time
 #define TF_CLASSES 9+1 // because arrays
-#define MAX_TF_CONDITIONS 150
 #define DMG_MELEE DMG_BLAST_SURFACE
 #define WORLD_CENTER "rf2_world_center" // An info_target used to determine where the "center" of the world is, according to the map designer
 #define INVALID_ENT INVALID_ENT_REFERENCE
@@ -124,7 +123,7 @@ enum
 #define TFBOTFLAG_SPAMJUMP (1 << 4) // Constantly jump around
 
 // Enemies/Bosses -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_ENEMIES 128
+#define MAX_ENEMIES 32
 #define MAX_WEARABLES 6
 #define BOSS_BASE_BACKSTAB_DAMAGE 750.0
 

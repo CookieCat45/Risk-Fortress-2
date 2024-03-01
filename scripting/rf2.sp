@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.5.6b"
+#define PLUGIN_VERSION "0.5.7b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -905,6 +905,15 @@ void CleanUp()
 			delete RF2_Projectile_Base(entity).OnCollide;
 		}
 	}
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (g_TFBot[i].Follower)
+		{
+			g_TFBot[i].Follower.Destroy();
+			g_TFBot[i].Follower = view_as<PathFollower>(0);
+		}
+	}
 }
 
 void LoadAssets()
@@ -1187,7 +1196,6 @@ public void OnClientDisconnect(int client)
 public void OnClientDisconnect_Post(int client)
 {
 	g_flLoopMusicAt[client] = -1.0;
-	
 	if (g_hPlayerExtraSentryList[client])
 		delete g_hPlayerExtraSentryList[client];
 	
@@ -2470,7 +2478,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	}
 	else
 	{
-		duration *= GetRandomFloat(0.8, 1.0);
+		duration *= GetRandomFloat(0.8, 1.0-(float(survivorCount-1)*0.015));
 	}
 	
 	duration = fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue);
@@ -2481,7 +2489,12 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	
 	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
 	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + RF2_GetSubDifficulty() / 3;
-	if (GetPlayersOnTeam(TEAM_SURVIVOR, true) >= 4)
+	if (survivorCount >= 4)
+	{
+		spawnCount++;
+	}
+	
+	if (survivorCount >= 7)
 	{
 		spawnCount++;
 	}
@@ -2615,7 +2628,7 @@ public Action Timer_BusterSpawnWave(Handle timer)
 		if (IsValidClient(owner) && IsPlayerSurvivor(owner))
 		{
 			// don't count disposable sentries because we don't care about them
-			if (g_hPlayerExtraSentryList[owner] && g_hPlayerExtraSentryList[owner].FindValue(entity) != INVALID_ENT)
+			if (IsSentryDisposable(entity))
 				continue;
 			
 			sentryActive = true;
@@ -4284,11 +4297,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			case TF_CUSTOM_BLEEDING:
 			{
 				proc *= 0.0;
-				float bonus = 1.0;
-				bonus += CalcItemMod(attacker, Item_Antlers, 2);
-				bonus += CalcItemMod(attacker, ItemSniper_Bloodhound, 3);
-				bonus += CalcItemMod(attacker, Item_Executioner, 4);
-				damage *= bonus;
+				if (!selfDamage)
+				{
+					float bonus = 1.0;
+					bonus += CalcItemMod(attacker, Item_Antlers, 2);
+					bonus += CalcItemMod(attacker, ItemSniper_Bloodhound, 3);
+					bonus += CalcItemMod(attacker, Item_Executioner, 4);
+					damage *= bonus;
+				}
 			}
 			
 			case TF_CUSTOM_BURNING, TF_CUSTOM_BURNING_FLARE, TF_CUSTOM_BURNING_ARROW, TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING:
@@ -4358,8 +4374,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			if (PlayerHasItem(attacker, ItemEngi_BrainiacHairpiece) && CanUseCollectorItem(attacker, ItemEngi_BrainiacHairpiece))
 			{
-				if (g_flSentryNextLaserTime[inflictor] <= GetTickedTime()
-					&& g_hPlayerExtraSentryList[attacker].FindValue(inflictor) == INVALID_ENT)
+				if (g_flSentryNextLaserTime[inflictor] <= GetTickedTime() && !IsSentryDisposable(inflictor))
 				{
 					float pos[3], victimPos[3], angles[3];
 					GetEntPos(inflictor, pos);
@@ -4399,7 +4414,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		if (!victimIsBuilding && !victimIsNpc)
 		{
 			if (selfDamage && IsBoss(victim) && !Enemy(victim).AllowSelfDamage &&
-			(!PlayerHasItem(victim, Item_HorrificHeadsplitter) && damageCustom != TF_CUSTOM_BLEEDING))
+				(!PlayerHasItem(victim, Item_HorrificHeadsplitter) && damageCustom != TF_CUSTOM_BLEEDING))
 			{
 				// bosses normally don't do damage to themselves
 				damage = 0.0;

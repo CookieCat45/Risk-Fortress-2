@@ -129,8 +129,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 						{
 							while ((sentry = FindEntityByClassname(sentry, "obj_sentrygun")) != INVALID_ENT)
 							{
-								if (GetEntProp(sentry, Prop_Data, "m_iTeamNum") == filterTeam && GetEntPropEnt(sentry, Prop_Send, "m_hBuilder") == i 
-								&& g_hPlayerExtraSentryList[i].FindValue(sentry) == INVALID_ENT)
+								if (GetEntProp(sentry, Prop_Data, "m_iTeamNum") == filterTeam && GetEntPropEnt(sentry, Prop_Send, "m_hBuilder") == i && !IsSentryDisposable(sentry))
 								{
 									GetEntPos(sentry, sentryPos);
 									if (GetVectorDistance(spawnPos, sentryPos, true) <= sq(minDist))

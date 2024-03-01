@@ -379,7 +379,7 @@ void DoSentryBusterWave()
 		if (builder <= 0)
 			continue;
 		
-		if (g_hPlayerExtraSentryList[builder].FindValue(entity) != INVALID_ENT) // Don't count disposable sentries
+		if (IsSentryDisposable(entity)) // Don't count disposable sentries
 			continue;
 		
 		sentryList.Push(entity);

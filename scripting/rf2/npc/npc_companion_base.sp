@@ -3,6 +3,8 @@
 
 static CEntityFactory g_Factory;
 typedef OnStateChangeCallback = function void (RF2_Companion_Base npc, CompanionState oldState, CompanionState newState);
+static PrivateForward g_OnStateChange[MAX_EDICTS];
+
 enum AIType
 {
 	AI_CHASER, 			// Chase target
@@ -61,7 +63,6 @@ methodmap RF2_Companion_Base < RF2_NPC_Base
 			.DefineIntField("m_iAIType")
 			.DefineIntField("m_iLevel")
 			.DefineIntField("m_iState")
-			.DefineIntField("m_OnStateChanged")
 			.DefineFloatField("m_flMeleeDamage")
 			.DefineIntField("m_iMeleeDamageType")
 			.DefineFloatField("m_flAttackRange")
@@ -151,12 +152,12 @@ methodmap RF2_Companion_Base < RF2_NPC_Base
 	{
 		public get()
 		{
-			return view_as<PrivateForward>(this.GetProp(Prop_Data, "m_OnStateChanged"));
+			return g_OnStateChange[this.index];
 		}
 		
 		public set(PrivateForward value)
 		{
-			this.SetProp(Prop_Data, "m_OnStateChanged", value);
+			g_OnStateChange[this.index] = value;
 		}
 	}
 	
@@ -405,12 +406,13 @@ static void OnCreate(RF2_Companion_Base npc)
 
 static void OnRemove(RF2_Companion_Base npc)
 {
-	RequestFrame(RF_DeleteForward, npc.OnStateChange);
+	RequestFrame(RF_DeleteForward, npc);
 }
 
-static void RF_DeleteForward(PrivateForward fwd)
+static void RF_DeleteForward(RF2_Companion_Base npc)
 {
-	delete fwd;
+	delete npc.OnStateChange;
+	npc.OnStateChange = null;
 }
 
 static void CompanionThink(int entity)

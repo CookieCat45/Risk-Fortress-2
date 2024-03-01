@@ -106,6 +106,12 @@ void SetSentryBuildState(int client, bool state)
 	}
 }
 
+bool IsSentryDisposable(int sentry)
+{
+	int builder = GetEntPropEnt(sentry, Prop_Send, "m_hBuilder");
+	return IsValidClient(builder) && g_hPlayerExtraSentryList[builder] && g_hPlayerExtraSentryList[builder].FindValue(sentry) != INVALID_ENT;
+}
+
 public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookParam params)
 {
 	if (RF2_IsEnabled())
@@ -145,6 +151,12 @@ public MRESReturn DHook_SentryGunAttack(int entity)
 				time -= gameTime;
 				time *= GetPlayerFireRateMod(owner);
 				SetEntDataFloat(entity, offset, gameTime+time, true);
+			}
+			
+			if (IsSentryDisposable(entity) && GetEntProp(entity, Prop_Send, "m_iAmmoShells") <= 0)
+			{
+				SetEntityHealth(entity, 1);
+				RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
 			}
 		}
 	}

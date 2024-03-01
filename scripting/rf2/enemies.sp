@@ -430,7 +430,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 	
 	if (!bosses)
 		g_iEnemyCount = 0;
-
+	
 	bool firstKey;
 	char sectionName[16];
 	Enemy enemy;
@@ -708,8 +708,8 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	
 	float spawnPos[3];
 	// Engineers spawn further away from players
-	float extraDist = player && enemy.Class == TFClass_Engineer ? 2000.0 : 0.0;
-	float minSpawnDistance = minDist < 0.0 ? g_cvEnemyMinSpawnDistance.FloatValue + extraDist : minDist;
+	float extraDist = player && enemy.Class == TFClass_Engineer ? 3000.0 : 0.0;
+	float minSpawnDistance = minDist < 0.0 ? g_cvEnemyMinSpawnDistance.FloatValue : minDist;
 	float maxSpawnDistance = maxDist < 0.0 ? g_cvEnemyMaxSpawnDistance.FloatValue + extraDist : maxDist;
 	CNavArea area = GetSpawnPoint(checkPos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
 	

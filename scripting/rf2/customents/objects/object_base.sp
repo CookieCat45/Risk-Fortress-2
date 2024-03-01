@@ -3,6 +3,7 @@
 
 static CEntityFactory g_Factory;
 typedef OnInteractCallback = function Action(int client, RF2_Object_Base obj);
+static PrivateForward g_OnInteract[MAX_EDICTS];
 
 methodmap RF2_Object_Base < CBaseAnimating
 {
@@ -34,7 +35,6 @@ methodmap RF2_Object_Base < CBaseAnimating
 		g_Factory.IsAbstract = true;
 		g_Factory.DeriveFromClass("prop_dynamic_override");
 		g_Factory.BeginDataMapDesc()
-			.DefineIntField("m_OnInteract")
 			.DefineFloatField("m_flCost", _, "cost")
 			.DefineBoolField("m_bActive", _, "active")
 			.DefineBoolField("m_bMapPlaced")
@@ -53,12 +53,12 @@ methodmap RF2_Object_Base < CBaseAnimating
 	{
 		public get()
 		{
-			return view_as<PrivateForward>(this.GetProp(Prop_Data, "m_OnInteract"));
+			return g_OnInteract[this.index];
 		}
 
 		public set(PrivateForward fwd)
 		{
-			this.SetProp(Prop_Data, "m_OnInteract", fwd);
+			g_OnInteract[this.index] = fwd;
 		}
 	}
 	
@@ -387,13 +387,13 @@ static Action Timer_WorldText(Handle timer, int entity)
 
 static void OnRemove(RF2_Object_Base obj)
 {
-	RequestFrame(RF_DeleteForward, obj.OnInteractForward);
+	RequestFrame(RF_DeleteForward, obj);
 }
 
-static void RF_DeleteForward(PrivateForward fwd)
+static void RF_DeleteForward(RF2_Object_Base obj)
 {
-	if (fwd)
-		delete fwd;
+	delete obj.OnInteractForward;
+	obj.OnInteractForward = null;
 }
 
 // This is activated from a voicecommand callback.
