@@ -22,6 +22,7 @@ void BakeCookies()
 	g_coTutorialItemPickup = RegClientCookie("rf2_tutorial_item_pickup", "Item pickup tutorial.", CookieAccess_Public);
 	g_coTutorialSurvivor = RegClientCookie("rf2_tutorial_survivor", "Survivor tutorial.", CookieAccess_Public);
 	g_coNewPlayer = RegClientCookie("rf2_new_player", "New Player", CookieAccess_Private);
+	g_coDisableItemMessages = RegClientCookie("rf2_disable_item_msg", "Disable item chat messages", CookieAccess_Protected);
 	
 	char name[64];
 	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
@@ -92,6 +93,13 @@ public void OnClientCookiesCached(int client)
 		SetCookieBool(client, g_coBecomeEnemy, true);
 	}
 	
+	// Item Message Preference
+	GetClientCookie(client, g_coDisableItemMessages, buffer, sizeof(buffer));
+	if (!buffer[0])
+	{
+		SetCookieBool(client, g_coDisableItemMessages, false);
+	}
+
 	// Survivor Points
 	GetClientCookie(client, g_coSurvivorPoints, buffer, sizeof(buffer));
 	if (!buffer[0])

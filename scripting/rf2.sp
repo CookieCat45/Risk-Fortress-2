@@ -161,7 +161,6 @@ int g_iPlayerUnusualsUnboxed[MAXTF2PLAYERS];
 char g_szPlayerOriginalName[MAXTF2PLAYERS][MAX_NAME_LENGTH];
 ArrayList g_hPlayerExtraSentryList[MAXTF2PLAYERS];
 StringMap g_hCrashedPlayerSteamIDs;
-ArrayList g_hSurvivorPlayers; // players who became Survivor at least once
 Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
 
 // Entities
@@ -289,6 +288,7 @@ Cookie g_coBecomeEnemy;
 Cookie g_coItemsCollected[4];
 Cookie g_coAchievementCookies[MAX_ACHIEVEMENTS];
 Cookie g_coNewPlayer;
+Cookie g_coDisableItemMessages;
 
 // TFBots
 TFBot g_TFBot[MAXTF2PLAYERS];
@@ -372,7 +372,6 @@ public void OnPluginStart()
 	LoadTranslations("rf2_achievements.phrases");
 	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
-	g_hSurvivorPlayers = new ArrayList(MAX_AUTHID_LENGTH);
 	g_iFileTime = GetPluginModifiedTime();
 }
 
@@ -387,7 +386,7 @@ public void OnPluginEnd()
 		{
 			g_TFBot[i].Follower.Destroy();
 		}
-
+		
 		if (RF2_IsEnabled() && IsValidClient(i))
 		{
 			if (!IsPlayerSpectator(i))
@@ -1197,7 +1196,10 @@ public void OnClientDisconnect_Post(int client)
 {
 	g_flLoopMusicAt[client] = -1.0;
 	if (g_hPlayerExtraSentryList[client])
+	{
 		delete g_hPlayerExtraSentryList[client];
+		g_hPlayerExtraSentryList[client] = null;
+	}
 	
 	if (g_TFBot[client].Follower)
 	{
@@ -1357,16 +1359,17 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	AcceptEntityInput(gamerules, "SetRedTeamRespawnWaveTime");
 	SetVariantInt(9999);
 	AcceptEntityInput(gamerules, "SetBlueTeamRespawnWaveTime");
-
 	SpawnObjects();
-
-	if (g_hPlayerTimer != null)
+	
+	if (g_hPlayerTimer)
 		delete g_hPlayerTimer;
-	if (g_hHudTimer != null)
-		delete g_hHudTimer;
-	if (g_hDifficultyTimer != null)
-		delete g_hDifficultyTimer;
 
+	if (g_hHudTimer)
+		delete g_hHudTimer;
+
+	if (g_hDifficultyTimer)
+		delete g_hDifficultyTimer;
+	
 	g_hPlayerTimer = CreateTimer(0.1, Timer_PlayerTimer, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	g_hHudTimer = CreateTimer(0.1, Timer_PlayerHud, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	g_hDifficultyTimer = CreateTimer(1.0, Timer_Difficulty, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
@@ -3168,21 +3171,27 @@ public Action OnVoiceCommand(int client, const char[] command, int args)
 	
 	int num1 = GetCmdArgInt(1);
 	int num2 = GetCmdArgInt(2);
-	
+	if (num1 == 0 && num2 == 0)
+	{
+		return OnCallForMedic(client);
+	}
+
+	return Plugin_Continue;
+}
+
+Action OnCallForMedic(int client)
+{
 	if (!IsPlayerAlive(client))
 	{
-		if (num1 == 0 && num2 == 0)
+		for (int i = 1; i <= MaxClients; i++)
 		{
-			for (int i = 1; i <= MaxClients; i++)
+			if (i == client || !IsClientInGame(i) || !IsPlayerSurvivor(i))
+				continue;
+			
+			if (GetEntPropEnt(client, Prop_Send, "m_hObserverTarget") == i)
 			{
-				if (i == client || !IsClientInGame(i) || !IsPlayerSurvivor(i))
-					continue;
-				
-				if (GetEntPropEnt(client, Prop_Send, "m_hObserverTarget") == i)
-				{
-					ShowItemMenu(client, i);
-					break;
-				}
+				ShowItemMenu(client, i);
+				break;
 			}
 		}
 		
@@ -3191,52 +3200,49 @@ public Action OnVoiceCommand(int client, const char[] command, int args)
 	
 	if (IsPlayerSurvivor(client))
 	{
-		if (num1 == 0 && num2 == 0) // Medic!
+		if (GetClientButtons(client) & IN_SCORE)
 		{
-			if (GetClientButtons(client) & IN_SCORE)
+			ShowItemMenu(client); // shortcut
+			return Plugin_Handled;
+		}
+		else
+		{
+			int target = GetClientAimTarget(client);
+			if (IsValidClient(target) && IsPlayerSurvivor(target))
 			{
-				ShowItemMenu(client); // shortcut
+				ShowItemMenu(client, target);
 				return Plugin_Handled;
 			}
-			else
+		}
+		
+		if (PickupItem(client))
+			return Plugin_Handled;
+		
+		float eyePos[3], eyeAng[3], endPos[3], direction[3];
+		GetClientEyePosition(client, eyePos);
+		GetClientEyeAngles(client, eyeAng);
+		GetAngleVectors(eyeAng, direction, NULL_VECTOR, NULL_VECTOR);
+		NormalizeVector(direction, direction);
+		const float range = 100.0;
+		CopyVectors(eyePos, endPos);
+		endPos[0] += direction[0] * range;
+		endPos[1] += direction[1] * range;
+		endPos[2] += direction[2] * range;
+		TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID, RayType_EndPoint, TraceFilter_DontHitSelf, client);
+		TR_GetEndPosition(endPos);
+		RF2_Object_Base obj = RF2_Object_Base(GetNearestEntity(endPos, "rf2_object*"));
+		if (obj.IsValid())
+		{
+			float pos[3];
+			obj.GetAbsOrigin(pos);
+			if (GetVectorDistance(endPos, pos, true) <= sq(range))
 			{
-				int target = GetClientAimTarget(client);
-				if (IsValidClient(target) && IsPlayerSurvivor(target))
-				{
-					ShowItemMenu(client, target);
-					return Plugin_Handled;
-				}
-			}
-			
-			if (PickupItem(client))
-				return Plugin_Handled;
-			
-			float eyePos[3], eyeAng[3], endPos[3], direction[3];
-			GetClientEyePosition(client, eyePos);
-			GetClientEyeAngles(client, eyeAng);
-			GetAngleVectors(eyeAng, direction, NULL_VECTOR, NULL_VECTOR);
-			NormalizeVector(direction, direction);
-			const float range = 100.0;
-			CopyVectors(eyePos, endPos);
-			endPos[0] += direction[0] * range;
-			endPos[1] += direction[1] * range;
-			endPos[2] += direction[2] * range;
-			TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID, RayType_EndPoint, TraceFilter_DontHitSelf, client);
-			TR_GetEndPosition(endPos);
-			RF2_Object_Base obj = RF2_Object_Base(GetNearestEntity(endPos, "rf2_object*"));
-			if (obj.IsValid())
-			{
-				float pos[3];
-				obj.GetAbsOrigin(pos);
-				if (GetVectorDistance(endPos, pos, true) <= sq(range))
-				{
-					Call_StartForward(obj.OnInteractForward);
-					Call_PushCell(client);
-					Call_PushCell(obj);
-					Action action;
-					Call_Finish(action);
-					return action;
-				}
+				Call_StartForward(obj.OnInteractForward);
+				Call_PushCell(client);
+				Call_PushCell(obj);
+				Action action;
+				Call_Finish(action);
+				return action;
 			}
 		}
 	}
@@ -3248,7 +3254,7 @@ public Action OnChangeClass(int client, const char[] command, int args)
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive)
 		return Plugin_Continue;
-
+	
 	char arg1[32];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	TFClassType desiredClass = TF2_GetClass(arg1);

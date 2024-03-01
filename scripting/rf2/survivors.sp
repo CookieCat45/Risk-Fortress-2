@@ -233,7 +233,6 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	
 	char authId[MAX_AUTHID_LENGTH];
 	bool hasId = GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId));
-	bool wasSurvivor = hasId && g_hSurvivorPlayers.FindString(authId) != -1;
 	if (loadInventory)
 	{
 		// likely a mid-game join, so get us up to speed
@@ -243,7 +242,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 		const int collectorLimit = 10;
 		int collectorItems;
 		itemsToGive -= g_iSurvivorGivenItems[index];
-		if (g_bGameInitialized && hasId && !wasSurvivor && itemsToGive > 0 && !DoesClientOwnInventory(client, index))
+		if (g_bGameInitialized && hasId && itemsToGive > 0 && !DoesClientOwnInventory(client, index))
 		{
 			// if we join in a game and our inventory is empty, get us up to speed
 			float highestXp = GetHighestSurvivorXP();
@@ -293,11 +292,6 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 				UpdatePlayerItem(client, i);
 			}
 		}
-	}
-	
-	if (hasId && g_hSurvivorPlayers.FindString(authId) == -1)
-	{
-		g_hSurvivorPlayers.PushString(authId);
 	}
 
 	if (!IsFakeClient(client) && !GetCookieBool(client, g_coTutorialSurvivor))

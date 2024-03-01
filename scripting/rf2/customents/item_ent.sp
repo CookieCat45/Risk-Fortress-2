@@ -352,14 +352,17 @@ bool PickupItem(int client)
 		{
 			TriggerAchievement(client, ACHIEVEMENT_HEADSPLITTER);
 		}
-
-		if (IsEquipmentItem(type))
+		
+		if (!GetCookieBool(client, g_coDisableItemMessages))
 		{
-			RF2_PrintToChatAll("%t", "PickupItemStrange", client, qualityTag, itemName);
-		}
-		else
-		{
-			RF2_PrintToChatAll("%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, type));
+			if (IsEquipmentItem(type))
+			{
+				RF2_PrintToChatAll("%t", "PickupItemStrange", client, qualityTag, itemName);
+			}
+			else
+			{
+				RF2_PrintToChatAll("%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, type));
+			}
 		}
 		
 		EmitSoundToAll(SND_ITEM_PICKUP, client);

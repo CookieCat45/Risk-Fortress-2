@@ -704,6 +704,12 @@
 		"#format"	"{1:s}"
 		"en"		"Toggle music ({1})"
 	}
+	
+	"ToggleItemMsg"
+	{
+		"#format"	"{1:s}"
+		"en"		"Toggle item chat messages ({1})"
+	}
 
 	"StayInSpec"
 	{

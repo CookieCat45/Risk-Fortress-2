@@ -149,7 +149,6 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 		{
 			action = Plugin_Changed;
 			flags |= OVERRIDE_ATTRIBUTES;
-			
 			int attribArray[MAX_ATTRIBUTES];
 			float valueArray[MAX_ATTRIBUTES];
 			int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);

@@ -41,6 +41,8 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_itemlog", Command_ItemLog, "Shows a list of items that you've collected.");
 	RegConsoleCmd("rf2_logbook", Command_ItemLog, "Shows a list of items that you've collected.");
 	RegConsoleCmd("rf2_achievements", Command_Achievements, "Shows a list of achievements in Risk Fortress 2.");
+	RegConsoleCmd("rf2_use_strange", Command_UseStrange, "Uses your Strange item, meant to be binded to a key from the console");
+	RegConsoleCmd("rf2_interact", Command_Interact, "Functions identically to the E key, can be binded to a key from the console");
 	//RegConsoleCmd("rf2_helpmenu", Command_HelpMenu, "Shows the help menu.");
 	
 	char buffer[8];
@@ -802,6 +804,47 @@ public int Menu_ItemInfo(Menu menu, MenuAction action, int param1, int param2)
 	return 0;
 }
 
+public Action Command_UseStrange(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	if (!IsPlayerAlive(client) || GetPlayerEquipmentItem(client) == Item_Null)
+	{
+		return Plugin_Handled;
+	}
+	
+	ActivateStrangeItem(client);
+	return Plugin_Handled;
+}
+
+public Action Command_Interact(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	OnCallForMedic(client);
+	return Plugin_Handled;
+}
+
 public Action Command_Achievements(int client, int args)
 {
 	if (!RF2_IsEnabled())
@@ -1333,6 +1376,9 @@ void ShowClientSettingsMenu(int client)
 	
 	FormatEx(buffer, sizeof(buffer), "%T", "ToggleMusic", lang, GetCookieBool(client, g_coMusicEnabled) ? on : off);
 	menu.AddItem("rf2_music_enabled", buffer);
+	
+	FormatEx(buffer, sizeof(buffer), "%T", "ToggleItemMsg", lang, !GetCookieBool(client, g_coDisableItemMessages) ? on : off);
+	menu.AddItem("rf2_disable_item_msg", buffer);
 	
 	menu.Display(client, MENU_TIME_FOREVER);
 }
