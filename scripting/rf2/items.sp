@@ -614,7 +614,7 @@ void UpdatePlayerItem(int client, int item)
 				{
 					if (PlayerHasItem(client, ItemEngi_Teddy))
 					{
-						float maxMetal = CalcItemMod(client, item, 0);
+						float maxMetal = 1.0 + CalcItemMod(client, item, 0);
 						float constructRate = 1.0 + CalcItemMod(client, item, 1);
 						TF2Attrib_SetByDefIndex(wrench, 80, maxMetal); // "maxammo metal increased"
 						TF2Attrib_SetByDefIndex(wrench, 92, constructRate); // "Construction rate increased"
