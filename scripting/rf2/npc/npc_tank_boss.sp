@@ -428,7 +428,6 @@ public void Hook_BadassTankThink(int entity)
 {
 	float gameTime = GetGameTime();
 	int special = GetEntProp(entity, Prop_Data, "m_iSpecialAttack");
-	
 	if (special != SPECIAL_BARRAGE)
 	{
 		float nextRocketAttack[2];
@@ -445,7 +444,7 @@ public void Hook_BadassTankThink(int entity)
 			{
 				float pos[3], angles[3];
 				const float speed = 1100.0;
-				const float damage = 200.0;
+				const float damage = 150.0;
 				GetEntityAttachment(entity, attachment, pos, NULL_VECTOR);
 				GetEntPropVector(entity, Prop_Send, "m_angRotation", angles);
 				
@@ -568,8 +567,8 @@ public void Hook_BadassTankThink(int entity)
 					float duration;
 					switch (RF2_GetDifficulty())
 					{
-						case DIFFICULTY_STEEL: duration = 12.5;
-						case DIFFICULTY_TITANIUM: duration = 17.0;
+						//case DIFFICULTY_STEEL: duration = 12.5;
+						//case DIFFICULTY_TITANIUM: duration = 17.0;
 						default: duration = 9.0;
 					}
 					
@@ -646,10 +645,6 @@ public void Hook_BadassTankThink(int entity)
 						}
 						
 						CBaseAnimating(entity).SetPoseParameter(poseParam, value);
-						
-						const float speed = 1250.0;
-						const float damage = 50.0;
-						
 						float laserPos[3], dir[3];
 						GetAngleVectors(angles, dir, NULL_VECTOR, NULL_VECTOR);
 						NormalizeVector(dir, dir);
@@ -657,14 +652,15 @@ public void Hook_BadassTankThink(int entity)
 						laserPos[1] = pos[1] + dir[1] * 15.0;
 						laserPos[2] = pos[2] + 10.0;
 						
+						const float speed = 1000.0;
+						const float damage = 35.0;
 						int laser = ShootProjectile(entity, "tf_projectile_rocket", pos, angles, speed, damage);
 						SetEntityModel2(laser, MODEL_INVISIBLE);
 						EmitSoundToAll(SND_TANK_LASERSHOOT, entity, _, 120);
 						SpawnInfoParticle("drg_cow_rockettrail_fire_blue", pos, _, laser);
 						SpawnInfoParticle("teleported_flash", laserPos, 0.1);
-						
 						float fireRate = float(GetEntProp(entity, Prop_Data, "m_iHealth")) / float(GetEntProp(entity, Prop_Data, "m_iActualMaxHealth"));
-						fireRate = fmax(fireRate, 0.3);
+						fireRate = fmax(fireRate, 0.5);
 						nextShot[entity] = tickedTime + (0.2 * fireRate);
 					}
 				}
@@ -685,8 +681,8 @@ public void Hook_BadassTankThink(int entity)
 					int rocketCount = 15;
 					switch (RF2_GetDifficulty())
 					{
-						case DIFFICULTY_STEEL: rocketCount += 5;
-						case DIFFICULTY_TITANIUM: rocketCount += 10;
+						//case DIFFICULTY_STEEL: rocketCount += 5;
+						//case DIFFICULTY_TITANIUM: rocketCount += 10;
 					}
 					
 					float time = 0.2;
@@ -718,7 +714,7 @@ public Action Timer_TankFireHomingRockets(Handle timer, int entity)
 	{
 		GetEntityAttachment(entity, attachment[i], pos, NULL_VECTOR);
 		const float speed = 1000.0;
-		const float damage = 135.0;
+		const float damage = 100.0;
 		
 		float angles[3];
 		angles[0] = -90.0;

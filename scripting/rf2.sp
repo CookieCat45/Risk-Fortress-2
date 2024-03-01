@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.5.5b"
+#define PLUGIN_VERSION "0.5.6b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -1974,7 +1974,7 @@ public Action OnPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 			int stacks = GetItemModInt(ItemSniper_Bloodhound, 0) + CalcItemModInt(attacker, ItemSniper_Bloodhound, 1, -1);
 			for (int i = 1; i <= stacks; i++)
 			{
-				TF2_MakeBleed(victim, attacker, GetItemMod(ItemSniper_Bloodhound, 0));
+				TF2_MakeBleed(victim, attacker, GetItemMod(ItemSniper_Bloodhound, 2));
 			}
 			
 			if (stacks >= 20)
@@ -4163,7 +4163,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		damage *= 0.8;
 	}
 	
-	if ((victimIsBuilding || victimIsNpc) && attackerIsClient && PlayerHasItem(attacker, Item_Graybanns))
+	if ((victimIsBuilding || victimIsNpc || victimIsClient && IsBoss(victim)) && attackerIsClient && PlayerHasItem(attacker, Item_Graybanns))
 	{
 		damage *= 1.0 + CalcItemMod(attacker, Item_Graybanns, 0);
 	}
@@ -4278,10 +4278,24 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			}
 		}
 		
+		bool afterburn;
 		switch (damageCustom)
 		{
-			case TF_CUSTOM_BLEEDING, TF_CUSTOM_BURNING, 
-				TF_CUSTOM_BURNING_FLARE, TF_CUSTOM_BURNING_ARROW, TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING: proc *= 0.0;
+			case TF_CUSTOM_BLEEDING:
+			{
+				proc *= 0.0;
+				float bonus = 1.0;
+				bonus += CalcItemMod(attacker, Item_Antlers, 2);
+				bonus += CalcItemMod(attacker, ItemSniper_Bloodhound, 3);
+				bonus += CalcItemMod(attacker, Item_Executioner, 4);
+				damage *= bonus;
+			}
+			
+			case TF_CUSTOM_BURNING, TF_CUSTOM_BURNING_FLARE, TF_CUSTOM_BURNING_ARROW, TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING:
+			{
+				afterburn = true;
+				proc *= 0.0;
+			}
 			
 			case TF_CUSTOM_PENETRATE_ALL_PLAYERS, TF_CUSTOM_PENETRATE_HEADSHOT:
 			{
@@ -4333,7 +4347,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		
 		if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
 		{
-			if (victimIsClient && damageType & DMG_MELEE && (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro)))
+			if (victimIsClient && !afterburn && (damageType & DMG_MELEE || validWeapon && GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary) == weapon)
+				&& (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro)))
 			{
 				TF2_AddCondition(victim, TFCond_MarkedForDeathSilent, CalcItemMod(attacker, ItemPyro_LastBreath, 0), attacker);
 			}
@@ -4503,7 +4518,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					damage *= CalcItemMod_HyperbolicInverted(attacker, Item_Goalkeeper, 2);
 				}
 			}
-
+			
 			if (PlayerHasItem(attacker, ItemSpy_CounterfeitBillycock) && CanUseCollectorItem(attacker, ItemSpy_CounterfeitBillycock))
 			{
 				if (TF2_IsPlayerInCondition(attacker, TFCond_Disguised) || TF2_IsPlayerInCondition(attacker, TFCond_DisguiseRemoved))
@@ -4529,7 +4544,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				}
 			}
 			
-			if (halloweenNpc && damageType & DMG_CRIT && IsSkeleton(victim))
+			bool skeleton = IsSkeleton(victim);
+			if (skeleton && validWeapon && GetPlayerWeaponSlot(attacker, WeaponSlot_Primary) == weapon && TF2Attrib_HookValueInt(0, "mod use metal ammo type", weapon) > 0)
+			{
+				// Skeletons don't give widowmaker ammo by default
+				GivePlayerAmmo(attacker, RoundToFloor(damage), TFAmmoType_Metal, true);
+			}
+			
+			if (halloweenNpc && skeleton && damageType & DMG_CRIT)
 			{
 				// Skeletons normally don't take crit damage
 				damage *= 3.0;
@@ -4540,18 +4562,27 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		if (strcmp2(inflictorClassname, "headless_hatman")) // this guy does 80% of victim HP by default, that is a big nono
 		{
-			damage = 300.0 * GetEnemyDamageMult();
+			damage = 250.0 * GetEnemyDamageMult();
+			if (victimIsClient && IsPlayerSurvivor(victim))
+			{
+				damage *= 0.75;
+			}
 		}
 		else
 		{
 			// Monoculus insta-kills players who touch his portal when he is spawning, prevent this
-			if (strcmp2(inflictorClassname, "eyeball_boss") && damageCustom == TF_CUSTOM_PLASMA)
+			bool monoculus = strcmp2(inflictorClassname, "eyeball_boss");
+			if (monoculus && damageCustom == TF_CUSTOM_PLASMA)
 			{
 				damage = 0.0;
 				return Plugin_Changed;
 			}
 			
 			damage *= GetEnemyDamageMult();
+			if (monoculus && victimIsClient && IsPlayerSurvivor(victim))
+			{
+				damage *= 0.75;
+			}
 		}
 	}
 	
@@ -4895,7 +4926,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 						{
 							damage *= 1.0 + CalcItemMod(attacker, Item_TombReaders, 0);
 						}
-
+						
 						if (PlayerHasItem(attacker, Item_SaxtonHat) && damageType & DMG_MELEE && damageCustom != TF_CUSTOM_BACKSTAB)
 						{
 							damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 1);
@@ -4908,7 +4939,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					{
 						if (RandChanceFloatEx(attacker, 0.001, 1.0, GetItemMod(Item_Executioner, 0) * proc))
 						{
-							TF2_MakeBleed(victim, attacker, CalcItemMod(attacker, Item_Executioner, 1));
+							TF2_MakeBleed(victim, attacker, GetItemMod(Item_Executioner, 1));
 							g_bExecutionerBleedCooldown[attacker] = true;
 							CreateTimer(0.2, Timer_ExecutionerBleedCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 						}

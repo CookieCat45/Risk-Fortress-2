@@ -436,7 +436,9 @@ static void OnCreate(RF2_Object_Teleporter teleporter)
 static void OnRemove(RF2_Object_Teleporter teleporter)
 {
 	if (teleporter.Bubble.IsValid())
+	{
 		RemoveEntity2(teleporter.Bubble.index);
+	}
 }
 
 static Action Teleporter_OnInteract(int client, RF2_Object_Teleporter teleporter)
@@ -549,12 +551,11 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 		{
 			GetEntPos(i, pos);
 			distance = GetVectorDistance(pos, telePos);
-			
 			if (distance <= radius)
 			{
 				if (chargeToSet < 100.0)
 				{
-					chargeToSet += 0.1 / aliveSurvivors;
+					chargeToSet += fmax(0.1 / float(aliveSurvivors), 0.03 -(float(aliveSurvivors-1)*0.001));
 				}
 				
 				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Teleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);

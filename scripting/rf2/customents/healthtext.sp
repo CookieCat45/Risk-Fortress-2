@@ -218,9 +218,9 @@ public void RF_UpdateText(int entity)
 		maxHealth = target.GetProp(Prop_Data, "m_iMaxHealth");
 	}
 	
-	static char str[256], name[128];
+	static char str[256];//, name[128];
 	FormatEx(str, sizeof(str), "%i / %i", health, maxHealth);
-	text.GetDisplayName(name, sizeof(name));
+	//text.GetDisplayName(name, sizeof(name));
 	/*
 	if (name[0])
 	{

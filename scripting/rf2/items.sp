@@ -956,7 +956,6 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 	if (PlayerHasItem(attacker, Item_Executioner) && critType == CritType_Crit)
 	{
 		float radius = GetItemMod(Item_Executioner, 2);
-		float bleedTime = CalcItemMod(attacker, Item_Executioner, 3);
 		float victimPos[3], enemyPos[3];
 		GetEntPos(victim, victimPos);
 		victimPos[2] += 30.0;
@@ -973,7 +972,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 			
 			if (!TR_DidHit() && GetVectorDistance(victimPos, enemyPos, true) <= sq(radius))
 			{
-				TF2_MakeBleed(i, attacker, bleedTime);
+				TF2_MakeBleed(i, attacker, GetItemMod(Item_Executioner, 3));
 			}
 		}
 	}
@@ -1182,11 +1181,10 @@ bool ActivateStrangeItem(int client)
 			bool projectileArc;
 			
 			// This item may cast a spell beneficial to the user, or backfire and harm them instead.
-			if (RandChanceIntEx(client, 1, 8, 7))
+			int luck = GetPlayerLuckStat(client);
+			if (RandChanceFloatEx(client, 1.0, 5.0, 4.0+(float(luck)*0.2)))
 			{
-				int luck = GetPlayerLuckStat(client);
-				
-				switch (GetRandomInt(1 + imin(luck, 18), 18))
+				switch (GetRandomInt(1 + imin(luck, 13), 15))
 				{
 					case 1, 2, 3:
 					{
@@ -1203,37 +1201,25 @@ bool ActivateStrangeItem(int client)
 						response = "TLK_PLAYER_CAST_MERASMUS_ZAP";
 						projectileArc = true;
 					}
-					case 7, 8, 9:
-					{
-						spellType = "BlastJump";
-						sound = SND_SPELL_JUMP;
-						response = "TLK_PLAYER_CAST_BLAST_JUMP";
-					}
 					case 10, 11, 12:
 					{
 						spellType = "Overheal";
 						sound = SND_SPELL_OVERHEAL;
 						response = "TLK_PLAYER_CAST_SELF_HEAL";
 					}
-					case 13, 14, 15:
-					{
-						spellType = "Stealth";
-						sound = SND_SPELL_STEALTH;
-						response = "TLK_PLAYER_CAST_STEALTH";
-					}
-					case 16:
+					case 13:
 					{
 						spellType = "tf_projectile_spellmeteorshower";
 						sound = SND_SPELL_METEOR;
 						response = "TLK_PLAYER_CAST_METEOR_SWARM";
 						projectileArc = true;
 					}
-					case 17:
+					case 14:
 					{
 						spellType = "tf_projectile_spellspawnboss";
 						response = "TLK_PLAYER_CAST_MONOCULOUS";
 					}
-					case 18:
+					case 15:
 					{
 						spellType = "tf_projectile_lightningorb";
 						sound = SND_SPELL_LIGHTNING;
