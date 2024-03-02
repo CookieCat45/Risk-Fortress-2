@@ -366,7 +366,7 @@ public bool SentryBusterPath_FilterOnlyActors(int entity, int contentsMask, int 
 
 void DoSentryBusterWave()
 {
-	ArrayList sentryList = CreateArray();
+	ArrayList sentryList = new ArrayList();
 	int builder;
 	int entity = MaxClients+1;
 	

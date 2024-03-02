@@ -27,7 +27,7 @@ enum
 	Item_BanditsBoots = 10,
 	Item_TripleA = 11,
 	Item_ClassCrown = 12,
-	Item_ProofOfPurchase = 13,
+	ItemPyro_BrigadeHelm = 13,
 	Item_Dangeresque = 14,
 	Item_Law = 15,
 	ItemStrange_VirtualViewfinder = 16,

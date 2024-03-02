@@ -147,9 +147,9 @@ int SpawnObjects()
 	float distance = SquareRoot(length * width);
 	GetWorldCenter(worldCenter);
 	
-	ArrayList objectArray = CreateArray(128);
-	ArrayList crateArray = CreateArray();
-
+	ArrayList objectArray = new ArrayList(128);
+	ArrayList crateArray = new ArrayList();
+	
 	const int objectCount = 8;
 	int crateWeight = 50;
 	int largeWeight = 8;

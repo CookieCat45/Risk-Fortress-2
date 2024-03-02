@@ -275,7 +275,7 @@ bool RollAttackCrit(int client, int damageType=DMG_GENERIC, int damageCustom=-1)
 		{
 			critChance += CalcItemMod(client, Item_TombReaders, 0);
 		}
-
+		
 		if (PlayerHasItem(client, Item_SaxtonHat) && melee)
 		{
 			critChance += CalcItemMod(client, Item_SaxtonHat, 1);

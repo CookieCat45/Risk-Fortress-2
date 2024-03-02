@@ -248,7 +248,7 @@ public Action Timer_CreateTankBoss(Handle timer, bool badass)
 
 static int CreateTankBoss(bool badass=false)
 {
-	ArrayList spawnPoints = CreateArray();
+	ArrayList spawnPoints = new ArrayList();
 	int tankBoss = INVALID_ENT;
 	int spawn;
 	int entity = MaxClients+1;

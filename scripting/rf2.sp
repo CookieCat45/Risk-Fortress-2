@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.5.7b"
+#define PLUGIN_VERSION "0.5.8b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -298,7 +298,6 @@ ArrayList g_hTFBotEngineerBuildings[MAXTF2PLAYERS];
 //int g_iSpyDisguiseModels[10];
 bool g_bThrillerActive;
 int g_iThrillerRepeatCount;
-ArrayList g_hParticleEffectTable;
 ArrayList g_hActiveArtifacts;
 
 #include "rf2/overrides.sp"
@@ -370,7 +369,7 @@ public void OnPluginStart()
 	LoadTranslations("rf2.phrases");
 	LoadTranslations("rf2_artifacts.phrases");
 	LoadTranslations("rf2_achievements.phrases");
-	g_hActiveArtifacts = new ArrayList();
+	//g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
 	g_iFileTime = GetPluginModifiedTime();
 }
@@ -707,7 +706,6 @@ public void OnMapStart()
 		
 		g_hMainHudSync = CreateHudSynchronizer();
 		g_hObjectiveHudSync = CreateHudSynchronizer();
-		g_hParticleEffectTable = CreateArray(128);
 		
 		g_iMaxStages = FindMaxStages();
 		LoadMapSettings(mapName);
@@ -884,10 +882,8 @@ void CleanUp()
 	
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
-	delete g_hParticleEffectTable;
 	g_hCrashedPlayerSteamIDs.Clear();
 	SetAllInArray(g_hCrashedPlayerTimers, sizeof(g_hCrashedPlayerTimers), INVALID_HANDLE);
-	
 	StopMusicTrackAll();
 	DisableAllArtifacts();
 	
@@ -2504,7 +2500,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	
 	spawnCount = imax(imin(spawnCount, g_cvEnemyMaxSpawnWaveCount.IntValue), g_cvEnemyMinSpawnWaveCount.IntValue);
 	float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
-	ArrayList respawnArray = CreateArray();
+	ArrayList respawnArray = new ArrayList();
 	
 	// Reset everyone's points
 	if (g_iRespawnWavesCompleted <= 0)
@@ -3160,13 +3156,13 @@ public Action Timer_AFKManager(Handle timer)
 			}
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
 public Action OnVoiceCommand(int client, const char[] command, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!RF2_IsEnabled() || !IsClientInGame(client))
 		return Plugin_Continue;
 	
 	int num1 = GetCmdArgInt(1);
@@ -3375,9 +3371,9 @@ public void RF_CheckSpecTarget(int client)
 
 public Action OnBuildCommand(int client, const char[] command, int args)
 {
-	if (g_bWaitingForPlayers)
+	if (g_bWaitingForPlayers || !IsClientInGame(client))
 		return Plugin_Continue;
-
+	
 	if (GetClientTeam(client) == TEAM_ENEMY && GetCmdArgInt(1) == view_as<int>(TFObject_Teleporter))
 	{
 		if (args == 1 || GetCmdArgInt(2) == view_as<int>(TFObjectMode_Entrance))
@@ -4701,7 +4697,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		if (attackerIsClient && PlayerHasItem(attacker, Item_Antlers) 
 			&& damageCustom != TF_CUSTOM_BLEEDING && attacker != victim && inflictor != victim)
 		{
-			float chance = CalcItemMod(attacker, Item_Antlers, 0) * proc;
+			float chance = fmin(CalcItemMod(attacker, Item_Antlers, 0), 1.0) * proc;
 			if (RandChanceFloatEx(attacker, 0.001, 1.0, chance))
 			{
 				TF2_MakeBleed(victim, attacker, GetItemMod(Item_Antlers, 1));
@@ -5330,6 +5326,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 					}
 				}
 				
+				PrecacheSound(sample);
 				EmitSoundToAll(sample, client);
 				float duration = g_flPlayerGiantFootstepInterval[client] * (RF2_GetCalculatedSpeed(client) / RF2_GetBaseSpeed(client));
 				nextFootstepTime[client] = GetTickedTime() + duration;

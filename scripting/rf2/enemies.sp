@@ -577,7 +577,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 // Optionally can retrieve the config name.
 int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 {
-	ArrayList enemyList = CreateArray();
+	ArrayList enemyList = new ArrayList();
 	int selected;
 	
 	for (int i = 0; i < g_iEnemyCount; i++)
@@ -603,7 +603,7 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 // Optionally can retrieve the config name.
 int GetRandomBoss(bool getName = false, char[] buffer="", int size=0)
 {
-	ArrayList bossList = CreateArray();
+	ArrayList bossList = new ArrayList();
 	int selected;
 	
 	for (int i = 0; i < g_iEnemyCount; i++)

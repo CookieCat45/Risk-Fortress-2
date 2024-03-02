@@ -1166,7 +1166,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
 		
 		// If there are nearby buildings, sap them
-		ArrayList sentryList = CreateArray();
+		ArrayList sentryList = new ArrayList();
 		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 		{
 			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)

@@ -137,7 +137,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 							return 0;
 						}
 						
-						ArrayList itemList = CreateArray();
+						ArrayList itemList = new ArrayList();
 						int randomItem;
 						int itemCount[MAX_ITEMS];
 						

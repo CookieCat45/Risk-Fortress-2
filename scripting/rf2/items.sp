@@ -193,7 +193,7 @@ bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
 int GetRandomItem(int normalWeight=0, int genuineWeight=0, 
 	int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, bool allowHauntedStrange=true)
 {
-	ArrayList array = CreateArray();
+	ArrayList array = new ArrayList();
 	int quality, count, item;
 	
 	for (int i = 0; i < Quality_MaxValid; i++)
@@ -249,7 +249,7 @@ int GetRandomItem(int normalWeight=0, int genuineWeight=0,
 
 int GetRandomItemEx(int quality)
 {
-	ArrayList array = CreateArray();
+	ArrayList array = new ArrayList();
 	int item;
 	
 	for (int i = 1; i <= GetTotalItems(); i++)
@@ -278,7 +278,7 @@ int GetRandomItemEx(int quality)
 
 int GetRandomCollectorItem(TFClassType class)
 {
-	ArrayList array = CreateArray();
+	ArrayList array = new ArrayList();
 	int item;
 	
 	for (int i = 0; i <= GetTotalItems(); i++)
@@ -663,14 +663,14 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case ItemHeavy_ToughGuyToque:
 		{
-			if (CanUseCollectorItem(client, ItemHeavy_ToughGuyToque))
+			if (CanUseCollectorItem(client, item))
 			{
 				int minigun = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 				if (minigun > 0)
 				{
-					if (PlayerHasItem(client, ItemHeavy_ToughGuyToque))
+					if (PlayerHasItem(client, item))
 					{
-						float count = CalcItemMod(client, ItemHeavy_ToughGuyToque, 0);
+						float count = CalcItemMod(client, item, 0);
 						{
 							TF2Attrib_SetByDefIndex(minigun, 323, count); // "attack projectiles"
 						}
@@ -688,7 +688,7 @@ void UpdatePlayerItem(int client, int item)
 			int equipment = GetPlayerEquipmentItem(client);
 			if (equipment > Item_Null && g_flPlayerEquipmentItemCooldown[client] <= 0.0)
 			{
-				int maxCharges = CalcItemModInt(client, Item_BatteryCanteens, 1, 1);
+				int maxCharges = CalcItemModInt(client, item, 1, 1);
 				if (g_iPlayerEquipmentItemCharges[client] < maxCharges)
 				{
 					g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
@@ -699,9 +699,9 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case Item_Marxman:
 		{
-			if (PlayerHasItem(client, Item_Marxman))
+			if (PlayerHasItem(client, item))
 			{
-				float amount = CalcItemMod_HyperbolicInverted(client, Item_Marxman, 0);
+				float amount = CalcItemMod_HyperbolicInverted(client, item, 0);
 				TF2Attrib_SetByDefIndex(client, 178, amount); // "deploy time decreased"
 				
 				// These classes don't have weapons that benefit from accuracy bonuses (at least afaik)
@@ -710,7 +710,7 @@ void UpdatePlayerItem(int client, int item)
 				{
 					int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 					int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-					amount = CalcItemMod_HyperbolicInverted(client, Item_Marxman, 1);
+					amount = CalcItemMod_HyperbolicInverted(client, item, 1);
 					
 					if (primary > 0)
 					{
@@ -741,14 +741,14 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case ItemSoldier_WarPig:
 		{
-			if (CanUseCollectorItem(client, ItemSoldier_WarPig))
+			if (CanUseCollectorItem(client, item))
 			{
 				int launcher = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 				if (launcher > 0)
 				{
-					if (PlayerHasItem(client, ItemSoldier_WarPig))
+					if (PlayerHasItem(client, item))
 					{
-						float projSpeed = 1.0 + CalcItemMod(client, ItemSoldier_WarPig, 0);
+						float projSpeed = 1.0 + CalcItemMod(client, item, 0);
 						TF2Attrib_SetByDefIndex(launcher, 103, projSpeed); // "Projectile speed increased"
 					}
 					else
@@ -760,15 +760,15 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case ItemDemo_ScotchBonnet:
 		{
-			if (CanUseCollectorItem(client, ItemDemo_ScotchBonnet))
+			if (CanUseCollectorItem(client, item))
 			{
 				int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 				int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
 				if (primary > 0)
 				{
-					if (PlayerHasItem(client, ItemDemo_ScotchBonnet))
+					if (PlayerHasItem(client, item))
 					{
-						float projSpeed = 1.0 + CalcItemMod(client, ItemDemo_ScotchBonnet, 0);
+						float projSpeed = 1.0 + CalcItemMod(client, item, 0);
 						TF2Attrib_SetByDefIndex(primary, 103, projSpeed); // "Projectile speed increased"
 					}
 					else
@@ -779,9 +779,9 @@ void UpdatePlayerItem(int client, int item)
 				
 				if (secondary > 0)
 				{
-					if (PlayerHasItem(client, ItemDemo_ScotchBonnet))
+					if (PlayerHasItem(client, item))
 					{
-						float chargeRate = CalcItemMod_HyperbolicInverted(client, ItemDemo_ScotchBonnet, 1);
+						float chargeRate = CalcItemMod_HyperbolicInverted(client, item, 1);
 						TF2Attrib_SetByDefIndex(secondary, 670, chargeRate); // "stickybomb charge rate"
 					}
 					else
@@ -793,9 +793,9 @@ void UpdatePlayerItem(int client, int item)
 				int shield = GetPlayerShield(client);
 				if (shield > 0)
 				{
-					if (PlayerHasItem(client, ItemDemo_ScotchBonnet))
+					if (PlayerHasItem(client, item))
 					{
-						TF2Attrib_SetByDefIndex(shield, 249, 1.0 + CalcItemMod(client, ItemDemo_ScotchBonnet, 2));
+						TF2Attrib_SetByDefIndex(shield, 249, 1.0 + CalcItemMod(client, item, 2));
 					}
 					else
 					{
@@ -806,15 +806,35 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case ItemEngi_Toadstool:
 		{
-			if (CanUseCollectorItem(client, ItemEngi_Toadstool))
+			if (CanUseCollectorItem(client, item))
 			{
-				if (PlayerHasItem(client, ItemEngi_Toadstool))
+				if (PlayerHasItem(client, item))
 				{
-					TF2Attrib_SetByDefIndex(client, 345, 1.0 + CalcItemMod(client, ItemEngi_Toadstool, 1)); // "engy dispenser radius increased"
+					TF2Attrib_SetByDefIndex(client, 345, 1.0 + CalcItemMod(client, item, 1)); // "engy dispenser radius increased"
 				}
 				else
 				{
 					TF2Attrib_RemoveByDefIndex(client, 345);
+				}
+			}
+		}
+		case ItemPyro_BrigadeHelm:
+		{
+			if (CanUseCollectorItem(client, item))
+			{
+				int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+				if (primary != INVALID_ENT)
+				{
+					if (PlayerHasItem(client, item))
+					{
+						float value = GetItemMod(item, 1) * (1.0 - CalcItemMod_HyperbolicInverted(client, item, 0));
+						TF2Attrib_SetByDefIndex(primary, 839, value); // "flame_spread_degree"
+						TF2Attrib_SetByDefIndex(primary, 2, 1.0+CalcItemMod(client, item, 2)); // "damage bonus"
+					}
+					else
+					{
+						TF2Attrib_RemoveByDefIndex(primary, 839);
+					}
 				}
 			}
 		}
@@ -939,7 +959,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 		
 		if (PlayerHasItem(attacker, Item_Goalkeeper))
 		{
-			float chance = CalcItemMod_Hyperbolic(attacker, Item_Goalkeeper, 0);
+			float chance = fmin(CalcItemMod_Hyperbolic(attacker, Item_Goalkeeper, 0), 1.0);
 			if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
 			{
 				TF2_AddCondition(attacker, TFCond_CritOnKill, GetItemMod(Item_Goalkeeper, 1));
@@ -987,7 +1007,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 	{
 		g_flPlayerRegenBuffTime[attacker] = GetItemMod(Item_DapperTopper, 1);
 		g_flPlayerHealthRegenTime[attacker] = 0.0;
-		if (GetClientHealth(attacker) >= RF2_GetCalculatedMaxHealth(attacker) && RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(Item_DapperTopper, 2)))
+		if (GetClientHealth(attacker) >= RF2_GetCalculatedMaxHealth(attacker) && RandChanceFloatEx(attacker, 0.0, 1.0, fmin(1.0, GetItemMod(Item_DapperTopper, 2))))
 		{
 			float healPercent = CalcItemMod(attacker, Item_DapperTopper, 3);
 			float radius = GetItemMod(Item_DapperTopper, 4);
@@ -1032,6 +1052,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 			float recChance = CalcItemMod(0, Item_PillarOfHats, 1, total);
 			float refChance = CalcItemMod(0, Item_PillarOfHats, 2, total);
 			float totalChance = scrapChance + recChance + refChance;
+			totalChance = fmin(totalChance, 1.0);
 			float result;
 			
 			if (RandChanceFloatEx(attacker, 0.0, 1.0, totalChance, result))
@@ -1060,7 +1081,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 		
 		if (PlayerHasItem(attacker, Item_Dangeresque) && GetClientTeam(victim))
 		{
-			if (RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(Item_Dangeresque, 3)))
+			if (RandChanceFloatEx(attacker, 0.0, 1.0, fmin(1.0, GetItemMod(Item_Dangeresque, 3))))
 			{
 				int bomb = CreateEntityByName("tf_projectile_pipe");
 				float pos[3];

@@ -212,7 +212,7 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 	{
 		hitEnts = new ArrayList();
 	}
-
+	
 	while ((entity = FindEntityByClassname(entity, "*")) != -1)
 	{
 		if (entity < 1 || !allowSelfDamage && entity == attacker)
@@ -368,20 +368,13 @@ void PickupCash(int client, int entity)
 	if (client < 1 || IsPlayerSurvivor(client))
 	{
 		float modifier = 1.0;
-		ArrayList clientArray = CreateArray();
-
-		// Check for Proof of Purchase item first to make sure everyone gets the bonus
+		ArrayList clientArray = new ArrayList();
 		for (int i = 1; i <= MaxClients; i++)
 		{
 			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
 				continue;
-
+			
 			clientArray.Push(i);
-
-			if (PlayerHasItem(i, Item_ProofOfPurchase))
-			{
-				modifier += CalcItemMod(i, Item_ProofOfPurchase, 0);
-			}
 		}
 		
 		for (int i = 0; i < clientArray.Length; i++)
@@ -431,12 +424,6 @@ bool reset=false, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0
 {
 	TE_Start("TFParticleEffect");
 	int index = GetParticleEffectIndex(effectName);
-	if (index == -1)
-	{
-		// try to cache it
-		index = PrecacheParticleEffect(effectName);
-	}
-	
 	if (index > -1)
 	{
 		TE_WriteNum("m_iParticleSystemIndex", index);
@@ -480,12 +467,12 @@ bool reset=false, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0
 	}
 }
 
-int PrecacheParticleEffect(const char[] name)
+int GetParticleEffectIndex(const char[] name)
 {
 	int index;
 	int table = FindStringTable("ParticleEffectNames");
 	int count = GetStringTableNumStrings(table);
-	char buffer[128];
+	static char buffer[128];
 	
 	for (int i = 0; i < count; i++)
 	{
@@ -493,23 +480,16 @@ int PrecacheParticleEffect(const char[] name)
 		if (strcmp2(buffer, name))
 		{
 			index = i;
-			g_hParticleEffectTable.Resize(i+1);
-			g_hParticleEffectTable.SetString(i, name);
 			break;
 		}
 	}
-
+	
 	if (index < 0)
 	{
-		LogError("[PrecacheParticleEffect] Couldn't find particle effect \"%s\".", name);
+		LogError("[GetParticleEffectIndex] Couldn't find particle effect \"%s\".", name);
 	}
-
+	
 	return index;
-}
-
-int GetParticleEffectIndex(const char[] name)
-{
-	return g_hParticleEffectTable.FindString(name);
 }
 
 void SetEntItemProc(int entity, int item)
