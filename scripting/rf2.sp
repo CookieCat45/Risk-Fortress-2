@@ -369,7 +369,7 @@ public void OnPluginStart()
 	LoadTranslations("rf2.phrases");
 	LoadTranslations("rf2_artifacts.phrases");
 	LoadTranslations("rf2_achievements.phrases");
-	//g_hActiveArtifacts = new ArrayList();
+	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
 	g_iFileTime = GetPluginModifiedTime();
 }
@@ -1041,6 +1041,7 @@ public bool OnClientConnect(int client, char[] rejectmsg, int maxlen)
 {
 	if (RF2_IsEnabled())
 	{
+		UpdateGameDescription();
 		if (!g_bMapChanging && GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue+1)
 		{
 			FormatEx(rejectmsg, maxlen, "Max human player limit of %i has been reached", g_cvMaxHumanPlayers.IntValue);
@@ -4205,6 +4206,15 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		if (selfDamage && rangedDamage && IsPlayerSurvivor(victim))
 		{
 			damage *= 1.3;
+		}
+		
+		if (PlayerHasItem(victim, Item_Goalkeeper))
+		{
+			int activeWeapon = GetEntPropEnt(victim, Prop_Send, "m_hActiveWeapon");
+			if (activeWeapon != INVALID_ENT && activeWeapon == GetPlayerWeaponSlot(victim, WeaponSlot_Melee))
+			{
+				damage *= 1.0 + CalcItemMod(victim, Item_Goalkeeper, 3);
+			}
 		}
 	}
 	else if (victimIsNpc)

@@ -6,6 +6,7 @@
 #define SND_BOSS_DEFEATED "ui/halloween_boss_defeated.wav"
 #define MODEL_GRAVESTONE "models/props_manor/gravestone_03.mdl"
 #define KING_BASE_HEALTH 4000.0
+#define MINION_BASE_HEALTH 200.0
 static CEntityFactory g_Factory;
 
 methodmap RF2_Object_Gravestone < RF2_Object_Base
@@ -37,7 +38,7 @@ methodmap RF2_Object_Gravestone < RF2_Object_Base
 		g_Factory.Install();
 		HookMapStart(Gravestone_OnMapStart);
 	}
-
+	
 	public int SummonSkeletonKing()
 	{
 		float gravePos[3], pos[3];
@@ -56,7 +57,7 @@ methodmap RF2_Object_Gravestone < RF2_Object_Base
 			DispatchSpawn(king);
 			SDK_SetSkeletonType(king, 1); // Seems to reset after spawning, causing a bug where he t-poses after the ground slam attack
 			
-			int health = RoundToFloor(KING_BASE_HEALTH + ((RF2_GetEnemyLevel()-1)*250));
+			int health = RoundToFloor(KING_BASE_HEALTH + ((RF2_GetEnemyLevel()-1)*400));
 			SetEntProp(king, Prop_Data, "m_iMaxHealth", health);
 			SetEntProp(king, Prop_Data, "m_iHealth", health);
 			ToggleGlow(king, true, {0, 200, 50, 255});
@@ -64,6 +65,32 @@ methodmap RF2_Object_Gravestone < RF2_Object_Base
 			text.SetHealthColor(HEALTHCOLOR_HIGH, {0, 150, 0, 255});
 			HookSingleEntityOutput(king, "OnDeath", Output_OnSkeletonKingDeath, true);
 			UTIL_ScreenShake(gravePos, 10.0, 20.0, 5.0, 99999.0, SHAKE_START, true);
+			
+			// Spawn smaller skeletons too
+			int skeletonCount = imin(2+(g_iSubDifficulty*2), 15);
+			int skeleton;
+			health = RoundToFloor(MINION_BASE_HEALTH * GetEnemyHealthMult());
+			float minionPos[3];
+			for (int i = 1; i <= skeletonCount; i++)
+			{
+				int attempts;
+				while (attempts < 5)
+				{
+					if (GetSpawnPoint(pos, minionPos, 350.0, 3500.0, TEAM_SURVIVOR, _, _, _, MASK_NPCSOLID_BRUSHONLY, 35.0))
+					{
+						skeleton = CreateEntityByName("tf_zombie");
+						SetEntProp(skeleton, Prop_Data, "m_iTeamNum", 5);
+						TeleportEntity(skeleton, pos);
+						DispatchSpawn(skeleton);
+						SetEntProp(skeleton, Prop_Data, "m_iMaxHealth", health);
+						SetEntProp(skeleton, Prop_Data, "m_iHealth", health);
+						break;
+					}
+					
+					attempts++;
+				}
+			}
+			
 			return king;
 		}
 		

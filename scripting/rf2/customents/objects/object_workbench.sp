@@ -179,7 +179,7 @@ static void OnRemove(RF2_Object_Workbench bench)
 
 static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 {
-	ArrayList itemArray = CreateArray();
+	ArrayList itemArray = new ArrayList();
 	int quality = bench.Quality;
 	int benchItem = bench.Item;
 	int item;

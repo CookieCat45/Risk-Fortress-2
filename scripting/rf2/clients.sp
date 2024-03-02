@@ -268,7 +268,7 @@ bool RollAttackCrit(int client, int damageType=DMG_GENERIC, int damageCustom=-1)
 		badRolls = rollTimes * -1;
 		rollTimes = 1;
 	}
-
+	
 	if (!PlayerHasItem(client, Item_CrypticKeepsake))
 	{
 		if (PlayerHasItem(client, Item_TombReaders))
@@ -285,7 +285,7 @@ bool RollAttackCrit(int client, int damageType=DMG_GENERIC, int damageCustom=-1)
 	{
 		critChance += CalcItemMod(client, Item_CrypticKeepsake, 0);
 	}
-
+	
 	if (melee)
 	{
 		critChance *= g_cvMeleeCritChanceBonus.FloatValue;

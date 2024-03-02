@@ -96,7 +96,7 @@ void LoadCommandsAndCvars()
 	g_cvTankBoostDifficulty = CreateConVar("rf2_tank_boost_difficulty", "2", "For a Tank to gain a speed boost on lower health, the difficulty (not sub difficulty) level must be at least this value.", FCVAR_NOTIFY, true, 0.0, true, float(DIFFICULTY_TITANIUM));
 	g_cvSurvivorQuickBuild = CreateConVar("rf2_survivor_quick_build", "1", "If nonzero, Survivor team Engineer buildings will deploy instantly", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvEnemyQuickBuild = CreateConVar("rf2_enemy_quick_build", "1", "If nonzero, enemy team Engineer buildings will deploy instantly", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvMeleeCritChanceBonus = CreateConVar("rf2_melee_crit_chance_bonus", "2.0", "Critical hit chance bonus for melee weapons.", FCVAR_NOTIFY, true, 0.0);
+	g_cvMeleeCritChanceBonus = CreateConVar("rf2_melee_crit_chance_bonus", "1.0", "Critical hit chance bonus for melee weapons.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEngiMetalRegenInterval = CreateConVar("rf2_engineer_metal_regen_interval", "2.5", "Interval in seconds that an Engineer will regenerate metal, -1.0 to disable", FCVAR_NOTIFY);
 	g_cvEngiMetalRegenAmount = CreateConVar("rf2_engineer_metal_regen_amount", "30", "The base amount of metal an Engineer will regen per interval lapse", FCVAR_NOTIFY, true, 0.0);
 	g_cvHauntedKeyDropChanceMax = CreateConVar("rf2_haunted_key_drop_chance_max", "135", "1 in N chance for a Haunted Key to drop when an enemy is slain.", FCVAR_NOTIFY, true, 0.0);
@@ -776,8 +776,14 @@ void ShowItemInfo(int client, int item)
 	if (IsEquipmentItem(item))
 	{
 		char cooldown[32];
-		FormatEx(cooldown, sizeof(cooldown), "Cooldown: %.0f seconds", g_flEquipmentItemCooldown[item]);
+		FormatEx(cooldown, sizeof(cooldown), "Cooldown: %.1f seconds", g_flEquipmentItemCooldown[item]);
 		menu.AddItem("cooldown", cooldown, ITEMDRAW_DISABLED);
+		
+		if (g_flEquipmentItemMinCooldown[item] > 0.0)
+		{
+			FormatEx(cooldown, sizeof(cooldown), "Minimum Cooldown: %.1f seconds", g_flEquipmentItemMinCooldown[item]);
+			menu.AddItem("min_cooldown", cooldown, ITEMDRAW_DISABLED);
+		}
 	}
 	
 	menu.AddItem("desc", g_szItemDesc[item], ITEMDRAW_DISABLED);

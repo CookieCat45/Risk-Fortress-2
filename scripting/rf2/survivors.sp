@@ -224,9 +224,9 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 		}
 	}
 	
+	ChangeClientTeam(client, TEAM_SURVIVOR);
 	TF2_RemoveAllWeapons(client);
 	TF2_RemoveAllWearables(client);
-	ChangeClientTeam(client, TEAM_SURVIVOR);
 	TF2_RespawnPlayer(client);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 5.0);
 	SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);

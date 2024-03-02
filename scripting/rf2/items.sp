@@ -14,6 +14,7 @@ int g_iCollectorItemClass[MAX_ITEMS];
 
 float g_flItemModifier[MAX_ITEMS][MAX_ITEM_MODIFIERS];
 float g_flEquipmentItemCooldown[MAX_ITEMS] = {40.0, ...};
+float g_flEquipmentItemMinCooldown[MAX_ITEMS];
 float g_flItemSpriteScale[MAX_ITEMS] = {1.0, ...};
 float g_flItemProcCoeff[MAX_ITEMS] = {1.0, ...};
 
@@ -155,9 +156,13 @@ void LoadItems()
 						strcopy(g_szItemUnusualEffectName[item], sizeof(g_szItemUnusualEffectName[]), g_szUnusualEffectDisplayName[random]);
 					}
 				}
-					
+				
 				case Quality_Collectors: g_iCollectorItemClass[item] = itemKey.GetNum("collector_item_class", 0);
-				case Quality_Strange, Quality_HauntedStrange: g_flEquipmentItemCooldown[item] = itemKey.GetFloat("strange_cooldown", 40.0);
+				case Quality_Strange, Quality_HauntedStrange: 
+				{
+					g_flEquipmentItemCooldown[item] = itemKey.GetFloat("strange_cooldown", 40.0);
+					g_flEquipmentItemMinCooldown[item] = itemKey.GetFloat("strange_cooldown_min", 0.0);
+				}
 			}
 			
 			g_iItemCount++;
@@ -957,7 +962,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 			}
 		}
 		
-		if (PlayerHasItem(attacker, Item_Goalkeeper))
+		if (PlayerHasItem(attacker, Item_Goalkeeper) && !TF2_IsPlayerInCondition(attacker, TFCond_CritOnKill))
 		{
 			float chance = fmin(CalcItemMod_Hyperbolic(attacker, Item_Goalkeeper, 0), 1.0);
 			if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
@@ -967,10 +972,13 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 		}
 	}
 	
-	if (PlayerHasItem(attacker, Item_KillerExclusive) && GetPlayerEquipmentItem(attacker) > Item_Null)
+	int equipment = GetPlayerEquipmentItem(attacker);
+	if (PlayerHasItem(attacker, Item_KillerExclusive) && GetPlayerEquipmentItem(attacker) > Item_Null 
+		&& g_flPlayerEquipmentItemCooldown[attacker] > 0.0
+		&& g_flPlayerEquipmentItemCooldown[attacker] > g_flEquipmentItemMinCooldown[equipment])
 	{
-		g_flPlayerEquipmentItemCooldown[attacker] -= CalcItemMod(attacker, Item_KillerExclusive, 0);
-		g_flPlayerEquipmentItemCooldown[attacker] = fmax(g_flPlayerEquipmentItemCooldown[attacker], 0.0);
+		float reduction = fmax(0.0, CalcItemMod(attacker, Item_KillerExclusive, 0));
+		g_flPlayerEquipmentItemCooldown[attacker] = fmax(g_flPlayerEquipmentItemCooldown[attacker]-reduction, g_flEquipmentItemMinCooldown[equipment]);
 	}
 	
 	if (PlayerHasItem(attacker, Item_Executioner) && critType == CritType_Crit)
@@ -1028,29 +1036,11 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 	
 	if (GetClientTeam(victim) == TEAM_ENEMY)
 	{
-		int total;
-		int limit = GetItemModInt(Item_PillarOfHats, 3);
-		for (int i = 1; i <= MaxClients; i++)
+		if (PlayerHasItem(attacker, Item_PillarOfHats) && g_iMetalItemsDropped < CalcItemModInt(attacker, Item_PillarOfHats, 4))
 		{
-			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
-				continue;
-			
-			if (PlayerHasItem(i, Item_PillarOfHats))
-			{
-				if (total >= 1)
-				{
-					limit += CalcItemModInt(i, Item_PillarOfHats, 4);
-				}
-
-				total++;
-			}
-		}
-		
-		if (total > 0 && g_iMetalItemsDropped < limit)
-		{
-			float scrapChance = CalcItemMod(0, Item_PillarOfHats, 0, total);
-			float recChance = CalcItemMod(0, Item_PillarOfHats, 1, total);
-			float refChance = CalcItemMod(0, Item_PillarOfHats, 2, total);
+			float scrapChance = CalcItemMod(attacker, Item_PillarOfHats, 0);
+			float recChance = CalcItemMod(attacker, Item_PillarOfHats, 1);
+			float refChance = CalcItemMod(attacker, Item_PillarOfHats, 2);
 			float totalChance = scrapChance + recChance + refChance;
 			totalChance = fmin(totalChance, 1.0);
 			float result;
@@ -1528,12 +1518,7 @@ float GetPlayerEquipmentItemCooldown(int client)
 	if (!IsEquipmentItem(item))
 		return 0.0;
 	
-	float cooldown = g_flEquipmentItemCooldown[item] * CalcItemMod_HyperbolicInverted(client, Item_DeusSpecs, 0);
-	if (IsPlayerSurvivor(client) && IsArtifactActive(REDArtifact_Efficiency))
-	{
-		cooldown *= 0.25;
-	}
-	
+	float cooldown = fmax(g_flEquipmentItemMinCooldown[item], g_flEquipmentItemCooldown[item] * CalcItemMod_HyperbolicInverted(client, Item_DeusSpecs, 0));
 	bool cooldownActive = g_flPlayerEquipmentItemCooldown[client] > 0.0;
 	if (cooldownActive)
 	{

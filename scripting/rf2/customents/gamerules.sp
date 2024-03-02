@@ -160,7 +160,7 @@ int SpawnObjects()
 	// Non-crate object weights are separate
 	int workbenchWeight = 16;
 	int scrapperWeight = 12;
-	int graveWeight = 12;
+	int graveWeight = 9;
 	
 	if (g_iStagesCompleted <= 0)
 	{

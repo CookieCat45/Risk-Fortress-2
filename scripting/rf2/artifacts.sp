@@ -138,7 +138,13 @@ void SetArtifactEnabled(int artifact, bool state)
 
 bool IsArtifactActive(int artifact)
 {
-    return g_hActiveArtifacts.FindValue(artifact) != -1;
+    if (artifact)
+    {
+
+    }
+    
+    return false;
+    //return g_hActiveArtifacts.FindValue(artifact) != -1;
 }
 
 void DisableAllArtifacts()
