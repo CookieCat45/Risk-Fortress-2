@@ -1370,7 +1370,7 @@ void ShowClientSettingsMenu(int client)
 	
 	FormatEx(buffer, sizeof(buffer), "%T", "ToggleEnemy", lang, GetCookieBool(client, g_coBecomeEnemy) ? on : off);
 	menu.AddItem("rf2_become_enemy", buffer);
-
+	
 	FormatEx(buffer, sizeof(buffer), "%T", "ToggleTeleBoss", lang, GetCookieBool(client, g_coBecomeBoss) ? on : off);
 	menu.AddItem("rf2_become_boss", buffer);
 	

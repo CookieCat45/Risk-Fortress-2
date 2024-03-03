@@ -353,15 +353,18 @@ bool PickupItem(int client)
 			TriggerAchievement(client, ACHIEVEMENT_HEADSPLITTER);
 		}
 		
-		if (!GetCookieBool(client, g_coDisableItemMessages))
+		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (IsEquipmentItem(type))
+			if (IsClientInGame(i) && !IsFakeClient(i) && !GetCookieBool(client, g_coDisableItemMessages))
 			{
-				RF2_PrintToChatAll("%t", "PickupItemStrange", client, qualityTag, itemName);
-			}
-			else
-			{
-				RF2_PrintToChatAll("%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, type));
+				if (IsEquipmentItem(type))
+				{
+					RF2_PrintToChat(i, "%t", "PickupItemStrange", client, qualityTag, itemName);
+				}
+				else
+				{
+					RF2_PrintToChat(i, "%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, type));
+				}
 			}
 		}
 		

@@ -151,12 +151,6 @@ public MRESReturn DHook_SentryGunAttack(int entity)
 				time *= GetPlayerFireRateMod(owner);
 				SetEntDataFloat(entity, offset, gameTime+time, true);
 			}
-			
-			if (IsSentryDisposable(entity) && GetEntProp(entity, Prop_Send, "m_iAmmoShells") <= 0)
-			{
-				SetEntityHealth(entity, 1);
-				RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
-			}
 		}
 	}
 	

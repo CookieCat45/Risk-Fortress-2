@@ -140,16 +140,16 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			}
 		}
 		
-		Menu vote;
+		Menu vote = new Menu(Menu_TeleporterVote);
 		if (nextStageVote)
 		{
-			vote = new Menu(Menu_NextStageVote);
 			vote.SetTitle("Depart now? (%N)", client);
+			vote.VoteResultCallback = OnNextStageVoteFinish;
 		}
 		else
 		{
-			vote = new Menu(Menu_TeleporterVote);
 			vote.SetTitle("Start the Teleporter event? (%N)", client);
+			vote.VoteResultCallback = OnTeleporterVoteFinish;
 		}
 		
 		vote.AddItem("Yes", "Yes");
@@ -204,6 +204,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	public void Start()
 	{
 		this.EventState = TELE_EVENT_ACTIVE;
+		this.ToggleObjects(false);
 		this.TextSize = 20.0;
 		Call_StartForward(g_fwTeleEventStart);
 		Call_Finish();
@@ -313,6 +314,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	public void End()
 	{
 		bool wasSharingEnabled = IsItemSharingEnabled();
+		this.ToggleObjects(true);
 		this.EventState = TELE_EVENT_COMPLETE;
 		this.Effects = EF_ITEM_BLINK;
 		this.TextSize = 6.0;
@@ -398,6 +400,55 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
 		}
 	}
+	
+	public void ToggleObjects(bool state)
+	{
+		int entity = MaxClients+1;
+		int r, g, b, a;
+		while ((entity = FindEntityByClassname(entity, "rf2_object*")) != INVALID_ENT)
+		{
+			if (entity == this.index)
+				continue;
+			
+			if (DistBetween(this.index, entity) > this.Radius)
+			{
+				RF2_Object_Base(entity).Active = state;
+				if (!state)
+				{
+					GetEntityRenderColor(entity, r, g, b, a);
+					SetEntityRenderColor(entity, r, g, b, 75);
+				}
+				else
+				{
+					GetEntityRenderColor(entity, r, g, b, a);
+					SetEntityRenderColor(entity, r, g, b, 255);
+				}
+			}
+		}
+	}
+	
+	public static void ToggleObjectsStatic(bool state)
+	{
+		int entity = MaxClients+1;
+		int r, g, b, a;
+		while ((entity = FindEntityByClassname(entity, "rf2_object*")) != INVALID_ENT)
+		{
+			if (RF2_Object_Teleporter(entity).IsValid())
+				continue;
+			
+			RF2_Object_Base(entity).Active = state;
+			if (!state)
+			{
+				GetEntityRenderColor(entity, r, g, b, a);
+				SetEntityRenderColor(entity, r, g, b, 75);
+			}
+			else
+			{
+				GetEntityRenderColor(entity, r, g, b, a);
+				SetEntityRenderColor(entity, r, g, b, 255);
+			}
+		}
+	}
 }
 
 void Teleporter_OnMapStart()
@@ -467,35 +518,7 @@ public int Menu_TeleporterVote(Menu menu, MenuAction action, int param1, int par
 {
 	switch (action)
 	{
-		case MenuAction_VoteEnd:
-		{
-			if (param1 == 0)
-			{
-				GetCurrentTeleporter().Prepare();
-			}
-		}
-		case MenuAction_End:
-		{
-			delete menu;
-		}
-	}
-	
-	return 0;
-}
-
-public int Menu_NextStageVote(Menu menu, MenuAction action, int param1, int param2)
-{
-	switch (action)
-	{
-		case MenuAction_VoteEnd:
-		{
-			if (param1 == 0)
-				ForceTeamWin(TEAM_SURVIVOR);
-		}
-		case MenuAction_End:
-		{
-			delete menu;
-		}
+		case MenuAction_End: delete menu;
 	}
 	
 	return 0;
@@ -611,4 +634,30 @@ public Action Timer_DelayHalloweenBossSpawn(Handle timer, int entity)
 	}
 	
 	return Plugin_Continue;
+}
+
+public void OnTeleporterVoteFinish(Menu menu, int numVotes, int numClients, const int[][] clientInfo, int numItems, const int[][] itemInfo)
+{
+	if (numVotes > 0)
+	{
+		int yesVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
+		int noVotes = itemInfo[1][VOTEINFO_ITEM_VOTES];
+		if (yesVotes > noVotes)
+		{
+			GetCurrentTeleporter().Prepare();
+		}
+	}
+}
+
+public void OnNextStageVoteFinish(Menu menu, int numVotes, int numClients, const int[][] clientInfo, int numItems, const int[][] itemInfo)
+{
+	if (numVotes > 0)
+	{
+		int yesVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
+		int noVotes = itemInfo[1][VOTEINFO_ITEM_VOTES];
+		if (yesVotes > noVotes)
+		{
+			ForceTeamWin(TEAM_SURVIVOR);
+		}
+	}
 }

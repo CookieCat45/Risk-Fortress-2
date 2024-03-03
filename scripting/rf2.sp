@@ -164,8 +164,6 @@ StringMap g_hCrashedPlayerSteamIDs;
 Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
 
 // Entities
-PathFollower g_PathFollowers[MAX_PATH_FOLLOWERS];
-int g_iEntityPathFollowerIndex[MAX_EDICTS] = {-1, ...};
 int g_iItemDamageProc[MAX_EDICTS];
 int g_iLastItemDamageProc[MAX_EDICTS];
 int g_iEntLastHitItemProc[MAX_EDICTS]; // Mainly for use in OnPlayerDeath
@@ -291,6 +289,7 @@ Cookie g_coItemsCollected[4];
 Cookie g_coAchievementCookies[MAX_ACHIEVEMENTS];
 Cookie g_coNewPlayer;
 Cookie g_coDisableItemMessages;
+Cookie g_coSwapStrangeButton;
 
 // TFBots
 TFBot g_TFBot[MAXTF2PLAYERS];
@@ -374,10 +373,6 @@ public void OnPluginStart()
 	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
 	g_iFileTime = GetPluginModifiedTime();
-	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
-	{
-		g_PathFollowers[i] = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
-	}
 }
 
 public void OnPluginEnd()
@@ -390,6 +385,7 @@ public void OnPluginEnd()
 		if (TFBot(i).Follower)
 		{
 			TFBot(i).Follower.Destroy();
+			TFBot(i).Follower = view_as<PathFollower>(0);
 		}
 		
 		if (RF2_IsEnabled() && IsValidClient(i))
@@ -398,15 +394,6 @@ public void OnPluginEnd()
 				ChangeClientTeam(i, TEAM_ENEMY);
 
 			SetClientName(i, g_szPlayerOriginalName[i]);
-		}
-	}
-	
-	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
-	{
-		if (g_PathFollowers[i])
-		{
-			g_PathFollowers[i].Destroy();
-			g_PathFollowers[i] = view_as<PathFollower>(0);
 		}
 	}
 }
@@ -916,7 +903,6 @@ void CleanUp()
 		}
 	}
 	
-	/*
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (TFBot(i).Follower)
@@ -925,7 +911,6 @@ void CleanUp()
 			TFBot(i).Follower = view_as<PathFollower>(0);
 		}
 	}
-	*/
 }
 
 void LoadAssets()
@@ -1059,7 +1044,7 @@ public bool OnClientConnect(int client, char[] rejectmsg, int maxlen)
 	if (RF2_IsEnabled())
 	{
 		UpdateGameDescription();
-		if (!g_bMapChanging && GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue+1)
+		if (GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue+1)
 		{
 			FormatEx(rejectmsg, maxlen, "Max human player limit of %i has been reached", g_cvMaxHumanPlayers.IntValue);
 			return false;
@@ -1087,8 +1072,7 @@ public void OnClientPutInServer(int client)
 	{
 		if (IsFakeClient(client))
 		{
-			//TFBot(client).Follower = PathFollower(_, Path_FilterIgnoreObjects, Path_FilterOnlyActors);
-			TFBot(client).FollowerIndex = GetFreePathFollowerIndex(client);
+			TFBot(client).Follower = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
 			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_TFBotWeaponCanSwitch);
 		}
 		else if (g_bRoundActive)
@@ -1217,14 +1201,12 @@ public void OnClientDisconnect_Post(int client)
 		g_hPlayerExtraSentryList[client] = null;
 	}
 	
-	if (TFBot(client).Follower && TFBot(client).Follower.IsValid())
+	if (TFBot(client).Follower)
 	{
-		TFBot(client).Follower.Invalidate();
-		//TFBot(client).Follower.Destroy();
-		//TFBot(client).Follower = view_as<PathFollower>(0);
+		TFBot(client).Follower.Destroy();
+		TFBot(client).Follower = view_as<PathFollower>(0);
 	}
 	
-	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client);
 	ResetAFKTime(client, false);
 	FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
@@ -2969,6 +2951,7 @@ public Action Timer_PlayerTimer(Handle timer)
 	}
 	
 	int maxHealth, health, healAmount, weapon, ammoType;
+	int sentry = INVALID_ENT;
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerAlive(i))
@@ -3063,6 +3046,26 @@ public Action Timer_PlayerTimer(Handle timer)
 		else if (g_flPlayerEquipmentItemCooldown[i] <= 0.0)
 		{
 			g_bEquipmentCooldownActive[i] = false;
+		}
+		
+		if (g_hPlayerExtraSentryList[i].Length > 0)
+		{
+			for (int a = 0; a < g_hPlayerExtraSentryList[i].Length; a++)
+			{
+				sentry = g_hPlayerExtraSentryList[i].Get(a);
+				if (!IsValidEntity2(sentry))
+				{
+					g_hPlayerExtraSentryList[i].Erase(a);
+					a--;
+					continue;
+				}
+				
+				if (IsSentryDisposable(sentry) && GetEntProp(sentry, Prop_Send, "m_iAmmoShells") <= 0)
+				{
+					SetEntityHealth(sentry, 1);
+					RF_TakeDamage(sentry, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
+				}
+			}
 		}
 	}
 	
@@ -3904,7 +3907,6 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bCashBomb[entity] = false;
 	g_bFiredWhileRocketJumping[entity] = false;
 	g_flTeleporterNextSpawnTime[entity] = -1.0;
-	g_iEntityPathFollowerIndex[entity] = -1;
 	
 	if (strcmp2(classname, "tf_projectile_rocket") || strcmp2(classname, "tf_projectile_flare") || strcmp2(classname, "tf_projectile_arrow"))
 	{
@@ -3988,12 +3990,6 @@ public void OnEntityDestroyed(int entity)
 		{
 			g_hPlayerExtraSentryList[builder].Erase(index);
 		}
-	}
-	
-	PathFollower pf = GetEntPathFollower(entity);
-	if (pf && pf.IsValid())
-	{
-		pf.Invalidate();
 	}
 	
 	g_flCashValue[entity] = 0.0;
@@ -5243,7 +5239,17 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	}
 	
 	static bool reloadPressed[MAXTF2PLAYERS];
-	if (!bot && buttons & IN_RELOAD)
+	bool allowPress;
+	if (GetCookieBool(client, g_coSwapStrangeButton))
+	{
+		allowPress = buttons & IN_ATTACK3 && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) != GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	}
+	else if (buttons & IN_RELOAD)
+	{
+		allowPress = true;
+	}
+	
+	if (!bot && allowPress)
 	{
 		if (!reloadPressed[client])
 		{
@@ -5283,7 +5289,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 				ActivateStrangeItem(client);
 			}
 		}
-
+		
 		reloadPressed[client] = true;
 	}
 	else

@@ -122,6 +122,7 @@ void BeginTankDestructionMode()
 	g_iTankKillRequirement = SpawnTanks();
 	RF2_PrintToChatAll("%t", "TanksHaveArrived");
 	PlayMusicTrackAll();
+	RF2_Object_Teleporter.ToggleObjectsStatic(false);
 	RF2_GameRules gamerules = GetRF2GameRules();
 	if (gamerules.IsValid())
 	{
@@ -133,9 +134,11 @@ void EndTankDestructionMode()
 {
 	RF2_PrintToChatAll("%t", "AllTanksDestroyed");
 	CreateTimer(30.0, Timer_CommandReminder, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	RF2_Object_Teleporter.ToggleObjectsStatic(true);
 	
 	int randomItem;
 	char name[MAX_NAME_LENGTH], quality[32];
+	bool collector;
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))

@@ -23,6 +23,7 @@ void BakeCookies()
 	g_coTutorialSurvivor = RegClientCookie("rf2_tutorial_survivor", "Survivor tutorial.", CookieAccess_Public);
 	g_coNewPlayer = RegClientCookie("rf2_new_player", "New Player", CookieAccess_Private);
 	g_coDisableItemMessages = RegClientCookie("rf2_disable_item_msg", "Disable item chat messages", CookieAccess_Protected);
+	g_coSwapStrangeButton = RegClientCookie("rf2_swap_strange_button", "Changes the strange activation button to ATTACK3 instead of RELOAD.", CookieAccess_Protected);
 	
 	char name[64];
 	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)

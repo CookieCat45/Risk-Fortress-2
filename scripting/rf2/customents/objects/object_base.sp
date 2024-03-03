@@ -74,7 +74,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 			this.SetPropFloat(Prop_Data, "m_flCost", value);
 		}
 	}
-
+	
 	property bool Active
 	{
 		public get()

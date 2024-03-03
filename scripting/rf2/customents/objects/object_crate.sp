@@ -215,7 +215,9 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	
 	RF2_Object_Crate crate = RF2_Object_Crate(entity);
 	if (!crate.Active)
+	{
 		return Plugin_Continue;
+	}
 	
 	if (crate.Type == Crate_Haunted)
 	{
