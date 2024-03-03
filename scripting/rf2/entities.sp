@@ -684,3 +684,49 @@ bool IsSkeleton(int entity)
 	GetEntityClassname(entity, classname, sizeof(classname));
 	return strcmp2(classname, "tf_zombie");
 }
+
+PathFollower GetEntPathFollower(int entity)
+{
+	if (g_iEntityPathFollowerIndex[entity] < 0)
+		return view_as<PathFollower>(0);
+	
+	return g_PathFollowers[g_iEntityPathFollowerIndex[entity]];
+}
+
+int GetFreePathFollowerIndex(int target=INVALID_ENT)
+{
+	int entity = INVALID_ENT;
+	ArrayList combatChars = new ArrayList();
+	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
+	{
+		if (CBaseEntity(entity).MyNextBotPointer() && entity != target)
+		{
+			combatChars.Push(entity);
+		}
+	}
+	
+	bool valid;
+	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
+	{
+		valid = true;
+		for (int a = 0; a < combatChars.Length; a++)
+		{
+			entity = combatChars.Get(a);
+			if (g_iEntityPathFollowerIndex[entity] == i)
+			{
+				valid = false;
+				break;
+			}
+		}
+		
+		if (valid)
+		{
+			delete combatChars;
+			return i;
+		}
+	}
+	
+	LogError("[GetFreePathFollowerIndex] No more path followers available. Consider raising MAX_PATH_FOLLOWERS.");
+	delete combatChars;
+	return -1;
+}

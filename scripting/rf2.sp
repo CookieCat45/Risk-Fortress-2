@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.5.8b"
+#define PLUGIN_VERSION "0.5.9b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -164,6 +164,8 @@ StringMap g_hCrashedPlayerSteamIDs;
 Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
 
 // Entities
+PathFollower g_PathFollowers[MAX_PATH_FOLLOWERS];
+int g_iEntityPathFollowerIndex[MAX_EDICTS] = {-1, ...};
 int g_iItemDamageProc[MAX_EDICTS];
 int g_iLastItemDamageProc[MAX_EDICTS];
 int g_iEntLastHitItemProc[MAX_EDICTS]; // Mainly for use in OnPlayerDeath
@@ -372,6 +374,10 @@ public void OnPluginStart()
 	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
 	g_iFileTime = GetPluginModifiedTime();
+	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
+	{
+		g_PathFollowers[i] = PathFollower(_, Path_FilterIgnoreObjects, Path_FilterOnlyActors);
+	}
 }
 
 public void OnPluginEnd()
@@ -381,9 +387,9 @@ public void OnPluginEnd()
 	
 	for (int i = 0; i < MAXTF2PLAYERS; i++)
 	{
-		if (g_TFBot[i].Follower)
+		if (TFBot(i).Follower)
 		{
-			g_TFBot[i].Follower.Destroy();
+			TFBot(i).Follower.Destroy();
 		}
 		
 		if (RF2_IsEnabled() && IsValidClient(i))
@@ -392,6 +398,15 @@ public void OnPluginEnd()
 				ChangeClientTeam(i, TEAM_ENEMY);
 
 			SetClientName(i, g_szPlayerOriginalName[i]);
+		}
+	}
+	
+	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
+	{
+		if (g_PathFollowers[i])
+		{
+			g_PathFollowers[i].Destroy();
+			g_PathFollowers[i] = view_as<PathFollower>(0);
 		}
 	}
 }
@@ -901,14 +916,16 @@ void CleanUp()
 		}
 	}
 	
+	/*
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (g_TFBot[i].Follower)
+		if (TFBot(i).Follower)
 		{
-			g_TFBot[i].Follower.Destroy();
-			g_TFBot[i].Follower = view_as<PathFollower>(0);
+			TFBot(i).Follower.Destroy();
+			TFBot(i).Follower = view_as<PathFollower>(0);
 		}
 	}
+	*/
 }
 
 void LoadAssets()
@@ -1070,8 +1087,8 @@ public void OnClientPutInServer(int client)
 	{
 		if (IsFakeClient(client))
 		{
-			g_TFBot[client] = new TFBot(client);
-			g_TFBot[client].Follower = PathFollower(_, Path_FilterIgnoreObjects, Path_FilterOnlyActors);
+			//TFBot(client).Follower = PathFollower(_, Path_FilterIgnoreObjects, Path_FilterOnlyActors);
+			TFBot(client).FollowerIndex = GetFreePathFollowerIndex(client);
 			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_TFBotWeaponCanSwitch);
 		}
 		else if (g_bRoundActive)
@@ -1085,9 +1102,11 @@ public void OnClientPutInServer(int client)
 		SDKHook(client, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
 		
 		if (g_hHookTakeHealth)
+		{
 			DHookEntity(g_hHookTakeHealth, false, client, _, DHook_TakeHealth);
+		}
 		
-		g_hPlayerExtraSentryList[client] = CreateArray();
+		g_hPlayerExtraSentryList[client] = new ArrayList();
 	}
 }
 
@@ -1198,13 +1217,14 @@ public void OnClientDisconnect_Post(int client)
 		g_hPlayerExtraSentryList[client] = null;
 	}
 	
-	if (g_TFBot[client].Follower)
+	if (TFBot(client).Follower && TFBot(client).Follower.IsValid())
 	{
-		g_TFBot[client].Follower.Destroy();
-		g_TFBot[client].Follower = view_as<PathFollower>(0);
+		TFBot(client).Follower.Invalidate();
+		//TFBot(client).Follower.Destroy();
+		//TFBot(client).Follower = view_as<PathFollower>(0);
 	}
 	
-	g_TFBot[client] = null;
+	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client);
 	ResetAFKTime(client, false);
 	FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
@@ -1419,13 +1439,13 @@ void StartDifficultyVote()
 {
 	Menu menu = new Menu(Menu_DifficultyVote);
 	menu.SetTitle("Vote for the game's difficulty level!");
-	menu.AddItem("0", "Scrap (Normal)");
-	menu.AddItem("1", "Iron (Hard)");
-	menu.AddItem("2", "Steel (Very Hard)");
+	menu.AddItem("0", "Scrap (Easy)");
+	menu.AddItem("1", "Iron (Normal)");
+	menu.AddItem("2", "Steel (Hard)");
 	
 	if (GetRandomInt(1, 20) == 1)
 	{
-		menu.AddItem("3", "Titanium (Impossible)");
+		menu.AddItem("3", "Titanium (Expert)");
 	}
 
 	int clients[MAXTF2PLAYERS] = {-1, ...};
@@ -1606,9 +1626,9 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	
 	if (IsFakeClient(client))
 	{
-		if (g_TFBot[client].Follower.IsValid())
+		if (TFBot(client).Follower.IsValid())
 		{
-			g_TFBot[client].Follower.Invalidate();
+			TFBot(client).Follower.Invalidate();
 		}
 	}
 	
@@ -3462,12 +3482,12 @@ public void Hook_PreThink(int client)
 	
 	if (!IsPlayerAlive(client))
 		return;
-
+	
 	if (bot)
 	{
-		TFBot_Think(g_TFBot[client]);
+		TFBot_Think(TFBot(client));
 	}
-
+	
 	TFClassType class = TF2_GetPlayerClass(client);
 	if (class == TFClass_Engineer)
 	{
@@ -3600,10 +3620,10 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 {
 	if (!RF2_IsEnabled() || g_bWaitingForPlayers)
 		return Plugin_Continue;
-
+	
 	bool changed;
 	bool melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee) == weapon;
-
+	
 	// Set m_flNextPrimaryAttack on the next frame to modify attack speed
 	// Any of TF2's own firing speed modifications such as attributes will still go through
 	g_iLastFiredWeapon[client] = EntIndexToEntRef(weapon);
@@ -3884,7 +3904,8 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bCashBomb[entity] = false;
 	g_bFiredWhileRocketJumping[entity] = false;
 	g_flTeleporterNextSpawnTime[entity] = -1.0;
-
+	g_iEntityPathFollowerIndex[entity] = -1;
+	
 	if (strcmp2(classname, "tf_projectile_rocket") || strcmp2(classname, "tf_projectile_flare") || strcmp2(classname, "tf_projectile_arrow"))
 	{
 		SDKHook(entity, SDKHook_SpawnPost, Hook_ProjectileSpawnPost);
@@ -3967,6 +3988,12 @@ public void OnEntityDestroyed(int entity)
 		{
 			g_hPlayerExtraSentryList[builder].Erase(index);
 		}
+	}
+	
+	PathFollower pf = GetEntPathFollower(entity);
+	if (pf && pf.IsValid())
+	{
+		pf.Invalidate();
 	}
 	
 	g_flCashValue[entity] = 0.0;
@@ -4451,7 +4478,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					damage *= 1.0 + CalcItemMod(attacker, ItemSpy_NohMercy, 0);
 					if (IsFakeClient(victim))
 					{
-						g_TFBot[victim].RealizeSpy(attacker);
+						TFBot(victim).RealizeSpy(attacker);
 					}
 				}
 				else if (IsPlayerSurvivor(victim))
@@ -4707,7 +4734,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		if (attackerIsClient && PlayerHasItem(attacker, Item_Antlers) 
 			&& damageCustom != TF_CUSTOM_BLEEDING && attacker != victim && inflictor != victim)
 		{
-			float chance = fmin(CalcItemMod(attacker, Item_Antlers, 0), 1.0) * proc;
+			float chance = GetItemMod(Item_Antlers, 0) * proc;
 			if (RandChanceFloatEx(attacker, 0.001, 1.0, chance))
 			{
 				TF2_MakeBleed(victim, attacker, GetItemMod(Item_Antlers, 1));
@@ -4807,7 +4834,8 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				float chance = GetItemMod(Item_RoBro, 0) * proc;
 				if (RandChanceFloatEx(attacker, 0.001, 100.0, chance))
 				{
-					int limit = CalcItemModInt(attacker, Item_RoBro, 1);
+					int limit = GetItemModInt(Item_RoBro, 1) + CalcItemModInt(attacker, Item_RoBro, 6);
+					limit = imin(limit, GetItemModInt(Item_RoBro, 5));
 					float range = GetItemMod(Item_RoBro, 2) + CalcItemMod(attacker, Item_RoBro, 3, -1);
 					float dmg = GetItemMod(Item_RoBro, 4);
 					ArrayList hitEnemies = new ArrayList();
@@ -5079,7 +5107,7 @@ public void Hook_WeaponSwitchPost(int client, int weapon)
 {
 	if (IsFakeClient(client))
 	{
-		g_TFBot[client].RemoveButtonFlag(IN_RELOAD);
+		TFBot(client).RemoveButtonFlag(IN_RELOAD);
 	}
 	else if (PlayerHasItem(client, ItemEngi_HeadOfDefense) && CanUseCollectorItem(client, ItemEngi_HeadOfDefense))
 	{

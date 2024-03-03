@@ -273,7 +273,7 @@ void SentryBuster_OnMapStart()
 static void OnCreate(RF2_SentryBuster buster)
 {
 	CBaseNPC npc = buster.BaseNpc;
-	buster.Path = PathFollower(_, SentryBusterPath_FilterIgnoreActors, SentryBusterPath_FilterOnlyActors);
+	//buster.Path = PathFollower(_, SentryBusterPath_FilterIgnoreActors, SentryBusterPath_FilterOnlyActors);
 	buster.Path.SetMinLookAheadDistance(1024.0);
 	
 	int health = RoundToFloor(BUSTER_BASE_HEALTH * GetEnemyHealthMult());

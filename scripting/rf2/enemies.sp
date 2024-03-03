@@ -645,36 +645,36 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 			{
 				if (enemy.BotSkill < TFBotDifficulty_Hard && enemy.BotSkill != TFBotDifficulty_Expert)
 				{
-					g_TFBot[client].SetSkillLevel(TFBotDifficulty_Hard);
+					TFBot(client).SetSkillLevel(TFBotDifficulty_Hard);
 				}
 				else
 				{
-					g_TFBot[client].SetSkillLevel(enemy.BotSkill);
+					TFBot(client).SetSkillLevel(enemy.BotSkill);
 				}
 			}
 			
-			case DIFFICULTY_TITANIUM: g_TFBot[client].SetSkillLevel(TFBotDifficulty_Expert);
-			default: g_TFBot[client].SetSkillLevel(enemy.BotSkill);
+			case DIFFICULTY_TITANIUM: TFBot(client).SetSkillLevel(TFBotDifficulty_Expert);
+			default: TFBot(client).SetSkillLevel(enemy.BotSkill);
 		}
 		
 		if (enemy.BotAggressive)
 		{
-			g_TFBot[client].AddFlag(TFBOTFLAG_AGGRESSIVE);
+			TFBot(client).AddFlag(TFBOTFLAG_AGGRESSIVE);
 		}
 		
 		if (enemy.BotRocketJump)
 		{
-			g_TFBot[client].AddFlag(TFBOTFLAG_ROCKETJUMP);
+			TFBot(client).AddFlag(TFBOTFLAG_ROCKETJUMP);
 		}
 		
 		if (enemy.BotHoldFireReload)
 		{
-			g_TFBot[client].AddFlag(TFBOTFLAG_HOLDFIRE);
+			TFBot(client).AddFlag(TFBOTFLAG_HOLDFIRE);
 		}
 
 		if (enemy.BotAlwaysJump)
 		{
-			g_TFBot[client].AddFlag(TFBOTFLAG_SPAMJUMP);
+			TFBot(client).AddFlag(TFBOTFLAG_SPAMJUMP);
 		}
 	}
 	

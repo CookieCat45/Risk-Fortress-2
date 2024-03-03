@@ -31,7 +31,6 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		g_Factory.BeginDataMapDesc()
 			.DefineEntityField("m_hTarget")
 			.DefineEntityField("m_hGlow")
-			.DefineIntField("m_PathFollower")
 			.DefineIntField("m_iDefendTeam", _, "defendteam") // we won't target this team
 		.EndDataMapDesc();
 		g_Factory.Install();
@@ -55,12 +54,20 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 	{
 		public get()
 		{
-			return view_as<PathFollower>(this.GetProp(Prop_Data, "m_PathFollower"));
+			return GetEntPathFollower(this.index);
 		}
-
-		public set(PathFollower value)
+	}
+	
+	property int FollowerIndex
+	{
+		public get()
 		{
-			this.SetProp(Prop_Data, "m_PathFollower", value);
+			return g_iEntityPathFollowerIndex[this.index];
+		}
+		
+		public set(int value)
+		{
+			g_iEntityPathFollowerIndex[this.index] = value;
 		}
 	}
 	
@@ -258,15 +265,18 @@ static void OnCreate(RF2_NPC_Base npc)
 	SDKHook(npc.index, SDKHook_OnTakeDamageAlivePost, OnTakeDamageAlivePost);
 	SDKHook(npc.index, SDKHook_ThinkPost, ThinkPost);
 	npc.DefendTeam = -1;
+	npc.FollowerIndex = GetFreePathFollowerIndex(npc.index);
 }
 
 static void OnRemove(RF2_NPC_Base npc)
 {
+	/*
 	if (npc.Path)
 	{
 		npc.Path.Destroy();
 		npc.Path = view_as<PathFollower>(0);
 	}
+	*/
 }
 
 static void ThinkPost(int entity)

@@ -116,7 +116,7 @@ static void OnCreate(RF2_Object_Gravestone grave)
 	}
 	
 	char text[256];
-	FormatEx(text, sizeof(text), "($%.0f) Summon the Skeleton King", grave.Cost);
+	FormatEx(text, sizeof(text), "($%.0f) Summon the Skeleton King [E]", grave.Cost);
 	grave.SetWorldText(text);
 	grave.TextZOffset = 110.0;
 	grave.TextSize = 12.0;

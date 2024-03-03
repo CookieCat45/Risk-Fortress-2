@@ -398,7 +398,7 @@ static void OnCreate(RF2_Companion_Base npc)
 	npc.MeleeGesture = -1;
 	npc.MoveX = -1;
 	npc.MoveY = -1;
-	npc.Path = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+	//npc.Path = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
 	npc.OnStateChange = new PrivateForward(ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	npc.HookStateChange(OnStateChanged);
 	SDKHook(npc.index, SDKHook_Think, CompanionThink);

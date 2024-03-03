@@ -6,7 +6,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static PathFollower g_TFBotPathFollower[MAXTF2PLAYERS];
 static CNavArea g_TFBotGoalArea[MAXTF2PLAYERS];
 
 static int g_iTFBotFlags[MAXTF2PLAYERS];
@@ -48,7 +47,7 @@ enum TFBotStrafeDir
 };
 static TFBotStrafeDir g_TFBotStrafeDirection[MAXTF2PLAYERS];
 
-methodmap TFBot < Handle
+methodmap TFBot
 {
 	public TFBot(int client) 
 	{
@@ -65,8 +64,12 @@ methodmap TFBot < Handle
 	// Pathing
 	property PathFollower Follower
 	{
-		public get() 				{ return g_TFBotPathFollower[this.Client]; }
-		public set(PathFollower pf) { g_TFBotPathFollower[this.Client] = pf;   }
+		public get() 				{ return GetEntPathFollower(this.Client); }
+	}
+	property int FollowerIndex
+	{
+		public get()				{ return g_iEntityPathFollowerIndex[this.Client];  }
+		public set(int value)		{ g_iEntityPathFollowerIndex[this.Client] = value; }
 	}
 	property CNavArea GoalArea
 	{
@@ -359,7 +362,7 @@ methodmap TFBot < Handle
 	}
 }
 
-void TFBot_Think(TFBot &bot)
+void TFBot_Think(TFBot bot)
 {
 	float tickedTime = GetTickedTime();
 	ILocomotion locomotion = bot.GetLocomotion();
@@ -922,7 +925,7 @@ void TFBotEngi_AttemptBuild(TFBot &bot)
 	}
 }
 
-bool TFBotEngi_BuildObject(TFBot &bot, TFObjectType type, TFObjectMode mode=TFObjectMode_Entrance, float yawOffset=0.0)
+bool TFBotEngi_BuildObject(TFBot bot, TFObjectType type, TFObjectMode mode=TFObjectMode_Entrance, float yawOffset=0.0)
 {
 	if (GetBuiltObject(bot.Client, type, mode) != INVALID_ENT)
 		return false;
@@ -963,10 +966,10 @@ public Action Timer_TFBotBuildDispenser(Handle timer, int client)
 	if ((client = GetClientOfUserId(client)) == 0)
 		return Plugin_Continue;
 		
-	if (g_TFBot[client].Mission != MISSION_BUILD || !IsPlayerAlive(client))
+	if (TFBot(client).Mission != MISSION_BUILD || !IsPlayerAlive(client))
 		return Plugin_Continue;
 		
-	TFBotEngi_BuildObject(g_TFBot[client], TFObject_Dispenser, _, 90.0);
+	TFBotEngi_BuildObject(TFBot(client), TFObject_Dispenser, _, 90.0);
 	return Plugin_Continue;
 }
 
@@ -975,10 +978,10 @@ public Action Timer_TFBotBuildTeleporterExit(Handle timer, int client)
 	if ((client = GetClientOfUserId(client)) == 0)
 		return Plugin_Continue;
 	
-	if (g_TFBot[client].Mission != MISSION_BUILD  || !IsPlayerAlive(client))
+	if (TFBot(client).Mission != MISSION_BUILD  || !IsPlayerAlive(client))
 		return Plugin_Continue;
 	
-	TFBotEngi_BuildObject(g_TFBot[client], TFObject_Teleporter, TFObjectMode_Exit, 180.0);
+	TFBotEngi_BuildObject(TFBot(client), TFObject_Teleporter, TFObjectMode_Exit, 180.0);
 	return Plugin_Continue;
 }
 
@@ -987,19 +990,21 @@ public Action Timer_TFBotFinishBuilding(Handle timer, int client)
 	if ((client = GetClientOfUserId(client)) == 0)
 		return Plugin_Continue;
 	
-	g_TFBot[client].AttemptingBuild = false;
-	g_TFBot[client].HasBuilt = g_TFBot[client].BuiltEverything();
-	g_TFBot[client].RemoveButtonFlag(IN_ATTACK);
-	if (g_TFBot[client].Mission == MISSION_BUILD)
+	TFBot(client).AttemptingBuild = false;
+	TFBot(client).HasBuilt = TFBot(client).BuiltEverything();
+	TFBot(client).RemoveButtonFlag(IN_ATTACK);
+	if (TFBot(client).Mission == MISSION_BUILD)
 	{
-		g_TFBot[client].GetLocomotion().Run();
-		g_TFBot[client].Mission = MISSION_NONE;
+		TFBot(client).GetLocomotion().Run();
+		TFBot(client).Mission = MISSION_NONE;
 	}
 	
 	int entity = MaxClients+1;
 	int ref;
 	if (!g_hTFBotEngineerBuildings[client])
+	{
 		g_hTFBotEngineerBuildings[client] = new ArrayList();
+	}
 	
 	while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 	{
@@ -1026,22 +1031,22 @@ public Action Timer_TFBotBuildObject(Handle timer, DataPack pack)
 	angles[1] += yawOffset;
 	TeleportEntity(client, _, angles);
 	
-	g_TFBot[client].AddButtonFlag(IN_ATTACK);
+	TFBot(client).AddButtonFlag(IN_ATTACK);
 	CreateTimer(0.5, Timer_TFBotStopForceAttack, client, TIMER_FLAG_NO_MAPCHANGE);
 	
-	g_TFBot[client].RemoveButtonFlag(IN_DUCK);
+	TFBot(client).RemoveButtonFlag(IN_DUCK);
 	return Plugin_Continue;
 }
 
 public Action Timer_TFBotStopForceAttack(Handle timer, int client)
 {
-	g_TFBot[client].RemoveButtonFlag(IN_ATTACK);
+	TFBot(client).RemoveButtonFlag(IN_ATTACK);
 	return Plugin_Continue;
 }
 
 public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 {
-	TFBot bot = g_TFBot[client];
+	TFBot bot = TFBot(client);
 	
 	if (!bot)
 	{
@@ -1451,7 +1456,7 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 	angles[0] = 90.0;
 	TeleportEntity(client, _, angles); // look directly down
 	
-	g_TFBot[client].AddButtonFlag(IN_ATTACK);
+	TFBot(client).AddButtonFlag(IN_ATTACK);
 	CreateTimer(0.25, Timer_TFBotStopForceAttack, client, TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Continue;
 }
@@ -1528,10 +1533,10 @@ int TFBot_GetDesiredWeapon(TFBot bot, int &slot=0)
 
 public Action Hook_TFBotWeaponCanSwitch(int client, int weapon)
 {
-	if (!g_TFBot[client])
+	if (!TFBot(client))
 		return Plugin_Continue;
 	
-	int desiredWeapon = TFBot_GetDesiredWeapon(g_TFBot[client]);
+	int desiredWeapon = TFBot_GetDesiredWeapon(TFBot(client));
 	if (desiredWeapon > 0 && weapon != desiredWeapon)
 	{
 		// do not switch to other weapons if we have a desired weapon

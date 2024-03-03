@@ -299,7 +299,7 @@ void OnDifficultyChanged(int newLevel)
 		if (!IsClientInGame(i) || !IsFakeClient(i) || !IsPlayerAlive(i))
 			continue;
 			
-		skill = g_TFBot[i].GetSkillLevel();
+		skill = TFBot(i).GetSkillLevel();
 		
 		switch (newLevel)
 		{
@@ -309,19 +309,19 @@ void OnDifficultyChanged(int newLevel)
 				int oldSkill = enemy.BotSkill;
 				
 				if (skill != oldSkill)
-					g_TFBot[i].SetSkillLevel(oldSkill);
+					TFBot(i).SetSkillLevel(oldSkill);
 			}
 			
 			case DIFFICULTY_STEEL:
 			{
 				if (skill < TFBotDifficulty_Hard && skill != TFBotDifficulty_Expert)
-					g_TFBot[i].SetSkillLevel(TFBotDifficulty_Hard);
+					TFBot(i).SetSkillLevel(TFBotDifficulty_Hard);
 			}
 			
 			case DIFFICULTY_TITANIUM:
 			{
 				if (skill < TFBotDifficulty_Expert)
-					g_TFBot[i].SetSkillLevel(TFBotDifficulty_Expert);
+					TFBot(i).SetSkillLevel(TFBotDifficulty_Expert);
 			}
 		}
 	}
@@ -334,10 +334,10 @@ int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=tr
 	{
 		switch (difficulty)
 		{
-			case DIFFICULTY_SCRAP: cells = strcopy(buffer, size, "{saddlebrown}Scrap (Normal){default}");
-			case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron (Hard){default}");
-			case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel (Very Hard){default}");
-			case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium (Impossible){default}");
+			case DIFFICULTY_SCRAP: cells = strcopy(buffer, size, "{saddlebrown}Scrap (Easy){default}");
+			case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron (Normal){default}");
+			case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel (Hard){default}");
+			case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium (Expert){default}");
 			default:  cells = strcopy(buffer, size, "unknown");
 		}
 	}

@@ -843,6 +843,19 @@ void UpdatePlayerItem(int client, int item)
 				}
 			}
 		}
+		case Item_MetalHelmet:
+		{
+			if (PlayerHasItem(client, item))
+			{
+				TF2Attrib_SetByDefIndex(client, 62, CalcItemMod_HyperbolicInverted(client, item, 0)); // "dmg taken from crit reduced"
+				TF2Attrib_SetByDefIndex(client, 66, CalcItemMod_HyperbolicInverted(client, item, 1)); // "dmg taken from bullets reduced"
+			}
+			else
+			{
+				TF2Attrib_RemoveByDefIndex(client, 62);
+				TF2Attrib_RemoveByDefIndex(client, 66);
+			}
+		}
 	}
 	
 	if (!PlayerHasItem(client, item) && !IsEquipmentItem(item) || IsEquipmentItem(item) && GetPlayerEquipmentItem(client) != item)

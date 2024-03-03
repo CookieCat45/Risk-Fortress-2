@@ -84,7 +84,7 @@ static void OnCreate(RF2_RaidBoss_Galleom boss)
 	float health = GALLEOM_BASE_HEALTH * GetEnemyHealthMult();
 	health *= 1.0 + (0.25 * float(RF2_GetSurvivorCount()-1));
 	boss.SetProp(Prop_Data, "m_iHealth", RoundToFloor(health));
-	boss.Path = PathFollower(_, Path_FilterIgnoreActors, Path_FilterOnlyActors);
+	//boss.Path = PathFollower(_, Path_FilterIgnoreActors, Path_FilterOnlyActors);
 	boss.BaseNpc.flAcceleration = 2000.0;
 }
 

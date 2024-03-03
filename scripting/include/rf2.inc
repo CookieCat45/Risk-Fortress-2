@@ -93,6 +93,7 @@ enum
 	Item_Antlers = 76,
 	ItemEngi_Toadstool = 77,
 	Item_HauntedKey = 78,
+	Item_MetalHelmet = 79,
 	Item_MaxValid,
 };
 

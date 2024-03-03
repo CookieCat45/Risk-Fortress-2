@@ -76,16 +76,16 @@ void RefreshClient(int client, bool force=false)
 	g_flPlayerVampireSapperDuration[client] = 0.0;
 	g_flPlayerReloadBuffDuration[client] = 0.0;
 	
-	g_TFBot[client].GoalArea = NULL_AREA;
-	g_TFBot[client].ForcedButtons = 0;
-	g_TFBot[client].Flags = 0;
-	g_TFBot[client].Mission = MISSION_NONE;
-	g_TFBot[client].HasBuilt = false;
-	g_TFBot[client].AttemptingBuild = false;
-	g_TFBot[client].SentryArea = view_as<CTFNavArea>(NULL_AREA);
-	g_TFBot[client].BuildingTarget = INVALID_ENT;
-	g_TFBot[client].RepairTarget = INVALID_ENT;
-	g_TFBot[client].DesiredWeaponSlot = -1;
+	TFBot(client).GoalArea = NULL_AREA;
+	TFBot(client).ForcedButtons = 0;
+	TFBot(client).Flags = 0;
+	TFBot(client).Mission = MISSION_NONE;
+	TFBot(client).HasBuilt = false;
+	TFBot(client).AttemptingBuild = false;
+	TFBot(client).SentryArea = view_as<CTFNavArea>(NULL_AREA);
+	TFBot(client).BuildingTarget = INVALID_ENT;
+	TFBot(client).RepairTarget = INVALID_ENT;
+	TFBot(client).DesiredWeaponSlot = -1;
 	
 	if (g_hTFBotEngineerBuildings[client])
 	{
@@ -261,7 +261,7 @@ bool RollAttackCrit(int client, int damageType=DMG_GENERIC, int damageCustom=-1)
 	int badRolls;
 	bool success;
 	bool melee = damageType & DMG_MELEE && damageCustom != TF_CUSTOM_BACKSTAB;
-	rollTimes = GetPlayerLuckStat(client);
+	rollTimes = GetPlayerLuckStat(client)+1;
 	
 	if (rollTimes < 0)
 	{
@@ -292,6 +292,8 @@ bool RollAttackCrit(int client, int damageType=DMG_GENERIC, int damageCustom=-1)
 	}
 	
 	critChance = fmin(critChance, 1.0);
+	PrintToChatAll("%.1f", critChance);
+	PrintToChatAll("%i %i", rollTimes, badRolls);
 	for (int i = 1; i <= rollTimes; i++)
 	{
 		if (RandChanceFloat(0.01, 1.0, critChance))
@@ -547,10 +549,16 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 			multiplier += CalcItemMod(client, Item_MaxHead, 2);
 			multiplier += CalcItemMod(client, Item_SaintMark, 3);
 			multiplier += CalcItemMod(client, Item_TripleA, 1);
+			if (multiplier > 1.0)
+			{
+				const float penalty = 0.6;
+				multiplier = Pow(multiplier, penalty);
+			}
+			
 			return multiplier;
 		}
 	}
-
+	
 	if (PlayerHasItem(client, Item_MaimLicense))
 	{
 		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_MaimLicense, 0);
@@ -582,6 +590,15 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 		{
 			const float penalty = 0.5;
 			multiplier = Pow(multiplier, penalty);
+		}
+		else
+		{
+			int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+			if (index == 527 || index == 1104) // Widowmaker/Air Strike
+			{
+				const float penalty = 0.6;
+				multiplier = Pow(multiplier, penalty);
+			}
 		}
 	}
 	
@@ -635,7 +652,7 @@ void ApplyVampireSapper(int client, int attacker, float damage=10.0, float durat
 	
 	if (IsFakeClient(client))
 	{
-		g_TFBot[client].RealizeSpy(attacker);
+		TFBot(client).RealizeSpy(attacker);
 	}
 	
 	for (int i = 1; i <= MaxClients; i++)
@@ -645,7 +662,7 @@ void ApplyVampireSapper(int client, int attacker, float damage=10.0, float durat
 	
 		if (DistBetween(i, client) <= 800.0 && IsLOSClear(client, i, MASK_OPAQUE|CONTENTS_IGNORE_NODRAW_OPAQUE))
 		{
-			g_TFBot[i].RealizeSpy(attacker);
+			TFBot(i).RealizeSpy(attacker);
 		}
 	}
 }
