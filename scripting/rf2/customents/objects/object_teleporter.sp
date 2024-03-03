@@ -354,7 +354,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
 				continue;
 			
-			collector = (!IsSingleplayer(false) && !g_bPlayerTookCollectorItem[i] || GetRandomInt(1, 10) <= 2);
+			collector = (!IsSingleplayer(false) && !g_bPlayerTookCollectorItem[i] && g_iLoopCount == 0 || GetRandomInt(1, 10) <= 2);
 			randomItem = collector ? GetRandomCollectorItem(TF2_GetPlayerClass(i)) : GetRandomItemEx(Quality_Genuine);
 			GiveItem(i, randomItem, _, true);
 			GetItemName(randomItem, name, sizeof(name));

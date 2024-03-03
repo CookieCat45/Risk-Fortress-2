@@ -155,6 +155,7 @@ enum
 #define TF_WEAPON_SLOTS 10
 #define MAX_ATTRIBUTES 16
 #define MAX_ATTRIBUTE_STRING_LENGTH 512
+#define TFObjectMode_Disposable TFObjectMode_Exit
 
 enum
 {
@@ -183,8 +184,8 @@ enum
 
 
 // Items -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_ITEMS 80
-#define MAX_ITEM_MODIFIERS 8
+#define MAX_ITEMS 90
+#define MAX_ITEM_MODIFIERS 12
 
 enum
 {

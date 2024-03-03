@@ -343,27 +343,6 @@ void CalculateMeleeDamageForce(float damage, const float vecMeleeDir[3], float s
 	CopyVectors(vecForce, buffer);
 }
 
-public bool SentryBusterPath_FilterIgnoreActors(int entity, int contentsMask, int desiredcollisiongroup)
-{
-	if (RF2_Object_Base(entity).IsValid())
-		return true;
-
-	if ((entity > 0 && entity <= MaxClients) || !IsCombatChar(entity))
-	{
-		return false;
-	}
-	
-	return true;
-}
-
-public bool SentryBusterPath_FilterOnlyActors(int entity, int contentsMask, int desiredcollisiongroup)
-{
-	if (RF2_Object_Base(entity).IsValid())
-		return false;
-	
-	return ((entity > 0 && entity <= MaxClients) || IsCombatChar(entity));
-}
-
 void DoSentryBusterWave()
 {
 	ArrayList sentryList = new ArrayList();

@@ -376,7 +376,7 @@ public void OnPluginStart()
 	g_iFileTime = GetPluginModifiedTime();
 	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
 	{
-		g_PathFollowers[i] = PathFollower(_, Path_FilterIgnoreObjects, Path_FilterOnlyActors);
+		g_PathFollowers[i] = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
 	}
 }
 
@@ -2214,7 +2214,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	if (!carryDeploy && GetPlayerBuildingCount(client, TFObject_Sentry, false) > 1)
 	{
 		SetEntProp(building, Prop_Send, "m_bMiniBuilding", true);
-		SetEntProp(building, Prop_Send, "m_iObjectMode", 1); // MODE_SENTRYGUN_DISPOSABLE, forces main sentry to always show in building HUD
+		SetEntProp(building, Prop_Send, "m_iObjectMode", TFObjectMode_Disposable); // forces main sentry to always show in building HUD
 		SetEntPropFloat(building, Prop_Send, "m_flModelScale", 0.6);
 		g_hPlayerExtraSentryList[client].Push(building);
 		if (GetPlayerBuildingCount(client, TFObject_Sentry) >= CalcItemModInt(client, ItemEngi_HeadOfDefense, 0) + 1)

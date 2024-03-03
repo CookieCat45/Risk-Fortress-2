@@ -1853,4 +1853,3 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 		}
 	}
 }
-

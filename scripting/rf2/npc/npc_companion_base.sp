@@ -487,18 +487,3 @@ static void OnStateChanged(RF2_Companion_Base npc, CompanionState oldState, Comp
 		}
 	}
 }
-
-static bool FilterIgnoreActors(int entity, int contentsMask, int desiredcollisiongroup)
-{
-	if ((entity > 0 && entity <= MaxClients) || !IsCombatChar(entity))
-	{
-		return false;
-	}
-	
-	return true;
-}
-
-static bool FilterOnlyActors(int entity, int contentsMask, int desiredcollisiongroup)
-{
-	return ((entity > 0 && entity <= MaxClients) || IsCombatChar(entity));
-}

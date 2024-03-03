@@ -120,7 +120,7 @@ enum
 	DIFFICULTY_MAX,
 };
 
-#define	DifficultyFactor_Scrap 0.75
+#define	DifficultyFactor_Scrap 0.8
 #define	DifficultyFactor_Iron 1.0
 #define	DifficultyFactor_Steel 1.5
 #define DifficultyFactor_Titanium 2.0

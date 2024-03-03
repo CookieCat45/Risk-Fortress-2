@@ -292,8 +292,6 @@ bool RollAttackCrit(int client, int damageType=DMG_GENERIC, int damageCustom=-1)
 	}
 	
 	critChance = fmin(critChance, 1.0);
-	PrintToChatAll("%.1f", critChance);
-	PrintToChatAll("%i %i", rollTimes, badRolls);
 	for (int i = 1; i <= rollTimes; i++)
 	{
 		if (RandChanceFloat(0.01, 1.0, critChance))

@@ -108,8 +108,7 @@ void SetSentryBuildState(int client, bool state)
 
 bool IsSentryDisposable(int sentry)
 {
-	int builder = GetEntPropEnt(sentry, Prop_Send, "m_hBuilder");
-	return IsValidClient(builder) && g_hPlayerExtraSentryList[builder] && g_hPlayerExtraSentryList[builder].FindValue(sentry) != INVALID_ENT;
+	return TF2_GetObjectMode(sentry) == TFObjectMode_Disposable;
 }
 
 public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookParam params)

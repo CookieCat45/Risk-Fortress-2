@@ -141,7 +141,8 @@ void EndTankDestructionMode()
 		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
 			continue;
 		
-		randomItem = GetRandomInt(1, 10) > 2 ? GetRandomItemEx(Quality_Genuine) : GetRandomCollectorItem(TF2_GetPlayerClass(i));
+		collector = (!IsSingleplayer(false) && !g_bPlayerTookCollectorItem[i] && g_iLoopCount == 0 || GetRandomInt(1, 10) <= 2);
+		randomItem = collector ? GetRandomCollectorItem(TF2_GetPlayerClass(i)) : GetRandomItemEx(Quality_Genuine);
 		GiveItem(i, randomItem, _, true);
 		GetItemName(randomItem, name, sizeof(name));
 		GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));

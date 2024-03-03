@@ -196,11 +196,17 @@ public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 	return false;
 }
 
-public bool Path_FilterIgnoreObjects(int entity, int contentsMask, int desiredcollisiongroup)
+public bool FilterIgnoreActors(int entity, int contentsMask, int desiredcollisiongroup)
 {	
-	// don't worry about objects, most are non solid anyway
-	if (RF2_Object_Base(entity).IsValid())
-		return true;
+	if ((entity > 0 && entity <= MaxClients) || !IsCombatChar(entity))
+	{
+		return false;
+	}
 	
-	return !(contentsMask & MASK_SOLID);
+	return true;
+}
+
+public bool FilterOnlyActors(int entity, int contentsMask, int desiredcollisiongroup)
+{
+	return ((entity > 0 && entity <= MaxClients) || IsCombatChar(entity));
 }
