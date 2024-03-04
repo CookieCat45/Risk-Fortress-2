@@ -376,6 +376,10 @@ public void OnPluginStart()
 	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
 	g_iFileTime = GetPluginModifiedTime();
+	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
+	{
+		g_PathFollowers[i] = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+	}
 }
 
 public void OnPluginEnd()
@@ -2182,7 +2186,7 @@ public Action OnPlayerDropObject(Event event, const char[] name, bool dontBroadc
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	int building = event.GetInt("index");
-
+	
 	if (CanTeamQuickBuild(GetClientTeam(client)))
 	{
 		if (TF2_GetObjectType2(building) == TFObject_Dispenser) // must be delayed by a frame or else the screen will break
