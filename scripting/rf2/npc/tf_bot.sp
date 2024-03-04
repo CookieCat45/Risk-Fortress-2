@@ -6,7 +6,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static PathFollower g_TFBotPathFollower[MAXTF2PLAYERS];
+//static PathFollower g_TFBotPathFollower[MAXTF2PLAYERS];
 static CNavArea g_TFBotGoalArea[MAXTF2PLAYERS];
 
 static int g_iTFBotFlags[MAXTF2PLAYERS];
@@ -65,8 +65,13 @@ methodmap TFBot
 	// Pathing
 	property PathFollower Follower
 	{
-		public get() 				{ return g_TFBotPathFollower[this.Client]; }
-		public set(PathFollower pf)	{ g_TFBotPathFollower[this.Client] = pf;   }
+		public get() 				{ return GetEntPathFollower(this.Client); }
+		//public set(PathFollower pf)	{ g_TFBotPathFollower[this.Client] = pf;   }
+	}
+	property int FollowerIndex
+	{
+		public get()				{ return g_iEntityPathFollowerIndex[this.Client];  }
+		public set(int value)		{ g_iEntityPathFollowerIndex[this.Client] = value; }
 	}
 	property CNavArea GoalArea
 	{

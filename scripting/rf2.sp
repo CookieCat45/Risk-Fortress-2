@@ -164,6 +164,8 @@ StringMap g_hCrashedPlayerSteamIDs;
 Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
 
 // Entities
+PathFollower g_PathFollowers[MAX_PATH_FOLLOWERS];
+int g_iEntityPathFollowerIndex[MAX_EDICTS] = {-1, ...};
 int g_iItemDamageProc[MAX_EDICTS];
 int g_iLastItemDamageProc[MAX_EDICTS];
 int g_iEntLastHitItemProc[MAX_EDICTS]; // Mainly for use in OnPlayerDeath
@@ -383,11 +385,13 @@ public void OnPluginEnd()
 	
 	for (int i = 0; i < MAXTF2PLAYERS; i++)
 	{
+		/*
 		if (TFBot(i).Follower)
 		{
 			TFBot(i).Follower.Destroy();
 			TFBot(i).Follower = view_as<PathFollower>(0);
 		}
+		*/
 		
 		if (RF2_IsEnabled() && IsValidClient(i))
 		{
@@ -395,6 +399,15 @@ public void OnPluginEnd()
 				ChangeClientTeam(i, TEAM_ENEMY);
 
 			SetClientName(i, g_szPlayerOriginalName[i]);
+		}
+	}
+	
+	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
+	{
+		if (g_PathFollowers[i])
+		{
+			g_PathFollowers[i].Destroy();
+			g_PathFollowers[i] = view_as<PathFollower>(0);
 		}
 	}
 }
@@ -904,12 +917,11 @@ void CleanUp()
 		}
 	}
 	
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
 	{
-		if (TFBot(i).Follower)
+		if (g_PathFollowers[i] && g_PathFollowers[i].IsValid())
 		{
-			TFBot(i).Follower.Destroy();
-			TFBot(i).Follower = view_as<PathFollower>(0);
+			g_PathFollowers[i].Invalidate();
 		}
 	}
 }
@@ -1073,7 +1085,8 @@ public void OnClientPutInServer(int client)
 	{
 		if (IsFakeClient(client))
 		{
-			TFBot(client).Follower = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+			//TFBot(client).Follower = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+			TFBot(client).FollowerIndex = GetFreePathFollowerIndex(client);
 			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_TFBotWeaponCanSwitch);
 		}
 		else if (g_bRoundActive)
@@ -1204,10 +1217,12 @@ public void OnClientDisconnect_Post(int client)
 	
 	if (TFBot(client).Follower)
 	{
-		TFBot(client).Follower.Destroy();
-		TFBot(client).Follower = view_as<PathFollower>(0);
+		TFBot(client).Follower.Invalidate();
+		//TFBot(client).Follower.Destroy();
+		//TFBot(client).Follower = view_as<PathFollower>(0);
 	}
 	
+	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client);
 	ResetAFKTime(client, false);
 	FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
@@ -3900,6 +3915,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 		return;
 	
 	g_flCashValue[entity] = 0.0;
+	g_iEntityPathFollowerIndex[entity] = -1;
 	g_iItemDamageProc[entity] = Item_Null;
 	g_iLastItemDamageProc[entity] = Item_Null;
 	g_iEntLastHitItemProc[entity] = Item_Null;
@@ -3993,6 +4009,12 @@ public void OnEntityDestroyed(int entity)
 		{
 			g_hPlayerExtraSentryList[builder].Erase(index);
 		}
+	}
+	
+	PathFollower pf = GetEntPathFollower(entity);
+	if (pf && pf.IsValid())
+	{
+		pf.Invalidate();
 	}
 	
 	g_flCashValue[entity] = 0.0;
