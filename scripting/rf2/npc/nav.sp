@@ -90,6 +90,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 		int team = -1;
 		TFClassType class;
 		team = filterTeam == view_as<int>(TFTeam_Red) ? view_as<int>(TFTeam_Blue) : view_as<int>(TFTeam_Red);
+		float sqMinDist = sq(minDist);
 		
 		while (validAreaCount > 0)
 		{
@@ -104,7 +105,6 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 			{
 				area = NULL_AREA;
 				validAreaCount--;
-				
 				if (areaArray.FindValue(randomArea) != -1)
 				{
 					areaArray.Erase(randomCell);
@@ -132,7 +132,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 								if (GetEntProp(sentry, Prop_Data, "m_iTeamNum") == filterTeam && GetEntPropEnt(sentry, Prop_Send, "m_hBuilder") == i && !IsSentryDisposable(sentry))
 								{
 									GetEntPos(sentry, sentryPos);
-									if (GetVectorDistance(spawnPos, sentryPos, true) <= sq(minDist))
+									if (GetVectorDistance(spawnPos, sentryPos, true) <= sqMinDist)
 									{
 										area = NULL_AREA;
 										validAreaCount--;
@@ -150,7 +150,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 						if (canSpawn && !onlyFilterSentries)
 						{
 							GetEntPos(i, playerPos);
-							if (GetVectorDistance(spawnPos, playerPos, true) <= sq(minDist))
+							if (GetVectorDistance(spawnPos, playerPos, true) <= sqMinDist)
 							{
 								area = NULL_AREA;
 								validAreaCount--;

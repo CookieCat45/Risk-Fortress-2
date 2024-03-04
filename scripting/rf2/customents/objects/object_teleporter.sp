@@ -642,9 +642,10 @@ public void OnTeleporterVoteFinish(Menu menu, int numVotes, int numClients, cons
 {
 	if (numVotes > 0)
 	{
+		int index = itemInfo[0][VOTEINFO_ITEM_INDEX];
 		int yesVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
 		int noVotes = itemInfo[1][VOTEINFO_ITEM_VOTES];
-		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0)
+		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0 && index == 0)
 		{
 			GetCurrentTeleporter().Prepare();
 		}
@@ -655,9 +656,10 @@ public void OnNextStageVoteFinish(Menu menu, int numVotes, int numClients, const
 {
 	if (numVotes > 0)
 	{
+		int index = itemInfo[0][VOTEINFO_ITEM_INDEX];
 		int yesVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
 		int noVotes = itemInfo[1][VOTEINFO_ITEM_VOTES];
-		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0)
+		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0 && index == 0)
 		{
 			ForceTeamWin(TEAM_SURVIVOR);
 		}

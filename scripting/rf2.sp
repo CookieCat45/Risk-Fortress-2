@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.5.9b"
+#define PLUGIN_VERSION "0.5.10b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -2212,7 +2212,6 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	int building = event.GetInt("index");
 	bool carryDeploy = asBool(GetEntProp(building, Prop_Send, "m_bCarryDeploy"));
-	
 	if (!carryDeploy && GetPlayerBuildingCount(client, TFObject_Sentry, false) > 1)
 	{
 		SetEntProp(building, Prop_Send, "m_bMiniBuilding", true);
@@ -3081,7 +3080,8 @@ public Action Timer_PlayerTimer(Handle timer)
 					continue;
 				}
 				
-				if (IsSentryDisposable(sentry) && GetEntProp(sentry, Prop_Send, "m_iAmmoShells") <= 0 && !GetEntProp(sentry, Prop_Send, "m_bCarried"))
+				if (IsSentryDisposable(sentry) && GetEntProp(sentry, Prop_Send, "m_iAmmoShells") <= 0 
+					&& !GetEntProp(sentry, Prop_Send, "m_bCarried") && !GetEntProp(sentry, Prop_Send, "m_bBuilding"))
 				{
 					SetVariantInt(9999);
 					AcceptEntityInput(sentry, "RemoveHealth");
