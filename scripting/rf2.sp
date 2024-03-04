@@ -11,6 +11,7 @@
 #include <tf2items>
 #include <tf_ontakedamage>
 #include <morecolors>
+#tryinclude <handledebugger>
 
 #undef REQUIRE_EXTENSIONS
 #tryinclude <SteamWorks>
@@ -376,10 +377,6 @@ public void OnPluginStart()
 	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
 	g_iFileTime = GetPluginModifiedTime();
-	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
-	{
-		g_PathFollowers[i] = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
-	}
 }
 
 public void OnPluginEnd()
@@ -634,6 +631,11 @@ public void OnMapStart()
 	{
 		g_bPluginEnabled = true;
 		g_bWaitingForPlayers = asBool(GameRules_GetProp("m_bInWaitingForPlayers"));
+		
+		for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
+		{
+			g_PathFollowers[i] = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+		}
 		
 		if (g_bLateLoad)
 		{
@@ -923,9 +925,10 @@ void CleanUp()
 	
 	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
 	{
-		if (g_PathFollowers[i] && g_PathFollowers[i].IsValid())
+		if (g_PathFollowers[i])
 		{
-			g_PathFollowers[i].Invalidate();
+			g_PathFollowers[i].Destroy();
+			g_PathFollowers[i] = view_as<PathFollower>(0);
 		}
 	}
 }

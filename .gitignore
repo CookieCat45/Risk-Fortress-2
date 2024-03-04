@@ -104,3 +104,4 @@ scripting/goomba.sp
 scripting/include/goomba.inc
 translations/goomba.phrases.txt
 scripting/goomba_tf.sp
+scripting/include/handledebugger.inc
