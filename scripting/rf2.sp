@@ -169,6 +169,7 @@ int g_iLastItemDamageProc[MAX_EDICTS];
 int g_iEntLastHitItemProc[MAX_EDICTS]; // Mainly for use in OnPlayerDeath
 int g_iCashBombSize[MAX_EDICTS];
 
+bool g_bDisposableSentry[MAX_EDICTS];
 bool g_bDontDamageOwner[MAX_EDICTS];
 bool g_bCashBomb[MAX_EDICTS];
 bool g_bFiredWhileRocketJumping[MAX_EDICTS];
@@ -2197,6 +2198,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	{
 		SetEntProp(building, Prop_Send, "m_bMiniBuilding", true);
 		SetEntProp(building, Prop_Send, "m_iObjectMode", TFObjectMode_Disposable); // forces main sentry to always show in building HUD
+		g_bDisposableSentry[building] = true;
 		SetEntPropFloat(building, Prop_Send, "m_flModelScale", 0.6);
 		g_hPlayerExtraSentryList[client].Push(building);
 		if (GetPlayerBuildingCount(client, TFObject_Sentry) >= CalcItemModInt(client, ItemEngi_HeadOfDefense, 0) + 1)
@@ -3060,10 +3062,10 @@ public Action Timer_PlayerTimer(Handle timer)
 					continue;
 				}
 				
-				if (IsSentryDisposable(sentry) && GetEntProp(sentry, Prop_Send, "m_iAmmoShells") <= 0)
+				if (IsSentryDisposable(sentry) && GetEntProp(sentry, Prop_Send, "m_iAmmoShells") <= 0 && !GetEntProp(sentry, Prop_Send, "m_bCarried"))
 				{
-					SetEntityHealth(sentry, 1);
-					RF_TakeDamage(sentry, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
+					SetVariantInt(9999);
+					AcceptEntityInput(sentry, "RemoveHealth");
 				}
 			}
 		}
@@ -3901,6 +3903,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_iItemDamageProc[entity] = Item_Null;
 	g_iLastItemDamageProc[entity] = Item_Null;
 	g_iEntLastHitItemProc[entity] = Item_Null;
+	g_bDisposableSentry[entity] = false;
 	g_bDontDamageOwner[entity] = false;
 	g_bDontRemoveWearable[entity] = false;
 	g_bItemWearable[entity] = false;

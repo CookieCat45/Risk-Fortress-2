@@ -108,7 +108,7 @@ void SetSentryBuildState(int client, bool state)
 
 bool IsSentryDisposable(int sentry)
 {
-	return TF2_GetObjectMode(sentry) == TFObjectMode_Disposable;
+	return g_bDisposableSentry[sentry];
 }
 
 public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookParam params)

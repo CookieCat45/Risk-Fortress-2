@@ -204,7 +204,6 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	public void Start()
 	{
 		this.EventState = TELE_EVENT_ACTIVE;
-		this.ToggleObjects(false);
 		this.TextSize = 20.0;
 		Call_StartForward(g_fwTeleEventStart);
 		Call_Finish();
@@ -216,6 +215,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		}
 		
 		this.Radius = TELEPORTER_RADIUS * g_cvTeleporterRadiusMultiplier.FloatValue;
+		this.ToggleObjects(false);
 		CBaseAnimating bubble = CBaseAnimating(CreateEntityByName("prop_dynamic_override"));
 		this.Bubble = bubble;
 		bubble.SetModel(MODEL_TELEPORTER_RADIUS);
@@ -278,14 +278,14 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 				{
 					if (!IsClientInGame(i) || IsFakeClient(i) || !IsPlayerSurvivor(i))
 						continue;
-
+					
 					TriggerAchievement(i, ACHIEVEMENT_HALLOWEENBOSSES);
 				}
 			}
 			
 			while (hhhSpawnCount > 0 || eyeSpawnCount > 0)
 			{
-				area = GetSpawnPoint(pos, resultPos, 0.0, this.Radius, 4, true, mins, maxs, MASK_NPCSOLID, zOffset);
+				area = GetSpawnPoint(pos, resultPos, 0.0, this.Radius*1.5, -1, true, mins, maxs, MASK_NPCSOLID, zOffset);
 				if (area)
 				{
 					if (hhhSpawnCount > 0)
@@ -415,6 +415,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 				RF2_Object_Base(entity).Active = state;
 				if (!state)
 				{
+					SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
 					GetEntityRenderColor(entity, r, g, b, a);
 					SetEntityRenderColor(entity, r, g, b, 75);
 				}
@@ -439,6 +440,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			RF2_Object_Base(entity).Active = state;
 			if (!state)
 			{
+				SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
 				GetEntityRenderColor(entity, r, g, b, a);
 				SetEntityRenderColor(entity, r, g, b, 75);
 			}
@@ -642,7 +644,7 @@ public void OnTeleporterVoteFinish(Menu menu, int numVotes, int numClients, cons
 	{
 		int yesVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
 		int noVotes = itemInfo[1][VOTEINFO_ITEM_VOTES];
-		if (yesVotes > noVotes)
+		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0)
 		{
 			GetCurrentTeleporter().Prepare();
 		}
@@ -655,7 +657,7 @@ public void OnNextStageVoteFinish(Menu menu, int numVotes, int numClients, const
 	{
 		int yesVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
 		int noVotes = itemInfo[1][VOTEINFO_ITEM_VOTES];
-		if (yesVotes > noVotes)
+		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0)
 		{
 			ForceTeamWin(TEAM_SURVIVOR);
 		}
