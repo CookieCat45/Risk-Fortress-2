@@ -126,10 +126,10 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsClientInGame(i) || !IsPlayerAlive(i))
+			if (!IsClientInGame(i))
 				continue;
 				
-			if (IsPlayerSurvivor(i))
+			if (GetClientTeam(i) == TEAM_SURVIVOR)
 			{
 				clients[clientCount] = i;
 				clientCount++;
