@@ -640,12 +640,29 @@ public Action Timer_DelayHalloweenBossSpawn(Handle timer, int entity)
 
 public void OnTeleporterVoteFinish(Menu menu, int numVotes, int numClients, const int[][] clientInfo, int numItems, const int[][] itemInfo)
 {
+	// This is the absolute dumbest shit ever. My god. Please fix the menu API. Thanks.
 	if (numVotes > 0)
 	{
 		int index = itemInfo[0][VOTEINFO_ITEM_INDEX];
-		int yesVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
-		int noVotes = itemInfo[1][VOTEINFO_ITEM_VOTES];
-		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0 && index == 0)
+		int yesVotes, noVotes;
+		if (numItems == 1)
+		{
+			if (index == 0)
+			{
+				yesVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
+			}
+			else
+			{
+				noVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
+			}
+		}
+		else
+		{
+			yesVotes = index == 0 ? itemInfo[0][VOTEINFO_ITEM_VOTES] : itemInfo[1][VOTEINFO_ITEM_VOTES];
+			noVotes =  index == 1 ? itemInfo[0][VOTEINFO_ITEM_VOTES] : itemInfo[1][VOTEINFO_ITEM_VOTES];
+		}
+		
+		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0)
 		{
 			GetCurrentTeleporter().Prepare();
 		}
@@ -657,9 +674,25 @@ public void OnNextStageVoteFinish(Menu menu, int numVotes, int numClients, const
 	if (numVotes > 0)
 	{
 		int index = itemInfo[0][VOTEINFO_ITEM_INDEX];
-		int yesVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
-		int noVotes = itemInfo[1][VOTEINFO_ITEM_VOTES];
-		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0 && index == 0)
+		int yesVotes, noVotes;
+		if (numItems == 1)
+		{
+			if (index == 0)
+			{
+				yesVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
+			}
+			else
+			{
+				noVotes = itemInfo[0][VOTEINFO_ITEM_VOTES];
+			}
+		}
+		else
+		{
+			yesVotes = index == 0 ? itemInfo[0][VOTEINFO_ITEM_VOTES] : itemInfo[1][VOTEINFO_ITEM_VOTES];
+			noVotes =  index == 1 ? itemInfo[0][VOTEINFO_ITEM_VOTES] : itemInfo[1][VOTEINFO_ITEM_VOTES];
+		}
+		
+		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0)
 		{
 			ForceTeamWin(TEAM_SURVIVOR);
 		}

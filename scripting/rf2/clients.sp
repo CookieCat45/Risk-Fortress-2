@@ -40,6 +40,7 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerTookCollectorItem[client] = false;
 	g_bExecutionerBleedCooldown[client] = false;
 	g_bPlayerHealBurstCooldown[client] = false;
+	g_bMeleeMiss[client] = false;
 	g_szObjectiveHud[client] = "";
 	
 	if (IsClientInGame(client) && !g_bMapChanging)
@@ -47,9 +48,14 @@ void RefreshClient(int client, bool force=false)
 		TF2Attrib_RemoveAll(client);
 		SetEntityGravity(client, 1.0);
 		SetEntProp(client, Prop_Send, "m_bGlowEnabled", false);
+		RequestFrame(RF_ResetMinionFlag, client); // so the correct death voice sound plays
 		
 		// Clear our custom model on a timer so our ragdoll uses the correct model if we're dying.
 		CreateTimer(0.5, Timer_ResetModel, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	}
+	else
+	{
+		g_bPlayerIsMinion[client] = false;
 	}
 	
 	if (force || !IsPlayerSurvivor(client) || !g_bGracePeriod || g_bMapChanging || !IsClientInGame(client))
@@ -92,6 +98,11 @@ void RefreshClient(int client, bool force=false)
 		delete g_hTFBotEngineerBuildings[client];
 		g_hTFBotEngineerBuildings[client] = null;
 	}
+}
+
+public void RF_ResetMinionFlag(int client)
+{
+	g_bPlayerIsMinion[client] = false;
 }
 
 public Action Timer_ResetModel(Handle timer, int client)
@@ -326,30 +337,26 @@ int GetPlayerLevel(int client)
 
 bool CanPlayerRegen(int client)
 {
-	if (PlayerHasItem(client, Item_HorrificHeadsplitter))
-		return false;
-
 	return (IsPlayerSurvivor(client) ||
-	PlayerHasItem(client, Item_Archimedes) ||
-	PlayerHasItem(client, Item_ClassCrown));
+		PlayerHasItem(client, Item_Archimedes) ||
+		PlayerHasItem(client, Item_DapperTopper) ||
+		PlayerHasItem(client, Item_ClassCrown));
 }
 
-void PrintDeathMessage(int client, int customkill=0)
+void PrintDeathMessage(int client, int item=Item_Null)
 {
 	char message[512];
-	if (customkill == TF_CUSTOM_BLEEDING && PlayerHasItem(client, Item_HorrificHeadsplitter))
+	if (item == Item_HorrificHeadsplitter)
 	{
 		FormatEx(message, sizeof(message), "HeadsplitterDeath");
-		CPrintToChatAll("%t", message, client);
-		Format(message, sizeof(message), "%T", message, LANG_SERVER, client);
-		CRemoveTags(message, sizeof(message));
-		PrintToServer(message);
-		return;
+	}
+	else
+	{
+		const int maxMessages = 10;
+		int randomMessage = GetRandomInt(1, maxMessages);
+		FormatEx(message, sizeof(message), "DeathMessage%i", randomMessage);
 	}
 	
-	const int maxMessages = 10;
-	int randomMessage = GetRandomInt(1, maxMessages);
-	FormatEx(message, sizeof(message), "DeathMessage%i", randomMessage);
 	CPrintToChatAll("%t", message, client);
 	Format(message, sizeof(message), "%T", message, LANG_SERVER, client);
 	CRemoveTags(message, sizeof(message));
@@ -416,7 +423,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	
 	if (fullHeal)
 	{
-		HealPlayer(client, actualMaxHealth, false, _, false);
+		HealPlayer(client, actualMaxHealth+99999, false, _, false);
 	}
 	else if (partialHeal)
 	{
@@ -503,14 +510,14 @@ float CalculatePlayerMaxSpeed(int client)
 void CalculatePlayerMiscStats(int client)
 {
 	// Knockback resistance
-	if (!IsBoss(client))
+	if (!IsBoss(client) && !IsPlayerMinion(client))
 	{
 		float kbRes = 1.0 / GetEnemyDamageMult();
 		if (IsPlayerSurvivor(client))
 		{
 			kbRes *= 0.75; // Survivors get a bit more
 		}
-
+		
 		TF2Attrib_SetByDefIndex(client, 252, kbRes); // "damage force reduction"
 	}
 }
@@ -608,6 +615,7 @@ float GetPlayerReloadMod(int client)
 	float reloadMult = 1.0;
 	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_RoundedRifleman, 0);
 	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_TripleA, 0);
+	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_MaxHead, 3);
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)
 	{
 		reloadMult *= GetItemMod(Item_SaintMark, 0);
@@ -1057,7 +1065,7 @@ float GetPlayerHealthMult(int client)
 	{
 		return 1.0 + (float(GetPlayerLevel(client)-1) * g_cvSurvivorHealthScale.FloatValue);
 	}
-
+	
 	return GetEnemyHealthMult();
 }
 

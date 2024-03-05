@@ -677,3 +677,131 @@ bool WaitingForPlayerRejoin(bool single=false)
 		return g_hCrashedPlayerSteamIDs.Size > 0;
 	}	
 }
+
+bool IsPlayerMinion(int client)
+{
+	return g_bPlayerIsMinion[client];
+}
+
+void SpawnMinion(int client)
+{
+	g_bPlayerIsMinion[client] = true;
+	float pos[3];
+	float center[3];
+	GetWorldCenter(center);
+	GetSpawnPoint(center, pos, 0.0, 10000.0, _, _, _, _, _, 30.0);
+	TFClassType class = view_as<TFClassType>(GetEntProp(client, Prop_Send, "m_iDesiredPlayerClass"));
+	if (class == TFClass_Unknown)
+	{
+		class = view_as<TFClassType>(GetRandomInt(1, 9));
+	}
+	
+	TF2_SetPlayerClass(client, class);
+	TF2_RespawnPlayer(client);
+	TF2_RemoveAllWeapons(client);
+	TF2_RemoveDemoShield(client);
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "tf_powerup_bottle")) != INVALID_ENT)
+	{
+		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
+		{
+			TF2_RemoveWearable(client, entity);
+			break;
+		}
+	}
+	
+	g_iPlayerVoiceType[client] = VoiceType_Robot;
+	g_iPlayerVoicePitch[client] = SNDPITCH_HIGH;
+	g_iPlayerFootstepType[client] = FootstepType_Robot;
+	TeleportEntity(client, pos);
+	switch (class)
+	{
+		case TFClass_Scout:
+		{
+			SetVariantString("models/rf2/bots/bot_scout.mdl");
+			CreateWeapon(client, "tf_weapon_bat_wood", 44, _, true);
+			g_iPlayerBaseHealth[client] = 315;
+			g_flPlayerMaxSpeed[client] = 420.0;
+		}
+		
+		case TFClass_Soldier:
+		{
+			SetVariantString("models/rf2/bots/bot_soldier.mdl");
+			CreateWeapon(client, "tf_weapon_shotgun_soldier", 10, "3 = 0.7");
+			g_iPlayerBaseHealth[client] = 500;
+			g_flPlayerMaxSpeed[client] = 280.0;
+		}
+		
+		case TFClass_Pyro:
+		{
+			SetVariantString("models/rf2/bots/bot_pyro.mdl");
+			CreateWeapon(client, "tf_weapon_fireaxe", 348, _, true);
+			g_iPlayerBaseHealth[client] = 450;
+			g_flPlayerMaxSpeed[client] = 320.0;
+		}
+		
+		case TFClass_DemoMan:
+		{
+			SetVariantString("models/rf2/bots/bot_demo.mdl");
+			CreateWeapon(client, "tf_weapon_bottle", 609, _, true);
+			CreateWearable(client, "tf_wearable_demoshield", 1099, _, true);
+			g_iPlayerBaseHealth[client] = 450;
+			g_flPlayerMaxSpeed[client] = 300.0;
+		}
+		
+		case TFClass_Heavy:
+		{
+			SetVariantString("models/rf2/bots/bot_heavy.mdl");
+			CreateWeapon(client, "tf_weapon_fists", 5, "2 = 1.2");
+			g_iPlayerBaseHealth[client] = 800;
+			g_flPlayerMaxSpeed[client] = 260.0;
+		}
+		
+		case TFClass_Engineer:
+		{
+			SetVariantString("models/rf2/bots/bot_engineer.mdl");
+			CreateWeapon(client, "tf_weapon_wrench", 7, "276 = 1 ; 345 = 3.0");
+			CreateWeapon(client, "tf_weapon_pda_engineer_build", 25);
+			CreateWeapon(client, "tf_weapon_pda_engineer_destroy", 26);
+			CreateWeapon(client, "tf_weapon_builder", 28);
+			g_iPlayerBaseHealth[client] = 300;
+			g_flPlayerMaxSpeed[client] = 320.0;
+		}
+		
+		case TFClass_Medic:
+		{
+			SetVariantString("models/rf2/bots/bot_medic.mdl");
+			CreateWeapon(client, "tf_weapon_medigun", 29, "9 = 0.0 ; 105 = 0.0 ; 7 = 0.75");
+			g_iPlayerBaseHealth[client] = 375;
+			g_flPlayerMaxSpeed[client] = 360.0;
+		}
+		
+		case TFClass_Sniper:
+		{
+			SetVariantString("models/rf2/bots/bot_sniper.mdl");
+			CreateWeapon(client, "tf_weapon_jar", 1105, "278 = 2.0");
+			CreateWeapon(client, "tf_weapon_club", 3);
+			g_iPlayerBaseHealth[client] = 300;
+			g_flPlayerMaxSpeed[client] = 320.0;
+		}
+		
+		case TFClass_Spy:
+		{
+			SetVariantString("models/rf2/bots/bot_spy.mdl");
+			CreateWeapon(client, "tf_weapon_knife", 892);
+			CreateWeapon(client, "tf_weapon_pda_spy", 27);
+			CreateWeapon(client, "tf_weapon_invis", 30);
+			CreateWeapon(client, "tf_weapon_sapper", 810, _, true);
+			g_iPlayerBaseHealth[client] = 300;
+			g_flPlayerMaxSpeed[client] = 360.0;
+		}
+	}
+	
+	AcceptEntityInput(client, "SetCustomModel");
+	SetEntProp(client, Prop_Send, "m_bUseClassAnimations", true);
+	SetEntPropFloat(client, Prop_Send, "m_flModelScale", 0.5);
+	TF2_AddCondition(client, TFCond_UberchargedCanteen, 2.5);
+	TF2Attrib_SetByDefIndex(client, 62, 0.5); // "dmg taken from crit reduced"
+	TF2Attrib_SetByDefIndex(client, 252, 0.25); // "damage force reduction"
+	GiveItem(client, Item_Archimedes, 3+g_iSubDifficulty);
+}

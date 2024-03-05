@@ -24,7 +24,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.5.10b"
+#define PLUGIN_VERSION "0.6b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -116,6 +116,8 @@ bool g_bPlayerSpawnedByTeleporter[MAXTF2PLAYERS];
 bool g_bExecutionerBleedCooldown[MAXTF2PLAYERS];
 bool g_bPlayerHealBurstCooldown[MAXTF2PLAYERS];
 bool g_bPlayerTimingOut[MAXTF2PLAYERS];
+bool g_bMeleeMiss[MAXTF2PLAYERS];
+bool g_bPlayerIsMinion[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -273,11 +275,13 @@ ConVar g_cvEngiMetalRegenInterval;
 ConVar g_cvEngiMetalRegenAmount;
 ConVar g_cvHauntedKeyDropChanceMax;
 ConVar g_cvArtifactChance;
+ConVar g_cvAllowHumansInBlue;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
 ConVar g_cvDebugShowObjectSpawns;
 ConVar g_cvDebugUseAltMapSettings;
+ConVar g_cvDebugDisableEnemySpawning;
 
 // Cookies
 Cookie g_coMusicEnabled;
@@ -816,15 +820,6 @@ public void OnConfigsExecuted()
 		ConVar botConsiderClass = FindConVar("tf_bot_reevaluate_class_in_spawnroom");
 		botConsiderClass.Flags = botConsiderClass.Flags & ~FCVAR_CHEAT;
 		botConsiderClass.SetBool(false);
-
-		char team[8];
-		switch (TEAM_ENEMY)
-		{
-			case 3:	team = "blue";
-			case 2:	team = "red";
-		}
-
-		FindConVar("mp_humans_must_join_team").SetString(team);
 		g_bConVarsModified = true;
 	}
 }
@@ -1032,7 +1027,6 @@ void ResetConVars()
 	ResetConVar(FindConVar("mp_timelimit"));
 	ResetConVar(FindConVar("mp_forceautoteam"));
 	ResetConVar(FindConVar("mp_respawnwavetime"));
-	ResetConVar(FindConVar("mp_humans_must_join_team"));
 	ResetConVar(FindConVar("mp_bonusroundtime"));
 	ResetConVar(FindConVar("tv_enable"));
 	ResetConVar(FindConVar("tf_use_fixed_weaponspreads"));
@@ -1590,7 +1584,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	if (team == TEAM_SURVIVOR)
 	{
 		// Gatekeeping
-		if (!IsPlayerSurvivor(client))
+		if (!IsPlayerSurvivor(client) && !IsPlayerMinion(client))
 		{
 			SilentlyKillPlayer(client);
 			ChangeClientTeam(client, TEAM_ENEMY);
@@ -1720,7 +1714,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int weaponIndex = event.GetInt("weapon_def_index");
 	int weaponId = event.GetInt("weaponid");
 	int damageType = event.GetInt("damagebits");
-	int customkill = event.GetInt("customkill");
+	//int customkill = event.GetInt("customkill");
 	CritType critType = view_as<CritType>(event.GetInt("crit_type"));
 	
 	// No dominations
@@ -1864,7 +1858,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		if (!g_bGracePeriod)
 		{
 			SaveSurvivorInventory(victim, RF2_GetSurvivorIndex(victim));
-			PrintDeathMessage(victim, customkill);
+			PrintDeathMessage(victim, itemProc);
 			
 			int fog = CreateEntityByName("env_fog_controller");
 			DispatchKeyValue(fog, "spawnflags", "1");
@@ -1877,7 +1871,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			AcceptEntityInput(fog, "TurnOn");
 			const float time = 0.1;
 			int oldFog;
-
+			
 			for (int i = 1; i <= MaxClients; i++)
 			{
 				if (!IsClientInGame(i) || IsFakeClient(i))
@@ -1896,9 +1890,8 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			}
 			
 			CreateTimer(time, Timer_KillFog, EntIndexToEntRef(fog), TIMER_FLAG_NO_MAPCHANGE);
-			// Change the victim's team on a timer to avoid some strange behavior.
-			CreateTimer(0.3, Timer_ChangeTeamOnDeath, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
-
+			CreateTimer(2.5, Timer_SurvivorDeath, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
+			
 			int alive = 0;
 			int lastMan;
 			for (int i = 1; i <= MaxClients; i++)
@@ -1932,6 +1925,10 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			// Respawning players right inside of player_death causes strange behaviour.
 			CreateTimer(0.1, Timer_RespawnSurvivor, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 		}
+	}
+	else if (IsPlayerMinion(victim))
+	{
+		CreateTimer(5.0, Timer_MinionSpawn, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
 	if (victimTeam == TEAM_ENEMY && !IsFakeClient(victim))
@@ -2029,12 +2026,30 @@ public Action Timer_RespawnSurvivor(Handle timer, int client)
 	return Plugin_Continue;
 }
 
-public Action Timer_ChangeTeamOnDeath(Handle timer, int client)
+public Action Timer_SurvivorDeath(Handle timer, int client)
 {
 	if ((client = GetClientOfUserId(client)) == 0)
 		return Plugin_Continue;
 	
-	ChangeClientTeam(client, GetCookieBool(client, g_coSpecOnDeath) ? 1 : TEAM_ENEMY);
+	if (GetCookieBool(client, g_coSpecOnDeath))
+	{
+		ChangeClientTeam(client, 1);
+	}
+	else
+	{
+		CreateTimer(0.0, Timer_MinionSpawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		PrintCenterText(client, "%t", "MinionSpawn");
+	}
+	
+	return Plugin_Continue;
+}
+
+public Action Timer_MinionSpawn(Handle timer, int client)
+{
+	if ((client = GetClientOfUserId(client)) == 0 || IsPlayerAlive(client))
+		return Plugin_Continue;
+	
+	SpawnMinion(client);
 	return Plugin_Continue;
 }
 
@@ -2074,9 +2089,6 @@ public void RF_DeleteRagdoll(int client)
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "tf_ragdoll")) != INVALID_ENT)
 	{
-		if (entity <= MaxClients)
-			continue;
-		
 		if (GetEntPropEnt(entity, Prop_Send, "m_hPlayer") == client)
 		{
 			RemoveEntity2(entity);
@@ -2215,13 +2227,17 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	int building = event.GetInt("index");
 	bool carryDeploy = asBool(GetEntProp(building, Prop_Send, "m_bCarryDeploy"));
-	if (!carryDeploy && GetPlayerBuildingCount(client, TFObject_Sentry, false) > 1)
+	if (!carryDeploy && (IsPlayerMinion(client) || GetPlayerBuildingCount(client, TFObject_Sentry, false) > 1))
 	{
-		SetEntProp(building, Prop_Send, "m_bMiniBuilding", true);
-		SetEntProp(building, Prop_Send, "m_iObjectMode", TFObjectMode_Disposable); // forces main sentry to always show in building HUD
-		g_bDisposableSentry[building] = true;
 		SetEntPropFloat(building, Prop_Send, "m_flModelScale", 0.6);
-		g_hPlayerExtraSentryList[client].Push(building);
+		if (TF2_GetObjectType2(building) == TFObject_Sentry)
+		{
+			SetEntProp(building, Prop_Send, "m_iObjectMode", TFObjectMode_Disposable); // forces main sentry to always show in building HUD
+			SetEntProp(building, Prop_Send, "m_bMiniBuilding", true);
+			g_hPlayerExtraSentryList[client].Push(building);
+			g_bDisposableSentry[building] = true;
+		}
+			
 		if (GetPlayerBuildingCount(client, TFObject_Sentry) >= CalcItemModInt(client, ItemEngi_HeadOfDefense, 0) + 1)
 		{
 			SetSentryBuildState(client, false);
@@ -2277,7 +2293,7 @@ public void RF_TeleporterThink(int building)
 			if (g_bPlayerInSpawnQueue[i] || !IsClientInGame(i) || IsPlayerAlive(i) || GetClientTeam(i) != TEAM_ENEMY)
 				continue;
 			
-			if (!IsFakeClient(i) && !GetCookieBool(i, g_coBecomeEnemy))
+			if (!IsFakeClient(i) && (!GetCookieBool(i, g_coBecomeEnemy) || !g_cvAllowHumansInBlue.BoolValue))
 				continue;
 
 			enemies.Push(i);
@@ -2513,6 +2529,9 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	}
 	
 	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
+	if (g_cvDebugDisableEnemySpawning.BoolValue)
+		return Plugin_Continue;
+
 	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + RF2_GetSubDifficulty() / 3;
 	if (survivorCount >= 4)
 	{
@@ -2541,9 +2560,9 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		if (g_bPlayerInSpawnQueue[i] || !IsClientInGame(i) || GetClientTeam(i) != TEAM_ENEMY)
 			continue;
 		
-		if (!IsFakeClient(i) && !GetCookieBool(i, g_coBecomeEnemy))
+		if (!IsFakeClient(i) && (!GetCookieBool(i, g_coBecomeEnemy) || !g_cvAllowHumansInBlue.BoolValue))
 			continue;
-
+		
 		// humans always spawn before bots, alive players get less points
 		if (IsPlayerAlive(i))
 		{
@@ -3047,11 +3066,6 @@ public Action Timer_PlayerTimer(Handle timer)
 			}
 		}
 		
-		if (PlayerHasItem(i, Item_HorrificHeadsplitter) && !TF2_IsPlayerInCondition(i, TFCond_Bleeding))
-		{
-			TF2_MakeBleed(i, i, 60.0);
-		}
-		
 		if (g_flPlayerVampireSapperCooldown[i] > 0.0)
 		{
 			g_flPlayerVampireSapperCooldown[i] -= 0.1;
@@ -3306,12 +3320,14 @@ public Action OnChangeClass(int client, const char[] command, int args)
 	if (g_bRoundActive && !g_bGracePeriod || GetClientTeam(client) == TEAM_ENEMY)
 	{
 		// don't nag dead players for trying to change class
-		if (IsPlayerAlive(client))
-			RF2_PrintToChat(client, "%t", "NoChangeClass");
-
-		if (desiredClass != TFClass_Unknown)
+		if (IsPlayerAlive(client) && !IsPlayerMinion(client))
 		{
-			SetEntProp(client, Prop_Send, "m_iDesiredPlayerClass", view_as<int>(desiredClass));
+			RF2_PrintToChat(client, "%t", "NoChangeClass");
+		}
+		
+		if (TF2_GetPlayerClass(client) != TFClass_Unknown)
+		{
+			SetEntProp(client, Prop_Send, "m_iDesiredPlayerClass", desiredClass);
 		}
 		
 		return Plugin_Handled;
@@ -3349,7 +3365,7 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 			RF2_PrintToChat(client, "%t", "NoChangeTeam");
 			return Plugin_Handled;
 		}
-
+		
 		if (strcmp2(command, "autoteam"))
 		{
 			return Plugin_Handled;
@@ -3369,7 +3385,7 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 			{
 				return Plugin_Handled;
 			}
-
+			
 			newTeam = FindTeamByName(teamName);
 			if (newTeam < 0)
 			{
@@ -3377,8 +3393,7 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 			}
 		}
 		
-		if (team == TEAM_ENEMY && newTeam > 1 || IsTeleporterBoss(client)
-			|| team == TEAM_SURVIVOR && IsPlayerAlive(client) && !g_bGracePeriod)
+		if (IsTeleporterBoss(client) || team == TEAM_SURVIVOR && IsPlayerAlive(client) && IsPlayerSurvivor(client) && !g_bGracePeriod)
 		{
 			RF2_PrintToChat(client, "%t", "NoChangeTeam");
 			return Plugin_Handled;
@@ -3386,6 +3401,10 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 		else if (IsPlayerSurvivor(client))
 		{
 			ReshuffleSurvivor(client, newTeam);
+		}
+		else if (newTeam == TEAM_SURVIVOR)
+		{
+			CreateTimer(1.0, Timer_MinionSpawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 	
@@ -3453,12 +3472,12 @@ public Action OnSuicide(int client, const char[] command, int args)
 		pack.WriteFloat(pos[1]);
 		pack.WriteFloat(pos[2]);
 	}
-	else
+	else if (!IsPlayerMinion(client)) // Only minions can suicide
 	{
 		RF2_PrintToChat(client, "%t", "NoSuicide");
 		return Plugin_Handled;
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -4024,6 +4043,7 @@ public void OnEntityDestroyed(int entity)
 		pf.Invalidate();
 	}
 	
+	g_iEntityPathFollowerIndex[entity] = -1;
 	g_flCashValue[entity] = 0.0;
 }
 
@@ -4165,7 +4185,7 @@ public Action Hook_CashTouch(int entity, int other)
 {
 	if (IsValidClient(other))
 	{
-		if (!IsPlayerSurvivor(other))
+		if (!IsPlayerSurvivor(other) && !IsPlayerMinion(other))
 			return Plugin_Handled;
 
 		PickupCash(other, entity);
@@ -4480,8 +4500,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 
 		if (!victimIsBuilding && !victimIsNpc)
 		{
-			if (selfDamage && IsBoss(victim) && !Enemy(victim).AllowSelfDamage &&
-				(!PlayerHasItem(victim, Item_HorrificHeadsplitter) && damageCustom != TF_CUSTOM_BLEEDING))
+			if (selfDamage && IsBoss(victim) && !Enemy(victim).AllowSelfDamage)
 			{
 				// bosses normally don't do damage to themselves
 				damage = 0.0;
@@ -4491,7 +4510,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			// backstabs do set damage against survivors and bosses
 			if (damageCustom == TF_CUSTOM_BACKSTAB)
 			{
-				if (IsBoss(victim))
+				if (IsPlayerMinion(attacker))
+				{
+					damage = 150.0 * GetEnemyDamageMult();
+				}
+				else if (IsBoss(victim))
 				{
 					int stabType = g_cvBossStabDamageType.IntValue;
 					if (stabType == StabDamageType_Raw)
@@ -4522,23 +4545,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_WarPig, 1);
 				}
 			}
-		}
-		
-		// Horrific Headsplitter
-		if (victimIsClient && PlayerHasItem(victim, Item_HorrificHeadsplitter) && damageCustom == TF_CUSTOM_BLEEDING)
-		{
-			if (!g_bGracePeriod && !IsStageCleared() && (!IsPlayerSurvivor(victim) || GetPlayersOnTeam(TEAM_ENEMY, true) >= 1))
-			{
-				damage *= 1.0 + CalcItemMod(victim, Item_HorrificHeadsplitter, 1) * (1.0 + (float(GetPlayerLevel(victim)-1) * GetItemMod(Item_HorrificHeadsplitter, 0)));
-			}
-			else
-			{
-				damage = 0.0; // don't damage us during grace period, as we'll have nothing to kill
-				RequestFrame(RF_ClearViewPunch, victim);
-				return Plugin_Handled;
-			}
-			
-			RequestFrame(RF_ClearViewPunch, victim);
 		}
 		
 		if (!selfDamage && !invuln) // General damage modifications will be done here
@@ -4851,10 +4857,10 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				}
 			}
 			
-			if (PlayerHasItem(attacker, Item_HorrificHeadsplitter))
+			if (PlayerHasItem(attacker, Item_HorrificHeadsplitter) && damageType & DMG_MELEE)
 			{
-				int healAmount = imax(RoundToFloor(damage * CalcItemMod_Hyperbolic(attacker, Item_HorrificHeadsplitter, 0)), 1);
-				HealPlayer(attacker, healAmount, false);
+				HealPlayer(attacker, CalcItemModInt(attacker, Item_HorrificHeadsplitter, 0), false);
+				g_bMeleeMiss[attacker] = false;
 			}
 			
 			if (PlayerHasItem(attacker, Item_RoBro) && procItem != Item_RoBro)
@@ -5237,7 +5243,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	{
 		action = TFBot_OnPlayerRunCmd(client, buttons, impulse);
 	}
-
+	
 	if (!bot && buttons & IN_ATTACK)
 	{
 		if (IsPlayerSurvivor(client) && g_flPlayerVampireSapperCooldown[client] <= 0.0 && TF2_GetPlayerClass(client) == TFClass_Spy)
@@ -5409,7 +5415,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			}
 		}
 	}
-
+	
 	return action;
 }
 
@@ -5417,14 +5423,14 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 {
 	if (!RF2_IsEnabled() || g_bWaitingForPlayers || !IsValidClient(client))
 		return Plugin_Continue;
-
-	if (GetClientTeam(client) == TEAM_ENEMY || TF2_IsPlayerInCondition(client, TFCond_Disguised))
+	
+	if (GetClientTeam(client) == TEAM_ENEMY || IsPlayerMinion(client) || TF2_IsPlayerInCondition(client, TFCond_Disguised))
 	{
 		Action action = Plugin_Continue;
 		int voiceType = g_iPlayerVoiceType[client];
 		int footstepType = g_iPlayerFootstepType[client];
-
-		if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
+		
+		if (TF2_IsPlayerInCondition(client, TFCond_Disguised) && !IsPlayerMinion(client))
 		{
 			if (IsPlayerSurvivor(client))
 			{
@@ -5442,7 +5448,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 		bool blacklist[MAXTF2PLAYERS];
 
 		// If we're disguised, play the original sample to our teammates before doing anything.
-		if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
+		if (TF2_IsPlayerInCondition(client, TFCond_Disguised) && !IsPlayerMinion(client))
 		{
 			for (int i = 0; i < numClients; i++)
 			{
@@ -5530,7 +5536,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				}
 
 				// Only works this way for some reason
-				if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
+				if (TF2_IsPlayerInCondition(client, TFCond_Disguised) && !IsPlayerMinion(client))
 				{
 					EmitSoundToClient(client, sample, client, channel, level, flags, volume, pitch);
 
@@ -5550,7 +5556,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 		}
 		
 		// If we're disguised, don't play the new sound to our teammates
-		if (TF2_IsPlayerInCondition(client, TFCond_Disguised))
+		if (TF2_IsPlayerInCondition(client, TFCond_Disguised) && !IsPlayerMinion(client))
 		{
 			for (int i = 0; i < numClients; i++)
 			{
@@ -5590,7 +5596,7 @@ public Action TEHook_TFBlood(const char[] te_name, const int[] clients, int numC
 			return Plugin_Stop;
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 

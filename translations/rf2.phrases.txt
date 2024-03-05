@@ -18,7 +18,7 @@
 
 	"GracePeriodEnded"
 	{
-		"en"		"Grace period has ended. Death on RED will result in joining BLU."
+		"en"		"Grace period has ended. Death on RED will now result in elimination."
 	}
 	
 	"HauntedKeyDrop" // No color tags
@@ -814,5 +814,9 @@
 	"JoinATeam"
 	{
 		"en"		"Someone needs to join RED or BLU first."
+	}
+	"MinionSpawn"
+	{
+		"en"		"You're a minion! You can still help RED by attacking bots and collecting cash."
 	}
 }

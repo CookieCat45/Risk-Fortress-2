@@ -101,6 +101,7 @@ void LoadCommandsAndCvars()
 	g_cvEngiMetalRegenAmount = CreateConVar("rf2_engineer_metal_regen_amount", "30", "The base amount of metal an Engineer will regen per interval lapse", FCVAR_NOTIFY, true, 0.0);
 	g_cvHauntedKeyDropChanceMax = CreateConVar("rf2_haunted_key_drop_chance_max", "135", "1 in N chance for a Haunted Key to drop when an enemy is slain.", FCVAR_NOTIFY, true, 0.0);
 	g_cvArtifactChance = CreateConVar("rf2_artifact_chance", "1", "1 in N chance for Artifacts to be rolled at the beginning of a stage.", FCVAR_NOTIFY, true, 0.0);
+	g_cvAllowHumansInBlue = CreateConVar("rf2_blue_allow_humans", "1", "If nonzero, allow humans to spawn in BLU Team.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	
 	// Debug
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
@@ -112,6 +113,7 @@ void LoadCommandsAndCvars()
 	g_cvDebugDontEndGame = CreateConVar("rf2_debug_dont_end_game", "0", "If nonzero, don't end the game if all of the survivors die.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvDebugShowDifficultyCoeff = CreateConVar("rf2_debug_show_difficulty_coeff", "0", "If nonzero, shows the value of the difficulty coefficient.", FCVAR_NOTIFY, true, 0.0);
 	g_cvDebugUseAltMapSettings = CreateConVar("rf2_debug_alt_map_settings", "0", "If nonzero, always use the alternate map settings for the map that is used after looping.", FCVAR_NOTIFY, true, 0.0);
+	g_cvDebugDisableEnemySpawning = CreateConVar("rf2_debug_disable_enemy_spawn", "0", "If nonzero, prevent enemies from spawning.", FCVAR_NOTIFY, true, 0.0);
 	
 	HookConVarChange(g_cvEnableAFKManager, ConVarHook_EnableAFKManager);
 }
@@ -892,7 +894,7 @@ public int Menu_Achievements(Menu menu, MenuAction action, int param1, int param
 			list.SetTitle(unlocked ? "Unlocked Achievements" : "Locked Achievements");
 			for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
 			{
-				if (unlocked ? IsAchievementUnlocked(param1, i) : !IsAchievementUnlocked(param1, i))
+				if (unlocked ? IsAchievementUnlocked(param1, i) : !IsAchievementUnlocked(param1, i) && !IsAchievementHidden(i))
 				{
 					FormatEx(info, sizeof(info), "%i", i);
 					GetAchievementName(i, name, sizeof(name), param1);
@@ -1368,11 +1370,14 @@ void ShowClientSettingsMenu(int client)
 	FormatEx(buffer, sizeof(buffer), "%T", "ToggleSurvivor", lang, GetCookieBool(client, g_coBecomeSurvivor) ? on : off);
 	menu.AddItem("rf2_become_survivor", buffer);
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "ToggleEnemy", lang, GetCookieBool(client, g_coBecomeEnemy) ? on : off);
-	menu.AddItem("rf2_become_enemy", buffer);
-	
-	FormatEx(buffer, sizeof(buffer), "%T", "ToggleTeleBoss", lang, GetCookieBool(client, g_coBecomeBoss) ? on : off);
-	menu.AddItem("rf2_become_boss", buffer);
+	if (g_cvAllowHumansInBlue.BoolValue)
+	{
+		FormatEx(buffer, sizeof(buffer), "%T", "ToggleEnemy", lang, GetCookieBool(client, g_coBecomeEnemy) ? on : off);
+		menu.AddItem("rf2_become_enemy", buffer);
+		
+		FormatEx(buffer, sizeof(buffer), "%T", "ToggleTeleBoss", lang, GetCookieBool(client, g_coBecomeBoss) ? on : off);
+		menu.AddItem("rf2_become_boss", buffer);
+	}
 	
 	FormatEx(buffer, sizeof(buffer), "%T", "SpecOnDeath", lang, GetCookieBool(client, g_coSpecOnDeath) ? on : off);
 	menu.AddItem("rf2_spec_on_death", buffer);

@@ -911,6 +911,9 @@ void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 		if (!IsClientInGame(i) || g_bPlayerInSpawnQueue[i] || g_bPlayerIsTeleporterBoss[i] || GetClientTeam(i) != TEAM_ENEMY)
 			continue;
 		
+		if (!IsFakeClient(i) && !g_cvAllowHumansInBlue.BoolValue)
+			continue;
+		
 		players.Push(i);
 	}
 	

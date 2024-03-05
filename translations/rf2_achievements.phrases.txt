@@ -84,6 +84,10 @@
 	{
 		"en"	"PK Thunder Ω"
 	}
+	"ACHIEVEMENT_DANCE"
+	{
+		"en"	"[SECRET] Darkness falls across the land..."
+	}
 	
 	//
 	// Descriptions
@@ -168,5 +172,9 @@
 	"ACHIEVEMENT_THUNDER_DESC"
 	{
 		"en"	"As a Medic, kill 10+ enemies simultaneously using the Weather Master."
+	}
+	"ACHIEVEMENT_DANCE_DESC"
+	{
+		"en"	"Discover the secret of the Spellbook Magazine."
 	}
 }

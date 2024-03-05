@@ -528,11 +528,23 @@ void TF2_RemoveAllWearables(int client)
 	while ((entity = FindEntityByClassname(entity, "tf_*")) != INVALID_ENT)
 	{
 		GetEntityClassname(entity, classname, sizeof(classname));
-		if (StrContains(classname, "tf_wearable") == INVALID_ENT && !strcmp2(classname, "tf_powerup_bottle"))
+		if (StrContains(classname, "tf_wearable") == -1 && !strcmp2(classname, "tf_powerup_bottle"))
 		{
 			continue;
 		}
 		
+		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
+		{
+			TF2_RemoveWearable(client, entity);
+		}
+	}
+}
+
+void TF2_RemoveDemoShield(int client)
+{
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "tf_wearable_demoshield")) != INVALID_ENT)
+	{
 		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
 		{
 			TF2_RemoveWearable(client, entity);
@@ -650,23 +662,54 @@ void SDK_EquipWearable(int client, int entity)
 	}
 }
 
-public MRESReturn Detour_DoSwingTrace(int client, DHookReturn returnVal, DHookParam params)
+public MRESReturn Detour_DoSwingTrace(int weapon, DHookReturn returnVal, DHookParam params)
 {
 	if (!RF2_IsEnabled())
 		return MRES_Ignored;
+	
+	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
+	if (IsValidClient(owner) && PlayerHasItem(owner, Item_HorrificHeadsplitter))
+	{
+		g_bMeleeMiss[owner] = true;
+	}
 	
 	// Don't hit teammates (note: only works for BLU team, but that's what we want anyway)
 	GameRules_SetProp("m_bPlayingMannVsMachine", true);
 	return MRES_Ignored;
 }
 
-public MRESReturn Detour_DoSwingTracePost(int client, DHookReturn returnVal, DHookParam params)
+public MRESReturn Detour_DoSwingTracePost(int weapon, DHookReturn returnVal, DHookParam params)
 {
 	if (!RF2_IsEnabled())
 		return MRES_Ignored;
 	
+	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
+	if (IsValidClient(owner) && g_bMeleeMiss[owner])
+	{
+		if (PlayerHasItem(owner, Item_HorrificHeadsplitter))
+		{
+			RequestFrame(RF_MissCheck, GetClientUserId(owner));
+		}
+	}
+	
 	GameRules_SetProp("m_bPlayingMannVsMachine", false);
 	return MRES_Ignored;
+}
+
+public void RF_MissCheck(int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+	{
+		return;
+	}
+	
+	bool missed = g_bMeleeMiss[client];
+	g_bMeleeMiss[client] = false;
+	if (missed)
+	{
+		RF_TakeDamage(client, client, client, CalcItemMod(client, Item_HorrificHeadsplitter, 1), DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE, Item_HorrificHeadsplitter);
+		TF2_MakeBleed(client, client, 5.0);
+	}
 }
 
 public MRESReturn Detour_SetReloadTimer(int weapon, DHookParam params)

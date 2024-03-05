@@ -23,6 +23,7 @@ enum
 	ACHIEVEMENT_FIRERATECAP,
 	ACHIEVEMENT_LUCKY,
 	ACHIEVEMENT_THUNDER,
+	ACHIEVEMENT_DANCE,
 	
 	// * * * INSERT NEW ACHIEVEMENTS DIRECTLY ABOVE THIS COMMENT ONLY! * * *
 	MAX_ACHIEVEMENTS,
@@ -99,6 +100,11 @@ bool IsAchievementUnlocked(int client, int achievement)
 	return GetAchievementProgress(client, achievement) >= GetAchievementGoal(achievement);
 }
 
+bool IsAchievementHidden(int achievement)
+{
+	return achievement == ACHIEVEMENT_DANCE;
+}
+
 void OnAchievementUnlocked(int client, int achievement)
 {
 	float pos[3];
@@ -141,6 +147,7 @@ int GetAchievementInternalName(int achievement, char[] buffer, int size)
 		case ACHIEVEMENT_FIRERATECAP: return strcopy(buffer, size, "ACHIEVEMENT_FIRERATECAP");
 		case ACHIEVEMENT_THUNDER: return strcopy(buffer, size, "ACHIEVEMENT_THUNDER");
 		case ACHIEVEMENT_LUCKY: return strcopy(buffer, size, "ACHIEVEMENT_LUCKY");
+		case ACHIEVEMENT_DANCE: return strcopy(buffer, size, "ACHIEVEMENT_DANCE");
 	}
 	
 	if (!buffer[0])

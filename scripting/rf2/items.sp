@@ -426,17 +426,19 @@ int EquipItemAsWearable(int client, int item)
 		}
 		
 		SetEntProp(wearable, Prop_Send, "m_bValidatedAttachedEntity", true);
-		
-		entity = MaxClients+1;
-		while ((entity = FindEntityByClassname(entity, "tf_wearable")) != -1)
+		if (!IsPlayerMinion(client))
 		{
-			// Remove one loadout wearable (don't remove zombie ones cause it causes funky stuff to happen)
-			if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client 
-				&& !g_bDontRemoveWearable[entity] && !g_bItemWearable[entity]
-				&& !IsVoodooCursedCosmetic(entity))
+			entity = MaxClients+1;
+			while ((entity = FindEntityByClassname(entity, "tf_wearable")) != -1)
 			{
-				TF2_RemoveWearable(client, entity);
-				break;
+				// Remove one loadout wearable (don't remove zombie ones cause it causes funky stuff to happen)
+				if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client 
+					&& !g_bDontRemoveWearable[entity] && !g_bItemWearable[entity]
+					&& !IsVoodooCursedCosmetic(entity))
+				{
+					TF2_RemoveWearable(client, entity);
+					break;
+				}
 			}
 		}
 	}
@@ -1341,6 +1343,7 @@ bool ActivateStrangeItem(int client)
 							float eyePos[3];
 							GetClientEyePosition(client, eyePos);
 							StartThrillerDance(eyePos);
+							TriggerAchievement(client, ACHIEVEMENT_DANCE);
 						}
 						else // Just a stun, then.
 						{
@@ -1544,7 +1547,7 @@ float GetPlayerEquipmentItemCooldown(int client)
 
 public Action Timer_EquipmentCooldown(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0 || !IsPlayerAlive(client))
+	if ((client = GetClientOfUserId(client)) == 0 || !g_bGracePeriod && !IsPlayerAlive(client))
 		return Plugin_Stop;
 	
 	g_bEquipmentCooldownActive[client] = true;

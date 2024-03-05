@@ -100,7 +100,7 @@ public void OnClientCookiesCached(int client)
 	{
 		SetCookieBool(client, g_coDisableItemMessages, false);
 	}
-
+	
 	// Survivor Points
 	GetClientCookie(client, g_coSurvivorPoints, buffer, sizeof(buffer));
 	if (!buffer[0])
