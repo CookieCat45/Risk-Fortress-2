@@ -23,6 +23,7 @@ float g_flSavedNextLevelXP[MAX_SURVIVORS] = {BASE_NEXT_LEVEL_XP, ...};
 char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
 bool g_bSurvivorInventoryClaimed[MAX_SURVIVORS];
 StringMap g_hPlayerSteamIDToInventoryIndex;
+StringMap g_hPlayerNameToInventoryIndex;
 
 void LoadSurvivorStats()
 {
@@ -62,6 +63,9 @@ bool CreateSurvivors()
 {
 	if (!g_hPlayerSteamIDToInventoryIndex)
 		g_hPlayerSteamIDToInventoryIndex = new StringMap();
+	
+	if (!g_hPlayerNameToInventoryIndex)
+		g_hPlayerNameToInventoryIndex = new StringMap();
 	
 	int humanCount = GetPlayersOnTeam(TEAM_SURVIVOR, false, true) + GetPlayersOnTeam(TEAM_ENEMY, false, true);
 	ArrayList survivorList = new ArrayList();
@@ -230,6 +234,13 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	TF2_RespawnPlayer(client);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 5.0);
 	SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);
+	if (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == INVALID_ENT)
+	{
+		LogError("Caught A-Pose bug on %N, attempting to fix", client);
+		TF2_RemoveCondition(client, TFCond_UberchargedCanteen);
+		SDKHooks_TakeDamage(client, 0, 0, 30000.0, DMG_PREVENT_PHYSICS_FORCE);
+		TF2_RespawnPlayer(client);
+	}
 	
 	char authId[MAX_AUTHID_LENGTH];
 	bool hasId = GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId));
@@ -461,24 +472,40 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 	g_flSavedNextLevelXP[index] = g_flPlayerNextLevelXP[client];
 	g_iSavedEquipmentItem[index] = GetPlayerEquipmentItem(client);
 	
-	char steamId[MAX_AUTHID_LENGTH];
-	if (saveSteamId && GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)))
+	char steamId[MAX_AUTHID_LENGTH], name[MAX_NAME_LENGTH];
+	if (saveSteamId)
 	{
-		g_hPlayerSteamIDToInventoryIndex.SetValue(steamId, index, false);
+		if (GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)))
+		{
+			g_hPlayerSteamIDToInventoryIndex.SetValue(steamId, index, true);
+		}
+		
+		// In case SteamIDs are unavailable, we can fall back to player names
+		GetClientName(client, name, sizeof(name));
+		g_hPlayerNameToInventoryIndex.SetValue(name, index, true);
 	}
 }
 
-// Checks if the client's SteamID is associated with the inventory for this survivor index
+// Checks if the client's SteamID is associated with the inventory for this survivor index.
+// If SteamIDs are unavailable it will fall back to player usernames.
 bool DoesClientOwnInventory(int client, int index)
 {
 	if (!g_hPlayerSteamIDToInventoryIndex)
 		return false;
 	
 	char steamId[MAX_AUTHID_LENGTH];
+	char name[MAX_NAME_LENGTH];
 	int index2;
 	
-	return GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)) 
-		&& g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, index2) && index2 == index;
+	bool steamIdAvailable = GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId));
+	if (!steamIdAvailable)
+	{
+		// Fall back to names
+		GetClientName(client, name, sizeof(name));
+	}
+	
+	return steamIdAvailable && g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, index2) && index2 == index
+			|| !steamIdAvailable && g_hPlayerNameToInventoryIndex.GetValue(name, index2) && index2 == index;
 }
 
 int GetClientOwnedInventory(int client)
@@ -686,9 +713,17 @@ bool IsPlayerMinion(int client)
 void SpawnMinion(int client)
 {
 	g_bPlayerIsMinion[client] = true;
-	float pos[3];
-	float center[3];
-	GetWorldCenter(center);
+	float pos[3], center[3];
+	int target = GetRandomPlayer(TEAM_SURVIVOR);
+	if (IsValidClient(target))
+	{
+		GetEntPos(target, center);
+	}
+	else
+	{
+		GetWorldCenter(center);
+	}
+	
 	GetSpawnPoint(center, pos, 0.0, 10000.0, _, _, _, _, _, 30.0);
 	TFClassType class = view_as<TFClassType>(GetEntProp(client, Prop_Send, "m_iDesiredPlayerClass"));
 	if (class == TFClass_Unknown)
@@ -803,5 +838,5 @@ void SpawnMinion(int client)
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 2.5);
 	TF2Attrib_SetByDefIndex(client, 62, 0.5); // "dmg taken from crit reduced"
 	TF2Attrib_SetByDefIndex(client, 252, 0.25); // "damage force reduction"
-	GiveItem(client, Item_Archimedes, 3+g_iSubDifficulty);
+	GiveItem(client, Item_Archimedes, 1+g_iSubDifficulty);
 }

@@ -58,6 +58,11 @@ void RefreshClient(int client, bool force=false)
 		g_bPlayerIsMinion[client] = false;
 	}
 	
+	if (force)
+	{
+		g_bPlayerIsMinion[client] = false;
+	}
+	
 	if (force || !IsPlayerSurvivor(client) || !g_bGracePeriod || g_bMapChanging || !IsClientInGame(client))
 	{
 		g_iPlayerLevel[client] = 1;
@@ -71,7 +76,7 @@ void RefreshClient(int client, bool force=false)
 		SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
 	}
 	
-	if (g_bPlayerHasVampireSapper[client])
+	if (g_bPlayerHasVampireSapper[client] && IsClientInGame(client))
 	{
 		StopSound(client, SNDCHAN_AUTO, SND_SAPPER_DRAIN);
 	}
@@ -367,7 +372,10 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 {
 	int oldMaxHealth = RF2_GetCalculatedMaxHealth(client);
 	float healthScale = GetPlayerHealthMult(client);
-	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)) * healthScale);
+	// Max health changes from weapons should be added on top of base health too
+	Address attr = TF2Attrib_GetByDefIndex(client, 26);
+	int healthAttrib = TF2Attrib_HookValueInt(0, "add_maxhealth", client) - RoundToFloor(attr ? TF2Attrib_GetValue(attr) : 0.0);
+	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)+healthAttrib) * healthScale);
 	
 	// Bosses have less health in single player (for now) to avoid overly long fights
 	if (IsSingleplayer(false) && IsBoss(client))
@@ -494,6 +502,11 @@ float CalculatePlayerMaxSpeed(int client)
 	if (PlayerHasItem(client, Item_TripleA))
 	{
 		speed *= 1.0 + CalcItemMod(client, Item_TripleA, 2);
+	}
+
+	if (PlayerHasItem(client, Item_DarkHelm))
+	{
+		speed *= CalcItemMod_HyperbolicInverted(client, Item_DarkHelm, 1);
 	}
 	
 	float mult = speed / classMaxSpeed;

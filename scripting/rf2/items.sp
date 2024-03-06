@@ -1483,6 +1483,13 @@ bool ActivateStrangeItem(int client)
 			ClientPlayGesture(client, "ACT_MP_THROW");
 			EmitSoundToAll(SND_THROW, client);
 		}
+		
+		case ItemStrange_Dragonborn:
+		{
+			EmitSoundToAll(SND_DRAGONBORN, client);
+			EmitSoundToAll(SND_DRAGONBORN, client);
+			CreateTimer(0.5, Timer_FusRoDah, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		}
 	}
 	
 	// Don't go on cooldown if our charges are above the limit; we likely dropped some battery canteens
@@ -1514,6 +1521,61 @@ bool ActivateStrangeItem(int client)
 	
 	g_iPlayerEquipmentItemCharges[client]--;
 	return true;
+}
+
+public Action Timer_FusRoDah(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
+		return Plugin_Continue;
+	
+	float range = GetItemMod(ItemStrange_Dragonborn, 0);
+	int team = GetClientTeam(client);
+	float eyePos[3], targetPos[3], angles[3], vel[3];
+	GetClientEyePosition(client, eyePos);
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) == team)
+			continue;
+		
+		if (DistBetween(client, i) <= range)
+		{
+			RF_TakeDamage(i, client, client, GetItemMod(ItemStrange_Dragonborn, 1), DMG_PREVENT_PHYSICS_FORCE, ItemStrange_Dragonborn);
+			CBaseEntity(i).WorldSpaceCenter(targetPos);
+			GetVectorAnglesTwoPoints(eyePos, targetPos, angles);
+			GetAngleVectors(angles, vel, NULL_VECTOR, NULL_VECTOR);
+			NormalizeVector(vel, vel);
+			ScaleVector(vel, GetItemMod(ItemStrange_Dragonborn, 2));
+			vel[2] *= 1.75;
+			TeleportEntity(i, _, _, vel);
+		}
+	}
+	
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "tf_projectile")) != INVALID_ENT)
+	{
+		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != team && DistBetween(client, entity) <= range)
+		{
+			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
+			ScaleVector(vel, -1.0);
+			TeleportEntity(entity, _, _, vel);
+		}
+	}
+	
+	entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "rf2_projectile")) != INVALID_ENT)
+	{
+		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != team && DistBetween(client, entity) <= range)
+		{
+			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
+			ScaleVector(vel, -1.0);
+			TeleportEntity(entity, _, _, vel);
+		}
+	}
+	
+	EmitSoundToAll(SND_DRAGONBORN2, client);
+	TE_TFParticle("Explosion_ShockWave_01", eyePos, client);
+	UTIL_ScreenShake(eyePos, 10.0, 30.0, 3.0, 1000.0, SHAKE_START, true);
+	return Plugin_Continue;
 }
 
 public Action Timer_ReloadBuffEnd(Handle timer, int client)

@@ -102,6 +102,8 @@ void LoadCommandsAndCvars()
 	g_cvHauntedKeyDropChanceMax = CreateConVar("rf2_haunted_key_drop_chance_max", "135", "1 in N chance for a Haunted Key to drop when an enemy is slain.", FCVAR_NOTIFY, true, 0.0);
 	g_cvArtifactChance = CreateConVar("rf2_artifact_chance", "1", "1 in N chance for Artifacts to be rolled at the beginning of a stage.", FCVAR_NOTIFY, true, 0.0);
 	g_cvAllowHumansInBlue = CreateConVar("rf2_blue_allow_humans", "1", "If nonzero, allow humans to spawn in BLU Team.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvTimeBeforeRestart = CreateConVar("rf2_time_before_restart", "18000", "Time in seconds before the server will restart after a run ends, to clear server memory. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
+	g_cvHiddenServerStartTime = CreateConVar("rf2_server_start_time", "0", _, FCVAR_HIDDEN);
 	
 	// Debug
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");

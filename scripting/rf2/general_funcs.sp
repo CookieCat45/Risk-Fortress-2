@@ -59,6 +59,35 @@ void GameOver()
 	EmitSoundToAll(SND_GAME_OVER);
 	ForceTeamWin(TEAM_ENEMY);
 	CreateTimer(11.0, Timer_GameOver, _, TIMER_FLAG_NO_MAPCHANGE);
+	
+	if (IsServerAutoRestartEnabled())
+	{
+		if (GetTimeSinceServerStart() >= g_cvTimeBeforeRestart.FloatValue)
+		{
+			g_bServerRestarting = true;
+		}
+	}
+}
+
+public Action Timer_GameOver(Handle timer)
+{
+	if (g_bServerRestarting)
+	{
+		InsertServerCommand("quit");
+		return Plugin_Continue;
+	}
+	
+	if (g_iStagesCompleted == 0)
+	{
+		InsertServerCommand("mp_waitingforplayers_restart 1");
+		CreateTimer(1.2, Timer_ReloadPluginNoMapChange, _, TIMER_FLAG_NO_MAPCHANGE);
+	}
+	else
+	{
+		ReloadPlugin(true);
+	}
+	
+	return Plugin_Continue;
 }
 
 void ReloadPlugin(bool changeMap=true)
@@ -635,4 +664,14 @@ int ClearStringFromArrayList(ArrayList list, const char[] string)
 	}
 	
 	return count;
+}
+
+bool IsServerAutoRestartEnabled()
+{
+	return g_cvTimeBeforeRestart.FloatValue > 0.0;
+}
+
+float GetTimeSinceServerStart()
+{
+	return GetEngineTime() - g_cvHiddenServerStartTime.FloatValue;
 }

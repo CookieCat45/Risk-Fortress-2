@@ -123,6 +123,9 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 						if (!IsClientInGame(i) || !IsPlayerAlive(i) || filterTeam <= view_as<int>(TFTeam_Blue) && GetClientTeam(i) != filterTeam)
 							continue;
 						
+						if (IsPlayerMinion(i))
+							continue;
+						
 						class = TF2_GetPlayerClass(i);
 						// Don't spawn near this player's non-disposable sentry
 						if (class == TFClass_Engineer)

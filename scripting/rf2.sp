@@ -24,7 +24,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.6b"
+#define PLUGIN_VERSION "0.6.1b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -57,6 +57,7 @@ float g_flNextAutoReloadCheckTime;
 float g_flAutoReloadTime;
 bool g_bChangeDetected;
 bool g_bHauntedKeyDrop;
+bool g_bServerRestarting;
 
 int g_iTotalEnemiesKilled;
 int g_iTotalBossesKilled;
@@ -276,6 +277,8 @@ ConVar g_cvEngiMetalRegenAmount;
 ConVar g_cvHauntedKeyDropChanceMax;
 ConVar g_cvArtifactChance;
 ConVar g_cvAllowHumansInBlue;
+ConVar g_cvTimeBeforeRestart;
+ConVar g_cvHiddenServerStartTime;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -381,6 +384,15 @@ public void OnPluginStart()
 	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
 	g_iFileTime = GetPluginModifiedTime();
+	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
+	{
+		g_PathFollowers[i] = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+	}
+	
+	if (g_cvHiddenServerStartTime.FloatValue == 0.0)
+	{
+		g_cvHiddenServerStartTime.FloatValue = GetEngineTime();
+	}
 }
 
 public void OnPluginEnd()
@@ -635,11 +647,6 @@ public void OnMapStart()
 	{
 		g_bPluginEnabled = true;
 		g_bWaitingForPlayers = asBool(GameRules_GetProp("m_bInWaitingForPlayers"));
-		
-		for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
-		{
-			g_PathFollowers[i] = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
-		}
 		
 		if (g_bLateLoad)
 		{
@@ -917,15 +924,6 @@ void CleanUp()
 			delete RF2_Projectile_Base(entity).OnCollide;
 		}
 	}
-	
-	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
-	{
-		if (g_PathFollowers[i])
-		{
-			g_PathFollowers[i].Destroy();
-			g_PathFollowers[i] = view_as<PathFollower>(0);
-		}
-	}
 }
 
 void LoadAssets()
@@ -993,6 +991,8 @@ void LoadAssets()
 	PrecacheSound2(SND_ARTIFACT_SELECT, true);
 	PrecacheSound2(SND_DOOMSDAY_EXPLODE, true);
 	PrecacheSound2(SND_ACHIEVEMENT, true);
+	//PrecacheSound2(SND_DRAGONBORN, true);
+	PrecacheSound2(SND_DRAGONBORN2, true);
 	PrecacheSound2("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack02.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack03.mp3", true);
@@ -1001,6 +1001,7 @@ void LoadAssets()
 	PrecacheScriptSound(GSND_MINICRIT);
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
+	//AddSoundToDownloadsTable(SND_DRAGONBORN);
 	
 	/*
 	g_iSpyDisguiseModels[TFClass_Scout] = PrecacheModel2("models/rf2/bots/bot_scout.mdl", true);
@@ -1224,7 +1225,7 @@ public void OnClientDisconnect_Post(int client)
 	}
 	
 	TFBot(client).FollowerIndex = -1;
-	RefreshClient(client);
+	RefreshClient(client, true);
 	ResetAFKTime(client, false);
 	FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
 	UpdateGameDescription();
@@ -1351,8 +1352,16 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	{
 		g_bRoundActive = false;
 		g_bGracePeriod = false;
-		PrintToServer("%T", "NoSurvivorsSpawned", LANG_SERVER);
-		ReloadPlugin(asBool(g_iStagesCompleted > 0));
+		if (!g_bGameInitialized)
+		{
+			InsertServerCommand("mp_waitingforplayers_restart 1");
+		}
+		else
+		{
+			PrintToServer("%T", "NoSurvivorsSpawned", LANG_SERVER);
+			ReloadPlugin(true);
+		}
+		
 		return Plugin_Continue;
 	}
 	
@@ -1947,21 +1956,6 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	return action;
 }
 
-public Action Timer_GameOver(Handle timer)
-{
-	if (g_iStagesCompleted == 0)
-	{
-		InsertServerCommand("mp_waitingforplayers_restart 1");
-		CreateTimer(1.2, Timer_ReloadPluginNoMapChange, _, TIMER_FLAG_NO_MAPCHANGE);
-	}
-	else
-	{
-		ReloadPlugin(true);
-	}
-	
-	return Plugin_Continue;
-}
-
 public Action Timer_ReloadPluginNoMapChange(Handle timer)
 {
 	ReloadPlugin(false);
@@ -2046,7 +2040,7 @@ public Action Timer_SurvivorDeath(Handle timer, int client)
 
 public Action Timer_MinionSpawn(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0 || IsPlayerAlive(client))
+	if (!(client = GetClientOfUserId(client)) || IsPlayerAlive(client) || GetClientTeam(client) != TEAM_SURVIVOR)
 		return Plugin_Continue;
 	
 	SpawnMinion(client);
@@ -2232,7 +2226,11 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 		SetEntPropFloat(building, Prop_Send, "m_flModelScale", 0.6);
 		if (TF2_GetObjectType2(building) == TFObject_Sentry)
 		{
-			SetEntProp(building, Prop_Send, "m_iObjectMode", TFObjectMode_Disposable); // forces main sentry to always show in building HUD
+			if (!IsPlayerMinion(client))
+			{
+				SetEntProp(building, Prop_Send, "m_iObjectMode", TFObjectMode_Disposable); // forces main sentry to always show in building HUD
+			}
+			
 			SetEntProp(building, Prop_Send, "m_bMiniBuilding", true);
 			g_hPlayerExtraSentryList[client].Push(building);
 			g_bDisposableSentry[building] = true;
@@ -2992,6 +2990,11 @@ public Action Timer_PlayerTimer(Handle timer)
 		return Plugin_Stop;
 	}
 	
+	if (g_bServerRestarting)
+	{
+		PrintCenterTextAll("!!!SERVER IS RESTARTING!!!\nPlease rejoin shortly");
+	}
+	
 	int maxHealth, health, healAmount, weapon, ammoType;
 	int sentry = INVALID_ENT;
 	for (int i = 1; i <= MaxClients; i++)
@@ -3404,7 +3407,7 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 		}
 		else if (newTeam == TEAM_SURVIVOR)
 		{
-			CreateTimer(1.0, Timer_MinionSpawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(5.0, Timer_MinionSpawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 	
@@ -4681,7 +4684,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			damage *= CalcItemMod_HyperbolicInverted(victim, Item_DarkHelm, 0);
 		}
-
+		
 		if (PlayerHasItem(victim, ItemSpy_CounterfeitBillycock) && CanUseCollectorItem(victim, ItemSpy_CounterfeitBillycock))
 		{
 			// If we're disguised and uncloaked, this item gives us resist
@@ -5016,7 +5019,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 							damage *= 1.0 + CalcItemMod(attacker, Item_TombReaders, 0);
 						}
 						
-						if (PlayerHasItem(attacker, Item_SaxtonHat) && damageType & DMG_MELEE && damageCustom != TF_CUSTOM_BACKSTAB)
+						if (PlayerHasItem(attacker, Item_SaxtonHat) && damageType & DMG_MELEE)
 						{
 							damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 1);
 						}

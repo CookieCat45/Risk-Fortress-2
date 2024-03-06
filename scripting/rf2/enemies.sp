@@ -851,7 +851,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	{
 		if (teleporterBoss)
 		{
-			maxDist = GetCurrentTeleporter().Radius * 1.5;
+			maxDist = GetCurrentTeleporter().Radius * 2.0;
 		}
 		else
 		{

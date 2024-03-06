@@ -94,6 +94,7 @@ enum
 	ItemEngi_Toadstool = 77,
 	Item_HauntedKey = 78,
 	Item_MetalHelmet = 79,
+	ItemStrange_Dragonborn = 80,
 	Item_MaxValid,
 };
 

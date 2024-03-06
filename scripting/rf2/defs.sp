@@ -89,6 +89,8 @@
 #define SND_ARTIFACT_SELECT "items/spawn_item.wav"
 #define SND_DOOMSDAY_EXPLODE "misc/doomsday_missile_explosion.wav"
 #define SND_ACHIEVEMENT "misc/achievement_earned.wav"
+#define SND_DRAGONBORN "rf2/sfx/fus_ro_dah.wav"
+#define SND_DRAGONBORN2 "misc/halloween/spell_mirv_explode_secondary.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
