@@ -60,7 +60,7 @@ enum
 	ItemScout_MonarchWings = 43,
 	ItemMedic_BlightedBeak = 44,
 	ItemMedic_ProcedureMask = 45,
-	ItemPyro_PyromancerMask = 46,
+	ItemPyro_PyromancerMaskOld = 46,
 	ItemEngi_Teddy = 47,
 	ItemEngi_HeadOfDefense = 48,
 	ItemSniper_HolyHunter = 49,
@@ -95,6 +95,8 @@ enum
 	Item_HauntedKey = 78,
 	Item_MetalHelmet = 79,
 	ItemStrange_Dragonborn = 80,
+	ItemPyro_PyromancerMask = 81,
+	//ItemStrange_HypnoEyes = 82,
 	Item_MaxValid,
 };
 

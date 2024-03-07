@@ -837,10 +837,13 @@ void UpdatePlayerItem(int client, int item)
 						float value = GetItemMod(item, 1) * (1.0 - CalcItemMod_HyperbolicInverted(client, item, 0));
 						TF2Attrib_SetByDefIndex(primary, 839, value); // "flame_spread_degree"
 						TF2Attrib_SetByDefIndex(primary, 2, 1.0+CalcItemMod(client, item, 2)); // "damage bonus"
+						TF2Attrib_SetByDefIndex(primary, 255, 1.0+CalcItemMod(client, ItemPyro_BrigadeHelm, 3)); // "airblast pushback scale"
 					}
 					else
 					{
 						TF2Attrib_RemoveByDefIndex(primary, 839);
+						TF2Attrib_RemoveByDefIndex(primary, 2);
+						TF2Attrib_RemoveByDefIndex(primary, 255);
 					}
 				}
 			}
@@ -1046,6 +1049,33 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 			EmitSoundToAll(SND_SPELL_OVERHEAL, attacker);
 			g_bPlayerHealBurstCooldown[attacker] = true;
 			CreateTimer(0.5, Timer_HealBurstCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
+		}
+	}
+	
+	if (PlayerHasItem(attacker, ItemPyro_PyromancerMask) && CanUseCollectorItem(attacker, ItemPyro_PyromancerMask)
+		&& RandChanceFloatEx(attacker, 0.01, 100.0, GetItemMod(ItemPyro_PyromancerMask, 5)))
+	{
+		if (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro))
+		{
+			float angles[3], pos[3];
+			CBaseEntity(victim).WorldSpaceCenter(pos);
+			angles[0] = -80.0;
+			angles[1] = 180.0;
+			RF2_Projectile_Fireball fireball;
+			int count = GetItemModInt(ItemPyro_PyromancerMask, 4);
+			float damage = GetItemMod(ItemPyro_PyromancerMask, 0) + CalcItemMod(attacker, ItemPyro_PyromancerMask, 1, -1);
+			float radius = GetItemMod(ItemPyro_PyromancerMask, 2) + CalcItemMod(attacker, ItemPyro_PyromancerMask, 3, -1);
+			float angAdd = 360.0 / float(count);
+			for (int i = 1; i <= count; i++)
+			{
+				fireball = RF2_Projectile_Fireball(ShootProjectile(attacker, "rf2_projectile_fireball", pos, angles, 425.0, damage));
+				SetEntItemProc(fireball.index, ItemPyro_PyromancerMask);
+				fireball.Flying = false;
+				fireball.Radius = radius;
+				angles[1] += angAdd;
+			}
+			
+			EmitAmbientSound(SND_SPELL_FIREBALL, pos);
 		}
 	}
 	
@@ -1539,41 +1569,53 @@ public Action Timer_FusRoDah(Handle timer, int client)
 		
 		if (DistBetween(client, i) <= range)
 		{
-			RF_TakeDamage(i, client, client, GetItemMod(ItemStrange_Dragonborn, 1), DMG_PREVENT_PHYSICS_FORCE, ItemStrange_Dragonborn);
-			CBaseEntity(i).WorldSpaceCenter(targetPos);
+			RF_TakeDamage(i, client, client, GetItemMod(ItemStrange_Dragonborn, 1), DMG_PREVENT_PHYSICS_FORCE, ItemStrange_Dragonborn, _, {99999.0, 99999.0, 99999.0});
+			GetEntPos(i, targetPos);
 			GetVectorAnglesTwoPoints(eyePos, targetPos, angles);
 			GetAngleVectors(angles, vel, NULL_VECTOR, NULL_VECTOR);
 			NormalizeVector(vel, vel);
 			ScaleVector(vel, GetItemMod(ItemStrange_Dragonborn, 2));
-			vel[2] *= 1.75;
+			vel[2] = FloatAbs(vel[2]*2.0);
+			if (IsBoss(i))
+			{
+				ScaleVector(vel, 0.4);
+			}
+
+			TeleportEntity(i, _, _, {0.0, 0.0, 0.0});
 			TeleportEntity(i, _, _, vel);
 		}
 	}
 	
 	int entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "tf_projectile")) != INVALID_ENT)
+	while ((entity = FindEntityByClassname(entity, "tf_projectile*")) != INVALID_ENT)
 	{
-		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != team && DistBetween(client, entity) <= range)
+		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != team && DistBetween(client, entity) <= range*1.25)
 		{
 			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
-			ScaleVector(vel, -1.0);
+			ScaleVector(vel, -2.0);
 			TeleportEntity(entity, _, _, vel);
+			SetEntityOwner(entity, client);
+			SetEntProp(entity, Prop_Data, "m_iTeamNum", team);
 		}
 	}
 	
 	entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "rf2_projectile")) != INVALID_ENT)
+	while ((entity = FindEntityByClassname(entity, "rf2_projectile*")) != INVALID_ENT)
 	{
-		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != team && DistBetween(client, entity) <= range)
+		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != team && DistBetween(client, entity) <= range*1.25)
 		{
 			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
-			ScaleVector(vel, -1.0);
+			ScaleVector(vel, -2.0);
 			TeleportEntity(entity, _, _, vel);
+			RF2_Projectile_Base(entity).Owner = client;
+			RF2_Projectile_Base(entity).DamageOwner = true;
+			SetEntProp(entity, Prop_Data, "m_iTeamNum", team);
 		}
 	}
 	
 	EmitSoundToAll(SND_DRAGONBORN2, client);
-	TE_TFParticle("Explosion_ShockWave_01", eyePos, client);
+	eyePos[2] -= 8.0;
+	TE_TFParticle("mvm_soldier_shockwave", eyePos);
 	UTIL_ScreenShake(eyePos, 10.0, 30.0, 3.0, 1000.0, SHAKE_START, true);
 	return Plugin_Continue;
 }

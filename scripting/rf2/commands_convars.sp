@@ -193,7 +193,7 @@ public Action Command_GiveItem(int client, int args)
 	for (int i = 1; i <= GetTotalItems(); i++)
 	{
 		GetItemName(i, name, sizeof(name), false);
-		if (StrContains(name, arg2, false) != -1)
+		if (g_bItemInDropPool[i] && StrContains(name, arg2, false) != -1)
 		{
 			item = i;
 			break;
@@ -294,12 +294,11 @@ public Action Command_GiveAllItems(int client, int args)
 		{
 			for (int j = 1; j <= GetTotalItems(); j++)
 			{
-				// no equipment items, this will just create a mess
-				if (IsEquipmentItem(j))
+				if (!g_bItemInDropPool[j])
 					continue;
 				
-				// nah
-				if (j == Item_HorrificHeadsplitter)
+				// no equipment items, this will just create a mess
+				if (IsEquipmentItem(j))
 					continue;
 				
 				GiveItem(clients[i], j, amount);

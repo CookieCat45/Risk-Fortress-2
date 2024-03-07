@@ -211,9 +211,10 @@ public Action Timer_CommandReminder(Handle timer)
 static int SpawnTanks()
 {
 	int subDifficulty = RF2_GetSubDifficulty();
+	float subIncrement = g_cvSubDifficultyIncrement.FloatValue;
 	int spawnCount = 1;
 	const int maxTanks = 15;
-	spawnCount += subDifficulty;
+	spawnCount += RoundToFloor(g_flDifficultyCoeff/(subIncrement*1.2));
 	spawnCount = imin(spawnCount, maxTanks);
 	float time = 10.0;
 	
@@ -300,7 +301,7 @@ static int CreateTankBoss(bool badass=false)
 	}
 	else
 	{
-		health = RoundToFloor(float(health) * (1.0 + 0.25*float(RF2_GetSurvivorCount()-1)));
+		health = RoundToFloor(float(health) * (1.0 + 0.2*float(RF2_GetSurvivorCount()-1)));
 	}
 	
 	SetEntProp(tankBoss, Prop_Data, "m_iHealth", health);
@@ -360,7 +361,7 @@ public void Hook_TankBossThink(int entity)
 				maxHealth = GetEntProp(entity, Prop_Data, "m_iMaxHealth");
 			}			
 			
-			if (RoundToFloor(float(maxHealth) * g_cvTankBoostHealth.FloatValue) < health)
+			if (health < RoundToFloor(float(maxHealth) * g_cvTankBoostHealth.FloatValue))
 			{
 				g_bTankSpeedBoost[entity] = true;
 				float speed = GetEntPropFloat(entity, Prop_Data, "m_speed");

@@ -24,7 +24,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.6.1b"
+#define PLUGIN_VERSION "0.6.2b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -991,7 +991,7 @@ void LoadAssets()
 	PrecacheSound2(SND_ARTIFACT_SELECT, true);
 	PrecacheSound2(SND_DOOMSDAY_EXPLODE, true);
 	PrecacheSound2(SND_ACHIEVEMENT, true);
-	//PrecacheSound2(SND_DRAGONBORN, true);
+	PrecacheSound2(SND_DRAGONBORN, true);
 	PrecacheSound2(SND_DRAGONBORN2, true);
 	PrecacheSound2("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack02.mp3", true);
@@ -1001,7 +1001,7 @@ void LoadAssets()
 	PrecacheScriptSound(GSND_MINICRIT);
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
-	//AddSoundToDownloadsTable(SND_DRAGONBORN);
+	AddSoundToDownloadsTable(SND_DRAGONBORN);
 	
 	/*
 	g_iSpyDisguiseModels[TFClass_Scout] = PrecacheModel2("models/rf2/bots/bot_scout.mdl", true);
@@ -1483,12 +1483,13 @@ public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int par
 			char difficultyName[64];
 			GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName), _, true);
 			
-			if (g_iDifficultyLevel != DIFFICULTY_TITANIUM)
+			if (g_iDifficultyLevel < DIFFICULTY_TITANIUM)
 			{
 				RF2_PrintToChatAll("%t", "DifficultySet", difficultyName);
 			}
 			else
 			{
+				EmitSoundToAll(SND_EVIL_LAUGH);
 				EmitSoundToAll(SND_EVIL_LAUGH);
 				RF2_PrintToChatAll("%t", "DifficultySetDeadly", difficultyName);
 			}
@@ -3703,19 +3704,19 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	
 	if (melee)
 	{
-		if (PlayerHasItem(client, ItemPyro_PyromancerMask) && CanUseCollectorItem(client, ItemPyro_PyromancerMask)
-			&& (!IsPlayerSurvivor(client) || GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemPyro_PyromancerMask, 5))
+		if (PlayerHasItem(client, ItemPyro_PyromancerMaskOld) && CanUseCollectorItem(client, ItemPyro_PyromancerMaskOld)
+			&& (!IsPlayerSurvivor(client) || GetClientHealth(client) / RF2_GetCalculatedMaxHealth(client) >= GetItemMod(ItemPyro_PyromancerMaskOld, 5))
 			&& GetTickedTime() >= g_flPlayerNextFireSpellTime[client])
 		{
-			float speed = GetItemMod(ItemPyro_PyromancerMask, 2) + CalcItemMod(client, ItemPyro_PyromancerMask, 3, -1);
-			speed = fmin(speed, GetItemMod(ItemPyro_PyromancerMask, 4));
+			float speed = GetItemMod(ItemPyro_PyromancerMaskOld, 2) + CalcItemMod(client, ItemPyro_PyromancerMaskOld, 3, -1);
+			speed = fmin(speed, GetItemMod(ItemPyro_PyromancerMaskOld, 4));
 			float eyePos[3], eyeAng[3];
 			GetClientEyePosition(client, eyePos);
 			GetClientEyeAngles(client, eyeAng);
-			float damage = GetItemMod(ItemPyro_PyromancerMask, 0) + CalcItemMod(client, ItemPyro_PyromancerMask, 1, -1);
+			float damage = GetItemMod(ItemPyro_PyromancerMaskOld, 0) + CalcItemMod(client, ItemPyro_PyromancerMaskOld, 1, -1);
 			int fireball = ShootProjectile(client, "rf2_projectile_fireball", eyePos, eyeAng, speed, damage);
-			SetEntItemProc(fireball, ItemPyro_PyromancerMask);
-			g_flPlayerNextFireSpellTime[client] = GetTickedTime() + GetItemMod(ItemPyro_PyromancerMask, 6);
+			SetEntItemProc(fireball, ItemPyro_PyromancerMaskOld);
+			g_flPlayerNextFireSpellTime[client] = GetTickedTime() + GetItemMod(ItemPyro_PyromancerMaskOld, 6);
 		}
 		
 		if (PlayerHasItem(client, ItemDemo_ConjurersCowl) && CanUseCollectorItem(client, ItemDemo_ConjurersCowl)
@@ -4991,6 +4992,14 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 				{
 					critType = CritType_MiniCrit;
 				}
+			}
+		}
+		
+		if (inflictorProc == ItemPyro_PyromancerMask && critType != CritType_Crit && IsValidClient(victim))
+		{
+			if (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro))
+			{
+				critType = CritType_MiniCrit;
 			}
 		}
 		

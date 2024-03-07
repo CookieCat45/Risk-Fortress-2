@@ -152,6 +152,11 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		
 		public set(bool value)
 		{
+			if (IsValidEntity2(this.Thruster))
+			{
+				value ? AcceptEntityInput(this.Thruster, "Activate") : AcceptEntityInput(this.Thruster, "Deactivate");
+			}
+			
 			this.SetProp(Prop_Data, "m_bFlying", value);
 		}
 	}

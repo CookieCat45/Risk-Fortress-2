@@ -46,7 +46,7 @@ static void OnCreate(RF2_Projectile_Fireball fireball)
 	fireball.Flying = true;
 	fireball.SetRedTrail("spell_fireball_small_red");
 	fireball.SetBlueTrail("spell_fireball_small_blue");
-	fireball.SetFireSound(SND_SPELL_FIREBALL); // already used by spellbook item
+	//fireball.SetFireSound(SND_SPELL_FIREBALL);
 	fireball.SetCharImpactSound(SND_FIREBALL_IMPACT);
 	fireball.SetWorldImpactSound(SND_FIREBALL_IMPACT);
 	fireball.HookOnCollide(OnCollide);
