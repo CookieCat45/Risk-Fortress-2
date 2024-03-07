@@ -496,8 +496,7 @@ static void OnRemove(RF2_Object_Teleporter teleporter)
 
 static Action Teleporter_OnInteract(int client, RF2_Object_Teleporter teleporter)
 {
-	RF2_GameRules gamerules = GetRF2GameRules();
-	if (g_bGracePeriod || gamerules.IsValid() && !gamerules.AllowTeleporterActivation)
+	if (g_bGracePeriod)
 	{
 		RF2_PrintToChat(client, "%t", "NoActivateTele");
 		return Plugin_Stop;

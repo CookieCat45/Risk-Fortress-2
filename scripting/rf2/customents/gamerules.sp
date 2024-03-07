@@ -25,7 +25,6 @@ methodmap RF2_GameRules < CBaseEntity
 		g_Factory.DeriveFromBaseEntity();
 		g_Factory.BeginDataMapDesc()
 			.DefineStringField("m_szTeleporterModel", _, "teleporter_model")
-			.DefineBoolField("m_bPlayerTeleporterActivation", _, "player_can_activate_teleporter")
 			.DefineBoolField("m_bTimerPaused", _, "timer_paused")
 			.DefineBoolField("m_bAllowEnemySpawning", _, "allow_enemy_spawning")
 			.DefineInputFunc("ForceStartTeleporter", InputFuncValueType_Void, Input_ForceStartTeleporter)
@@ -50,19 +49,6 @@ methodmap RF2_GameRules < CBaseEntity
 	public void SetTeleModel(const char[] model)
 	{
 		this.SetPropString(Prop_Data, "m_szTeleporterModel", model);
-	}
-
-	property bool AllowTeleporterActivation
-	{
-		public get()
-		{
-			return asBool(this.GetProp(Prop_Data, "m_bPlayerTeleporterActivation"));
-		}
-		
-		public set(bool value)
-		{
-			this.SetProp(Prop_Data, "m_bPlayerTeleporterActivation", value);
-		}
 	}
 
 	property bool TimerPaused

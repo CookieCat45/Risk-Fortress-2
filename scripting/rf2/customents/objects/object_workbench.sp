@@ -112,12 +112,12 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 	{
 		public get()
 		{
-			return this.GetProp(Prop_Data, "m_iItemCost");
+			return this.GetProp(Prop_Data, "m_iCost");
 		}
 		
 		public set (int value)
 		{
-			this.SetProp(Prop_Data, "m_iItemCost", value);
+			this.SetProp(Prop_Data, "m_iCost", value);
 		}
 	}
 	

@@ -3,7 +3,6 @@
 
 static CEntityFactory g_Factory;
 typedef OnCollideCallback = function void(RF2_Projectile_Base proj, int other);
-static PrivateForward g_OnCollide[MAX_EDICTS];
 
 enum // Impact sound type
 {
@@ -61,6 +60,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			.DefineEntityField("m_hImpactTarget")
 			.DefineEntityField("m_hProjectileOwner")
 			.DefineEntityField("m_hThruster")
+			.DefineIntField("m_OnCollide")
 		.EndDataMapDesc();
 		g_Factory.Install();
 	}
@@ -248,12 +248,12 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 	{
 		public get()
 		{
-			return g_OnCollide[this.index];
+			return view_as<PrivateForward>(this.GetProp(Prop_Data, "m_OnCollide"));
 		}
 
 		public set(PrivateForward fwd)
 		{
-			g_OnCollide[this.index] = fwd;
+			this.SetProp(Prop_Data, "m_OnCollide", fwd);
 		}
 	}
 
@@ -434,17 +434,17 @@ static void OnCreate(RF2_Projectile_Base proj)
 
 static void OnRemove(RF2_Projectile_Base proj)
 {
-	RequestFrame(RF_DeleteForward, proj);
+	RequestFrame(RF_DeleteForward, proj.OnCollide);
+	proj.OnCollide = null;
 	if (IsValidEntity2(proj.Thruster))
 	{
 		RemoveEntity2(proj.Thruster);
 	}
 }
 
-static void RF_DeleteForward(RF2_Projectile_Base proj)
+static void RF_DeleteForward(PrivateForward fwd)
 {
-	delete proj.OnCollide;
-	proj.OnCollide = null;
+	delete fwd;
 }
 
 static void OnSpawnPost(int entity)

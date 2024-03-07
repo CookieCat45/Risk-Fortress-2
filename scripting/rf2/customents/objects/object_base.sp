@@ -3,7 +3,6 @@
 
 static CEntityFactory g_Factory;
 typedef OnInteractCallback = function Action(int client, RF2_Object_Base obj);
-static PrivateForward g_OnInteract[MAX_EDICTS];
 
 methodmap RF2_Object_Base < CBaseAnimating
 {
@@ -44,6 +43,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 			.DefineFloatField("m_flTextSize")
 			.DefineColorField("m_TextColor")
 			.DefineEntityField("m_hGlow")
+			.DefineIntField("m_OnInteractForward")
 			.DefineInputFunc("SetActive", InputFuncValueType_Boolean, Input_SetActive)
 		.EndDataMapDesc();
 		g_Factory.Install();
@@ -53,12 +53,12 @@ methodmap RF2_Object_Base < CBaseAnimating
 	{
 		public get()
 		{
-			return g_OnInteract[this.index];
+			return view_as<PrivateForward>(this.GetProp(Prop_Data, "m_OnInteractForward"));
 		}
 
 		public set(PrivateForward fwd)
 		{
-			g_OnInteract[this.index] = fwd;
+			this.SetProp(Prop_Data, "m_OnInteractForward", fwd);
 		}
 	}
 	
@@ -387,13 +387,13 @@ static Action Timer_WorldText(Handle timer, int entity)
 
 static void OnRemove(RF2_Object_Base obj)
 {
-	RequestFrame(RF_DeleteForward, obj);
+	RequestFrame(RF_DeleteForward, obj.OnInteractForward);
+	obj.OnInteractForward = null;
 }
 
-static void RF_DeleteForward(RF2_Object_Base obj)
+static void RF_DeleteForward(PrivateForward fwd)
 {
-	delete obj.OnInteractForward;
-	obj.OnInteractForward = null;
+	delete fwd;
 }
 
 // This is activated from a voicecommand callback.
@@ -411,13 +411,13 @@ static Action ObjectBase_OnInteract(int client, RF2_Object_Base obj)
 RF2_Object_Base CreateObject(const char[] classname, const float pos[3], bool spawn=true)
 {
 	RF2_Object_Base obj = RF2_Object_Base(CreateEntityByName(classname));
-	obj.MapPlaced = false;
 	if (!obj.IsValid())
 	{
 		LogError("[CreateObject] Failed to create object: %s", classname);
 		return RF2_Object_Base(INVALID_ENT);
 	}
 	
+	obj.MapPlaced = false;
 	obj.Teleport(pos);
 	
 	if (spawn)
