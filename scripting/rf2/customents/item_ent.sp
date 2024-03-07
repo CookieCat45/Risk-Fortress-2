@@ -340,13 +340,13 @@ bool PickupItem(int client)
 			g_bPlayerTookCollectorItem[client] = true;
 		}
 		
-		GiveItem(client, type, _, true);
+		GiveItem(client, type, 1, true);
 		RemoveEntity2(item.index);
+		ShowItemDesc(client, type);
 		char qualityTag[32], itemName[128], qualityName[32];
 		GetItemName(type, itemName, sizeof(itemName));
 		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
 		GetQualityName(quality, qualityName, sizeof(qualityName));
-		PrintKeyHintText(client, "%s (%s)\n%s", g_szItemName[type], qualityName, g_szItemDesc[type]);
 		
 		if (type == Item_HorrificHeadsplitter)
 		{

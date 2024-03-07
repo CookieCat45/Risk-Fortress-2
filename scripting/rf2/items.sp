@@ -558,7 +558,7 @@ void UpdatePlayerItem(int client, int item)
 				}
 			}
 		}
-		case Item_RobinWalkers, Item_TripleA:
+		case Item_RobinWalkers, Item_TripleA, Item_DarkHelm:
 		{
 			CalculatePlayerMaxSpeed(client);
 		}
@@ -1053,7 +1053,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 	}
 	
 	if (PlayerHasItem(attacker, ItemPyro_PyromancerMask) && CanUseCollectorItem(attacker, ItemPyro_PyromancerMask)
-		&& RandChanceFloatEx(attacker, 0.01, 100.0, GetItemMod(ItemPyro_PyromancerMask, 5)))
+		&& RandChanceFloatEx(attacker, 0.0001, 1.0, GetItemMod(ItemPyro_PyromancerMask, 5)))
 	{
 		if (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro))
 		{
@@ -2159,3 +2159,52 @@ public int OnStompPost(int attacker, int victim, float damageMultiplier, float d
 	return 0;
 }
 #endif
+
+static int g_iLastShownItem[MAXTF2PLAYERS];
+void ShowItemDesc(int client, int item)
+{
+	if (g_iLastShownItem[client] == item)
+		return;
+	
+	int quality = GetItemQuality(item);
+	char qualityTag[32], itemName[128], qualityName[32];
+	GetItemName(item, itemName, sizeof(itemName));
+	GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
+	GetQualityName(quality, qualityName, sizeof(qualityName));
+	char fullString[512], partialString[200];
+	int chars = FormatEx(fullString, sizeof(fullString), "%s (%s)\n%s", g_szItemName[item], qualityName, g_szItemDesc[item]);
+	if (chars >= 248)
+	{
+		strcopy(partialString, sizeof(partialString), fullString);
+		ReplaceStringEx(fullString, sizeof(fullString), partialString, "-");
+		PrintKeyHintText(client, "%s-", partialString);
+		DataPack pack = new DataPack();
+		CreateDataTimer(9.0, Timer_SecondDesc, pack, TIMER_FLAG_NO_MAPCHANGE);
+		g_iLastShownItem[client] = item;
+		pack.WriteCell(GetClientUserId(client));
+		pack.WriteCell(item);
+		pack.WriteString(fullString);
+	}
+	else
+	{
+		PrintKeyHintText(client, fullString);
+	}
+}
+
+public Action Timer_SecondDesc(Handle timer, DataPack pack)
+{
+	pack.Reset();
+	int client = GetClientOfUserId(pack.ReadCell());
+	if (!client)
+		return Plugin_Continue;
+	
+	int item = pack.ReadCell();
+	if (g_iLastShownItem[client] != item)
+		return Plugin_Continue;
+	
+	char buffer[200];
+	pack.ReadString(buffer, sizeof(buffer));
+	PrintKeyHintText(client, buffer);
+	g_iLastShownItem[client] = Item_Null;
+	return Plugin_Continue;
+}

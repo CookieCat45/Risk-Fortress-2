@@ -1537,9 +1537,7 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 			if (!strcmp2(info, "no_items"))
 			{
 				int item = StringToInt(info);
-				char quality[32];
-				GetQualityName(GetItemQuality(item), quality, sizeof(quality));
-				PrintKeyHintText(param1, "%s (%s)\n%s", g_szItemName[item], quality, g_szItemDesc[item]);
+				ShowItemDesc(param1, item);
 				ShowItemDropMenu(param1, item);
 			}
 			else
