@@ -886,7 +886,6 @@ void CleanUp()
 	g_hPlayerTimer = null;
 	g_hHudTimer = null;
 	g_hDifficultyTimer = null;
-	g_iRF2GameRulesEntRef = INVALID_ENT;
 	g_iRespawnWavesCompleted = 0;
 	g_szEnemyPackName = "";
 	g_szBossPackName = "";
@@ -2499,7 +2498,7 @@ public Action UserMessageHook_SayText2(UserMsg msg, BfRead bf, const int[] clien
 int g_iEnemySpawnPoints[MAXTF2PLAYERS];
 public Action Timer_EnemySpawnWave(Handle timer)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive || IsStageCleared() || WaitingForPlayerRejoin(true))
+	if (!RF2_IsEnabled() || !g_bRoundActive || IsStageCleared())
 		return Plugin_Continue;
 	
 	int survivorCount = RF2_GetSurvivorCount();
@@ -2528,9 +2527,9 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	}
 	
 	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
-	if (g_cvDebugDisableEnemySpawning.BoolValue)
+	if (g_cvDebugDisableEnemySpawning.BoolValue || WaitingForPlayerRejoin(true) || !GetRF2GameRules().AllowEnemySpawning)
 		return Plugin_Continue;
-
+	
 	int spawnCount = g_cvEnemyMinSpawnWaveCount.IntValue + RF2_GetSubDifficulty() / 3;
 	if (survivorCount >= 4)
 	{
@@ -2892,7 +2891,7 @@ public Action Timer_Difficulty(Handle timer)
 		return Plugin_Stop;
 	}
 	
-	if (g_bGameOver || g_bGracePeriod || WaitingForPlayerRejoin(true))
+	if (g_bGameOver || g_bGracePeriod || WaitingForPlayerRejoin(true) || GetRF2GameRules().TimerPaused)
 		return Plugin_Continue;
 	
 	float secondsToAdd = 1.0;

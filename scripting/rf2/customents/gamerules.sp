@@ -26,7 +26,13 @@ methodmap RF2_GameRules < CBaseEntity
 		g_Factory.BeginDataMapDesc()
 			.DefineStringField("m_szTeleporterModel", _, "teleporter_model")
 			.DefineBoolField("m_bPlayerTeleporterActivation", _, "player_can_activate_teleporter")
+			.DefineBoolField("m_bTimerPaused", _, "timer_paused")
+			.DefineBoolField("m_bAllowEnemySpawning", _, "allow_enemy_spawning")
 			.DefineInputFunc("ForceStartTeleporter", InputFuncValueType_Void, Input_ForceStartTeleporter)
+			.DefineInputFunc("TriggerWin", InputFuncValueType_Void, Input_TriggerWin)
+			.DefineInputFunc("GameOver", InputFuncValueType_Void, Input_GameOver)
+			.DefineInputFunc("EnableEnemySpawning", InputFuncValueType_Void, Input_EnableEnemySpawning)
+			.DefineInputFunc("DisableEnemySpawning", InputFuncValueType_Void, Input_DisableEnemySpawning)
 			.DefineOutput("OnTeleporterEventStart")
 			.DefineOutput("OnTeleporterEventComplete")
 			.DefineOutput("OnTankDestructionStart")
@@ -58,16 +64,49 @@ methodmap RF2_GameRules < CBaseEntity
 			this.SetProp(Prop_Data, "m_bPlayerTeleporterActivation", value);
 		}
 	}
+
+	property bool TimerPaused
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bTimerPaused"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bTimerPaused", value);
+		}
+	}
+
+	property bool AllowEnemySpawning
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bAllowEnemySpawning"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bAllowEnemySpawning", value);
+		}
+	}
 }
 
 RF2_GameRules GetRF2GameRules()
 {
+	if (EntRefToEntIndex(g_iRF2GameRulesEntRef) == INVALID_ENT)
+	{
+		g_iRF2GameRulesEntRef = EntIndexToEntRef(CreateEntityByName("rf2_gamerules"));
+	}
+	
 	return RF2_GameRules(EntRefToEntIndex(g_iRF2GameRulesEntRef));
 }
 
 static void OnCreate(RF2_GameRules gamerules)
 {
 	g_iRF2GameRulesEntRef = EntIndexToEntRef(gamerules.index);
+	gamerules.AllowEnemySpawning = true;
+	
 	char teleModel[PLATFORM_MAX_PATH];
 	gamerules.GetTeleModel(teleModel, sizeof(teleModel));
 	if (teleModel[0] && FileExists(teleModel, true, NULL_STRING))
@@ -88,6 +127,26 @@ public void Input_ForceStartTeleporter(int entity, int activator, int caller, in
 	{
 		teleporter.Prepare();
 	}
+}
+
+public void Input_TriggerWin(int entity, int activator, int caller, int value)
+{
+	ForceTeamWin(TEAM_SURVIVOR);
+}
+
+public void Input_GameOver(int entity, int activator, int caller, int value)
+{
+	GameOver();
+}
+
+public void Input_EnableEnemySpawning(int entity, int activator, int caller, int value)
+{
+	RF2_GameRules(entity).AllowEnemySpawning = true;
+}
+
+public void Input_DisableEnemySpawning(int entity, int activator, int caller, int value)
+{
+	RF2_GameRules(entity).AllowEnemySpawning = false;
 }
 
 int SpawnObjects()

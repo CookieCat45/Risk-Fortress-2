@@ -265,14 +265,14 @@
 	// Workbench
 	"UsedWorkbench" // No color tags
 	{
-		"#format"	"{1:s},{2:s},{3:d},{4:s}"
-		"en"		"You traded 1 {1} for a {2}. You have {3} {4} left."
+		"#format"	"{1:d},{2:s},{3:s},{4:d},{5:s}"
+		"en"		"You traded {1} {2} for a {3}. You have {4} {5} left."
 	}
 	
 	"NoExchange" // No color tags
 	{
-		"#format"	"{1:s}"
-		"en"		"You don't have any items to exchange! You need {1} quality items."
+		"#format"	"{1:d},{2:s}"
+		"en"		"You don't have any items to exchange! You need {1} {2} quality items."
 	}
 	
 	// Scrapper
