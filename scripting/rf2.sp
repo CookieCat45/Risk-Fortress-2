@@ -4999,7 +4999,14 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		{
 			if (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro))
 			{
-				critType = CritType_MiniCrit;
+				if (TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeath) || TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeathSilent))
+				{
+					critType = CritType_Crit;
+				}
+				else
+				{
+					critType = CritType_MiniCrit;
+				}
 			}
 		}
 		
