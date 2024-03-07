@@ -276,7 +276,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			{
 				for (int i = 1; i <= MaxClients; i++)
 				{
-					if (!IsClientInGame(i) || IsFakeClient(i) || !IsPlayerSurvivor(i))
+					if (!IsClientInGame(i) || IsFakeClient(i) || !IsPlayerSurvivor(i) || !IsPlayerMinion(i))
 						continue;
 					
 					TriggerAchievement(i, ACHIEVEMENT_HALLOWEENBOSSES);
@@ -318,7 +318,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		this.EventState = TELE_EVENT_COMPLETE;
 		this.Effects = EF_ITEM_BLINK;
 		this.TextSize = 6.0;
-		this.SetWorldText("Press [E] to go to the next stage!");
+		this.SetWorldText("Call for Medic to go to the next stage!");
 		RemoveEntity2(this.Bubble.index);
 		EmitSoundToAll(SND_TELEPORTER_CHARGED);
 		StopMusicTrackAll();
@@ -482,7 +482,7 @@ static void OnCreate(RF2_Object_Teleporter teleporter)
 	teleporter.SetProp(Prop_Send, "m_nSolidType", SOLID_VPHYSICS);
 	teleporter.SetModel(model);
 	teleporter.HookInteract(Teleporter_OnInteract);
-	teleporter.SetWorldText("Press [E] to start the Teleporter event!");
+	teleporter.SetWorldText("Call for Medic to start the Teleporter event!");
 	teleporter.TextZOffset = 70.0;
 }
 

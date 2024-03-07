@@ -140,7 +140,7 @@ static void OnCreate(RF2_Object_Workbench bench)
 	
 	SDKHook(bench.index, SDKHook_SpawnPost, OnSpawnPost);
 	char text[256];
-	FormatEx(text, sizeof(text), "Press [E] to trade for 1 %s!", g_szItemName[bench.Item]);
+	FormatEx(text, sizeof(text), "Call for Medic to trade for 1 %s!", g_szItemName[bench.Item]);
 	bench.SetWorldText(text);
 	bench.TextZOffset = 90.0;
 }

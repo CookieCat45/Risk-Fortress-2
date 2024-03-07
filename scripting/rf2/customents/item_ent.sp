@@ -117,7 +117,7 @@ methodmap RF2_Item < CBaseEntity
 		this.WorldText = CreateEntityByName("point_worldtext");
 		CBaseEntity text = CBaseEntity(this.WorldText);
 		char worldText[256];
-		FormatEx(worldText, sizeof(worldText), "%s\nPress [E] to pick up", g_szItemName[this.Type]);
+		FormatEx(worldText, sizeof(worldText), "%s\nCall for Medic to pick up", g_szItemName[this.Type]);
 		text.KeyValue("message", worldText);
 		text.KeyValueFloat("textsize", 6.0);
 		text.KeyValue("orientation", "1");
