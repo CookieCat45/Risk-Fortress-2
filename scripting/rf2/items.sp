@@ -198,9 +198,14 @@ bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
 int GetRandomItem(int normalWeight=0, int genuineWeight=0, 
 	int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, bool allowHauntedStrange=true)
 {
+	if (TF2_IsHolidayActive(TFHoliday_AprilFools))
+	{
+		return GetRandomItemEx(Quality_Haunted);
+	}
+	
 	ArrayList array = new ArrayList();
 	int quality, count, item;
-	
+
 	for (int i = 0; i < Quality_MaxValid; i++)
 	{
 		if (i == Quality_Collectors || i == Quality_HauntedStrange)
@@ -254,6 +259,11 @@ int GetRandomItem(int normalWeight=0, int genuineWeight=0,
 
 int GetRandomItemEx(int quality)
 {
+	if (TF2_IsHolidayActive(TFHoliday_AprilFools))
+	{
+		quality = GetRandomInt(1, 8) == 8 ? Quality_HauntedStrange : Quality_Haunted;
+	}
+	
 	ArrayList array = new ArrayList();
 	int item;
 	
@@ -530,8 +540,6 @@ void UpdatePlayerItem(int client, int item)
 			}
 			
 			int weapon, ammoType;
-			TFClassType class = TF2_GetPlayerClass(client);
-			
 			for (int i = WeaponSlot_Primary; i <= WeaponSlot_InvisWatch; i++)
 			{
 				weapon = GetPlayerWeaponSlot(client, i);
@@ -541,20 +549,15 @@ void UpdatePlayerItem(int client, int item)
 				ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType"); // we may not need to waste an attribute slot here
 				if (ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetEntProp(weapon, Prop_Send, "m_iClip1") >= 0)
 				{
-					TF2Attrib_SetByDefIndex(weapon, 424, amount); // "clip size penalty HIDDEN"
-				}
-			}
-			
-			int wearable = MaxClients+1;
-			if (class == TFClass_Sniper)
-			{
-				while ((wearable = FindEntityByClassname(wearable, "tf_wearable_razorback")) != -1)
-				{
-					if (GetEntPropEnt(wearable, Prop_Send, "m_hOwnerEntity") != client)
-						continue;
+					if (IsEnergyWeapon(weapon))
+					{
+						TF2Attrib_SetByDefIndex(weapon, 335, amount); // "clip size bonus upgrade"
+					}
+					else
+					{
+						TF2Attrib_SetByDefIndex(weapon, 424, amount); // "clip size penalty HIDDEN"
+					}
 					
-					TF2Attrib_SetByDefIndex(wearable, 278, amount); // "effect bar recharge rate increased"
-					break;
 				}
 			}
 		}

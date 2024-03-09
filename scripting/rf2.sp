@@ -1198,8 +1198,11 @@ public void OnClientDisconnect(int client)
 		{
 			CheckRedTeam(client);
 		}
-		
-		if (IsPlayerSurvivor(client) && !g_bPluginReloading)
+	}
+	
+	if (!g_bPlayerTimingOut[client] && !g_bPluginReloading && !IsFakeClient(client))
+	{
+		if (IsPlayerSurvivor(client))
 		{
 			SaveSurvivorInventory(client, RF2_GetSurvivorIndex(client));
 			// We need to deal with survivors who disconnect during the grace period
@@ -1209,7 +1212,7 @@ public void OnClientDisconnect(int client)
 			}
 		}
 	}
-	
+
 	g_bPlayerTimingOut[client] = false;
 }
 
@@ -1872,7 +1875,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			}
 		}
 	}
-	else if (IsPlayerSurvivor(victim))
+	else if (IsPlayerSurvivor(victim) && !IsPlayerMinion(victim))
 	{
 		if (!g_bGracePeriod)
 		{
@@ -1918,7 +1921,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				if (!IsClientInGame(i) || i == victim)
 					continue;
 				
-				if (IsPlayerAlive(i) && IsPlayerSurvivor(i))
+				if (IsPlayerAlive(i) && IsPlayerSurvivor(i) && !IsPlayerMinion(i))
 				{
 					alive++;
 					lastMan = i;
@@ -1941,8 +1944,14 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		}
 		else
 		{
-			// Respawning players right inside of player_death causes strange behaviour.
-			CreateTimer(0.1, Timer_RespawnSurvivor, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
+			float pos[3];
+			GetEntPos(victim, pos);
+			DataPack pack;
+			CreateDataTimer(0.3, Timer_SuicideTeleport, pack, TIMER_FLAG_NO_MAPCHANGE);
+			pack.WriteCell(GetClientUserId(victim));
+			pack.WriteFloat(pos[0]);
+			pack.WriteFloat(pos[1]);
+			pack.WriteFloat(pos[2]);
 		}
 	}
 	
@@ -2014,15 +2023,6 @@ public Action OnPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 		}
 	}
 	
-	return Plugin_Continue;
-}
-
-public Action Timer_RespawnSurvivor(Handle timer, int client)
-{
-	if ((client = GetClientOfUserId(client)) == 0 || !IsPlayerSurvivor(client))
-		return Plugin_Continue;
-	
-	MakeSurvivor(client, RF2_GetSurvivorIndex(client), false, false);
 	return Plugin_Continue;
 }
 
@@ -3490,20 +3490,7 @@ public Action OnSuicide(int client, const char[] command, int args)
 	if (!RF2_IsEnabled() || !g_bRoundActive)
 		return Plugin_Continue;
 	
-	if (g_bGracePeriod && IsPlayerSurvivor(client))
-	{
-		// Teleport the player back to their last position in grace period
-		float pos[3];
-		GetEntPos(client, pos);
-
-		DataPack pack;
-		CreateDataTimer(0.3, Timer_SuicideTeleport, pack, TIMER_FLAG_NO_MAPCHANGE);
-		pack.WriteCell(GetClientUserId(client));
-		pack.WriteFloat(pos[0]);
-		pack.WriteFloat(pos[1]);
-		pack.WriteFloat(pos[2]);
-	}
-	else if (!IsPlayerMinion(client)) // Only minions can suicide
+	if (IsPlayerSurvivor(client) && !g_bGracePeriod && !IsPlayerMinion(client)) // Only minions can suicide
 	{
 		RF2_PrintToChat(client, "%t", "NoSuicide");
 		return Plugin_Handled;
@@ -3516,19 +3503,20 @@ public Action Timer_SuicideTeleport(Handle timer, DataPack pack)
 {
 	pack.Reset();
 	int client = GetClientOfUserId(pack.ReadCell());
-
+	
 	if (client == 0)
 		return Plugin_Continue;
-
-	if (!IsClientInGame(client) || !IsPlayerAlive(client))
+	
+	if (!IsClientInGame(client) || IsPlayerAlive(client))
 		return Plugin_Continue;
-
+	
 	float pos[3];
 	pos[0] = pack.ReadFloat();
 	pos[1] = pack.ReadFloat();
 	pos[2] = pack.ReadFloat();
-	
+	TF2_RespawnPlayer(client);
 	TeleportEntity(client, pos);
+	g_bPlayerSpawningAsMinion[client] = false;
 	return Plugin_Continue;
 }
 

@@ -812,3 +812,10 @@ bool IsWeaponTauntBanned(int weapon)
 		|| strcmp2(classname, "tf_weapon_katana")
 		|| strcmp2(classname, "tf_weapon_sentry_revenge");
 }
+
+bool IsEnergyWeapon(int weapon)
+{
+	char classname[64];
+	GetEntityClassname(weapon, classname, sizeof(classname));
+	return strcmp2(classname, "tf_weapon_raygun") || strcmp2(classname, "tf_weapon_particle_cannon") || strcmp2(classname, "tf_weapon_drg_pomson");
+}
