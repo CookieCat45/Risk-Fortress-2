@@ -358,7 +358,7 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 			}
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -367,7 +367,6 @@ void PickupCash(int client, int entity)
 	// If client is 0 or below, the cash is most likely being collected automatically.
 	if (client < 1 || IsPlayerSurvivor(client))
 	{
-		float modifier = 1.0;
 		ArrayList clientArray = new ArrayList();
 		for (int i = 1; i <= MaxClients; i++)
 		{
@@ -377,9 +376,18 @@ void PickupCash(int client, int entity)
 			clientArray.Push(i);
 		}
 		
+		int receiver;
+		float mult;
 		for (int i = 0; i < clientArray.Length; i++)
 		{
-			AddPlayerCash(clientArray.Get(i), g_flCashValue[entity] * modifier);
+			receiver = clientArray.Get(i);
+			mult = 1.0;
+			if (GetPlayerCrateBonus(receiver) > 0)
+			{
+				mult = 1.5;
+			}
+			
+			AddPlayerCash(receiver, g_flCashValue[entity] * mult);
 		}
 		
 		if (client > 0)

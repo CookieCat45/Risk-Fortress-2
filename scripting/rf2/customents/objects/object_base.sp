@@ -387,8 +387,11 @@ static Action Timer_WorldText(Handle timer, int entity)
 
 static void OnRemove(RF2_Object_Base obj)
 {
-	RequestFrame(RF_DeleteForward, obj.OnInteractForward);
-	obj.OnInteractForward = null;
+	if (obj.OnInteractForward)
+	{
+		RequestFrame(RF_DeleteForward, obj.OnInteractForward);
+		obj.OnInteractForward = null;
+	}
 }
 
 static void RF_DeleteForward(PrivateForward fwd)

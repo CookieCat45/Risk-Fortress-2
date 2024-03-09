@@ -341,7 +341,7 @@ void GiveItem(int client, int type, int amount=1, bool addToLogbook=false)
 	else
 	{
 		g_iPlayerItem[client][type] += amount;
-		if (GetPlayerItemCount(client, type) < 0)
+		if (GetPlayerItemCount(client, type, true) < 0)
 		{
 			g_iPlayerItem[client][type] = 0;
 		}
@@ -1180,7 +1180,7 @@ public void RF_SaxtonRadiusDamage(DataPack pack)
 
 bool ActivateStrangeItem(int client)
 {
-	if (g_iPlayerEquipmentItemCharges[client] <= 0)
+	if (g_iPlayerEquipmentItemCharges[client] <= 0 || IsPlayerMinion(client))
 		return false;
 	
 	int equipment = GetPlayerEquipmentItem(client);
@@ -1414,7 +1414,7 @@ bool ActivateStrangeItem(int client)
 			}
 			
 			FireLaser(client, ItemStrange_VirtualViewfinder, eyePos, angles, true, _, 
-				GetItemMod(ItemStrange_VirtualViewfinder, 0), DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE, 25.0, colors, "partyhat");
+				GetItemMod(ItemStrange_VirtualViewfinder, 0), DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE, 25.0, colors, "head");
 		}
 		
 		case ItemStrange_NastyNorsemann:
@@ -1954,8 +1954,11 @@ bool GetItemModBool(int item, int slot)
 }
 */
 
-int GetPlayerItemCount(int client, int item)
+int GetPlayerItemCount(int client, int item, bool allowMinions=false)
 {
+	if (!allowMinions && IsPlayerMinion(client))
+		return 0;
+	
 	return g_iPlayerItem[client][item];
 }
 
@@ -1966,21 +1969,34 @@ int GetPlayerEquipmentItem(int client)
 
 float CalcItemMod(int client, int item, int slot, int extraAmount=0)
 {
+	// hack to prevent minions from utilizing items
+	if (IsPlayerMinion(client))
+		item = Item_Null;
+	
 	return g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount);
 }
 
 float CalcItemMod_Hyperbolic(int client, int item, int slot, int extraAmount=0)
 {
+	if (IsPlayerMinion(client))
+		item = Item_Null;
+	
 	return 1.0 - 1.0 / (1.0 + g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
 }
 
 float CalcItemMod_HyperbolicInverted(int client, int item, int slot, int extraAmount=0)
 {
+	if (IsPlayerMinion(client))
+		item = Item_Null;
+	
 	return 1.0 / (1.0 + g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
 }
 
 int CalcItemModInt(int client, int item, int slot, int extraAmount=0)
 {
+	if (IsPlayerMinion(client))
+		item = Item_Null;
+
 	return RoundToFloor(g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
 }
 
@@ -2045,14 +2061,14 @@ public int SortItemList(int index1, int index2, ArrayList array, Handle hndl)
 	return quality1 > quality2 ? -1 : 1;
 }
 
-bool PlayerHasItem(int client, int item)
+bool PlayerHasItem(int client, int item, bool allowMinions=false)
 {
 	if (IsEquipmentItem(item))
 	{
 		return (GetPlayerEquipmentItem(client) == item);
 	}
 	
-	return (GetPlayerItemCount(client, item) > 0);
+	return (GetPlayerItemCount(client, item, allowMinions) > 0);
 }
 
 bool IsScrapItem(int item)
@@ -2112,23 +2128,6 @@ bool IsItemInLogbook(int client, int item)
 	GetItemLogCookie(client, buffer, sizeof(buffer));
 	FormatEx(itemId, sizeof(itemId), ";%i;", item);
 	return StrContains(buffer, itemId, false) != -1;
-}
-
-bool IsItemSharingEnabled()
-{
-	if (!g_cvItemShareEnabled.BoolValue)
-		return false;
-	
-	if (g_iLoopCount >= 1 && g_cvItemShareEnabled.IntValue == 1)
-		return false;
-	
-	if (IsStageCleared() && g_cvItemShareEnabled.IntValue == 1)
-		return false;
-	
-	if (GetPlayersOnTeam(TEAM_SURVIVOR, true, true) <= 1)
-		return false;
-	
-	return true;
 }
 
 #if defined _goomba_included_

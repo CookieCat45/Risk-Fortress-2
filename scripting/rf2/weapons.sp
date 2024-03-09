@@ -668,7 +668,9 @@ public MRESReturn Detour_DoSwingTrace(int weapon, DHookReturn returnVal, DHookPa
 		return MRES_Ignored;
 	
 	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
-	if (IsValidClient(owner) && PlayerHasItem(owner, Item_HorrificHeadsplitter))
+	char classname[32];
+	GetEntityClassname(weapon, classname, sizeof(classname));
+	if (IsValidClient(owner) && PlayerHasItem(owner, Item_HorrificHeadsplitter) && !strcmp2(classname, "tf_weapon_knife"))
 	{
 		g_bMeleeMiss[owner] = true;
 	}
@@ -684,7 +686,9 @@ public MRESReturn Detour_DoSwingTracePost(int weapon, DHookReturn returnVal, DHo
 		return MRES_Ignored;
 	
 	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
-	if (IsValidClient(owner) && g_bMeleeMiss[owner])
+	char classname[32];
+	GetEntityClassname(weapon, classname, sizeof(classname));
+	if (IsValidClient(owner) && g_bMeleeMiss[owner] && !strcmp2(classname, "tf_weapon_knife"))
 	{
 		if (PlayerHasItem(owner, Item_HorrificHeadsplitter))
 		{

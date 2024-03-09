@@ -226,7 +226,7 @@ static Action Timer_WorldText(Handle timer, int entity)
 // Subject is who we're dropping the item for, or INVALID_ENT if we don't care
 RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, float ownTime=0.0)
 {
-	if (GetPlayerItemCount(client, type) <= 0 && !IsEquipmentItem(type))
+	if (GetPlayerItemCount(client, type, true) <= 0 && !IsEquipmentItem(type))
 		return view_as<RF2_Item>(INVALID_ENT);
 	
 	if (IsEquipmentItem(type) && GetPlayerEquipmentItem(client) != type)
@@ -363,7 +363,7 @@ bool PickupItem(int client)
 				}
 				else
 				{
-					RF2_PrintToChat(i, "%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, type));
+					RF2_PrintToChat(i, "%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, type, true));
 				}
 			}
 		}

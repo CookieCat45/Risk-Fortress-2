@@ -13,6 +13,7 @@
 #define WORLD_CENTER "rf2_world_center" // An info_target used to determine where the "center" of the world is, according to the map designer
 #define INVALID_ENT INVALID_ENT_REFERENCE
 #define MAX_PATH_FOLLOWERS 60
+#define MAX_INVENTORIES 64
 
 // Configs -------------------------------------------------------------------------------------------------------------------------------------
 #define ConfigPath "configs/rf2"

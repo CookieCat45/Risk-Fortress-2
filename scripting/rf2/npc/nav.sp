@@ -25,7 +25,7 @@
  */
 CNavArea GetSpawnPoint(const float pos[3], float resultPos[3], 
 float minDist=650.0, float maxDist=1650.0, int filterTeam=-1, 
-bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLAYER_MAXS, int traceFlags=MASK_PLAYERSOLID, float zOffset=0.0, bool onlyFilterSentries=false)
+bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLAYER_MAXS, int traceFlags=MASK_PLAYERSOLID, float zOffset=30.0, bool onlyFilterSentries=false)
 {
 	float navPos[3];
 	CopyVectors(pos, navPos);
@@ -62,7 +62,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 	for (int i = 0; i < areaCount; i++)
 	{
 		area = collector.Get(i);
-		if (view_as<CTFNavArea>(area).HasAttributeTF(NO_SPAWNING))
+		if (area.HasAttributes(NAV_MESH_NO_HOSTAGES) || view_as<CTFNavArea>(area).HasAttributeTF(NO_SPAWNING))
 			continue;
 		
 		if (area.GetCostSoFar() >= minDist)

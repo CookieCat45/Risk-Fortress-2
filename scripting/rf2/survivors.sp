@@ -10,18 +10,18 @@
 
 int g_iSurvivorCount = 1;
 int g_iSurvivorBaseHealth[TF_CLASSES];
-int g_iSavedItem[MAX_SURVIVORS][MAX_ITEMS];
-int g_iSavedLevel[MAX_SURVIVORS] = {1, ...};
-int g_iSavedEquipmentItem[MAX_SURVIVORS];
-int g_iSurvivorGivenItems[MAX_SURVIVORS];
+int g_iSavedItem[MAX_INVENTORIES][MAX_ITEMS];
+int g_iSavedLevel[MAX_INVENTORIES] = {1, ...};
+int g_iSavedEquipmentItem[MAX_INVENTORIES];
+int g_iSurvivorGivenItems[MAX_INVENTORIES];
 
 float g_flSurvivorMaxSpeed[TF_CLASSES];
-float g_flSavedXP[MAX_SURVIVORS];
-float g_flTotalXP[MAX_SURVIVORS];
-float g_flSavedNextLevelXP[MAX_SURVIVORS] = {BASE_NEXT_LEVEL_XP, ...};
+float g_flSavedXP[MAX_INVENTORIES];
+float g_flTotalXP[MAX_INVENTORIES];
+float g_flSavedNextLevelXP[MAX_INVENTORIES] = {BASE_NEXT_LEVEL_XP, ...};
 
 char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
-bool g_bSurvivorInventoryClaimed[MAX_SURVIVORS];
+bool g_bSurvivorInventoryClaimed[MAX_INVENTORIES];
 StringMap g_hPlayerSteamIDToInventoryIndex;
 StringMap g_hPlayerNameToInventoryIndex;
 
@@ -50,7 +50,6 @@ void LoadSurvivorStats()
 				g_iSurvivorBaseHealth[class] = survivorKey.GetNum("health", 450);
 				g_flSurvivorMaxSpeed[class] = survivorKey.GetFloat("speed", 300.0);
 				survivorKey.GetString("attributes", g_szSurvivorAttributes[class], sizeof(g_szSurvivorAttributes[]));
-				
 				firstKey = false;
 			}
 		}
@@ -107,65 +106,13 @@ bool CreateSurvivors()
 	if (survivorList.Length > maxSurvivors)
 		survivorList.Resize(maxSurvivors);
 	
-	// sort by inventory index, so people who own inventories can get their stuff back first
-	survivorList.SortCustom(SortSurvivorListByInventory);
-	bool indexTaken[MAX_SURVIVORS];
 	int survivorCount, client, index;
-	char steamId[MAX_AUTHID_LENGTH];
-
 	for (int i = 0; i < survivorList.Length; i++)
 	{
 		client = survivorList.Get(i);
-		if (g_bGameInitialized && !IsFakeClient(client))
-		{
-			int steamIDIndex;
-			// check to see if we can get our own inventory back
-			if (GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)) 
-				&& g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, steamIDIndex) && !indexTaken[steamIDIndex])
-			{
-				index = steamIDIndex;
-			}
-			else
-			{
-				// if we can't do that, try to find an empty inventory
-				int index2 = -1;
-				for (int s = 0; s < maxSurvivors; s++)
-				{
-					if (indexTaken[s])
-						continue;
-					
-					if (!g_bSurvivorInventoryClaimed[s])
-					{
-						index2 = s;
-						break;
-					}
-				}
-				
-				if (index2 == -1)
-				{
-					// if we can't find an empty inventory, just find the next inventory that hasn't been taken by someone else
-					for (int s = 0; s < maxSurvivors; s++)
-					{
-						if (!indexTaken[s])
-						{
-							index2 = s;
-							break;
-						}
-					}
-				}
-				
-				index = index2;
-			}
-		}
-		else
-		{
-			index = survivorCount;
-		}
-		
+		index = survivorCount;
 		g_iPlayerSurvivorIndex[client] = index;
-		indexTaken[index] = true;
 		MakeSurvivor(client, index);
-		g_bSurvivorInventoryClaimed[index] = true;
 		survivorCount++;
 		index = -1;
 	}
@@ -179,7 +126,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 {
 	if (resetPoints)
 		RF2_SetSurvivorPoints(client, 0);
-
+	
 	// Player is probably still on the class select screen, so we need to kick them out by giving them a random class.
 	if (TF2_GetPlayerClass(client) == TFClass_Unknown)
 	{
@@ -236,24 +183,23 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);
 	if (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == INVALID_ENT)
 	{
-		LogError("Caught A-Pose bug on %N, attempting to fix", client);
-		TF2_RemoveCondition(client, TFCond_UberchargedCanteen);
-		SDKHooks_TakeDamage(client, 0, 0, 30000.0, DMG_PREVENT_PHYSICS_FORCE);
+		//LogError("Caught A-Pose bug on %N, attempting to fix", client);
 		TF2_RespawnPlayer(client);
 	}
 	
-	char authId[MAX_AUTHID_LENGTH];
-	bool hasId = GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId));
 	if (loadInventory)
 	{
+		int invIndex = PickInventoryIndex(client);
+		g_iPlayerInventoryIndex[client] = invIndex;
+		
 		// likely a mid-game join, so get us up to speed
 		int totalInvs = imax(1, GetTotalClaimedInventories());
-		int itemsToGive = (GetTotalSurvivorItems() / totalInvs) - GetTotalSurvivorItems(index);
+		int itemsToGive = (GetTotalSurvivorItems() / totalInvs) - GetTotalSurvivorItems(invIndex);
 		itemsToGive += 3 * g_iStagesCompleted;
 		const int collectorLimit = 10;
 		int collectorItems;
-		itemsToGive -= g_iSurvivorGivenItems[index];
-		if (g_bGameInitialized && hasId && itemsToGive > 0 && !DoesClientOwnInventory(client, index))
+		itemsToGive -= g_iSurvivorGivenItems[invIndex];
+		if (g_bGameInitialized && itemsToGive > 0 && !g_bSurvivorInventoryClaimed[invIndex])
 		{
 			// if we join in a game and our inventory is empty, get us up to speed
 			float highestXp = GetHighestSurvivorXP();
@@ -274,25 +220,26 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 				}
 			}
 			
-			if (g_iLoopCount >= 2 && g_iSavedItem[index][Item_PrideScarf] < itemsToGive/3)
+			if (g_iLoopCount >= 2 && g_iSavedItem[invIndex][Item_PrideScarf] < itemsToGive/3)
 			{
 				// Give a bunch of health otherwise the player just endlessly dies at this point
-				GiveItem(client, Item_PrideScarf, imax((itemsToGive/3)-g_iSavedItem[index][Item_PrideScarf], 0));
-				GiveItem(client, Item_SpiralSallet, 10-imin(g_iSavedItem[index][Item_SpiralSallet], 10));
+				GiveItem(client, Item_PrideScarf, imax((itemsToGive/3)-g_iSavedItem[invIndex][Item_PrideScarf], 0));
+				GiveItem(client, Item_SpiralSallet, 10-imin(g_iSavedItem[invIndex][Item_SpiralSallet], 10));
 				GiveItem(client, Item_ClassCrown);
 			}
 			
-			if (g_iSavedEquipmentItem[index] == Item_Null)
+			if (g_iSavedEquipmentItem[invIndex] == Item_Null)
 			{
 				GiveItem(client, GetRandomItemEx(Quality_Strange));
 			}
 			
 			// save now so it actually keeps our items
-			SaveSurvivorInventory(client, index);
-			g_iSurvivorGivenItems[index] += itemsToGive;
+			SaveSurvivorInventory(client, invIndex);
+			g_iSurvivorGivenItems[invIndex] += itemsToGive;
 		}
 		
-		LoadSurvivorInventory(client, index);
+		g_bSurvivorInventoryClaimed[invIndex] = true;
+		LoadSurvivorInventory(client, invIndex);
 	}
 	else // we should still update our items in case this is a respawn
 	{
@@ -353,48 +300,6 @@ public int SortSurvivorListByPoints(int index1, int index2, ArrayList array, Han
 	return points1 > points2 ? -1 : 1;
 }
 
-public int SortSurvivorListByInventory(int index1, int index2, ArrayList array, Handle hndl)
-{
-	int client1 = array.Get(index1);
-	int client2 = array.Get(index2);
-
-	if (IsFakeClient(client1))
-	{
-		return 1;
-	}
-	else if (IsFakeClient(client2))
-	{
-		return -1;
-	}
-
-	int inv1 = GetClientOwnedInventory(client1);
-	int inv2 = GetClientOwnedInventory(client2);
-
-	// whoever owns the lowest inventory index should be made a survivor first, so they can get their inventory back
-	if (inv1 == inv2)
-	{
-		return 0;
-	}
-	else if (inv1 == -1)
-	{
-		return 1;
-	}
-	else if (inv2 == -1)
-	{
-		return -1;
-	}
-	else if (inv1 >= 0 && inv1 < inv2)
-	{
-		return -1;
-	}
-	else if (inv2 >= 0 && inv2 < inv1)
-	{
-		return 1;
-	}
-	
-	return 0;
-}
-
 public Action Timer_SurvivorTutorial(Handle timer, int client)
 {
 	if ((client = GetClientOfUserId(client)) == 0)
@@ -440,7 +345,7 @@ void LoadSurvivorInventory(int client, int index)
 	SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier());
 	g_iPlayerLevel[client] = g_iSavedLevel[index];
 	g_flPlayerXP[client] = g_flSavedXP[index];
-	g_iItemsTaken[index] = 0;
+	g_iItemsTaken[RF2_GetSurvivorIndex(client)] = 0;
 	
 	if (g_iPlayerLevel[client] > 1)
 	{
@@ -464,7 +369,7 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 		if (IsEquipmentItem(i))
 			continue;
 		
-		g_iSavedItem[index][i] = GetPlayerItemCount(client, i);
+		g_iSavedItem[index][i] = GetPlayerItemCount(client, i, true);
 	}
 	
 	g_iSavedLevel[index] = g_iPlayerLevel[client];
@@ -484,39 +389,6 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 		GetClientName(client, name, sizeof(name));
 		g_hPlayerNameToInventoryIndex.SetValue(name, index, true);
 	}
-}
-
-// Checks if the client's SteamID is associated with the inventory for this survivor index.
-// If SteamIDs are unavailable it will fall back to player usernames.
-bool DoesClientOwnInventory(int client, int index)
-{
-	if (!g_hPlayerSteamIDToInventoryIndex)
-		return false;
-	
-	char steamId[MAX_AUTHID_LENGTH];
-	char name[MAX_NAME_LENGTH];
-	int index2;
-	
-	bool steamIdAvailable = GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId));
-	if (!steamIdAvailable)
-	{
-		// Fall back to names
-		GetClientName(client, name, sizeof(name));
-	}
-	
-	return steamIdAvailable && g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, index2) && index2 == index
-			|| !steamIdAvailable && g_hPlayerNameToInventoryIndex.GetValue(name, index2) && index2 == index;
-}
-
-int GetClientOwnedInventory(int client)
-{
-	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
-	{
-		if (DoesClientOwnInventory(client, i))
-			return i;
-	}
-	
-	return -1;
 }
 
 float GetHighestSurvivorXP()
@@ -547,21 +419,21 @@ int GetTotalSurvivorItems(int index=-1)
 		return total;
 	}
 	
-	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
+	for (int i = 0; i < MAX_INVENTORIES; i++)
 	{
 		for (int j = 0; j < MAX_ITEMS; j++)
 		{
 			total += g_iSavedItem[i][j];
 		}
 	}
-
+	
 	return total;
 }
 
 int GetTotalClaimedInventories()
 {
 	int total;
-	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
+	for (int i = 0; i < MAX_INVENTORIES; i++)
 	{
 		if (g_bSurvivorInventoryClaimed[i])
 			total++;
@@ -581,20 +453,15 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 		objectCount = 0;
 	}
 	
-	char classname[32];
-	int entity = MaxClients+1;
+	int entity = INVALID_ENT;
 	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
-		if (entity < 1)
-			continue;
-		
-		if (entity <= MaxClients && IsPlayerSurvivor(entity))
+		if (entity > 0 && entity <= MaxClients && IsPlayerSurvivor(entity))
 			survivorCount++;
 		
 		if (!recalculate)
 		{
-			GetEntityClassname(entity, classname, sizeof(classname));
-			if (strcmp2(classname, "rf2_object_crate"))
+			if (RF2_Object_Crate(entity).IsValid() && !RF2_Object_Crate(entity).IsBonus)
 			{
 				objectCount++;
 			}
@@ -616,6 +483,14 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 		{
 			g_iItemLimit[i] = itemShare;
 		}	
+	}
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && IsPlayerSurvivor(i))
+		{
+			g_iItemLimit[RF2_GetSurvivorIndex(i)] += GetPlayerCrateBonus(i);
+		}
 	}
 }
 
@@ -680,7 +555,7 @@ void PlayerLevelUp(int client)
 
 bool IsPlayerSurvivor(int client)
 {
-	return (RF2_GetSurvivorIndex(client) > -1);
+	return RF2_GetSurvivorIndex(client) >= 0 && IsPlayerAlive(client) && GetClientTeam(client) == TEAM_SURVIVOR;
 }
 
 bool IsSingleplayer(bool fullCheck=true)
@@ -713,6 +588,7 @@ bool IsPlayerMinion(int client)
 void SpawnMinion(int client)
 {
 	g_bPlayerIsMinion[client] = true;
+	g_bPlayerSpawningAsMinion[client] = false;
 	float pos[3], center[3];
 	int target = GetRandomPlayer(TEAM_SURVIVOR);
 	if (IsValidClient(target))
@@ -836,7 +712,88 @@ void SpawnMinion(int client)
 	SetEntProp(client, Prop_Send, "m_bUseClassAnimations", true);
 	SetEntPropFloat(client, Prop_Send, "m_flModelScale", 0.5);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 2.5);
-	TF2Attrib_SetByDefIndex(client, 62, 0.5); // "dmg taken from crit reduced"
+	TF2Attrib_SetByDefIndex(client, 62, 0.25); // "dmg taken from crit reduced"
 	TF2Attrib_SetByDefIndex(client, 252, 0.25); // "damage force reduction"
-	GiveItem(client, Item_Archimedes, 1+g_iSubDifficulty);
+}
+
+int PickInventoryIndex(int client)
+{
+	int index = -1;
+	char steamId[MAX_AUTHID_LENGTH], name[MAX_NAME_LENGTH];
+	GetClientName(client, name, sizeof(name));
+	if (GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)))
+	{
+		if (!g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, index))
+		{
+			g_hPlayerNameToInventoryIndex.GetValue(name, index);
+		}
+	}
+	else
+	{
+		g_hPlayerNameToInventoryIndex.GetValue(name, index);
+	}
+	
+	if (index == -1) // we don't have an inventory, pick an empty one
+	{
+		for (int i = 0; i < MAX_INVENTORIES; i++)
+		{
+			if (!g_bSurvivorInventoryClaimed[i])
+				return i;
+		}
+	}
+	
+	return index;
+}
+
+// Returns total number of items the player is lagging behind by, 0 otherwise.
+// Compares the total items of this player to whoever has the most items.
+int GetPlayerCrateBonus(int client)
+{
+	float lagBehindPercent = g_cvSurvivorLagBehindThreshold.FloatValue;
+	if (lagBehindPercent <= 0.0)
+		return 0;
+	
+	int count;
+	int highestItems, itemHogger;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+			continue;
+		
+		count = GetTotalSurvivorItems(g_iPlayerInventoryIndex[i]);
+		if (highestItems == 0 || count > highestItems)
+		{
+			highestItems = count;
+			itemHogger = i;
+		}
+	}
+	
+	if (highestItems <= 0 || itemHogger == client)
+		return 0;
+	
+	int myCount = GetTotalSurvivorItems(g_iPlayerInventoryIndex[client]);
+	if (RoundToFloor(float(highestItems) * lagBehindPercent) >= myCount)
+	{
+		return imin(highestItems-myCount, g_cvSurvivorMaxExtraCrates.IntValue);
+	}
+	
+	return 0;
+}
+
+bool IsItemSharingEnabled()
+{
+	if (!g_cvItemShareEnabled.BoolValue)
+		return false;
+	
+	if (g_iLoopCount >= 1 && g_cvItemShareEnabled.IntValue == 1)
+		return false;
+	
+	if (IsStageCleared() && g_cvItemShareEnabled.IntValue == 1)
+		return false;
+	
+	// count bots for debugging purposes
+	if (GetPlayersOnTeam(TEAM_SURVIVOR, true, false) <= 1)
+		return false;
+	
+	return true;
 }

@@ -62,7 +62,7 @@ public any Native_GetPlayerItemAmount(Handle plugin, int numParams)
 	if (item <= Item_Null || item >= Item_MaxValid)
 		return -1;
 	
-	return GetPlayerItemCount(GetNativeCell(1), item);
+	return GetPlayerItemCount(GetNativeCell(1), item, true);
 }
 
 public any Native_GivePlayerItem(Handle plugin, int numParams)

@@ -220,7 +220,7 @@ static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 	
 	for (int i = 1; i <= GetTotalItems(); i++)
 	{
-		if (i != benchItem && GetItemQuality(i) == quality && PlayerHasItem(client, i))
+		if (i != benchItem && GetItemQuality(i) == quality && PlayerHasItem(client, i, true))
 		{
 			if (IsScrapItem(i)) // priority
 			{
@@ -240,12 +240,12 @@ static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 	char qualityName[32];
 	GetQualityName(quality, qualityName, sizeof(qualityName));
 	delete itemArray;
-	if (item > Item_Null && GetPlayerItemCount(client, item) >= cost)
+	if (item > Item_Null && GetPlayerItemCount(client, item, true) >= cost)
 	{
 		GiveItem(client, item, -cost);
 		GiveItem(client, benchItem, 1, true);
 		EmitSoundToAll(SND_USE_WORKBENCH, client);
-		PrintCenterText(client, "%t", "UsedWorkbench", cost, g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item), g_szItemName[item]);
+		PrintCenterText(client, "%t", "UsedWorkbench", cost, g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item, true), g_szItemName[item]);
 		ShowItemDesc(client, benchItem);
 	}
 	else

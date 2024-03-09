@@ -24,7 +24,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.6.2b"
+#define PLUGIN_VERSION "0.7b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -119,6 +119,7 @@ bool g_bPlayerHealBurstCooldown[MAXTF2PLAYERS];
 bool g_bPlayerTimingOut[MAXTF2PLAYERS];
 bool g_bMeleeMiss[MAXTF2PLAYERS];
 bool g_bPlayerIsMinion[MAXTF2PLAYERS];
+bool g_bPlayerSpawningAsMinion[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -138,6 +139,7 @@ float g_flPlayerNextDemoSpellTime[MAXTF2PLAYERS];
 float g_flPlayerNextFireSpellTime[MAXTF2PLAYERS];
 float g_flPlayerRegenBuffTime[MAXTF2PLAYERS];
 
+int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
 int g_iPlayerBaseHealth[MAXTF2PLAYERS] = {1, ...};
 int g_iPlayerCalculatedMaxHealth[MAXTF2PLAYERS] = {1, ...};
@@ -245,6 +247,8 @@ ConVar g_cvSurvivorHealthScale;
 ConVar g_cvSurvivorDamageScale;
 ConVar g_cvSurvivorBaseXpRequirement;
 ConVar g_cvSurvivorXpRequirementScale;
+ConVar g_cvSurvivorLagBehindThreshold;
+ConVar g_cvSurvivorMaxExtraCrates;
 ConVar g_cvEnemyHealthScale;
 ConVar g_cvEnemyDamageScale;
 ConVar g_cvEnemyXPDropScale;
@@ -799,6 +803,7 @@ public void OnConfigsExecuted()
 		FindConVar("tf_forced_holiday").SetInt(2);
 		FindConVar("tf_player_movement_restart_freeze").SetBool(false);
 		FindConVar("sm_vote_progress_hintbox").SetBool(true);
+		FindConVar("mp_humans_must_join_team").SetString(g_cvAllowHumansInBlue.BoolValue ? "any" : "red");
 		
 		// no SourceTV
 		FindConVar("tv_enable").SetBool(false);
@@ -1028,6 +1033,7 @@ void ResetConVars()
 	ResetConVar(FindConVar("mp_forceautoteam"));
 	ResetConVar(FindConVar("mp_respawnwavetime"));
 	ResetConVar(FindConVar("mp_bonusroundtime"));
+	ResetConVar(FindConVar("mp_humans_must_join_team"));
 	ResetConVar(FindConVar("tv_enable"));
 	ResetConVar(FindConVar("tf_use_fixed_weaponspreads"));
 	ResetConVar(FindConVar("tf_avoidteammates_pushaway"));
@@ -1223,6 +1229,10 @@ public void OnClientDisconnect_Post(int client)
 		//TFBot(client).Follower = view_as<PathFollower>(0);
 	}
 	
+	g_iPlayerInventoryIndex[client] = -1;
+	g_iPlayerSurvivorIndex[client] = -1;
+	g_flPlayerCash[client] = 0.0;
+	g_bPlayerSpawningAsMinion[client] = false;
 	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client, true);
 	ResetAFKTime(client, false);
@@ -1516,13 +1526,13 @@ public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
 	if (!RF2_IsEnabled() || g_cvDebugNoMapChange.BoolValue)
 		return Plugin_Continue;
-
+	
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (IsClientInGame(i) && !IsPlayerSurvivor(i) && !IsFakeClient(i))
 		{
 			RF2_SetSurvivorPoints(i, RF2_GetSurvivorPoints(i)+10);
-			RF2_PrintToChat(i, "%t", "GainedSurvivorPoints");
+			//RF2_PrintToChat(i, "%t", "GainedSurvivorPoints");
 		}
 	}
 	
@@ -1935,10 +1945,6 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			CreateTimer(0.1, Timer_RespawnSurvivor, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
-	else if (IsPlayerMinion(victim))
-	{
-		CreateTimer(5.0, Timer_MinionSpawn, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
-	}
 	
 	if (victimTeam == TEAM_ENEMY && !IsFakeClient(victim))
 	{
@@ -2031,7 +2037,8 @@ public Action Timer_SurvivorDeath(Handle timer, int client)
 	}
 	else
 	{
-		CreateTimer(0.0, Timer_MinionSpawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		g_bPlayerSpawningAsMinion[client] = true;
+		CreateTimer(0.5, Timer_MinionSpawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		PrintCenterText(client, "%t", "MinionSpawn");
 	}
 	
@@ -2040,9 +2047,13 @@ public Action Timer_SurvivorDeath(Handle timer, int client)
 
 public Action Timer_MinionSpawn(Handle timer, int client)
 {
-	if (!(client = GetClientOfUserId(client)) || IsPlayerAlive(client) || GetClientTeam(client) != TEAM_SURVIVOR)
+	if (!(client = GetClientOfUserId(client)))
 		return Plugin_Continue;
 	
+	g_bPlayerSpawningAsMinion[client] = false;
+	if (IsPlayerAlive(client) || GetClientTeam(client) != TEAM_SURVIVOR)
+		return Plugin_Continue;
+
 	SpawnMinion(client);
 	return Plugin_Continue;
 }
@@ -2775,14 +2786,14 @@ public Action Timer_PlayerHud(Handle timer)
 			
 			return Plugin_Continue;
 		}
-
+		
 		hudSeconds = RoundFloat((g_flSecondsPassed) - (float(g_iMinutesPassed) * 60.0));
 		strangeItem = GetPlayerEquipmentItem(i);
-
-		if (strangeItem > Item_Null)
+		
+		if (strangeItem > Item_Null && !IsPlayerMinion(i))
 		{
 			GetItemName(strangeItem, strangeItemInfo, sizeof(strangeItemInfo));
-
+			
 			if (g_iPlayerEquipmentItemCharges[i] > 0)
 			{
 				if (g_flPlayerEquipmentItemCooldown[i] > 0.0) // multi-stack recharge?
@@ -2994,13 +3005,24 @@ public Action Timer_PlayerTimer(Handle timer)
 	{
 		PrintCenterTextAll("!!!SERVER IS RESTARTING!!!\nPlease rejoin shortly");
 	}
-	
+
 	int maxHealth, health, healAmount, weapon, ammoType;
 	int sentry = INVALID_ENT;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || !IsPlayerAlive(i))
+		if (!IsClientInGame(i))
 			continue;
+		
+		if (!IsPlayerAlive(i))
+		{
+			if (!g_bPlayerSpawningAsMinion[i] && GetClientTeam(i) == TEAM_SURVIVOR)
+			{
+				g_bPlayerSpawningAsMinion[i] = true;
+				CreateTimer(5.0, Timer_MinionSpawn, GetClientUserId(i), TIMER_FLAG_NO_MAPCHANGE);
+			}
+			
+			continue;
+		}
 		
 		// All players have infinite reserve ammo
 		weapon = GetEntPropEnt(i, Prop_Send, "m_hActiveWeapon");
@@ -3026,7 +3048,7 @@ public Action Timer_PlayerTimer(Handle timer)
 		{
 			if (g_flPlayerRegenBuffTime[i] > 0.0)
 				g_flPlayerRegenBuffTime[i] -= 0.1;
-
+			
 			g_flPlayerHealthRegenTime[i] -= 0.1;
 			if (g_flPlayerHealthRegenTime[i] <= 0.0 && !TF2_IsPlayerInCondition(i, TFCond_Overhealed))
 			{
@@ -3046,6 +3068,11 @@ public Action Timer_PlayerTimer(Handle timer)
 					
 					if (g_flPlayerRegenBuffTime[i] > 0.0)
 						healAmount += CalcItemModInt(i, Item_DapperTopper, 0);
+					
+					if (IsPlayerMinion(i))
+					{
+						healAmount += 3 * g_iSubDifficulty;
+					}
 					
 					if (IsPlayerSurvivor(i))
 					{
@@ -3343,7 +3370,7 @@ public Action OnChangeClass(int client, const char[] command, int args)
 		SilentlyKillPlayer(client);
 		TF2_SetPlayerClass(client, desiredClass); // so stats update properly
 		MakeSurvivor(client, RF2_GetSurvivorIndex(client), false, false);
-
+		
 		// Teleport the player back to their last position in grace period
 		DataPack pack;
 		CreateDataTimer(0.3, Timer_SuicideTeleport, pack, TIMER_FLAG_NO_MAPCHANGE);
@@ -3373,7 +3400,7 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 		{
 			return Plugin_Handled;
 		}
-
+		
 		int team = GetClientTeam(client);
 		int newTeam;
 		if (strcmp2(command, "spectate"))
@@ -3396,7 +3423,12 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 			}
 		}
 		
-		if (IsTeleporterBoss(client) || team == TEAM_SURVIVOR && IsPlayerAlive(client) && IsPlayerSurvivor(client) && !g_bGracePeriod)
+		if (!g_bWaitingForPlayers && team == TEAM_ENEMY && !g_cvAllowHumansInBlue.BoolValue)
+		{
+			RF2_PrintToChat(client, "%t", "NoChangeTeam");
+			return Plugin_Handled;
+		}
+		else if (IsTeleporterBoss(client) || team == TEAM_SURVIVOR && IsPlayerAlive(client) && IsPlayerSurvivor(client) && !g_bGracePeriod)
 		{
 			RF2_PrintToChat(client, "%t", "NoChangeTeam");
 			return Plugin_Handled;
@@ -3404,10 +3436,6 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 		else if (IsPlayerSurvivor(client))
 		{
 			ReshuffleSurvivor(client, newTeam);
-		}
-		else if (newTeam == TEAM_SURVIVOR)
-		{
-			CreateTimer(5.0, Timer_MinionSpawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 	
@@ -3731,6 +3759,12 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			int beam = ShootProjectile(client, "rf2_projectile_beam", eyePos, eyeAng, speed, damage, -4.0);
 			SetEntItemProc(beam, ItemDemo_ConjurersCowl);
 			g_flPlayerNextDemoSpellTime[client] = GetTickedTime() + GetItemMod(ItemDemo_ConjurersCowl, 6);
+		}
+		
+		if (PlayerHasItem(client, Item_HorrificHeadsplitter) && strcmp2(weaponName, "tf_weapon_knife"))
+		{
+			g_bMeleeMiss[client] = true;
+			RequestFrame(RF_MissCheck, GetClientUserId(client));
 		}
 	}
 	
@@ -5442,6 +5476,10 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 	if (!RF2_IsEnabled() || g_bWaitingForPlayers || !IsValidClient(client))
 		return Plugin_Continue;
 	
+	bool footsteps = StrContains(sample, "player/footsteps/", false) != -1;
+	if (channel != SNDCHAN_VOICE && !footsteps)
+		return Plugin_Continue;
+	
 	if (GetClientTeam(client) == TEAM_ENEMY || IsPlayerMinion(client) || TF2_IsPlayerInCondition(client, TFCond_Disguised))
 	{
 		Action action = Plugin_Continue;
@@ -5519,7 +5557,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				PrecacheSound2(sample);
 			}
 		}
-		else if (StrContains(sample, "player/footsteps/") != -1)
+		else if (footsteps)
 		{
 			// Giant Robots have a different way of playing their footstep sounds, this way doesn't work too well. See OnPlayerRunCmd().
 			if (footstepType == FootstepType_Silent || footstepType == FootstepType_GiantRobot)

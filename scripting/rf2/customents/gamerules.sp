@@ -195,7 +195,6 @@ int SpawnObjects()
 	ArrayList objectArray = new ArrayList(128);
 	ArrayList crateArray = new ArrayList();
 	
-	const int objectCount = 8;
 	int crateWeight = 50;
 	int largeWeight = 8;
 	int strangeWeight = 8;
@@ -205,7 +204,7 @@ int SpawnObjects()
 	// Non-crate object weights are separate
 	int workbenchWeight = 16;
 	int scrapperWeight = 12;
-	int graveWeight = 9;
+	int graveWeight = 8;
 	
 	if (g_iStagesCompleted <= 0)
 	{
@@ -214,6 +213,7 @@ int SpawnObjects()
 	
 	char name[64];
 	int count;
+	const int objectCount = 8;
 	for (int i = 1; i <= objectCount; i++)
 	{
 		switch (i-1)
@@ -244,9 +244,25 @@ int SpawnObjects()
 		}
 	}
 	
-	int minCrates = RoundToFloor(float(spawnCount) * 0.7);
+	int minCrates = RoundToFloor(float(spawnCount) * 0.8);
+	int bonusCrates = RoundToFloor(float(minCrates) * 0.1);
+	int playerBonus;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && IsPlayerSurvivor(i))
+		{
+			playerBonus = GetPlayerCrateBonus(i);
+			if (playerBonus > 0)
+			{
+				bonusCrates += playerBonus;
+				PrintToServer("[RF2] Player %N is lagging behind! Spawning %i extra crates for them.", i, playerBonus);
+			}
+		}
+	}
+	
+	PrintToServer("[RF2] Object Spawn Counts\nCrates: %i (Bonus: %i)\nOther: %i", minCrates+bonusCrates, bonusCrates, spawnCount-minCrates);
 	int scrapperCount;
-	while (spawns < spawnCount && attempts < 1000)
+	while (spawns < spawnCount+bonusCrates && attempts < 1000)
 	{
 		GetSpawnPoint(worldCenter, spawnPos, 0.0, distance, _, true);
 		nearestObject = GetNearestEntity(spawnPos, "rf2_object*");
@@ -260,7 +276,7 @@ int SpawnObjects()
 			}
 		}
 		
-		if (spawns > minCrates)
+		if (spawns > minCrates+bonusCrates)
 		{
 			objectArray.GetString(GetRandomInt(0, objectArray.Length-1), name, sizeof(name));
 			if (strcmp2(name, "rf2_object_scrapper"))
@@ -282,7 +298,7 @@ int SpawnObjects()
 		}
 		else
 		{
-			SpawnCrate(crateArray.Get(GetRandomInt(0, crateArray.Length-1)), spawnPos);
+			SpawnCrate(crateArray.Get(GetRandomInt(0, crateArray.Length-1)), spawnPos, spawns > minCrates);
 		}
 		
 		spawns++;

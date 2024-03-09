@@ -68,6 +68,8 @@ void LoadCommandsAndCvars()
 	g_cvSurvivorDamageScale = CreateConVar("rf2_survivor_level_damage_scale", "0.12", "How much a Survivor's damage will increase per level, in decimal percentage.", FCVAR_NOTIFY);
 	g_cvSurvivorBaseXpRequirement = CreateConVar("rf2_survivor_xp_base_requirement", "100.0", "Base XP requirement for a Survivor to level up.", FCVAR_NOTIFY, true, 1.0);
 	g_cvSurvivorXpRequirementScale = CreateConVar("rf2_survivor_xp_requirement_scale", "1.5", "How much the XP requirement for a Survivor to level up will scale per level, in decimal percentage.", FCVAR_NOTIFY, true, 1.0);
+	g_cvSurvivorLagBehindThreshold = CreateConVar("rf2_survivor_lag_behind_threshold", "0.6", "If any player has an item count lower than the player with the most items times this value, they will be considered 'lagging behind'. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvSurvivorMaxExtraCrates = CreateConVar("rf2_survivor_max_extra_crates", "6", "The highest number of catch-up crates to spawn for a player.", FCVAR_NOTIFY, true, 0.0);
 	g_cvCashBurnTime = CreateConVar("rf2_enemy_cash_burn_time", "30.0", "Time in seconds that dropped cash will disappear after spawning.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyHealthScale = CreateConVar("rf2_enemy_level_health_scale", "0.08", "How much the enemy team's health will increase per level, in decimal percentage. Includes neutral enemies, such as Monoculus.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyDamageScale = CreateConVar("rf2_enemy_level_damage_scale", "0.04", "How much the enemy team's damage will increase per level, in decimal percentage. Includes neutral enemies, such as Monoculus.", FCVAR_NOTIFY, true, 0.0);
@@ -83,7 +85,7 @@ void LoadCommandsAndCvars()
 	g_cvBossStabDamagePercent = CreateConVar("rf2_boss_backstab_damage_percentage", "0.12", "If rf2_boss_backstab_damage_type is 1, how much health, in decimal percentage, is subtracted from the boss upon backstab.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamageAmount = CreateConVar("rf2_boss_backstab_damage_amount", "750.0", "If rf2_boss_backstab_damage_type is 0, the base damage that is dealt to a boss upon backstab.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTeleporterRadiusMultiplier = CreateConVar("rf2_object_teleporter_radius_multiplier", "1.0", "How much to multiply the size of the Teleporter radius.", FCVAR_NOTIFY, true, 0.01);
-	g_cvMaxObjects = CreateConVar("rf2_object_max", "100", "The maximum number of objects allowed to spawn. Does not include Teleporters or Altars.", FCVAR_NOTIFY, true, 0.0);
+	g_cvMaxObjects = CreateConVar("rf2_object_max", "135", "The maximum number of objects allowed to spawn. Does not include Teleporters or Altars.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectSpreadDistance = CreateConVar("rf2_object_spread_distance", "80.0", "The minimum distance that spawned objects must be spread apart from eachother.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "12", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCost = CreateConVar("rf2_object_base_cost", "50.0", "The base cost to use objects such as crates. Scales with the difficulty.", FCVAR_NOTIFY, true, 0.0);
@@ -101,7 +103,7 @@ void LoadCommandsAndCvars()
 	g_cvEngiMetalRegenAmount = CreateConVar("rf2_engineer_metal_regen_amount", "30", "The base amount of metal an Engineer will regen per interval lapse", FCVAR_NOTIFY, true, 0.0);
 	g_cvHauntedKeyDropChanceMax = CreateConVar("rf2_haunted_key_drop_chance_max", "135", "1 in N chance for a Haunted Key to drop when an enemy is slain.", FCVAR_NOTIFY, true, 0.0);
 	g_cvArtifactChance = CreateConVar("rf2_artifact_chance", "1", "1 in N chance for Artifacts to be rolled at the beginning of a stage.", FCVAR_NOTIFY, true, 0.0);
-	g_cvAllowHumansInBlue = CreateConVar("rf2_blue_allow_humans", "1", "If nonzero, allow humans to spawn in BLU Team.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvAllowHumansInBlue = CreateConVar("rf2_blue_allow_humans", "0", "If nonzero, allow humans to spawn in BLU Team.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvTimeBeforeRestart = CreateConVar("rf2_time_before_restart", "18000", "Time in seconds before the server will restart after a run ends, to clear server memory. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvHiddenServerStartTime = CreateConVar("rf2_server_start_time", "0", _, FCVAR_HIDDEN);
 	
@@ -234,7 +236,7 @@ public Action Command_GiveItem(int client, int args)
 				continue;
 			
 			GiveItem(clients[i], item, amount);
-			newAmount = GetPlayerItemCount(clients[i], item);
+			newAmount = GetPlayerItemCount(clients[i], item, true);
 			
 			if (IsEquipmentItem(item))
 			{
@@ -1489,8 +1491,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 	for (int i = 0; i < items.Length; i++)
 	{
 		item = items.Get(i);
-		
-		if (GetPlayerItemCount(target, item) > 0 || IsEquipmentItem(item) && GetPlayerEquipmentItem(target) == item)
+		if (GetPlayerItemCount(target, item, true) > 0 || IsEquipmentItem(item) && GetPlayerEquipmentItem(target) == item)
 		{
 			itemCount++;
 			GetItemName(item, itemName, sizeof(itemName));
@@ -1502,7 +1503,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 			}
 			else
 			{
-				FormatEx(buffer, sizeof(buffer), "%s [%i]", itemName, GetPlayerItemCount(target, item));
+				FormatEx(buffer, sizeof(buffer), "%s [%i]", itemName, GetPlayerItemCount(target, item, true));
 			}
 			
 			menu.AddItem(info, buffer, flags);
@@ -1565,7 +1566,7 @@ void ShowItemDropMenu(int client, int item)
 	char info[64], itemName[MAX_NAME_LENGTH], clientName[MAX_NAME_LENGTH];
 	
 	GetItemName(item, itemName, sizeof(itemName));
-	menu.SetTitle("Drop for who? (%s [%i])", itemName, GetPlayerItemCount(client, item));
+	menu.SetTitle("Drop for who? (%s [%i])", itemName, GetPlayerItemCount(client, item, true));
 	FormatEx(info, sizeof(info), "%i_0", item);
 	menu.AddItem(info, "Don't care"); // + didn't ask + L + ratio + cope + seethe + mald + cancelled + blocked + reported + stay mad
 	
@@ -1626,7 +1627,7 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 				}
 			}
 			
-			if (GetPlayerItemCount(param1, item) > 0)
+			if (GetPlayerItemCount(param1, item, true) > 0)
 			{
 				ShowItemDropMenu(param1, item);
 			}

@@ -47,6 +47,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 			.DefineIntField("m_iItem", _, "item")
 			.DefineIntField("m_iType", _, "type")
 			.DefineBoolField("m_bInitialized")
+			.DefineBoolField("m_bIsBonus")
 		.EndDataMapDesc();
 		g_Factory.Install();
 		HookMapStart(Crate_OnMapStart);
@@ -88,6 +89,19 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 		public set(bool value)
 		{
 			this.SetProp(Prop_Data, "m_bInitialized", value);
+		}
+	}
+
+	property bool IsBonus
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bIsBonus"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bIsBonus", value);
 		}
 	}
 	
@@ -174,10 +188,11 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 	}
 }
 
-RF2_Object_Crate SpawnCrate(int type, const float pos[3])
+RF2_Object_Crate SpawnCrate(int type, const float pos[3], bool bonus=false)
 {
 	RF2_Object_Crate crate = RF2_Object_Crate(CreateObject("rf2_object_crate", pos, false).index);
 	crate.Type = type;
+	crate.IsBonus = bonus;
 	crate.Initialize();
 	crate.Spawn();
 	return crate;

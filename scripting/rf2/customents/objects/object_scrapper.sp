@@ -43,12 +43,12 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 		bool collector;
 		for (int i = 1; i <= GetTotalItems(); i++)
 		{
-			if (IsScrapItem(i) || IsEquipmentItem(i) || !PlayerHasItem(client, i))
+			if (IsScrapItem(i) || IsEquipmentItem(i) || !PlayerHasItem(client, i, true))
 				continue;
 			
 			if (GetItemQuality(i) == Quality_Collectors)
 			{
-				if (GetCollectorItemClass(i) == TF2_GetPlayerClass(client))
+				if (IsPlayerMinion(client) || GetCollectorItemClass(i) == TF2_GetPlayerClass(client))
 				{
 					continue;
 				}
@@ -61,7 +61,7 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 			}
 			
 			IntToString(i, info, sizeof(info));
-			FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[i], GetPlayerItemCount(client, i));
+			FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[i], GetPlayerItemCount(client, i, true));
 			menu.AddItem(info, display);
 			count++;
 		}
@@ -109,7 +109,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 			int item = StringToInt(info);
 			bool scrapAllCollectors = strcmp2(info, "scrap_collectors");
 			
-			if (scrapAllCollectors || item != Item_Null && PlayerHasItem(param1, item))
+			if (scrapAllCollectors || item != Item_Null && PlayerHasItem(param1, item, true))
 			{
 				TFClassType class = TF2_GetPlayerClass(param1);
 				if (scrapAllCollectors || GetItemQuality(item) == Quality_Collectors && GetCollectorItemClass(item) != class)
@@ -125,7 +125,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 							if (GetCollectorItemClass(i) == class)
 								continue;
 							
-							count = GetPlayerItemCount(param1, i);
+							count = GetPlayerItemCount(param1, i, true);
 							GiveItem(param1, i, -count);
 							total += count;
 						}

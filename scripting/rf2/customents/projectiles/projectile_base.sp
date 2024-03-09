@@ -434,8 +434,12 @@ static void OnCreate(RF2_Projectile_Base proj)
 
 static void OnRemove(RF2_Projectile_Base proj)
 {
-	RequestFrame(RF_DeleteForward, proj.OnCollide);
-	proj.OnCollide = null;
+	if (proj.OnCollide)
+	{
+		RequestFrame(RF_DeleteForward, proj.OnCollide);
+		proj.OnCollide = null;
+	}
+	
 	if (IsValidEntity2(proj.Thruster))
 	{
 		RemoveEntity2(proj.Thruster);

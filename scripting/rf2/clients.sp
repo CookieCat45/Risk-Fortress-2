@@ -67,13 +67,17 @@ void RefreshClient(int client, bool force=false)
 	{
 		g_iPlayerLevel[client] = 1;
 		g_flPlayerXP[client] = 0.0;
-		g_flPlayerCash[client] = 0.0;
 		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
-		g_iPlayerSurvivorIndex[client] = -1;
+		//g_iPlayerSurvivorIndex[client] = -1;
 		g_iPlayerEquipmentItem[client] = Item_Null;
 		g_flPlayerEquipmentItemCooldown[client] = 0.0;
 		g_iPlayerUnusualsUnboxed[client] = 0;
+	}
+	
+	if (force || g_bMapChanging || !IsPlayerSurvivor(client))
+	{
 		SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
+		g_flPlayerCash[client] = 0.0;
 	}
 	
 	if (g_bPlayerHasVampireSapper[client] && IsClientInGame(client))
@@ -372,6 +376,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 {
 	int oldMaxHealth = RF2_GetCalculatedMaxHealth(client);
 	float healthScale = GetPlayerHealthMult(client);
+	int classMaxHealth = GetClassMaxHealth(TF2_GetPlayerClass(client));
 	// Max health changes from weapons should be added on top of base health too
 	Address attr = TF2Attrib_GetByDefIndex(client, 26);
 	int healthAttrib = TF2Attrib_HookValueInt(0, "add_maxhealth", client) - RoundToFloor(attr ? TF2Attrib_GetValue(attr) : 0.0);
@@ -424,8 +429,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		}
 	}
 	
-	int classMaxHealth = GetClassMaxHealth(TF2_GetPlayerClass(client));
-	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth)); // "max health additive bonus"
+	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth-healthAttrib)); // "max health additive bonus"
 	int actualMaxHealth = SDK_GetPlayerMaxHealth(client);
 	g_iPlayerCalculatedMaxHealth[client] = actualMaxHealth;
 	

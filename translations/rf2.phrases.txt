@@ -817,6 +817,6 @@
 	}
 	"MinionSpawn"
 	{
-		"en"		"You're a minion! You can still help RED by attacking bots and collecting cash."
+		"en"		"You're a minion! You can still help RED by attacking bots and collecting cash.\nYou can't utilize the effects of items, but you can still interact with objects and manage your inventory."
 	}
 }
