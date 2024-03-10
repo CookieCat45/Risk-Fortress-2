@@ -65,19 +65,20 @@ void RefreshClient(int client, bool force=false)
 	
 	if (force || !IsPlayerSurvivor(client) || !g_bGracePeriod || g_bMapChanging || !IsClientInGame(client))
 	{
-		g_iPlayerLevel[client] = 1;
-		g_flPlayerXP[client] = 0.0;
-		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
 		//g_iPlayerSurvivorIndex[client] = -1;
-		g_iPlayerEquipmentItem[client] = Item_Null;
+		//g_iPlayerEquipmentItem[client] = Item_Null;
 		g_flPlayerEquipmentItemCooldown[client] = 0.0;
-		g_iPlayerUnusualsUnboxed[client] = 0;
 	}
 	
 	if (force || g_bMapChanging || !IsPlayerSurvivor(client))
 	{
 		SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
 		g_flPlayerCash[client] = 0.0;
+		g_iPlayerEquipmentItem[client] = Item_Null;
+		g_iPlayerUnusualsUnboxed[client] = 0;
+		g_iPlayerLevel[client] = 1;
+		g_flPlayerXP[client] = 0.0;
+		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
 	}
 	
 	if (g_bPlayerHasVampireSapper[client] && IsClientInGame(client))
@@ -1078,7 +1079,7 @@ bool IsPlayerStunned(int client)
 
 float GetPlayerHealthMult(int client)
 {
-	if (IsPlayerSurvivor(client))
+	if (IsPlayerSurvivor(client) && !IsPlayerMinion(client))
 	{
 		return 1.0 + (float(GetPlayerLevel(client)-1) * g_cvSurvivorHealthScale.FloatValue);
 	}
@@ -1088,7 +1089,7 @@ float GetPlayerHealthMult(int client)
 
 float GetPlayerDamageMult(int client)
 {
-	if (IsPlayerSurvivor(client))
+	if (IsPlayerSurvivor(client) && !IsPlayerMinion(client))
 	{
 		return 1.0 + (float(GetPlayerLevel(client)-1) * g_cvSurvivorDamageScale.FloatValue);
 	}

@@ -416,9 +416,6 @@ public void OnPluginEnd()
 		
 		if (RF2_IsEnabled() && IsValidClient(i))
 		{
-			if (!IsPlayerSpectator(i))
-				ChangeClientTeam(i, TEAM_ENEMY);
-
 			SetClientName(i, g_szPlayerOriginalName[i]);
 		}
 	}
