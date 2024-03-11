@@ -1254,6 +1254,7 @@ public void OnClientDisconnect_Post(int client)
 	g_iPlayerSurvivorIndex[client] = -1;
 	g_flPlayerCash[client] = 0.0;
 	g_bPlayerSpawningAsMinion[client] = false;
+	g_bHauntedKeyDrop[client] = false;
 	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client, true);
 	ResetAFKTime(client, false);
