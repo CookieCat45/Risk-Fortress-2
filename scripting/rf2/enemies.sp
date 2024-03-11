@@ -841,7 +841,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		TE_TFParticle("eyeboss_tp_player", spawnPos);
 		g_bPlayerSpawnedByTeleporter[client] = false;
 	}
-
+	
 	return true;
 }
 

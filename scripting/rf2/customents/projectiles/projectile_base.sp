@@ -52,6 +52,11 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			.DefineBoolField("m_bRemoveOnHit")
 			.DefineBoolField("m_bDamageOwner")
 			.DefineBoolField("m_bFlying")
+			.DefineBoolField("m_bHoming")
+			.DefineBoolField("m_bDeactivateOnHit")
+			.DefineEntityField("m_hHomingTarget")
+			.DefineFloatField("m_flHomingSpeed")
+			.DefineFloatField("m_flLastHomingTime")
 			.DefineStringField("m_szRedTrail")
 			.DefineStringField("m_szBlueTrail")
 			.DefineStringField("m_szCharImpactSound")
@@ -158,6 +163,76 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			}
 			
 			this.SetProp(Prop_Data, "m_bFlying", value);
+		}
+	}
+	
+	property bool DeactivateOnHit
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bDeactivateOnHit"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bDeactivateOnHit", value);
+		}
+	}
+
+	property bool Homing
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bHoming"));
+		}
+		
+		public set(bool value)
+		{
+			bool oldValue = this.Homing;
+			this.SetProp(Prop_Data, "m_bHoming", value);
+			if (!oldValue && value)
+			{
+				this.LastHomingTime = GetGameTime();
+			}
+		}
+	}
+	
+	property float HomingSpeed
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flHomingSpeed");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flHomingSpeed", value);
+		}
+	}
+	
+	property float LastHomingTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flLastHomingTime");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flLastHomingTime", value);
+		}
+	}
+
+	property int HomingTarget
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hHomingTarget");
+		}
+		
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hHomingTarget", value);
 		}
 	}
 	
@@ -413,12 +488,47 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		
 		return hitEnts;
 	}
+	
+	public void SelectHomingTarget(bool allowInvuln=false)
+	{
+		int entity = INVALID_ENT;
+		int closestEnt = INVALID_ENT;
+		float closestDist = -1.0;
+		float dist;
+		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
+		{
+			if (!IsCombatChar(entity))
+				continue;
+			
+			if (IsValidClient(entity) && (!IsPlayerAlive(entity) || !allowInvuln && IsInvuln(entity)))
+				continue;
+			
+			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == this.Team)
+				continue;
+			
+			dist = DistBetween(this.index, entity);
+			if (closestDist == -1.0 || dist < closestDist)
+			{
+				closestEnt = entity;
+				closestDist = dist;
+			}
+		}
+		
+		if (closestEnt != INVALID_ENT)
+		{
+			this.HomingTarget = closestEnt;
+			this.LastHomingTime = GetGameTime();
+		}
+	}
 }
 
 static void OnCreate(RF2_Projectile_Base proj)
 {
 	proj.RemoveOnHit = true;
+	proj.DeactivateOnHit = true;
 	proj.DeactivateTime = 6.0;
+	proj.HomingSpeed = 50.0;
+	proj.LastHomingTime = GetGameTime();
 	proj.SetHitboxMins({-20.0, -20.0, -20.0});
 	proj.SetHitboxMaxs({20.0, 20.0, 20.0});
 	SetEntityCollisionGroup(proj.index, COLLISION_GROUP_PROJECTILE);
@@ -504,6 +614,32 @@ public void OnVPhysicsUpdate(int entity)
 			}
 		}
 	}
+	
+	if (proj.Homing)
+	{
+		if (!IsValidEntity2(proj.HomingTarget) || !IsLOSClear(proj.index, proj.HomingTarget) || IsValidClient(proj.HomingTarget) && !IsPlayerAlive(proj.HomingTarget))
+		{
+			proj.SelectHomingTarget();
+		}
+		
+		if (IsValidEntity2(proj.HomingTarget) && IsLOSClear(proj.index, proj.HomingTarget) && (!IsValidClient(proj.HomingTarget) || IsPlayerAlive(proj.HomingTarget)))
+		{
+			float ang[3], myPos[3], targetPos[3], vel[3];
+			proj.WorldSpaceCenter(myPos);
+			CBaseEntity(proj.HomingTarget).WorldSpaceCenter(targetPos);
+			GetVectorAnglesTwoPoints(myPos, targetPos, ang);
+			GetAngleVectors(ang, vel, NULL_VECTOR, NULL_VECTOR);
+			NormalizeVector(vel, vel);
+			ScaleVector(vel, proj.HomingSpeed);
+			proj.SetAbsAngles(ang);
+			SDK_ApplyAbsVelocityImpulse(proj.index, vel);
+		}
+		else if (GetGameTime() > proj.LastHomingTime+5.0)
+		{
+			proj.Deactivate();
+			proj.Flying = false;
+		}
+	}
 }
 
 public MRESReturn DHook_ProjectileCollision(int entity, DHookParam params)
@@ -547,10 +683,13 @@ public void Projectile_OnCollide(RF2_Projectile_Base proj, int other)
 				proj.Remove();
 			}
 		}
-		else
+		else 
 		{
 			// hit world
-			proj.Deactivate();
+			if (proj.DeactivateOnHit)
+			{
+				proj.Deactivate();
+			}
 		}
 	}
 }

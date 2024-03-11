@@ -382,7 +382,7 @@ void PickupCash(int client, int entity)
 		{
 			receiver = clientArray.Get(i);
 			mult = 1.0;
-			if (GetPlayerCrateBonus(receiver) > 0)
+			if (GetPlayerCrateBonus(receiver) > 0 && !IsBossEventActive())
 			{
 				mult = 1.5;
 			}
@@ -691,6 +691,14 @@ bool IsSkeleton(int entity)
 	static char classname[16];
 	GetEntityClassname(entity, classname, sizeof(classname));
 	return strcmp2(classname, "tf_zombie");
+}
+
+void SDK_ApplyAbsVelocityImpulse(int entity, const float vel[3])
+{
+	if (g_hSDKAbsVelImpulse)
+	{
+		SDKCall(g_hSDKAbsVelImpulse, entity, vel);
+	}
 }
 
 PathFollower GetEntPathFollower(int entity)

@@ -96,7 +96,7 @@ enum
 	Item_MetalHelmet = 79,
 	ItemStrange_Dragonborn = 80,
 	ItemPyro_PyromancerMask = 81,
-	//ItemStrange_HypnoEyes = 82,
+	ItemStrange_DemonicDome = 82,
 	Item_MaxValid,
 };
 

@@ -78,6 +78,7 @@ void RefreshClient(int client, bool force=false)
 		g_iPlayerUnusualsUnboxed[client] = 0;
 		g_iPlayerLevel[client] = 1;
 		g_flPlayerXP[client] = 0.0;
+		g_bHauntedKeyDrop[client] = false;
 		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
 	}
 	
@@ -828,12 +829,12 @@ void GetClassString(TFClassType class, char[] buffer, int size, bool underScore=
 		case TFClass_Spy: strcopy(buffer, size, "spy");
 		default: strcopy(buffer, size, "unknown");
 	}
-
+	
 	if (underScore)
 	{
 		Format(buffer, size, "%s_", buffer);
 	}
-
+	
 	if (capitalize)
 	{
 		int chr = buffer[0];
@@ -841,13 +842,13 @@ void GetClassString(TFClassType class, char[] buffer, int size, bool underScore=
 	}
 }
 
-int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-1), bool allowMini=true)
+int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-1), bool allowDisposable=true)
 {
 	int count;
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 	{
-		if (!allowMini && GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
+		if (!allowDisposable && IsSentryDisposable(entity))
 			continue;
 		
 		if (view_as<int>(type) == -1 || TF2_GetObjectType2(entity) == type)
@@ -874,8 +875,56 @@ int GetPlayerShield(int client)
 
 TFCond GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0)
 {
-	TFCond rune = view_as<TFCond>(g_MannpowerRunes[GetRandomInt(0, sizeof(g_MannpowerRunes)-1)]);
+	ArrayList runes = new ArrayList();
+	for (int i = 0; i < sizeof(g_MannpowerRunes); i++)
+	{
+		runes.Push(g_MannpowerRunes[i]);
+	}
 	
+	TFCond rune = runes.Get(GetRandomInt(0, runes.Length-1));
+	delete runes;
+	if (size > 0)
+	{
+		switch (rune)
+		{
+			case TFCond_RuneAgility: strcopy(soundBuffer, size, SND_RUNE_AGILITY);
+			case TFCond_RuneHaste: strcopy(soundBuffer, size, SND_RUNE_HASTE);
+			case TFCond_RuneKnockout: strcopy(soundBuffer, size, SND_RUNE_KNOCKOUT);
+			case TFCond_RunePrecision: strcopy(soundBuffer, size, SND_RUNE_PRECISION);
+			case TFCond_RuneRegen: strcopy(soundBuffer, size, SND_RUNE_REGEN);
+			case TFCond_RuneResist: strcopy(soundBuffer, size, SND_RUNE_RESIST);
+			case TFCond_RuneStrength: strcopy(soundBuffer, size, SND_RUNE_STRENGTH);
+			case TFCond_RuneVampire: strcopy(soundBuffer, size, SND_RUNE_VAMPIRE);
+			case TFCond_RuneWarlock: strcopy(soundBuffer, size, SND_RUNE_WARLOCK);
+		}
+	}
+	
+	return rune;
+}
+
+TFCond GetRandomMannpowerRune_Enemies(int client, char soundBuffer[PLATFORM_MAX_PATH]="", int size=0)
+{
+	ArrayList runes = new ArrayList();
+	for (int i = 0; i < sizeof(g_MannpowerRunes); i++)
+	{
+		runes.Push(g_MannpowerRunes[i]);
+	}
+	
+	// Enemies cannot have Reflect at all, and crit boosted enemies cannot have Strength
+	runes.Erase(runes.FindValue(TFCond_RuneWarlock));
+	if (IsPlayerCritBoosted(client))
+	{
+		runes.Erase(runes.FindValue(TFCond_RuneStrength));
+	}
+	
+	// Knockout is pointless if the enemy doesn't have a melee weapon
+	if (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == INVALID_ENT)
+	{
+		runes.Erase(runes.FindValue(TFCond_RuneKnockout));
+	}
+	
+	TFCond rune = runes.Get(GetRandomInt(0, runes.Length-1));
+	delete runes;
 	if (size > 0)
 	{
 		switch (rune)
@@ -901,6 +950,20 @@ bool IsPlayerMiniCritBuffed(int client)
 		|| TF2_IsPlayerInCondition(client, TFCond_Buffed)
 		|| TF2_IsPlayerInCondition(client, TFCond_NoHealingDamageBuff)
 		|| TF2_IsPlayerInCondition(client, TFCond_MiniCritOnKill);
+}
+
+bool IsPlayerCritBoosted(int client)
+{
+	return TF2_IsPlayerInCondition(client, TFCond_CritCanteen)
+		|| TF2_IsPlayerInCondition(client, TFCond_Kritzkrieged)
+		|| TF2_IsPlayerInCondition(client, TFCond_CritMmmph)
+		|| TF2_IsPlayerInCondition(client, TFCond_CritOnDamage)
+		|| TF2_IsPlayerInCondition(client, TFCond_CritOnKill)
+		|| TF2_IsPlayerInCondition(client, TFCond_CritOnFlagCapture)
+		|| TF2_IsPlayerInCondition(client, TFCond_CritOnFirstBlood)
+		|| TF2_IsPlayerInCondition(client, TFCond_CritRuneTemp)
+		|| TF2_IsPlayerInCondition(client, TFCond_HalloweenCritCandy)
+		|| TF2_IsPlayerInCondition(client, TFCond_CritOnWin);
 }
 
 void SDK_ForceSpeedUpdate(int client)
@@ -936,7 +999,7 @@ public MRESReturn DHook_HandleRageGain(DHookParam params)
 	return MRES_ChangedHandled;
 }
 
-public MRESReturn DHook_TakeHealth(int entity, Handle returnVal, Handle params)
+public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam params)
 {
 	if (IsValidClient(entity))
 	{
@@ -947,8 +1010,22 @@ public MRESReturn DHook_TakeHealth(int entity, Handle returnVal, Handle params)
 			health *= 2.0;
 		}
 		
-		DHookSetParam(params, 1, health);
+		params.Set(1, health);
 		return MRES_ChangedHandled;
+	}
+	
+	return MRES_Ignored;
+}
+
+public MRESReturn Detour_ApplyPunchImpulse(int client, DHookReturn returnVal, DHookParam params)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	if (TF2_GetPlayerClass(client) == TFClass_Sniper)
+	{
+		returnVal.Value = false;
+		return MRES_Supercede;
 	}
 	
 	return MRES_Ignored;

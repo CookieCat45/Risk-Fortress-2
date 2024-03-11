@@ -218,30 +218,8 @@ public void RF_UpdateText(int entity)
 		maxHealth = target.GetProp(Prop_Data, "m_iMaxHealth");
 	}
 	
-	static char str[256];//, name[128];
+	static char str[256];
 	FormatEx(str, sizeof(str), "%i / %i", health, maxHealth);
-	//text.GetDisplayName(name, sizeof(name));
-	/*
-	if (name[0])
-	{
-		// Center the text
-		int len1 = strlen(str);
-		int len2 = strlen(name);
-		if (len1 != len2)
-		{
-			static char whitespace[256];
-			whitespace = "";
-			int spaceCount = len1 < len2 ? len2/2 : len1/2;
-			for (int i = 0; i < spaceCount; i++)
-			{
-				whitespace[i] = ' ';
-			}
-			
-			len1 < len2 ? Format(str, sizeof(str), "%s%s\n%s", whitespace, str, name) : Format(str, sizeof(str), "%s\n%s%s", str, whitespace, name);
-		}
-	}
-	*/
-	
 	SetVariantString(str);
 	text.AcceptInput("SetText");
 	bool rainbow = isClient && IsInvuln(target.index);

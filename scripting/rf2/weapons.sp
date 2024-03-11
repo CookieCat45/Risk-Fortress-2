@@ -111,7 +111,7 @@ void LoadWeapons()
 static bool g_bDisableGiveItemForward;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
 {
-	if (g_bDisableGiveItemForward || !IsPlayerSurvivor(client))
+	if (g_bDisableGiveItemForward || !IsPlayerSurvivor(client) || IsPlayerMinion(client))
 		return Plugin_Continue;
 	
 	Action action = Plugin_Continue;

@@ -24,7 +24,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.7b"
+#define PLUGIN_VERSION "0.7.1b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -56,7 +56,7 @@ int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
 float g_flAutoReloadTime;
 bool g_bChangeDetected;
-bool g_bHauntedKeyDrop;
+bool g_bHauntedKeyDrop[MAXTF2PLAYERS];
 bool g_bServerRestarting;
 
 int g_iTotalEnemiesKilled;
@@ -207,10 +207,12 @@ Handle g_hSDKIntersects;
 Handle g_hSDKWeaponSwitch;
 Handle g_hSDKRealizeSpy;
 Handle g_hSDKSetZombieType;
+Handle g_hSDKAbsVelImpulse;
 DynamicDetour g_hDetourDoSwingTrace;
 DynamicDetour g_hDetourSentryAttack;
 DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourSetReloadTimer;
+DynamicDetour g_hDetourApplyPunchImpulse;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookVPhysicsCollision;
@@ -259,6 +261,8 @@ ConVar g_cvEnemyMinSpawnWaveCount;
 ConVar g_cvEnemyMaxSpawnWaveCount;
 ConVar g_cvEnemyMinSpawnWaveTime;
 ConVar g_cvEnemyBaseSpawnWaveTime;
+ConVar g_cvEnemyPowerupLevel;
+ConVar g_cvBossPowerupLevel;
 ConVar g_cvBossStabDamageType;
 ConVar g_cvBossStabDamagePercent;
 ConVar g_cvBossStabDamageAmount;
@@ -340,6 +344,7 @@ ArrayList g_hActiveArtifacts;
 #include "rf2/customents/projectiles/projectile_beam.sp"
 #include "rf2/customents/projectiles/projectile_fireball.sp"
 #include "rf2/customents/projectiles/projectile_kunai.sp"
+#include "rf2/customents/projectiles/projectile_skull.sp"
 
 #include "rf2/cookies.sp"
 #include "rf2/weapons.sp"
@@ -515,6 +520,16 @@ void LoadGameData()
 	
 	
 	StartPrepSDKCall(SDKCall_Entity);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CBaseEntity::ApplyAbsVelocityImpulse");
+	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
+	g_hSDKAbsVelImpulse = EndPrepSDKCall();
+	if (!g_hSDKAbsVelImpulse)
+	{
+		LogError("[SDK] Failed to create call for CBaseEntity::ApplyAbsVelocityImpulse");
+	}
+
+	
+	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFWeaponBase::GetMaxClip1");
 	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
 	g_hSDKGetMaxClip1 = EndPrepSDKCall();
@@ -535,6 +550,13 @@ void LoadGameData()
 	if (!g_hDetourDoSwingTrace || !g_hDetourDoSwingTrace.Enable(Hook_Pre, Detour_DoSwingTrace) || !g_hDetourDoSwingTrace.Enable(Hook_Post, Detour_DoSwingTracePost))
 	{
 		LogError("[DHooks] Failed to create detour for CTFWeaponBaseMelee::DoSwingTraceInternal");
+	}
+	
+	
+	g_hDetourApplyPunchImpulse = DynamicDetour.FromConf(gamedata, "CTFPlayer::ApplyPunchImpulseX");
+	if (!g_hDetourApplyPunchImpulse || !g_hDetourApplyPunchImpulse.Enable(Hook_Pre, Detour_ApplyPunchImpulse))
+	{
+		LogError("[DHooks] Failed to create detour for CTFPlayer::ApplyPunchImpulseX");
 	}
 	
 	
@@ -903,7 +925,6 @@ void CleanUp()
 	g_iMetalItemsDropped = 0;
 	g_flWaitRestartTime = 0.0;
 	g_bTeleporterEventReminder = false;
-	g_bHauntedKeyDrop = false;
 	
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
@@ -1696,6 +1717,18 @@ public void RF_InitStats(int client)
 		CalculatePlayerMaxHealth(client, false, true);
 		CalculatePlayerMaxSpeed(client);
 		CalculatePlayerMiscStats(client);
+		
+		if (GetClientTeam(client) == TEAM_ENEMY)
+		{
+			int powerUpLevel = IsBoss(client) ? g_cvBossPowerupLevel.IntValue : g_cvEnemyPowerupLevel.IntValue;
+			if (powerUpLevel > 0 && g_iEnemyLevel >= powerUpLevel && RandChanceInt(0, powerUpLevel*8, g_iEnemyLevel))
+			{
+				static char sound[PLATFORM_MAX_PATH];
+				TFCond rune = GetRandomMannpowerRune_Enemies(client, sound, sizeof(sound));
+				TF2_AddCondition(client, rune);
+				EmitSoundToAll(sound, client, _, _, _, 0.7);
+			}
+		}
 	}
 }
 
@@ -1817,20 +1850,14 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				}
 			}
 			
-			if (!g_bHauntedKeyDrop)
+			if (IsValidClient(attacker) && !g_bHauntedKeyDrop[attacker])
 			{
 				int max = g_cvHauntedKeyDropChanceMax.IntValue;
 				if (max > 0 && RandChanceIntEx(attacker, 1, max, 1))
 				{
-					PrintHintTextToAll("%t", "HauntedKeyDrop", victim);
-					g_bHauntedKeyDrop = true;
-					for (int i = 1; i <= MaxClients; i++)
-					{
-						if (IsPlayerSurvivor(i))
-						{
-							GiveItem(i, Item_HauntedKey, 1, true);
-						}
-					}
+					PrintHintText(attacker, "%t", "HauntedKeyDrop", victim);
+					g_bHauntedKeyDrop[attacker] = true;
+					GiveItem(attacker, Item_HauntedKey, 1, true);
 				}
 			}
 			
@@ -2243,15 +2270,14 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 			g_hPlayerExtraSentryList[client].Push(building);
 			g_bDisposableSentry[building] = true;
 		}
-			
-		if (GetPlayerBuildingCount(client, TFObject_Sentry) >= CalcItemModInt(client, ItemEngi_HeadOfDefense, 0) + 1)
+		
+		if (GetPlayerBuildingCount(client, TFObject_Sentry, false) >= CalcItemModInt(client, ItemEngi_HeadOfDefense, 0))
 		{
 			SetSentryBuildState(client, false);
 		}
 		
 		if (!carryDeploy)
 		{
-			// We need to set the health before the max health here so that the health increases properly when the sentry is building itself up
 			int maxHealth = CalculateBuildingMaxHealth(client, building);
 			SetVariantInt(RoundToCeil(float(maxHealth)*0.5));
 			AcceptEntityInput(building, "AddHealth");
@@ -2645,7 +2671,7 @@ public Action Timer_SpawnEnemy(Handle timer, int client)
 {
 	if ((client = GetClientOfUserId(client)) == 0)
 		return Plugin_Continue;
-
+	
 	if (g_iPlayerEnemySpawnType[client] > -1)
 	{
 		SpawnEnemy(client, g_iPlayerEnemySpawnType[client]);
@@ -2654,10 +2680,10 @@ public Action Timer_SpawnEnemy(Handle timer, int client)
 	{
 		SpawnBoss(client, g_iPlayerBossSpawnType[client]);
 	}
-
+	
 	g_iPlayerEnemySpawnType[client] = -1;
 	g_iPlayerBossSpawnType[client] = -1;
-
+	
 	return Plugin_Continue;
 }
 
@@ -4842,7 +4868,8 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		{
 			static char wepClassname[64];
 			GetEntityClassname(weapon, wepClassname, sizeof(wepClassname));
-			if (strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball") && damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE)
+			if (strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball") 
+				&& (damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE || damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING))
 			{
 				float mult = GetPlayerFireRateMod(attacker, weapon)*1.5;
 				SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
@@ -5358,10 +5385,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 					}
 				}
 			}
-
+			
 			if ((!tabRequired || buttons & IN_SCORE) && GetPlayerEquipmentItem(client) > Item_Null)
 			{
-				ActivateStrangeItem(client);
+				bool activated = ActivateStrangeItem(client);
+				if (!activated)
+				{
+					EmitGameSoundToClient(client, "Player.DenyWeaponSelection");
+				}
 			}
 		}
 		

@@ -223,7 +223,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 			if (g_iLoopCount >= 2 && g_iSavedItem[invIndex][Item_PrideScarf] < itemsToGive/3)
 			{
 				// Give a bunch of health otherwise the player just endlessly dies at this point
-				GiveItem(client, Item_PrideScarf, imax((itemsToGive/3)-g_iSavedItem[invIndex][Item_PrideScarf], 0));
+				GiveItem(client, Item_PrideScarf, imin(imax((itemsToGive/3)-g_iSavedItem[invIndex][Item_PrideScarf], 0), 100));
 				GiveItem(client, Item_SpiralSallet, 10-imin(g_iSavedItem[invIndex][Item_SpiralSallet], 10));
 				GiveItem(client, Item_ClassCrown);
 			}
@@ -749,6 +749,9 @@ int PickInventoryIndex(int client)
 // Compares the total items of this player to whoever has the most items.
 int GetPlayerCrateBonus(int client)
 {
+	if (g_iLoopCount > 0)
+		return 0;
+
 	float lagBehindPercent = g_cvSurvivorLagBehindThreshold.FloatValue;
 	if (lagBehindPercent <= 0.0)
 		return 0;

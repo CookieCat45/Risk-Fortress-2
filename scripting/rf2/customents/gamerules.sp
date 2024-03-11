@@ -244,18 +244,21 @@ int SpawnObjects()
 		}
 	}
 	
-	int minCrates = RoundToFloor(float(spawnCount) * 0.8);
-	int bonusCrates = RoundToFloor(float(minCrates) * 0.1);
+	int minCrates = RoundToFloor(float(spawnCount) * 0.75);
+	int bonusCrates;
 	int playerBonus;
-	for (int i = 1; i <= MaxClients; i++)
+	if (g_iLoopCount <= 0)
 	{
-		if (IsClientInGame(i) && IsPlayerSurvivor(i))
+		for (int i = 1; i <= MaxClients; i++)
 		{
-			playerBonus = GetPlayerCrateBonus(i);
-			if (playerBonus > 0)
+			if (IsClientInGame(i) && IsPlayerSurvivor(i))
 			{
-				bonusCrates += playerBonus;
-				PrintToServer("[RF2] Player %N is lagging behind! Spawning %i extra crates for them.", i, playerBonus);
+				playerBonus = GetPlayerCrateBonus(i);
+				if (playerBonus > 0)
+				{
+					bonusCrates += playerBonus;
+					PrintToServer("[RF2] Player %N is lagging behind! Spawning %i extra crates for them.", i, playerBonus);
+				}
 			}
 		}
 	}

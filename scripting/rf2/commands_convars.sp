@@ -81,11 +81,13 @@ void LoadCommandsAndCvars()
 	g_cvEnemyMaxSpawnWaveCount = CreateConVar("rf2_enemy_spawn_max_count", "8", "The absolute maximum amount of enemies that can spawn in a single spawn wave.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyMinSpawnWaveTime = CreateConVar("rf2_enemy_spawn_min_wave_time", "2.0", "The minimum amount of time that must pass between enemy spawn waves.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyBaseSpawnWaveTime = CreateConVar("rf2_enemy_spawn_base_wave_time", "30.0", "The base amount of time that passes between spawn waves. Affected by many different factors.", FCVAR_NOTIFY, true, 0.1);
+	g_cvEnemyPowerupLevel = CreateConVar("rf2_enemy_powerup_level", "100", "The level at which enemies will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
+	g_cvBossPowerupLevel = CreateConVar("rf2_boss_powerup_level", "300", "The level at which bosses will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvBossStabDamageType = CreateConVar("rf2_boss_backstab_damage_type", "0", "Determines how bosses take backstab damage. 0 - raw damage. 1 - percentage.\nBoth benefit from any damage bonuses, excluding crits.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamagePercent = CreateConVar("rf2_boss_backstab_damage_percentage", "0.12", "If rf2_boss_backstab_damage_type is 1, how much health, in decimal percentage, is subtracted from the boss upon backstab.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamageAmount = CreateConVar("rf2_boss_backstab_damage_amount", "750.0", "If rf2_boss_backstab_damage_type is 0, the base damage that is dealt to a boss upon backstab.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTeleporterRadiusMultiplier = CreateConVar("rf2_object_teleporter_radius_multiplier", "1.0", "How much to multiply the size of the Teleporter radius.", FCVAR_NOTIFY, true, 0.01);
-	g_cvMaxObjects = CreateConVar("rf2_object_max", "135", "The maximum number of objects allowed to spawn. Does not include Teleporters or Altars.", FCVAR_NOTIFY, true, 0.0);
+	g_cvMaxObjects = CreateConVar("rf2_object_max", "120", "The maximum number of objects allowed to spawn. Does not include Teleporters or Altars.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectSpreadDistance = CreateConVar("rf2_object_spread_distance", "80.0", "The minimum distance that spawned objects must be spread apart from eachother.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "12", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCost = CreateConVar("rf2_object_base_cost", "50.0", "The base cost to use objects such as crates. Scales with the difficulty.", FCVAR_NOTIFY, true, 0.0);

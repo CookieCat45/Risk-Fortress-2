@@ -200,7 +200,7 @@ float ComputeShakeAmplitude(const float center[3], const float shake[3], float a
 	{
 		return amplitude;
 	}
-
+	
 	float localAmplitude = -1.0;
 	float delta[3];
 	SubtractVectors(center, shake, delta);
@@ -224,9 +224,9 @@ void TransmitShakeEvent(int player, float localAmplitude, float frequency, float
 		{
 			localAmplitude = 0.0;
 		}
-
+		
 		BfWrite msg = UserMessageToBfWrite(StartMessageOne("Shake", player, USERMSG_RELIABLE));
-		if (msg != null)
+		if (msg)
 		{
 			msg.WriteByte(view_as<int>(eCommand));
 			msg.WriteFloat(localAmplitude);
@@ -514,6 +514,18 @@ stock void AddMaterialToDownloadsTable(const char[] file)
 	{
 		ReplaceStringEx(buffer, sizeof(buffer), ".vtf", "");
 		LogError("Neither a .vmt or .vtf file exists for the file path: \"%s\". It will not be added to the downloads table.", buffer);
+	}
+}
+
+void PrecacheSoundArray(const char[][] soundArray, int size, bool download=true)
+{
+	for (int i = 0; i < size; i++)
+	{
+		PrecacheSound2(soundArray[i], true);
+		if (download)
+		{
+			AddSoundToDownloadsTable(soundArray[i]);
+		}
 	}
 }
 

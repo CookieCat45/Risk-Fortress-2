@@ -21,7 +21,7 @@
 #define SND_TANK_LASERRISE "weapons/teleporter_build_open2.wav"
 #define SND_TANK_LASERRISE_END "weapons/sentry_upgrading2.wav"
 
-public const char g_szTankLaserVoices[][] =
+static const char g_szTankLaserVoices[][] =
 {
 	"rf2/sfx/boss_tank_badass/vo_charging_laser1.wav",
 	"rf2/sfx/boss_tank_badass/vo_charging_laser2.wav",
@@ -29,7 +29,7 @@ public const char g_szTankLaserVoices[][] =
 	"rf2/sfx/boss_tank_badass/vo_charging_laser4.wav"
 };
 
-public const char g_szTankBarrageVoices[][] =
+static const char g_szTankBarrageVoices[][] =
 {
 	"rf2/sfx/boss_tank_badass/vo_firing_missiles1.wav",
 	"rf2/sfx/boss_tank_badass/vo_firing_missiles2.wav",
@@ -68,24 +68,13 @@ void BadassTank_Init()
 void BadassTank_OnMapStart()
 {
 	g_iBadassTankModelIndex = PrecacheModel2(MODEL_TANK_BADASS, true);
-	PrecacheSound(SND_TANK_LASERSHOOT, true);
-	PrecacheSound(SND_TANK_LASERRISE, true);
-	PrecacheSound(SND_TANK_LASERRISE_END, true);
-	
+	PrecacheSound2(SND_TANK_LASERSHOOT, true);
+	PrecacheSound2(SND_TANK_LASERRISE, true);
+	PrecacheSound2(SND_TANK_LASERRISE_END, true);
 	AddModelToDownloadsTable(MODEL_TANK_BADASS);
 	AddSoundToDownloadsTable(SND_TANK_LASERSHOOT);
-	
-	for (int i = 0; i < sizeof(g_szTankLaserVoices); i++)
-	{
-		PrecacheSound(g_szTankLaserVoices[i], true);
-		AddSoundToDownloadsTable(g_szTankLaserVoices[i]);
-	}
-
-	for (int i = 0; i < sizeof(g_szTankBarrageVoices); i++)
-	{
-		PrecacheSound(g_szTankBarrageVoices[i], true);
-		AddSoundToDownloadsTable(g_szTankBarrageVoices[i]);
-	}
+	PrecacheSoundArray(g_szTankLaserVoices, sizeof(g_szTankLaserVoices));
+	PrecacheSoundArray(g_szTankBarrageVoices, sizeof(g_szTankBarrageVoices));
 }
 
 static void BadassTank_OnCreate(int entity)

@@ -967,7 +967,7 @@ bool RandChanceFloatEx(int client, float min, float max, float goal, float &resu
 	return success;
 }
 
-void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, CritType critType)
+void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, CritType critType=CritType_None)
 {
 	if (damageType & DMG_MELEE)
 	{
@@ -1422,13 +1422,6 @@ bool ActivateStrangeItem(int client)
 		
 		case ItemStrange_NastyNorsemann:
 		{
-			if (TF2_IsPlayerInCondition(client, TFCond_HasRune))
-			{
-				EmitSoundToClient(client, SND_NOPE);
-				PrintCenterText(client, "%t", "AlreadyHasRune");
-				return false;
-			}
-			
 			char sound[PLATFORM_MAX_PATH];
 			TFCond rune = GetRandomMannpowerRune(sound, sizeof(sound));
 			TF2_AddCondition(client, rune, GetItemMod(ItemStrange_NastyNorsemann, 0));
@@ -1523,6 +1516,23 @@ bool ActivateStrangeItem(int client)
 			EmitSoundToAll(SND_DRAGONBORN, client);
 			CreateTimer(0.5, Timer_FusRoDah, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		}
+		
+		case ItemStrange_DemonicDome:
+		{
+			float damage = float(RF2_GetCalculatedMaxHealth(client))*GetItemMod(ItemStrange_DemonicDome, 0);
+			if (damage >= float(GetClientHealth(client)))
+			{
+				return false;
+			}
+			
+			float pos[3], angles[3];
+			GetClientEyePosition(client, pos);
+			GetClientEyeAngles(client, angles);
+			ShootProjectile(client, "rf2_projectile_skull", pos, angles, 1000.0, 100.0);
+			ClientPlayGesture(client, "ACT_MP_THROW");
+			EmitSoundToAll(SND_SPELL_FIREBALL, client);
+			RF_TakeDamage(client, client, client, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE, ItemStrange_DemonicDome);
+		}
 	}
 	
 	// Don't go on cooldown if our charges are above the limit; we likely dropped some battery canteens
@@ -1583,7 +1593,7 @@ public Action Timer_FusRoDah(Handle timer, int client)
 			{
 				ScaleVector(vel, 0.4);
 			}
-
+			
 			TeleportEntity(i, _, _, {0.0, 0.0, 0.0});
 			TeleportEntity(i, _, _, vel);
 		}
@@ -1603,16 +1613,23 @@ public Action Timer_FusRoDah(Handle timer, int client)
 	}
 	
 	entity = MaxClients+1;
+	RF2_Projectile_Base proj;
 	while ((entity = FindEntityByClassname(entity, "rf2_projectile*")) != INVALID_ENT)
 	{
 		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != team && DistBetween(client, entity) <= range*1.25)
 		{
 			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
 			ScaleVector(vel, -2.0);
-			TeleportEntity(entity, _, _, vel);
-			RF2_Projectile_Base(entity).Owner = client;
-			RF2_Projectile_Base(entity).DamageOwner = true;
-			SetEntProp(entity, Prop_Data, "m_iTeamNum", team);
+			SDK_ApplyAbsVelocityImpulse(entity, vel);
+			proj = RF2_Projectile_Base(entity);
+			if (proj.Homing)
+			{
+				proj.HomingTarget = proj.Owner;
+			}
+			
+			proj.Owner = client;
+			proj.DamageOwner = true;
+			proj.Team = team;
 		}
 	}
 	
