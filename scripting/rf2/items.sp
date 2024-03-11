@@ -1528,13 +1528,13 @@ bool ActivateStrangeItem(int client)
 			float pos[3], angles[3];
 			GetClientEyePosition(client, pos);
 			GetClientEyeAngles(client, angles);
-			RF2_Projectile_Skull skull = RF2_Projectile_Skull(ShootProjectile(client, "rf2_projectile_skull", pos, angles, 1000.0, 100.0));
+			RF2_Projectile_Skull skull = RF2_Projectile_Skull(ShootProjectile(client, "rf2_projectile_skull", pos, angles, 1000.0, GetItemMod(ItemStrange_DemonicDome, 1)));
 			int target = GetClientAimTarget(client, false);
 			if (target > 0 && IsCombatChar(target))
 			{
 				skull.HomingTarget = target;
 			}
-
+			
 			ClientPlayGesture(client, "ACT_MP_THROW");
 			EmitSoundToAll(SND_SPELL_FIREBALL, client);
 			RF_TakeDamage(client, client, client, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE, ItemStrange_DemonicDome);

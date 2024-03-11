@@ -54,7 +54,6 @@ static void OnCreate(RF2_Projectile_Skull skull)
 	skull.Flying = true;
 	skull.DeactivateOnHit = false;
 	skull.Homing = true;
-	skull.Damage = GetItemMod(ItemStrange_DemonicDome, 1);
 	skull.HomingSpeed = GetItemMod(ItemStrange_DemonicDome, 2);
 	skull.SetRedTrail("flaregun_trail_crit_red");
 	skull.SetBlueTrail("flaregun_trail_crit_blue");
