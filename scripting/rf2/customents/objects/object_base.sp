@@ -367,7 +367,8 @@ static Action Timer_WorldText(Handle timer, int entity)
 	
 	float pos[3];
 	obj.GetAbsOrigin(pos);
-	if (GetNearestPlayer(pos, _, 500.0, TEAM_SURVIVOR, _, true) != INVALID_ENT)
+	int nearestPlayer = GetNearestPlayer(pos, _, 500.0, TEAM_SURVIVOR, _, true);
+	if (nearestPlayer != INVALID_ENT && IsPlayerSurvivor(nearestPlayer))
 	{
 		if (!IsValidEntity2(obj.WorldText))
 		{

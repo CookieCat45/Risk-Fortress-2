@@ -355,8 +355,6 @@ void LoadSurvivorInventory(int client, int index)
 	{
 		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
 	}
-	
-	PrintCenterText(client, "%t", "GivenInventory", index+1);
 }
 
 void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
@@ -382,12 +380,12 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 	{
 		if (GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)))
 		{
-			g_hPlayerSteamIDToInventoryIndex.SetValue(steamId, index, true);
+			g_hPlayerSteamIDToInventoryIndex.SetValue(steamId, index, false);
 		}
 		
 		// In case SteamIDs are unavailable, we can fall back to player names
 		GetClientName(client, name, sizeof(name));
-		g_hPlayerNameToInventoryIndex.SetValue(name, index, true);
+		g_hPlayerNameToInventoryIndex.SetValue(name, index, false);
 	}
 }
 

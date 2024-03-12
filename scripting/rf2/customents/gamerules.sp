@@ -285,7 +285,7 @@ int SpawnObjects()
 			if (strcmp2(name, "rf2_object_scrapper"))
 			{
 				scrapperCount++;
-				if (scrapperCount >= g_iStagesCompleted <= 0 && IsSingleplayer(false) ? 1 : 2)
+				if (scrapperCount >= g_iStagesCompleted <= 0 ? 1 : 2)
 				{
 					// Only 1-2 scrappers
 					ClearStringFromArrayList(objectArray, "rf2_object_scrapper");

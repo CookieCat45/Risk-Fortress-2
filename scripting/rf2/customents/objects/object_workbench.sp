@@ -188,7 +188,7 @@ static void OnSpawnPost(int entity)
 	sprite.KeyValue("rendermode", "9"); // mfw no CBaseEntity.KeyValueInt
 	float pos[3];
 	bench.GetAbsOrigin(pos);
-	pos[2] += 50.0;
+	pos[2] += 35.0;
 	sprite.Teleport(pos);
 	sprite.Spawn();
 	switch (bench.Quality)

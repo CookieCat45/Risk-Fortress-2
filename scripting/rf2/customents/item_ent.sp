@@ -207,8 +207,8 @@ static Action Timer_WorldText(Handle timer, int entity)
 	RF2_Item item = RF2_Item(entity);
 	float pos[3];
 	item.GetAbsOrigin(pos);
-	int nearestPlayer = GetNearestPlayer(pos, _, 275.0, TEAM_SURVIVOR, _, true);
-	if (nearestPlayer != INVALID_ENT)
+	int nearestPlayer = GetNearestPlayer(pos, _, 500.0, TEAM_SURVIVOR, _, true);
+	if (nearestPlayer != INVALID_ENT && IsPlayerSurvivor(nearestPlayer))
 	{
 		if (!IsValidEntity2(item.WorldText))
 		{
@@ -355,7 +355,7 @@ bool PickupItem(int client)
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (IsClientInGame(i) && !IsFakeClient(i) && !GetCookieBool(client, g_coDisableItemMessages))
+			if (IsClientInGame(i) && !IsFakeClient(i) && !GetCookieBool(i, g_coDisableItemMessages))
 			{
 				if (IsEquipmentItem(type))
 				{

@@ -90,7 +90,7 @@
 	"ItemShareLimit" // No color tags
 	{
 		"#format"	"{1:d}"
-		"en"		"You've reached your item share limit of {1}.\nYou can no longer take items unless they are dropped for you."
+		"en"		"You've reached your item share limit of {1}.\nLet others have some, too!"
 	}
 	
 	"YourItemsShareEnabled" // No color tags

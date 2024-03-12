@@ -1195,7 +1195,7 @@ public void OnClientDisconnect(int client)
 		char authId[MAX_AUTHID_LENGTH], class[128];
 		if (GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId)))
 		{
-			int index = RF2_GetSurvivorIndex(client);
+			int index = g_iPlayerInventoryIndex[client];
 			g_hCrashedPlayerSteamIDs.SetValue(authId, index);
 			FormatEx(class, sizeof(class), "%s_CLASS", authId);
 			g_hCrashedPlayerSteamIDs.SetValue(class, TF2_GetPlayerClass(client)); // Remember class
@@ -1222,7 +1222,7 @@ public void OnClientDisconnect(int client)
 	{
 		if (IsPlayerSurvivor(client))
 		{
-			SaveSurvivorInventory(client, RF2_GetSurvivorIndex(client));
+			SaveSurvivorInventory(client, g_iPlayerInventoryIndex[client]);
 			// We need to deal with survivors who disconnect during the grace period
 			if (g_bGracePeriod)
 			{
@@ -1904,7 +1904,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	{
 		if (!g_bGracePeriod)
 		{
-			SaveSurvivorInventory(victim, RF2_GetSurvivorIndex(victim));
+			SaveSurvivorInventory(victim, g_iPlayerInventoryIndex[victim]);
 			PrintDeathMessage(victim, itemProc);
 			
 			int fog = CreateEntityByName("env_fog_controller");
@@ -3029,9 +3029,10 @@ public Action Timer_PlayerTimer(Handle timer)
 	{
 		PrintCenterTextAll("!!!SERVER IS RESTARTING!!!\nPlease rejoin shortly");
 	}
-
+	
 	int maxHealth, health, healAmount, weapon, ammoType;
 	int sentry = INVALID_ENT;
+	int team;
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i))
@@ -3039,10 +3040,21 @@ public Action Timer_PlayerTimer(Handle timer)
 		
 		if (!IsPlayerAlive(i))
 		{
-			if (!g_bPlayerSpawningAsMinion[i] && GetClientTeam(i) == TEAM_SURVIVOR)
+			team = GetClientTeam(i);
+			if (team == TEAM_SURVIVOR)
 			{
-				g_bPlayerSpawningAsMinion[i] = true;
-				CreateTimer(5.0, Timer_MinionSpawn, GetClientUserId(i), TIMER_FLAG_NO_MAPCHANGE);
+				if (!g_bPlayerSpawningAsMinion[i])
+				{
+					g_bPlayerSpawningAsMinion[i] = true;
+					CreateTimer(5.0, Timer_MinionSpawn, GetClientUserId(i), TIMER_FLAG_NO_MAPCHANGE);
+				}
+			}
+			else if (team == TEAM_ENEMY)
+			{
+				if (!g_cvAllowHumansInBlue.BoolValue && !IsFakeClient(i))
+				{
+					ChangeClientTeam(i, TEAM_SURVIVOR);
+				}
 			}
 			
 			continue;
