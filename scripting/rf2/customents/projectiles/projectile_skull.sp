@@ -40,6 +40,11 @@ methodmap RF2_Projectile_Skull < RF2_Projectile_Base
 		g_Factory.Install();
 		HookMapStart(Skull_OnMapStart);
 	}
+	
+	public static bool IsPlayerCursed(int client)
+	{
+		return IsValidEntity2(g_iDeathWorldText[client]);
+	}
 }
 
 static void Skull_OnMapStart()
@@ -66,7 +71,7 @@ static void OnCollide(RF2_Projectile_Skull skull, int other)
 	if (IsCombatChar(other) && IsValidClient(skull.Owner))
 	{
 		RF_TakeDamage(other, skull.index, skull.Owner, skull.Damage, DMG_GENERIC, ItemStrange_DemonicDome);
-		if (IsValidClient(other) && !IsBoss(other) && !IsValidEntity2(g_iDeathWorldText[other]) 
+		if (IsValidClient(other) && !IsBoss(other) && !RF2_Projectile_Skull.IsPlayerCursed(other)
 			&& RandChanceFloatEx(skull.Owner, 0.0001, 1.0, GetItemMod(ItemStrange_DemonicDome, 3)) && GetClientHealth(other) > 0)
 		{
 			InstantDeathCurse(other, skull.Owner);

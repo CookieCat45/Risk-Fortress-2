@@ -4503,22 +4503,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			}
 		}
 		
-		// So here's an explanation for this. For a very long time, I did not realize
-		// that buildings don't call OnTakeDamageAlive when they take damage. So as a result,
-		// buildings went for a very long time without being affected by ANY damage modifications.
-		// It's fixed now, but to avoid severely disrupting Engineer's balancing,
-		// RED Team buildings are not affected by enemy damage multipliers.
-		if (!victimIsBuilding || GetEntProp(victim, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
-		{
-			damage *= GetPlayerDamageMult(attacker);
-		}
-		
-		if (!selfDamage && inflictor > 0 && g_bFiredWhileRocketJumping[inflictor] 
-			&& PlayerHasItem(attacker, ItemSoldier_Compatriot) && CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
-		{
-			damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_Compatriot, 0);
-		}
-		
 		int procItem = GetEntItemProc(attacker);
 		if (procItem > Item_Null)
 		{
@@ -4527,6 +4511,23 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		else if (inflictor > 0)
 		{
 			procItem = GetEntItemProc(inflictor);
+		}
+
+		// So here's an explanation for this. For a very long time, I did not realize
+		// that buildings don't call OnTakeDamageAlive when they take damage. So as a result,
+		// buildings went for a very long time without being affected by ANY damage modifications.
+		// It's fixed now, but to avoid severely disrupting Engineer's balancing,
+		// RED Team buildings are not affected by enemy damage multipliers.
+		if (!victimIsBuilding || GetEntProp(victim, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+		{
+			if (!selfDamage || procItem != ItemStrange_DemonicDome && procItem != Item_HorrificHeadsplitter)
+				damage *= GetPlayerDamageMult(attacker);
+		}
+		
+		if (!selfDamage && inflictor > 0 && g_bFiredWhileRocketJumping[inflictor] 
+			&& PlayerHasItem(attacker, ItemSoldier_Compatriot) && CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
+		{
+			damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_Compatriot, 0);
 		}
 		
 		if (inflictor > 0 && GetEntItemProc(inflictor) > Item_Null && GetEntItemProc(inflictor) <= MAX_ITEMS)
@@ -5108,6 +5109,12 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		if (canCrit && PlayerHasItem(attacker, Item_Executioner) && critType == CritType_MiniCrit)
 		{
 			critType = CritType_Crit;
+		}
+		
+		if (IsValidClient(victim) 
+			&& (TF2_IsPlayerInCondition(victim, TFCond_DefenseBuffed) || TF2_IsPlayerInCondition(victim, TFCond_RuneResist)))
+		{
+			critType = CritType_None;
 		}
 		
 		if (critType != CritType_None)

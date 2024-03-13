@@ -644,8 +644,8 @@ void TFBot_Think(TFBot bot)
 			}
 		}
 		
-		// Crouch if we're stuck
-		if (bot.StuckTime > 2.0 && GetEntityFlags(bot.Client) & FL_ONGROUND)
+		// Crouch if we're stuck (but not for too long in case this is a mistake)
+		if (bot.StuckTime > 2.0 && bot.StuckTime < 8.0 && GetEntityFlags(bot.Client) & FL_ONGROUND)
 		{
 			bot.AddButtonFlag(IN_DUCK);
 		}

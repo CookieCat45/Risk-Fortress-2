@@ -500,8 +500,14 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			if (!IsCombatChar(entity))
 				continue;
 			
-			if (IsValidClient(entity) && (!IsPlayerAlive(entity) || !allowInvuln && IsInvuln(entity)))
-				continue;
+			if (IsValidClient(entity))
+			{
+				if (RF2_Projectile_Skull(this.index).IsValid() && RF2_Projectile_Skull.IsPlayerCursed(entity)
+					|| !IsPlayerAlive(entity) || !allowInvuln && IsInvuln(entity))
+				{
+					continue;
+				}
+			}
 			
 			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == this.Team)
 				continue;
