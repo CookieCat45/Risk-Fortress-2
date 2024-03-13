@@ -4725,7 +4725,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			}
 			
 			bool skeleton = IsSkeleton(victim);
-			if (skeleton && validWeapon && GetPlayerWeaponSlot(attacker, WeaponSlot_Primary) == weapon && TF2Attrib_HookValueInt(0, "mod use metal ammo type", weapon) > 0)
+			if (skeleton && validWeapon && GetPlayerWeaponSlot(attacker, WeaponSlot_Primary) == weapon && TF2Attrib_HookValueInt(0, "mod_use_metal_ammo_type", weapon) > 0)
 			{
 				// Skeletons don't give widowmaker ammo by default
 				GivePlayerAmmo(attacker, RoundToFloor(damage), TFAmmoType_Metal, true);
