@@ -102,6 +102,16 @@
 				"linux"		"@_ZN7CZombie15SetSkeletonTypeENS_14SkeletonType_tE"
 				"windows"	"\x55\x8B\xEC\x8B\x45\x08\x56\x8B\xF1\x57\x89\x86\xF0\x08\x00\x00\x83\xF8\x01\x0F\x85\xA7\x00\x00\x00\x8B\x06"
 			}
+			"CHeadlessHatmanAttack::IsPotentiallyChaseable"
+			{
+				"linux"		"@_ZN21CHeadlessHatmanAttack22IsPotentiallyChaseableEP15CHeadlessHatmanP9CTFPlayer"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x14\x56\x8B\x75\x0C\x89\x4D\xFC"
+			}
+			"CEyeballBoss::FindClosestVisibleVictim"
+			{
+				"linux"		"@_ZN12CEyeballBoss24FindClosestVisibleVictimEv"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x2C\xF3\x0F\x10\x05\x2A\x2A\x2A\x2A\x53"
+			}
 		}
 		
 		"Functions"
@@ -195,6 +205,35 @@
 						"type"	"float"
 					}
 				}
+			}
+			
+			"CHeadlessHatmanAttack::IsPotentiallyChaseable"
+			{
+				"signature"	"CHeadlessHatmanAttack::IsPotentiallyChaseable"
+				"callconv"	"thiscall"
+				"return"	"bool"
+				"this"		"address"
+				
+				"arguments"
+				{
+					"self"
+					{
+						"type"	"cbaseentity"
+					}
+					
+					"player"
+					{
+						"type"	"cbaseentity"
+					}
+				}
+			}
+			
+			"CEyeballBoss::FindClosestVisibleVictim"
+			{
+				"signature"	"CEyeballBoss::FindClosestVisibleVictim"
+				"callconv"	"thiscall"
+				"return"	"cbaseentity"
+				"this"		"entity"
 			}
         }
 	}

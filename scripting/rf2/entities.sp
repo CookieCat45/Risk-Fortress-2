@@ -746,3 +746,80 @@ int GetFreePathFollowerIndex(int target=INVALID_ENT)
 	delete combatChars;
 	return -1;
 }
+
+public MRESReturn Detour_IsPotentiallyChaseablePost(Address addr, DHookReturn returnVal, DHookParam params)
+{
+	if (!RF2_IsEnabled() || params.IsNull(2))
+		return MRES_Ignored;
+	
+	int hhh = params.Get(1);
+	int victim = params.Get(2);
+	bool result = returnVal.Value && IsValidHHHTarget(hhh, victim);
+	returnVal.Value = result;
+	return MRES_Supercede;
+}
+
+static bool g_bHidingFromMonoculus[MAXTF2PLAYERS];
+static float g_flOldAbsOrigin[MAXTF2PLAYERS][3];
+public MRESReturn Detour_EyeFindVictim(int monoculus, DHookReturn returnVal)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	float pos[3];
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsValidClient(i) && !IsValidMonoculusTarget(monoculus, i))
+		{
+			// set absorigin Z to a very low amount so Monoculus thinks we are in purgatory and will completely ignore us.
+			GetEntPos(i, pos);
+			CopyVectors(pos, g_flOldAbsOrigin[i]);
+			pos[2] = -2000.0;
+			SetEntPropVector(i, Prop_Data, "m_vecAbsOrigin", pos);
+			g_bHidingFromMonoculus[i] = true;
+		}
+	}
+	
+	return MRES_Ignored;
+}
+
+public MRESReturn Detour_EyeFindVictimPost(int monoculus, DHookReturn returnVal)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsValidClient(i) && g_bHidingFromMonoculus[i])
+		{
+			SetEntPropVector(i, Prop_Data, "m_vecAbsOrigin", g_flOldAbsOrigin[i]);
+		}
+		
+		g_bHidingFromMonoculus[i] = false;
+	}
+	
+	return MRES_Ignored;
+}
+
+bool IsValidHHHTarget(int hhh, int client)
+{
+	// did this guy attack us recently?
+	float lastAttackTime = g_flLastHalloweenBossAttackTime[hhh][client];
+	if (lastAttackTime > 0.0 && GetGameTime() < lastAttackTime+12.0)
+	{
+		return true;
+	}
+	
+	return PlayerHasItem(client, Item_HorsemannHead) || g_hHHHTargets.FindValue(GetClientUserId(client)) != -1 || GetClientTeam(client) == TEAM_ENEMY;
+}
+
+bool IsValidMonoculusTarget(int monoculus, int client)
+{
+	float lastAttackTime = g_flLastHalloweenBossAttackTime[monoculus][client];
+	if (lastAttackTime > 0.0 && GetGameTime() < lastAttackTime+12.0)
+	{
+		return true;
+	}
+	
+	return PlayerHasItem(client, Item_Monoculus) || g_hMonoculusTargets.FindValue(GetClientUserId(client)) != -1 || GetClientTeam(client) == TEAM_ENEMY;
+}

@@ -250,6 +250,9 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 				hhhSpawnCount += GetPlayerItemCount(i, Item_HorsemannHead);
 				if (hhhSpawnCount > bossSpawnLimit)
 					hhhSpawnCount = bossSpawnLimit;
+				
+				// this is so the player can't just drop the item to avoid being targeted
+				g_hHHHTargets.Push(GetClientUserId(i));
 			}
 			
 			if (PlayerHasItem(i, Item_Monoculus))
@@ -257,6 +260,8 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 				eyeSpawnCount += GetPlayerItemCount(i, Item_Monoculus);
 				if (eyeSpawnCount > bossSpawnLimit)
 					eyeSpawnCount = bossSpawnLimit;
+
+				g_hMonoculusTargets.Push(GetClientUserId(i));
 			}
 		}
 		

@@ -135,7 +135,7 @@ public MRESReturn DHook_StartUpgradingPost(int entity, DHookReturn returnVal, DH
 	return MRES_Ignored;
 }
 
-public MRESReturn DHook_SentryGunAttack(int entity)
+public MRESReturn Detour_SentryGunAttack(int entity)
 {
 	if (RF2_IsEnabled())
 	{

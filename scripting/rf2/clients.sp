@@ -974,7 +974,7 @@ void SDK_ForceSpeedUpdate(int client)
 	}
 }
 
-public MRESReturn DHook_HandleRageGain(DHookParam params)
+public MRESReturn Detour_HandleRageGain(DHookParam params)
 {
 	if (!RF2_IsEnabled())
 		return MRES_Ignored;

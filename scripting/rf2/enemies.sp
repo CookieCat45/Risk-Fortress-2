@@ -625,7 +625,7 @@ int GetRandomBoss(bool getName = false, char[] buffer="", int size=0)
 	return selected;
 }
 
-bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minDist=-1.0, float maxDist=-1.0, bool recursive=true)
+bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minDist=-1.0, float maxDist=-1.0, bool recursive=true, int recurseCount=0)
 {
 	g_bPlayerInSpawnQueue[client] = true;
 	Enemy enemy = EnemyByIndex(type);
@@ -711,6 +711,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	float extraDist = player && enemy.Class == TFClass_Engineer ? 3000.0 : 0.0;
 	float minSpawnDistance = minDist < 0.0 ? g_cvEnemyMinSpawnDistance.FloatValue : minDist;
 	float maxSpawnDistance = maxDist < 0.0 ? g_cvEnemyMaxSpawnDistance.FloatValue + extraDist : maxDist;
+	maxSpawnDistance += float(recurseCount) * 300.0;
 	CNavArea area = GetSpawnPoint(checkPos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
 	
 	if (!area)
@@ -718,15 +719,16 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		if (recursive)
 		{
 			// try again next frame
-			DataPack pack = CreateDataPack();
-			pack.WriteCell(client);
+			DataPack pack;
+			CreateDataTimer(0.3, Timer_SpawnEnemyRecursive, pack, TIMER_FLAG_NO_MAPCHANGE);
+			pack.WriteCell(GetClientUserId(client));
 			pack.WriteCell(type);
 			pack.WriteFloat(pos[0]);
 			pack.WriteFloat(pos[1]);
 			pack.WriteFloat(pos[2]);
 			pack.WriteFloat(minDist);
 			pack.WriteFloat(maxDist);
-			RequestFrame(RF_SpawnEnemyRecursive, pack);
+			pack.WriteCell(recurseCount+1);
 		}
 		
 		return false;
@@ -845,7 +847,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	return true;
 }
 
-bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool teleporterBoss=false, float minDist=-1.0, float maxDist=-1.0, bool recursive=true)
+bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool teleporterBoss=false, float minDist=-1.0, float maxDist=-1.0, bool recursive=true, int recurseCount=0)
 {
 	if (maxDist < 0.0)
 	{
@@ -859,6 +861,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		}
 	}
 	
+	maxDist += float(recurseCount) * 300.0;
 	if (SpawnEnemy(client, type, pos, minDist, maxDist, false))
 	{
 		Enemy boss = EnemyByIndex(type);
@@ -888,8 +891,9 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 	else if (recursive)
 	{
 		// try again next frame
-		DataPack pack = CreateDataPack();
-		pack.WriteCell(client);
+		DataPack pack;
+		CreateDataTimer(0.3, Timer_SpawnBossRecursive, pack, TIMER_FLAG_NO_MAPCHANGE);
+		pack.WriteCell(GetClientUserId(client));
 		pack.WriteCell(type);
 		pack.WriteFloat(pos[0]);
 		pack.WriteFloat(pos[1]);
@@ -897,7 +901,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		pack.WriteCell(teleporterBoss);
 		pack.WriteFloat(minDist);
 		pack.WriteFloat(maxDist);
-		RequestFrame(RF_SpawnBossRecursive, pack);
+		pack.WriteCell(recurseCount+1);
 	}
 	
 	return false;
@@ -996,54 +1000,47 @@ public Action Timer_SpawnTeleporterBoss(Handle time, DataPack pack)
 	return Plugin_Continue;
 }
 
-public void RF_SpawnEnemyRecursive(DataPack pack)
+public Action Timer_SpawnEnemyRecursive(Handle timer, DataPack pack)
 {
 	pack.Reset();
-	int client = pack.ReadCell();
+	int client = GetClientOfUserId(pack.ReadCell());
 	if (!IsValidClient(client))
 	{
-		delete pack;
-		return;
+		return Plugin_Continue;
 	}
 	
 	int type = pack.ReadCell();
-	
 	float pos[3];
 	pos[0] = pack.ReadFloat();
 	pos[1] = pack.ReadFloat();
 	pos[2] = pack.ReadFloat();
-	
 	float minDist = pack.ReadFloat();
 	float maxDist = pack.ReadFloat();
-	
-	delete pack;
-	SpawnEnemy(client, type, pos, minDist, maxDist);
+	int recurseCount = pack.ReadCell();
+	SpawnEnemy(client, type, pos, minDist, maxDist, true, recurseCount);
+	return Plugin_Continue;
 }
 
-public void RF_SpawnBossRecursive(DataPack pack)
+public Action Timer_SpawnBossRecursive(Handle timer, DataPack pack)
 {
 	pack.Reset();
-	int client = pack.ReadCell();
+	int client = GetClientOfUserId(pack.ReadCell());
 	if (!IsValidClient(client))
 	{
-		delete pack;
-		return;
+		return Plugin_Continue;
 	}
 	
 	int type = pack.ReadCell();
-	
 	float pos[3];
 	pos[0] = pack.ReadFloat();
 	pos[1] = pack.ReadFloat();
 	pos[2] = pack.ReadFloat();
-	
 	bool teleporterBoss = pack.ReadCell();
-	
 	float minDist = pack.ReadFloat();
 	float maxDist = pack.ReadFloat();
-	
-	delete pack;
-	SpawnBoss(client, type, pos, teleporterBoss, minDist, maxDist);
+	int recurseCount = pack.ReadCell();
+	SpawnBoss(client, type, pos, teleporterBoss, minDist, maxDist, true, recurseCount);
+	return Plugin_Continue;
 }
 
 int GetEnemyCount()

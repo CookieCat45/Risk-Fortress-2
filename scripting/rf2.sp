@@ -11,7 +11,6 @@
 #include <tf2items>
 #include <tf_ontakedamage>
 #include <morecolors>
-#tryinclude <handledebugger>
 
 #undef REQUIRE_EXTENSIONS
 #tryinclude <SteamWorks>
@@ -24,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.7.1b"
+#define PLUGIN_VERSION "0.7.2b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -190,6 +189,10 @@ float g_flSentryNextLaserTime[MAX_EDICTS];
 float g_flCashBombAmount[MAX_EDICTS];
 float g_flCashValue[MAX_EDICTS];
 float g_flTeleporterNextSpawnTime[MAX_EDICTS];
+float g_flLastHalloweenBossAttackTime[MAX_EDICTS][MAXTF2PLAYERS];
+
+ArrayList g_hHHHTargets;
+ArrayList g_hMonoculusTargets;
 
 // Timers
 Handle g_hPlayerTimer;
@@ -213,6 +216,8 @@ DynamicDetour g_hDetourSentryAttack;
 DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourSetReloadTimer;
 DynamicDetour g_hDetourApplyPunchImpulse;
+DynamicDetour g_hDetourEyeFindVictim;
+DynamicDetour g_hDetourHHHChaseable;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookVPhysicsCollision;
@@ -392,6 +397,8 @@ public void OnPluginStart()
 	LoadTranslations("rf2_achievements.phrases");
 	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
+	g_hHHHTargets = new ArrayList();
+	g_hMonoculusTargets = new ArrayList();
 	g_iFileTime = GetPluginModifiedTime();
 	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
 	{
@@ -578,14 +585,14 @@ void LoadGameData()
 	
 	
 	g_hDetourSentryAttack = DynamicDetour.FromConf(gamedata, "CObjectSentrygun::Attack");
-	if (!g_hDetourSentryAttack || !g_hDetourSentryAttack.Enable(Hook_Post, DHook_SentryGunAttack))
+	if (!g_hDetourSentryAttack || !g_hDetourSentryAttack.Enable(Hook_Post, Detour_SentryGunAttack))
 	{
 		LogError("[DHooks] Failed to create detour for CObjectSentrygun::Attack");
 	}
 	
 	
 	g_hDetourHandleRageGain = DynamicDetour.FromConf(gamedata, "HandleRageGain");
-	if (!g_hDetourHandleRageGain || !g_hDetourHandleRageGain.Enable(Hook_Pre, DHook_HandleRageGain))
+	if (!g_hDetourHandleRageGain || !g_hDetourHandleRageGain.Enable(Hook_Pre, Detour_HandleRageGain))
 	{
 		LogError("[DHooks] Failed to create detour for HandleRageGain");
 	}
@@ -608,6 +615,20 @@ void LoadGameData()
 	if (!g_hSDKSetZombieType)
 	{
 		LogError("[SDK] Failed to create call for CZombie::SetSkeletonType");
+	}
+	
+	
+	g_hDetourEyeFindVictim = DynamicDetour.FromConf(gamedata, "CEyeballBoss::FindClosestVisibleVictim");
+	if (!g_hDetourEyeFindVictim || !g_hDetourEyeFindVictim.Enable(Hook_Pre, Detour_EyeFindVictim) || !g_hDetourEyeFindVictim.Enable(Hook_Post, Detour_EyeFindVictimPost))
+	{
+		LogError("[DHooks] Failed to create detour for CEyeballBoss::FindClosestVisibleVictim");
+	}
+	
+	
+	g_hDetourHHHChaseable = DynamicDetour.FromConf(gamedata, "CHeadlessHatmanAttack::IsPotentiallyChaseable");
+	if (!g_hDetourHHHChaseable || !g_hDetourHHHChaseable.Enable(Hook_Post, Detour_IsPotentiallyChaseablePost))
+	{
+		LogError("[DHooks] Failed to create detour for CHeadlessHatmanAttack::IsPotentiallyChaseable");
 	}
 	
 	
@@ -929,6 +950,8 @@ void CleanUp()
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
 	g_hCrashedPlayerSteamIDs.Clear();
+	g_hHHHTargets.Clear();
+	g_hMonoculusTargets.Clear();
 	SetAllInArray(g_hCrashedPlayerTimers, sizeof(g_hCrashedPlayerTimers), INVALID_HANDLE);
 	StopMusicTrackAll();
 	DisableAllArtifacts();
@@ -1195,11 +1218,12 @@ public void OnClientDisconnect(int client)
 		char authId[MAX_AUTHID_LENGTH], class[128];
 		if (GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId)))
 		{
-			int index = g_iPlayerInventoryIndex[client];
-			g_hCrashedPlayerSteamIDs.SetValue(authId, index);
+			int index = RF2_GetSurvivorIndex(client);
+			int invIndex = g_iPlayerInventoryIndex[client];
+			g_hCrashedPlayerSteamIDs.SetValue(authId, invIndex);
 			FormatEx(class, sizeof(class), "%s_CLASS", authId);
 			g_hCrashedPlayerSteamIDs.SetValue(class, TF2_GetPlayerClass(client)); // Remember class
-			SaveSurvivorInventory(client, index);
+			SaveSurvivorInventory(client, invIndex);
 			DataPack pack;
 			g_hCrashedPlayerTimers[index] = CreateDataTimer(300.0, Timer_PlayerReconnect, pack, TIMER_FLAG_NO_MAPCHANGE);
 			pack.WriteString(authId);
@@ -4013,6 +4037,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bCashBomb[entity] = false;
 	g_bFiredWhileRocketJumping[entity] = false;
 	g_flTeleporterNextSpawnTime[entity] = -1.0;
+	SetAllInArray(g_flLastHalloweenBossAttackTime[entity], sizeof(g_flLastHalloweenBossAttackTime[]), 0.0);
 	
 	if (strcmp2(classname, "tf_projectile_rocket") || strcmp2(classname, "tf_projectile_flare") || strcmp2(classname, "tf_projectile_arrow"))
 	{
@@ -4682,15 +4707,21 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			static char victimClassname[64];
 			GetEntityClassname(victim, victimClassname, sizeof(victimClassname));
 			bool halloweenNpc = strcmp2(victimClassname, "headless_hatman") || strcmp2(victimClassname, "eyeball_boss") || strcmp2(victimClassname, "tf_zombie");
-			if (halloweenNpc && !(damageType & DMG_CRIT) && !validWeapon)
+			if (halloweenNpc)
 			{
-				// Halloween NPCs don't fire TF2_OnTakeDamageModifyRules()
-				int attackerProc = GetLastEntItemProc(attacker);
-				bool canCrit = attackerProc != ItemSniper_HolyHunter && !(StrContains(inflictorClassname, "tf_proj") != -1 && HasEntProp(inflictor, Prop_Send, "m_bCritical"));
-				if (canCrit && RollAttackCrit(attacker))
+				if (!(damageType & DMG_CRIT) && !validWeapon)
 				{
-					damageType |= DMG_CRIT;
+					// Halloween NPCs don't fire TF2_OnTakeDamageModifyRules()
+					int attackerProc = GetLastEntItemProc(attacker);
+					bool canCrit = attackerProc != ItemSniper_HolyHunter && !(StrContains(inflictorClassname, "tf_proj") != -1 && HasEntProp(inflictor, Prop_Send, "m_bCritical"));
+					if (canCrit && RollAttackCrit(attacker))
+					{
+						damageType |= DMG_CRIT;
+					}
 				}
+				
+				// Keep track of who damages us
+				g_flLastHalloweenBossAttackTime[victim][attacker] = GetGameTime();
 			}
 			
 			bool skeleton = IsSkeleton(victim);
