@@ -37,6 +37,12 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineOutput("OnTankDestructionStart")
 			.DefineOutput("OnTankDestructionComplete")
 			.DefineOutput("OnTankDestructionBombDeployed")
+			.DefineOutput("OnRoundStart")
+			.DefineOutput("OnRoundStartPreLoop")
+			.DefineOutput("OnRoundStartPostLoop")
+			.DefineOutput("OnWaitingForPlayers")
+			.DefineOutput("OnWaitingForPlayersPreLoop")
+			.DefineOutput("OnWaitingForPlayersPostLoop")
 		.EndDataMapDesc();
 		g_Factory.Install();
 	}

@@ -102,7 +102,7 @@ bool IsAchievementUnlocked(int client, int achievement)
 
 bool IsAchievementHidden(int achievement)
 {
-	return achievement == ACHIEVEMENT_DANCE;
+	return achievement == ACHIEVEMENT_DANCE || achievement == ACHIEVEMENT_BADMAGIC;
 }
 
 void OnAchievementUnlocked(int client, int achievement)

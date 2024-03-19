@@ -31,6 +31,7 @@ void RefreshClient(int client, bool force=false)
 	g_iPlayerEnemySpawnType[client] = -1;
 	g_iPlayerBossSpawnType[client] = -1;
 	g_flPlayerRegenBuffTime[client] = 0.0;
+	g_flPlayerRifleHeadshotBonusTime[client] = 0.0;
 	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
@@ -40,6 +41,7 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerTookCollectorItem[client] = false;
 	g_bExecutionerBleedCooldown[client] = false;
 	g_bPlayerHealBurstCooldown[client] = false;
+	g_bPlayerRifleAutoFire[client] = false;
 	g_bMeleeMiss[client] = false;
 	g_szObjectiveHud[client] = "";
 	
@@ -348,7 +350,7 @@ int GetPlayerLevel(int client)
 
 bool CanPlayerRegen(int client)
 {
-	return (IsPlayerSurvivor(client) ||
+	return (IsPlayerSurvivor(client) || IsPlayerMinion(client) ||
 		PlayerHasItem(client, Item_Archimedes) ||
 		PlayerHasItem(client, Item_DapperTopper) ||
 		PlayerHasItem(client, Item_ClassCrown));
@@ -509,10 +511,15 @@ float CalculatePlayerMaxSpeed(int client)
 	{
 		speed *= 1.0 + CalcItemMod(client, Item_TripleA, 2);
 	}
-
+	
 	if (PlayerHasItem(client, Item_DarkHelm))
 	{
 		speed *= CalcItemMod_HyperbolicInverted(client, Item_DarkHelm, 1);
+	}
+	
+	if (PlayerHasItem(client, ItemSpy_StealthyScarf) && CanUseCollectorItem(client, ItemSpy_StealthyScarf) && TF2_IsPlayerInCondition(client, TFCond_Cloaked))
+	{
+		speed *= 1.0 + CalcItemMod(client, ItemSpy_StealthyScarf, 0);
 	}
 	
 	float mult = speed / classMaxSpeed;
@@ -581,6 +588,11 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 			
 			return multiplier;
 		}
+		else if (StrContains(classname, "tf_weapon_sniperrifle") != -1)
+		{
+			// Use reload multipliers instead, makes more sense
+			return GetPlayerReloadMod(client);
+		}
 	}
 	
 	if (PlayerHasItem(client, Item_MaimLicense))
@@ -606,6 +618,11 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)
 	{
 		multiplier *= GetItemMod(Item_SaintMark, 3);
+	}
+	
+	if (g_flPlayerRifleHeadshotBonusTime[client] > 0.0)
+	{
+		multiplier *= CalcItemMod_HyperbolicInverted(client, ItemSniper_VillainsVeil, 1);
 	}
 	
 	if (weapon > 0 && multiplier < 1.0)
@@ -635,9 +652,15 @@ float GetPlayerReloadMod(int client)
 	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_RoundedRifleman, 0);
 	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_TripleA, 0);
 	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_MaxHead, 3);
+	
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)
 	{
 		reloadMult *= GetItemMod(Item_SaintMark, 0);
+	}
+	
+	if (g_flPlayerRifleHeadshotBonusTime[client] > 0.0)
+	{
+		reloadMult *= CalcItemMod_HyperbolicInverted(client, ItemSniper_VillainsVeil, 1);
 	}
 	
 	return reloadMult;
@@ -1104,7 +1127,7 @@ bool ForceWeaponSwitch(int client, int slot)
 		return false;
 	
 	int weapon = GetPlayerWeaponSlot(client, slot);
-	if (weapon == -1 || weapon == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon"))
+	if (weapon == -1 || weapon == GetActiveWeapon(client))
 		return false;
 	
 	return SDKCall(g_hSDKWeaponSwitch, client, weapon, 0);
@@ -1210,6 +1233,11 @@ int GetPlayerWearableCount(int client, bool itemOnly=false)
 	}
 	
 	return count;
+}
+
+int GetActiveWeapon(int client)
+{
+	return GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 }
 
 /*

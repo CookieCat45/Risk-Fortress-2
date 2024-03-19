@@ -391,7 +391,7 @@ void TFBot_Think(TFBot bot)
 	
 	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer)
 	{
-		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon") == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
+		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
 		// Aggressive AI, relentlessly pursues target and strafes on higher difficulties. Mostly for melee.
 		if (aggressiveMode)
 		{
@@ -550,7 +550,7 @@ void TFBot_Think(TFBot bot)
 					float dist = DistBetween(bot.Client, building);
 					
 					// Also move around if we're trying to build something so we can place it
-					if (dist > 50.0 || GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon") == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Builder))
+					if (dist > 50.0 || GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Builder))
 						TFBot_PathToPos(bot, pos, 10000.0, true);
 					
 					if (TF2_GetObjectType2(building) == TFObject_Teleporter && dist <= 50.0)
@@ -563,7 +563,7 @@ void TFBot_Think(TFBot bot)
 					}
 					
 					// Make sure we have our wrench out
-					if (GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon") != GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee))
+					if (GetActiveWeapon(bot.Client) != GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee))
 					{
 						bot.DesiredWeaponSlot = WeaponSlot_Melee;
 						ForceWeaponSwitch(bot.Client, WeaponSlot_Melee);
@@ -665,7 +665,7 @@ void TFBot_Think(TFBot bot)
 	if (class == TFClass_Sniper)
 	{
 		int primary = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Primary);
-		if (primary != INVALID_ENT && primary == GetEntPropEnt(bot.Client, Prop_Send, "m_hActiveWeapon"))
+		if (primary != INVALID_ENT && primary == GetActiveWeapon(bot.Client))
 		{
 			static char classname[32];
 			GetEntityClassname(primary, classname, sizeof(classname));
@@ -1056,7 +1056,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	}
 	
 	static bool reloading[MAXTF2PLAYERS];
-	int activeWep = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	int activeWep = GetActiveWeapon(client);
 	if (activeWep != INVALID_ENT && activeWep != GetPlayerWeaponSlot(client, WeaponSlot_Melee))
 	{
 		int clip = GetEntProp(activeWep, Prop_Send, "m_iClip1");
@@ -1223,7 +1223,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 					if (sapper != INVALID_ENT)
 					{
 						usingSapper = true;
-						bool sapperActive = (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == sapper);
+						bool sapperActive = (GetActiveWeapon(client) == sapper);
 						bot.DesiredWeaponSlot = WeaponSlot_Secondary;
 						threatPos[2] += 25.0;
 						TFBot_ForceLookAtPos(bot, threatPos);
@@ -1286,7 +1286,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				sentryPos[2] += 25.0;
 				TFBot_ForceLookAtPos(bot, sentryPos);
 				bot.DesiredWeaponSlot = WeaponSlot_Primary;
-				if (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != primary)
+				if (GetActiveWeapon(client) != primary)
 				{
 					ForceWeaponSwitch(client, WeaponSlot_Primary);
 				}
@@ -1333,7 +1333,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				{
 					// shoot
 					bot.DesiredWeaponSlot = WeaponSlot_Primary;
-					if (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != primary)
+					if (GetActiveWeapon(client) != primary)
 					{
 						ForceWeaponSwitch(client, WeaponSlot_Primary);
 					}
@@ -1357,7 +1357,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				else if (melee != INVALID_ENT)
 				{
 					bot.DesiredWeaponSlot = WeaponSlot_Melee;
-					if (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") != melee)
+					if (GetActiveWeapon(client) != melee)
 					{
 						ForceWeaponSwitch(client, WeaponSlot_Melee);
 					}
@@ -1381,7 +1381,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		{
 			int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 			
-			if (primary != INVALID_ENT && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == primary 
+			if (primary != INVALID_ENT && GetActiveWeapon(client) == primary 
 			&& GetEntProp(primary, Prop_Send, "m_iClip1") >= SDK_GetWeaponClipSize(primary))
 			{
 				// is there enough space above us?
@@ -1546,4 +1546,27 @@ public Action Hook_TFBotWeaponCanSwitch(int client, int weapon)
 	}
 	
 	return Plugin_Continue;
+}
+
+public MRESReturn Detour_OnWeaponFired(DHookParam params)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	int whoFired = params.Get(1);
+	if (IsValidClient(whoFired))
+	{
+		if (PlayerHasItem(whoFired, ItemSpy_StealthyScarf) && CanUseCollectorItem(whoFired, ItemSpy_StealthyScarf))
+		{
+			int weapon = params.Get(2);
+			static char classname[32];
+			GetEntityClassname(weapon, classname, sizeof(classname));
+			if (strcmp2(classname, "tf_weapon_invis"))
+			{
+				return MRES_Supercede; // Silent cloaking
+			}
+		}
+	}
+	
+	return MRES_Ignored;
 }

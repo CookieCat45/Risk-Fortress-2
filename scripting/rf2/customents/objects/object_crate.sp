@@ -228,6 +228,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	if (!IsValidClient(attacker) || !IsPlayerSurvivor(attacker) || !(damageType & DMG_MELEE))
 		return Plugin_Continue;
 	
+	SetEntProp(attacker, Prop_Send, "m_iKillCountSinceLastDeploy", 1); // Remove honorbound
 	g_bMeleeMiss[attacker] = false;
 	RF2_Object_Crate crate = RF2_Object_Crate(entity);
 	if (!crate.Active)

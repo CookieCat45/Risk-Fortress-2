@@ -32,11 +32,10 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 		g_Factory.DeriveFromFactory(RF2_Object_Base.GetFactory());
 		g_Factory.BeginDataMapDesc()
 			.DefineIntField("m_iBenchItem", _, "item")
-			.DefineIntField("m_iQuality", _, "quality")
+			.DefineIntField("m_iItemQuality", _, "item_quality") // Quality of the item on the workbench
+			.DefineIntField("m_iTradeQuality", _, "trade_quality") // Quality of the items that must be traded in
 			.DefineIntField("m_iCustomItemCost", _, "custom_item_cost")
 			.DefineIntField("m_iCost")
-			.DefineBoolField("m_bForceQuality", _, "force_quality") // For mappers
-			.DefineBoolField("m_bForceItem", _, "force_item") // For mappers
 			.DefineEntityField("m_hDisplaySprite")
 		.EndDataMapDesc();
 		g_Factory.Install();
@@ -55,43 +54,30 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 			this.SetProp(Prop_Data, "m_iBenchItem", value);
 		}
 	}
-
-	property int Quality
+	
+	property int ItemQuality
 	{
 		public get()
 		{
-			return this.GetProp(Prop_Data, "m_iQuality");
+			return this.GetProp(Prop_Data, "m_iItemQuality");
 		}
 		
 		public set(int value)
 		{
-			this.SetProp(Prop_Data, "m_iQuality", value);
+			this.SetProp(Prop_Data, "m_iItemQuality", value);
 		}
 	}
 	
-	property bool ForceQuality
+	property int TradeQuality
 	{
 		public get()
 		{
-			return asBool(this.GetProp(Prop_Data, "m_bForceQuality"));
+			return this.GetProp(Prop_Data, "m_iTradeQuality");
 		}
 		
-		public set(bool value)
+		public set(int value)
 		{
-			this.SetProp(Prop_Data, "m_bForceQuality", value);
-		}
-	}
-
-	property bool ForceItem
-	{
-		public get()
-		{
-			return asBool(this.GetProp(Prop_Data, "m_bForceItem"));
-		}
-		
-		public set(bool value)
-		{
-			this.SetProp(Prop_Data, "m_bForceItem", value);
+			this.SetProp(Prop_Data, "m_iTradeQuality", value);
 		}
 	}
 
@@ -144,31 +130,45 @@ static void OnCreate(RF2_Object_Workbench bench)
 {
 	bench.SetModel(MODEL_WORKBENCH);
 	bench.HookInteract(Workbench_OnInteract);
-	if (!bench.ForceQuality)
+	
+	// choose a random item quality if mapper doesn't force a specific one
+	if (bench.ItemQuality == Quality_None)
 	{
 		int result;
 		if (RandChanceInt(1, 100, 65, result))
 		{
-			bench.Quality = Quality_Normal;
+			bench.ItemQuality = Quality_Normal;
 		}
 		else if (result <= 99)
 		{
-			bench.Quality = Quality_Genuine;
+			bench.ItemQuality = Quality_Genuine;
 		}
 		else
 		{
-			bench.Quality = Quality_Unusual;
+			bench.ItemQuality = Quality_Unusual;
 		}
 	}
 	
-	if (!bench.ForceQuality || !bench.ForceItem)
+	// use item quality as trade quality if mapper doesn't force a specific one
+	bool forcedTradeQuality;
+	if (bench.TradeQuality == Quality_None)
 	{
-		bench.Item = GetRandomItemEx(bench.Quality);
+		bench.TradeQuality = bench.ItemQuality;
+	}
+	else
+	{
+		forcedTradeQuality = true;
+	}
+	
+	// choose a random item if mapper doesn't force a specific one
+	if (bench.Item == Item_Null)
+	{
+		bench.Item = GetRandomItemEx(forcedTradeQuality ? bench.TradeQuality : bench.ItemQuality);
 	}
 	
 	SDKHook(bench.index, SDKHook_SpawnPost, OnSpawnPost);
 	char text[256], qualityName[32];
-	GetQualityName(bench.Quality, qualityName, sizeof(qualityName));
+	GetQualityName(bench.ItemQuality, qualityName, sizeof(qualityName));
 	bench.Cost = bench.CustomItemCost > 1 ? bench.CustomItemCost : 1;
 	
 	FormatEx(text, sizeof(text), "Call for Medic to trade for 1 %s! (Requires %i %s %s)", 
@@ -191,7 +191,7 @@ static void OnSpawnPost(int entity)
 	pos[2] += 35.0;
 	sprite.Teleport(pos);
 	sprite.Spawn();
-	switch (bench.Quality)
+	switch (GetItemQuality(bench.Item))
 	{
 		case Quality_Genuine:		sprite.SetRenderColor(125, 255, 125);
 		case Quality_Unusual: 		sprite.SetRenderColor(200, 125, 255);
@@ -213,7 +213,7 @@ static void OnRemove(RF2_Object_Workbench bench)
 static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 {
 	ArrayList itemArray = new ArrayList();
-	int quality = bench.Quality;
+	int quality = bench.TradeQuality;
 	int benchItem = bench.Item;
 	int cost = bench.Cost;
 	int item;

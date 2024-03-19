@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.7.2b"
+#define PLUGIN_VERSION "0.8b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -57,6 +57,7 @@ float g_flAutoReloadTime;
 bool g_bChangeDetected;
 bool g_bHauntedKeyDrop[MAXTF2PLAYERS];
 bool g_bServerRestarting;
+bool g_bForceRifleSound;
 
 int g_iTotalEnemiesKilled;
 int g_iTotalBossesKilled;
@@ -119,6 +120,8 @@ bool g_bPlayerTimingOut[MAXTF2PLAYERS];
 bool g_bMeleeMiss[MAXTF2PLAYERS];
 bool g_bPlayerIsMinion[MAXTF2PLAYERS];
 bool g_bPlayerSpawningAsMinion[MAXTF2PLAYERS];
+bool g_bPlayerRifleAutoFire[MAXTF2PLAYERS];
+bool g_bPlayerToggledAutoFire[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -137,6 +140,8 @@ float g_flPlayerReloadBuffDuration[MAXTF2PLAYERS];
 float g_flPlayerNextDemoSpellTime[MAXTF2PLAYERS];
 float g_flPlayerNextFireSpellTime[MAXTF2PLAYERS];
 float g_flPlayerRegenBuffTime[MAXTF2PLAYERS];
+float g_flPlayerKnifeStunCooldown[MAXTF2PLAYERS];
+float g_flPlayerRifleHeadshotBonusTime[MAXTF2PLAYERS];
 
 int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
@@ -218,11 +223,16 @@ DynamicDetour g_hDetourSetReloadTimer;
 DynamicDetour g_hDetourApplyPunchImpulse;
 DynamicDetour g_hDetourEyeFindVictim;
 DynamicDetour g_hDetourHHHChaseable;
+DynamicDetour g_hDetourOnWeaponFired;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookVPhysicsCollision;
-DynamicHook g_hHookShouldCollideWith;
 DynamicHook g_hHookRiflePostFrame;
+DynamicHook g_hHookIterateAttributes;
+int g_iEconItem;
+int g_iOnlyIterateItemViewAttributes;
+int g_iIterateAttributesHookId[MAX_EDICTS];
+int g_iIterateAttributesPostHookId[MAX_EDICTS];
 
 // Forwards
 GlobalForward g_fwTeleEventStart;
@@ -440,6 +450,21 @@ public void OnPluginEnd()
 			g_PathFollowers[i] = view_as<PathFollower>(0);
 		}
 	}
+	
+	for (int i = MaxClients+1; i < MAX_EDICTS; i++)
+	{
+		if (g_iIterateAttributesHookId[i])
+		{
+			DynamicHook.RemoveHook(g_iIterateAttributesHookId[i]);
+			g_iIterateAttributesHookId[i] = INVALID_HOOK_ID;
+		}
+
+		if (g_iIterateAttributesPostHookId[i])
+		{
+			DynamicHook.RemoveHook(g_iIterateAttributesPostHookId[i]);
+			g_iIterateAttributesPostHookId[i] = INVALID_HOOK_ID;
+		}
+	}
 }
 
 void LoadGameData()
@@ -501,17 +526,6 @@ void LoadGameData()
 	else
 	{
 		LogError("[DHooks] Failed to create virtual hook for CPhysicsProp::VPhysicsCollision");
-	}
-	
-	
-	g_hHookShouldCollideWith = new DynamicHook(gamedata.GetOffset("ILocomotion::ShouldCollideWith"), HookType_Raw, ReturnType_Bool, ThisPointer_Address);
-	if (g_hHookShouldCollideWith)
-	{
-		g_hHookShouldCollideWith.AddParam(HookParamType_CBaseEntity); // colliding entity
-	}
-	else
-	{
-		LogError("[DHooks] Failed to create virtual hook for ILocomotion::ShouldCollideWith");
 	}
 	
 
@@ -632,12 +646,30 @@ void LoadGameData()
 	}
 	
 	
+	g_hDetourOnWeaponFired = DynamicDetour.FromConf(gamedata, "CTFBot::OnWeaponFired");
+	if (!g_hDetourOnWeaponFired || !g_hDetourOnWeaponFired.Enable(Hook_Pre, Detour_OnWeaponFired))
+	{
+		LogError("[DHooks] Failed to create detour for CTFBot::OnWeaponFired");
+	}
+	
+	
 	g_hHookRiflePostFrame = new DynamicHook(gamedata.GetOffset("CTFSniperRifle::ItemPostFrame"), HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
 	if (!g_hHookRiflePostFrame)
 	{
 		LogError("[DHooks] Failed to create virtual hook for CTFSniperRifle::ItemPostFrame");
 	}
-
+	
+	
+	g_hHookIterateAttributes = new DynamicHook(gamedata.GetOffset("CEconItemView::IterateAttributes"), HookType_Raw, ReturnType_Void, ThisPointer_Address);
+	if (!g_hHookIterateAttributes)
+	{
+		LogError("[DHooks] Failed to create virtual hook for CEconItemView::IterateAttributes");
+	}
+	
+	g_hHookIterateAttributes.AddParam(HookParamType_ObjectPtr);
+	g_iEconItem = FindSendPropInfo("CEconEntity", "m_Item");
+	FindSendPropInfo("CEconEntity", "m_bOnlyIterateItemViewAttributes", _, _, g_iOnlyIterateItemViewAttributes);
+	
 	
 	delete gamedata;
 	gamedata = new GameData("sdkhooks.games");
@@ -754,7 +786,6 @@ public void OnMapStart()
 		// Player events
 		HookEvent("post_inventory_application", OnPostInventoryApplication, EventHookMode_Post);
 		HookEvent("player_death", OnPlayerDeath, EventHookMode_Pre);
-		HookEvent("player_hurt", OnPlayerHurt, EventHookMode_Post);
 		HookEvent("player_chargedeployed", OnPlayerChargeDeployed, EventHookMode_Post);
 		HookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
 		HookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
@@ -897,7 +928,6 @@ void CleanUp()
 	UnhookEvent("teamplay_round_win", OnRoundEnd, EventHookMode_Post);
 	UnhookEvent("post_inventory_application", OnPostInventoryApplication, EventHookMode_Post);
 	UnhookEvent("player_death", OnPlayerDeath, EventHookMode_Pre);
-	UnhookEvent("player_hurt", OnPlayerHurt, EventHookMode_Post);
 	UnhookEvent("player_chargedeployed", OnPlayerChargeDeployed, EventHookMode_Post);
 	UnhookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
 	UnhookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
@@ -969,6 +999,22 @@ void CleanUp()
 			delete RF2_Projectile_Base(entity).OnCollide;
 		}
 	}
+
+	// Make sure these are all unhooked, or else shit breaks
+	for (int i = MaxClients+1; i < MAX_EDICTS; i++)
+	{
+		if (g_iIterateAttributesHookId[i])
+		{
+			DynamicHook.RemoveHook(g_iIterateAttributesHookId[i]);
+			g_iIterateAttributesHookId[i] = INVALID_HOOK_ID;
+		}
+		
+		if (g_iIterateAttributesPostHookId[i])
+		{
+			DynamicHook.RemoveHook(g_iIterateAttributesPostHookId[i]);
+			g_iIterateAttributesPostHookId[i] = INVALID_HOOK_ID;
+		}
+	}
 }
 
 void LoadAssets()
@@ -1038,6 +1084,8 @@ void LoadAssets()
 	PrecacheSound2(SND_ACHIEVEMENT, true);
 	PrecacheSound2(SND_DRAGONBORN, true);
 	PrecacheSound2(SND_DRAGONBORN2, true);
+	PrecacheSound2(SND_AUTOFIRE_TOGGLE, true);
+	PrecacheSound2(SND_AUTOFIRE_SHOOT, true);
 	PrecacheSound2("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack02.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack03.mp3", true);
@@ -1278,6 +1326,7 @@ public void OnClientDisconnect_Post(int client)
 	g_iPlayerSurvivorIndex[client] = -1;
 	g_flPlayerCash[client] = 0.0;
 	g_bPlayerSpawningAsMinion[client] = false;
+	g_bPlayerToggledAutoFire[client] = false;
 	g_bHauntedKeyDrop[client] = false;
 	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client, true);
@@ -1399,6 +1448,13 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 {
 	if (!RF2_IsEnabled() || g_bWaitingForPlayers)
 		return Plugin_Continue;
+
+	RF2_GameRules rfGamerules = GetRF2GameRules();
+	if (rfGamerules.IsValid())
+	{
+		rfGamerules.FireOutput("OnRoundStart");
+		g_iLoopCount > 0 ? rfGamerules.FireOutput("OnRoundStartPostLoop") : rfGamerules.FireOutput("OnRoundStartPreLoop");
+	}
 	
 	g_bRoundActive = true;
 	g_bGracePeriod = true;
@@ -2032,46 +2088,6 @@ public Action Timer_RespawnPlayerPreRound(Handle timer, int client)
 		return Plugin_Continue;
 	
 	TF2_RespawnPlayer(client);
-	return Plugin_Continue;
-}
-
-public Action OnPlayerHurt(Event event, const char[] name, bool dontBroadcast)
-{
-	int attacker = GetClientOfUserId(event.GetInt("attacker"));
-	int victim = GetClientOfUserId(event.GetInt("userid"));
-	float damage = float(event.GetInt("damageamount"));
-	int damageCustom = event.GetInt("custom");
-	
-	if (damageCustom == TF_CUSTOM_HEADSHOT || damageCustom == TF_CUSTOM_HEADSHOT_DECAPITATION && attacker > 0)
-	{
-		if (PlayerHasItem(attacker, ItemSniper_HolyHunter) && CanUseCollectorItem(attacker, ItemSniper_HolyHunter))
-		{
-			float pos[3];
-			GetEntPos(victim, pos);
-			pos[2] += 30.0;
-			float radiusDamage = damage * GetItemMod(ItemSniper_HolyHunter, 0);
-			radiusDamage *= 1.0 + CalcItemMod(attacker, ItemSniper_HolyHunter, 1, -1);
-			float radius = GetItemMod(ItemSniper_HolyHunter, 2);
-			radius *= 1.0 + CalcItemMod(attacker, ItemSniper_HolyHunter, 3, -1);
-			DoRadiusDamage(attacker, attacker, pos, ItemSniper_HolyHunter, radiusDamage, DMG_BLAST, radius);
-			DoExplosionEffect(pos);
-		}
-		
-		if (PlayerHasItem(attacker, ItemSniper_Bloodhound) && CanUseCollectorItem(attacker, ItemSniper_Bloodhound))
-		{
-			int stacks = GetItemModInt(ItemSniper_Bloodhound, 0) + CalcItemModInt(attacker, ItemSniper_Bloodhound, 1, -1);
-			for (int i = 1; i <= stacks; i++)
-			{
-				TF2_MakeBleed(victim, attacker, GetItemMod(ItemSniper_Bloodhound, 2));
-			}
-			
-			if (stacks >= 20)
-			{
-				TriggerAchievement(attacker, ACHIEVEMENT_BLOODHOUND);
-			}
-		}
-	}
-	
 	return Plugin_Continue;
 }
 
@@ -2907,6 +2923,36 @@ public Action Timer_PlayerHud(Handle timer)
 			{
 				FormatEx(miscText, sizeof(miscText), "\nSapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
 			}
+			else if (class == TFClass_Sniper)
+			{
+				int rifle = GetPlayerWeaponSlot(i, WeaponSlot_Primary);
+				if (rifle != INVALID_ENT && rifle == GetActiveWeapon(i))
+				{
+					static char classname[64];
+					GetEntityClassname(rifle, classname, sizeof(classname));
+					if (!strcmp2(classname, "tf_weapon_compound_bow"))
+					{
+						float charge = GetEntPropFloat(rifle, Prop_Send, "m_flChargedDamage")/1.5;
+						bool slowed = TF2_IsPlayerInCondition(i, TFCond_Slowed);
+						if (g_bPlayerRifleAutoFire[i] || !slowed)
+						{
+							if (!g_bPlayerToggledAutoFire[i])
+							{
+								FormatEx(miscText, sizeof(miscText), "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nAuto-Fire: %s (ATTACK3/Middle Mouse to toggle)", g_bPlayerRifleAutoFire[i] ? "ON" : "OFF");
+							}
+							else
+							{
+								FormatEx(miscText, sizeof(miscText), "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nAuto-Fire: %s", g_bPlayerRifleAutoFire[i] ? "ON" : "OFF");
+							}
+							
+						}
+						else if (slowed)
+						{
+							FormatEx(miscText, sizeof(miscText), "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCharge: %.0f percent", charge);
+						}
+					}
+				}
+			}
 			else if (class == TFClass_Engineer && PlayerHasItem(i, ItemEngi_HeadOfDefense))
 			{
 				FormatEx(miscText, sizeof(miscText), 
@@ -3015,9 +3061,9 @@ public Action Timer_Difficulty(Handle timer)
 		RF2_PrintToChatAll("%t", "EnemyLevelUp", currentLevel, g_iEnemyLevel);
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsClientInGame(i) || !IsPlayerAlive(i))
+			if (!IsClientInGame(i) || !IsPlayerAlive(i) || IsPlayerSurvivor(i) && !IsPlayerMinion(i))
 				continue;
-
+			
 			CalculatePlayerMaxHealth(i);
 			CalculatePlayerMiscStats(i);
 		}
@@ -3085,7 +3131,7 @@ public Action Timer_PlayerTimer(Handle timer)
 		}
 		
 		// All players have infinite reserve ammo
-		weapon = GetEntPropEnt(i, Prop_Send, "m_hActiveWeapon");
+		weapon = GetActiveWeapon(i);
 		if (weapon != INVALID_ENT)
 		{
 			ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType");
@@ -3161,6 +3207,28 @@ public Action Timer_PlayerTimer(Handle timer)
 			g_flPlayerVampireSapperCooldown[i] -= 0.1;
 		}
 		
+		if (g_flPlayerRifleHeadshotBonusTime[i] > 0.0)
+		{
+			g_flPlayerRifleHeadshotBonusTime[i] -= 0.1;
+		}
+		
+		if (PlayerHasItem(i, ItemSpy_Showstopper) && CanUseCollectorItem(i, ItemSpy_Showstopper))
+		{
+			bool inCond = TF2_IsPlayerInCondition(i, TFCond_CritHype);
+			if (g_flPlayerKnifeStunCooldown[i] > 0.0)
+			{
+				g_flPlayerKnifeStunCooldown[i] = fmax(0.0, g_flPlayerKnifeStunCooldown[i]-0.1);
+				if (inCond)
+				{
+					TF2_RemoveCondition(i, TFCond_CritHype);
+				}
+			}
+			else if (!inCond)
+			{
+				TF2_AddCondition(i, TFCond_CritHype); // just for glow effect, does nothing on Spy (still plays the sound though, which is clientside :/)
+			}
+		}
+		
 		// hotfix - start equipment cooldown if it stops for some reason?
 		if (!g_bEquipmentCooldownActive[i])
 		{
@@ -3190,7 +3258,7 @@ public Action Timer_PlayerTimer(Handle timer)
 				if (IsSentryDisposable(sentry) && GetEntProp(sentry, Prop_Send, "m_iAmmoShells") <= 0 
 					&& !GetEntProp(sentry, Prop_Send, "m_bCarried") && !GetEntProp(sentry, Prop_Send, "m_bBuilding"))
 				{
-					SetVariantInt(9999);
+					SetVariantInt(30000);
 					AcceptEntityInput(sentry, "RemoveHealth");
 				}
 			}
@@ -3666,7 +3734,7 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 		}
 		else if (!GetEntProp(client, Prop_Send, "m_iTauntIndex")) // Weapon taunts are always 0
 		{
-			int activeWeapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+			int activeWeapon = GetActiveWeapon(client);
 			if (activeWeapon > 0 && IsWeaponTauntBanned(activeWeapon))
 			{
 				TF2_RemoveCondition(client, TFCond_Taunting);
@@ -3674,6 +3742,18 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 				EmitSoundToClient(client, SND_NOPE);
 			}
 		}
+	}
+	else if (condition == TFCond_Disguising)
+	{
+		int offset = FindSendPropInfo("CTFPlayer", "m_bHasPasstimeBall") - 756;
+		float gameTime = GetGameTime();
+		float disguiseTime = GetEntDataFloat(client, offset) - gameTime;
+		disguiseTime *= 1.0 - fmin(1.0, CalcItemMod(client, ItemSpy_CounterfeitBillycock, 2));
+		SetEntDataFloat(client, offset, gameTime+disguiseTime);
+	}
+	else if (condition == TFCond_Cloaked)
+	{
+		CalculatePlayerMaxSpeed(client);
 	}
 	else if (condition == TFCond_BlastJumping)
 	{
@@ -3693,6 +3773,13 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 		{
 			TF2_RemoveCondition(client, TFCond_Dazed);
 			return;
+		}
+	}
+	else if (condition == TFCond_Parachute)
+	{
+		if (IsPlayerSurvivor(client))
+		{
+			TF2_AddCondition(client, TFCond_MarkedForDeathSilent);
 		}
 	}
 	else if (condition == TFCond_RuneVampire || condition == TFCond_RuneWarlock
@@ -3724,7 +3811,17 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	else if (condition == TFCond_Buffed && PlayerHasItem(client, Item_MisfortuneFedora))
 	{
 		TF2_AddCondition(client, TFCond_Buffed);
-		return;
+	}
+	else if (condition == TFCond_Cloaked)
+	{
+		CalculatePlayerMaxSpeed(client);
+	}
+	else if (condition == TFCond_Parachute)
+	{
+		if (IsPlayerSurvivor(client))
+		{
+			TF2_RemoveCondition(client, TFCond_MarkedForDeathSilent);
+		}
 	}
 	else if (condition == TFCond_RuneVampire || condition == TFCond_RuneWarlock
 	|| condition == TFCond_RuneKnockout || condition == TFCond_KingRune)
@@ -3817,10 +3914,83 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	}
 	
 	// A player is firing tf_weapon_sniperrifle_classic in midair.
-	// Because of the DHook that we use to get this to work, the weapon firing sound will not play as it is predicted, so we need to play it manually here.
-	if (g_bWasOffGround)
+	// Because of the DHook we use to get that to actually work, the weapon firing sound will not play as it is predicted, so we need to play it manually here.
+	if (g_bWasOffGround || g_bForceRifleSound)
 	{
-		static char sound[PLATFORM_MAX_PATH];
+		ForceRifleSound(client, result);
+		g_bForceRifleSound = false;
+	}
+
+	return changed ? Plugin_Changed : Plugin_Continue;
+}
+
+public void RF_NextPrimaryAttack(int client)
+{
+	if ((client = GetClientOfUserId(client)) == 0)
+		return;
+	
+	int weapon;
+	if ((weapon = EntRefToEntIndex(g_iLastFiredWeapon[client])) == INVALID_ENT)
+		return;
+	
+	// Calculate based on the time the weapon was fired at since that was in the last frame.
+	float gameTime = g_flWeaponFireTime[client];
+	float time = GetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack");
+	
+	bool melee = (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == weapon);
+	float rate = GetPlayerFireRateMod(client, weapon);
+	time -= gameTime;
+	int viewModel = GetEntPropEnt(client, Prop_Send, "m_hViewModel");
+	float playBackRate = GetEntPropFloat(viewModel, Prop_Send, "m_flPlaybackRate");
+	if (melee)
+	{
+		SetEntPropFloat(viewModel, Prop_Send, "m_flPlaybackRate", fmax(playBackRate, fmin(time/(time*rate), 2.0)));
+	}
+	else
+	{
+		SetEntPropFloat(viewModel, Prop_Send, "m_flPlaybackRate", fmax(playBackRate, fmin(time/(time*rate), 12.0)));
+	}
+	
+	time *= rate;
+	
+	// Melee weapons have a swing speed cap
+	if (time < 0.3 && melee)
+	{
+		time = 0.3;
+	}
+	
+	if (!melee && IsPlayerSurvivor(client) && time <= GetTickInterval())
+	{
+		static char classname[128];
+		GetEntityClassname(weapon, classname, sizeof(classname));
+		if (!strcmp2(classname, "tf_weapon_flamethrower") && !strcmp2(classname, "tf_weapon_minigun"))
+		{
+			TriggerAchievement(client, ACHIEVEMENT_FIRERATECAP);
+		}
+	}
+	
+	SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", gameTime+time);
+}
+
+void ForceRifleSound(int client, bool crit=false)
+{
+	static char sound[PLATFORM_MAX_PATH];
+	int weapon = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+	if (weapon == INVALID_ENT)
+		return;
+	
+	if (g_bPlayerRifleAutoFire[client])
+	{
+		EmitSoundToAll(SND_AUTOFIRE_SHOOT, client, _, _, _, fmax(0.35, GetPlayerReloadMod(client)));
+		if (crit)
+		{
+			EmitSoundToAll(SND_WEAPON_CRIT, client);
+		}
+
+		return;
+	}
+	else
+	{
 		switch (GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex"))
 		{
 			case 14, 201, 664, 792, 801, 881, 890, 899, 908, 957, 966: // Stock
@@ -3868,52 +4038,14 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 				sound = GSND_SNIPER_STOCK;
 			}
 		}
-		
-		if (result)
-		{
-			StrCat(sound, sizeof(sound), "Crit");
-		}
-		
-		EmitGameSoundToAll(sound, client);
 	}
-
-	return changed ? Plugin_Changed : Plugin_Continue;
-}
-
-public void RF_NextPrimaryAttack(int client)
-{
-	if ((client = GetClientOfUserId(client)) == 0)
-		return;
 	
-	int weapon;
-	if ((weapon = EntRefToEntIndex(g_iLastFiredWeapon[client])) == INVALID_ENT)
-		return;
-	
-	// Calculate based on the time the weapon was fired at since that was in the last frame.
-	float gameTime = g_flWeaponFireTime[client];
-	float time = GetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack");
-	
-	time -= gameTime;
-	time *= GetPlayerFireRateMod(client, weapon);
-	
-	// Melee weapons have a swing speed cap
-	bool melee = (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == weapon);
-	if (time < 0.3 && melee)
+	if (crit)
 	{
-		time = 0.3;
+		StrCat(sound, sizeof(sound), "Crit");
 	}
 	
-	if (!melee && IsPlayerSurvivor(client) && time <= GetTickInterval())
-	{
-		static char classname[128];
-		GetEntityClassname(weapon, classname, sizeof(classname));
-		if (!strcmp2(classname, "tf_weapon_flamethrower") && !strcmp2(classname, "tf_weapon_minigun"))
-		{
-			TriggerAchievement(client, ACHIEVEMENT_FIRERATECAP);
-		}
-	}
-	
-	SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", gameTime+time);
+	EmitGameSoundToAll(sound, client);
 }
 
 public Action Hook_ProjectileForceDamage(int entity, int other)
@@ -3963,6 +4095,13 @@ public void TF2_OnWaitingForPlayersStart()
 	}
 	
 	g_bWaitingForPlayers = true;
+	RF2_GameRules gameRules = GetRF2GameRules();
+	if (gameRules.IsValid())
+	{
+		gameRules.FireOutput("OnWaitingForPlayers");
+		g_iLoopCount > 0 ? gameRules.FireOutput("OnWaitingForPlayersPostLoop") : gameRules.FireOutput("OnWaitingForPlayersPreLoop");
+	}
+	
 	PrintToServer("%T", "WaitingStart", LANG_SERVER);
 }
 
@@ -3978,45 +4117,45 @@ public void TF2_OnWaitingForPlayersEnd()
 
 public void OnGameFrame()
 {
-	if (g_bPluginEnabled)
+	if (!g_bPluginEnabled)
+		return;
+
+	if (g_flWaitRestartTime > 0.0 && GetTickedTime() >= g_flWaitRestartTime && GetTotalHumans(false) == 0)
 	{
-		if (g_flWaitRestartTime > 0.0 && GetTickedTime() >= g_flWaitRestartTime && GetTotalHumans(false) == 0)
+		PrintToServer("[RF2] Waited too long for players to join. Restarting game...");
+		g_flWaitRestartTime = 0.0;
+		ReloadPlugin(true);
+	}
+	
+	if (g_flNextAutoReloadCheckTime > 0.0 && GetTickedTime() >= g_flNextAutoReloadCheckTime)
+	{
+		int time = GetPluginModifiedTime();
+		if (time != -1 && time != g_iFileTime)
 		{
-			PrintToServer("[RF2] Waited too long for players to join. Restarting game...");
-			g_flWaitRestartTime = 0.0;
-			ReloadPlugin(true);
-		}
-		
-		if (g_flNextAutoReloadCheckTime > 0.0 && GetTickedTime() >= g_flNextAutoReloadCheckTime)
-		{
-			int time = GetPluginModifiedTime();
-			if (time != -1 && time != g_iFileTime)
+			g_flNextAutoReloadCheckTime = 0.0;
+			
+			// if server is empty, we can just reload now
+			if (!g_bGameInitialized && GetTotalHumans(false) == 0)
 			{
-				g_flNextAutoReloadCheckTime = 0.0;
-				
-				// if server is empty, we can just reload now
-				if (!g_bGameInitialized && GetTotalHumans(false) == 0)
-				{
-					LogMessage("A change to the plugin has been detected, reloading in 8 seconds.");
-					g_flAutoReloadTime = GetTickedTime()+8.0;
-				}
-				else
-				{
-					LogMessage("A change to the plugin has been detected, locking plugin loads/reloads.");
-					InsertServerCommand("sm plugins load_lock");
-				}
+				LogMessage("A change to the plugin has been detected, reloading in 8 seconds.");
+				g_flAutoReloadTime = GetTickedTime()+8.0;
 			}
 			else
 			{
-				g_flNextAutoReloadCheckTime = GetTickedTime() + 1.0;
+				LogMessage("A change to the plugin has been detected, locking plugin loads/reloads.");
+				InsertServerCommand("sm plugins load_lock");
 			}
 		}
-		
-		if (!g_bGameInitialized && g_flAutoReloadTime > 0.0 && GetTickedTime() >= g_flAutoReloadTime)
+		else
 		{
-			g_flAutoReloadTime = 0.0;
-			ReloadPlugin(false);
+			g_flNextAutoReloadCheckTime = GetTickedTime() + 1.0;
 		}
+	}
+	
+	if (!g_bGameInitialized && g_flAutoReloadTime > 0.0 && GetTickedTime() >= g_flAutoReloadTime)
+	{
+		g_flAutoReloadTime = 0.0;
+		ReloadPlugin(false);
 	}
 }
 
@@ -4038,6 +4177,8 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bFiredWhileRocketJumping[entity] = false;
 	g_flTeleporterNextSpawnTime[entity] = -1.0;
 	SetAllInArray(g_flLastHalloweenBossAttackTime[entity], sizeof(g_flLastHalloweenBossAttackTime[]), 0.0);
+	g_iIterateAttributesHookId[entity] = INVALID_HOOK_ID;
+	g_iIterateAttributesPostHookId[entity] = INVALID_HOOK_ID;
 	
 	if (strcmp2(classname, "tf_projectile_rocket") || strcmp2(classname, "tf_projectile_flare") || strcmp2(classname, "tf_projectile_arrow"))
 	{
@@ -4090,12 +4231,13 @@ public void OnEntityCreated(int entity, const char[] classname)
 	{
 		SDKHook(entity, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamageAlive);
 		SDKHook(entity, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
-		if (g_hHookShouldCollideWith && !IsTank(entity))
-		{
-			ILocomotion loco = CBaseEntity(entity).MyNextBotPointer().GetLocomotionInterface();
-			DHookRaw(g_hHookShouldCollideWith, true, view_as<Address>(loco), _, DHook_ShouldCollideWith);
-		}
+		SDKHook(entity, SDKHook_SpawnPost, Hook_NPCSpawnPost);
 	}
+}
+
+public void Hook_NPCSpawnPost(int entity)
+{
+	SetEntityCollisionGroup(entity, TFCOLLISION_GROUP_TANK);
 }
 
 public void OnEntityDestroyed(int entity)
@@ -4127,6 +4269,18 @@ public void OnEntityDestroyed(int entity)
 	if (pf && pf.IsValid())
 	{
 		pf.Invalidate();
+	}
+
+	if (g_iIterateAttributesHookId[entity])
+	{
+		DynamicHook.RemoveHook(g_iIterateAttributesHookId[entity]);
+		g_iIterateAttributesHookId[entity] = INVALID_HOOK_ID;
+	}
+	
+	if (g_iIterateAttributesPostHookId[entity])
+	{
+		DynamicHook.RemoveHook(g_iIterateAttributesPostHookId[entity]);
+		g_iIterateAttributesPostHookId[entity] = INVALID_HOOK_ID;
 	}
 	
 	g_iEntityPathFollowerIndex[entity] = -1;
@@ -4164,18 +4318,6 @@ public void RF_DragonFuryCritCheck(int entity)
 			}
 		}
 	}
-}
-
-public MRESReturn DHook_ShouldCollideWith(Address loco, DHookReturn returnVal, DHookParam params)
-{
-	int client = params.Get(1);
-	if (client > 0 && client <= MaxClients)
-	{
-		returnVal.Value = false;
-		return MRES_Supercede;
-	}
-	
-	return MRES_Ignored;
 }
 
 bool IsEntityBlacklisted(const char[] classname)
@@ -4371,7 +4513,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		
 		if (PlayerHasItem(victim, Item_Goalkeeper))
 		{
-			int activeWeapon = GetEntPropEnt(victim, Prop_Send, "m_hActiveWeapon");
+			int activeWeapon = GetActiveWeapon(victim);
 			if (activeWeapon != INVALID_ENT && activeWeapon == GetPlayerWeaponSlot(victim, WeaponSlot_Melee))
 			{
 				damage *= 1.0 + CalcItemMod(victim, Item_Goalkeeper, 3);
@@ -4410,13 +4552,32 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			proc *= GetWeaponProcCoefficient(weapon);
 			if (victimIsClient)
 			{
-				if (GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex") == 173) // Vita-Saw
+				int itemDef = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+				if (itemDef == 173) // Vita-Saw
 				{
 					TF2_AddCondition(victim, TFCond_Milked, 5.0, attacker);
 				}
-				else if (GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex") == 413) // Solemn Vow
+				else if (itemDef == 413) // Solemn Vow
 				{
 					TF2_AddCondition(victim, TFCond_Jarated, 5.0);
+				}
+				else if (itemDef == 1098) // The Classic
+				{
+					if (!IsPlayerStunned(victim))
+					{
+						TF2_StunPlayer(victim, 3.0, 0.6, TF_STUNFLAG_SLOWDOWN, attacker);
+					}
+				}
+				else if (itemDef == 414) // Liberty Launcher
+				{
+					// apply z velocity attribute also applies for self damage, we don't want that
+					if (IsPlayerSurvivor(attacker) && !selfDamage)
+					{
+						float vel[3];
+						vel[2] = 300.0;
+						vel[2] = TF2Attrib_HookValueFloat(vel[2], "damage_force_reduction", victim);
+						SDK_ApplyAbsVelocityImpulse(victim, vel);
+					}
 				}
 			}
 		}
@@ -4442,6 +4603,15 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					if (enemy != victim) // enemy == victim means direct damage was dealt, otherwise this is splash
 					{
 						proc *= 0.5;
+					}
+					else if (StrContains(inflictorClassname, "tf_projectile_rocket") != -1
+							|| strcmp2(inflictorClassname, "tf_projectile_energy_ball"))
+					{
+						if ((victimIsClient || victimIsNpc) && PlayerHasItem(attacker, ItemSoldier_WarPig) && CanUseCollectorItem(attacker, ItemSoldier_WarPig))
+						{
+							if (!(GetEntityFlags(victim) & FL_ONGROUND))
+								damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_WarPig, 1);
+						}
 					}
 				}
 				else if (strcmp2(inflictorClassname, "tf_projectile_pipe"))
@@ -4486,8 +4656,18 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				proc *= 0.0;
 			}
 			
+			case TF_CUSTOM_HEADSHOT, TF_CUSTOM_HEADSHOT_DECAPITATION:
+			{
+				DoHeadshotBonuses(attacker, victim, damage);
+			}
+			
 			case TF_CUSTOM_PENETRATE_ALL_PLAYERS, TF_CUSTOM_PENETRATE_HEADSHOT:
 			{
+				if (damageCustom == TF_CUSTOM_PENETRATE_HEADSHOT)
+				{
+					DoHeadshotBonuses(attacker, victim, damage);
+				}
+				
 				if (PlayerHasItem(attacker, Item_MaxHead))
 				{
 					damage *= 1.0 + CalcItemMod(attacker, Item_MaxHead, 1);
@@ -4512,7 +4692,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			procItem = GetEntItemProc(inflictor);
 		}
-
+		
 		// So here's an explanation for this. For a very long time, I did not realize
 		// that buildings don't call OnTakeDamageAlive when they take damage. So as a result,
 		// buildings went for a very long time without being affected by ANY damage modifications.
@@ -4623,14 +4803,37 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				{
 					damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.35;
 				}
-			}
-			else if (StrContains(inflictorClassname, "tf_projectile_rocket") != -1
-				|| strcmp2(inflictorClassname, "tf_projectile_energy_ball"))
-			{
-				if (PlayerHasItem(attacker, ItemSoldier_WarPig) && CanUseCollectorItem(attacker, ItemSoldier_WarPig))
+				
+				if (PlayerHasItem(attacker, ItemSpy_Showstopper) && CanUseCollectorItem(attacker, ItemSpy_Showstopper))
 				{
-					damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_WarPig, 1);
+					if (g_flPlayerKnifeStunCooldown[attacker] <= 0.0)
+					{
+						float dmg = GetItemMod(ItemSpy_Showstopper, 0) + CalcItemMod(attacker, ItemSpy_Showstopper, 1, -1);
+						float radius = GetItemMod(ItemSpy_Showstopper, 2) + CalcItemMod(attacker, ItemSpy_Showstopper, 3, -1);
+						float duration = GetItemMod(ItemSpy_Showstopper, 4);
+						float pos[3];
+						CBaseEntity(victim).WorldSpaceCenter(pos);
+						ArrayList hitEnts = DoRadiusDamage(attacker, attacker, pos, ItemSpy_Showstopper, dmg, DMG_BLAST|DMG_CLUB, radius, _, _, _, true);
+						int hitEnt = INVALID_ENT;
+						for (int i = 0; i < hitEnts.Length; i++)
+						{
+							hitEnt = hitEnts.Get(i);
+							if (IsValidClient(hitEnt) && !IsBoss(hitEnt))
+							{
+								TF2_StunPlayer(hitEnt, duration, _, TF_STUNFLAG_BONKSTUCK, attacker);
+								TF2_AddCondition(hitEnt, TFCond_FreezeInput, duration, attacker);
+							}
+						}
+						
+						g_flPlayerKnifeStunCooldown[attacker] = GetItemMod(ItemSpy_Showstopper, 6);
+						delete hitEnts;
+					}
 				}
+			}
+			
+			if (procItem == ItemSpy_Showstopper && IsBoss(victim))
+			{
+				damage *= GetItemMod(ItemSpy_Showstopper, 5);
 			}
 		}
 		
@@ -5366,7 +5569,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			if (!TF2_IsPlayerInCondition(client, TFCond_Cloaked) && GetGameTime() >= GetEntPropFloat(client, Prop_Send, "m_flInvisChangeCompleteTime"))
 			{
 				int sapper = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-				if (sapper > 0 && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == sapper)
+				if (sapper > 0 && GetActiveWeapon(client) == sapper)
 				{
 					const float range = 350.0;
 					float eyePos[3], endPos[3], eyeAng[3], vel[3];
@@ -5395,7 +5598,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	bool allowPress;
 	if (GetCookieBool(client, g_coSwapStrangeButton))
 	{
-		allowPress = buttons & IN_ATTACK3 && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) != GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+		allowPress = buttons & IN_ATTACK3 && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) != GetActiveWeapon(client);
 	}
 	else if (buttons & IN_RELOAD)
 	{
@@ -5413,7 +5616,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			if (TF2_GetPlayerClass(client) == TFClass_Medic)
 			{
 				int medigun = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-				if (medigun != INVALID_ENT && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == medigun)
+				if (medigun != INVALID_ENT && GetActiveWeapon(client) == medigun)
 				{
 					initial = TF2Attrib_HookValueInt(0, "set_charge_type", medigun);
 					
@@ -5426,7 +5629,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			else if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 			{
 				int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-				if (wrench != INVALID_ENT && GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == wrench)
+				if (wrench != INVALID_ENT && GetActiveWeapon(client) == wrench)
 				{
 					initial = TF2Attrib_HookValueInt(0, "alt_fire_teleport_to_spawn", wrench);
 
@@ -5459,9 +5662,10 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	{
 		if (!attack3Pressed[client])
 		{
-			if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+			TFClassType class = TF2_GetPlayerClass(client);
+			if (class == TFClass_Engineer)
 			{
-				if (g_hPlayerExtraSentryList[client].Length > 0 && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon"))
+				if (g_hPlayerExtraSentryList[client].Length > 0 && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) == GetActiveWeapon(client))
 				{
 					int entity = g_hPlayerExtraSentryList[client].Get(0);
 					if (IsValidEntity2(entity))
@@ -5469,6 +5673,18 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 						SetVariantInt(GetEntProp(entity, Prop_Send, "m_iHealth")+9999);
 						AcceptEntityInput(entity, "RemoveHealth");
 					}
+				}
+			}
+			else if (class == TFClass_Sniper)
+			{
+				int rifle = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+				static char classname[64];
+				GetEntityClassname(rifle, classname, sizeof(classname));
+				if (rifle == GetActiveWeapon(client) && !strcmp2(classname, "tf_weapon_compound_bow"))
+				{
+					g_bPlayerRifleAutoFire[client] = !g_bPlayerRifleAutoFire[client];
+					g_bPlayerToggledAutoFire[client] = true;
+					EmitSoundToClient(client, SND_AUTOFIRE_TOGGLE);
 				}
 			}
 		}
@@ -5480,6 +5696,20 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		attack3Pressed[client] = false;
 	}
 	
+	if (buttons & IN_ATTACK && g_bPlayerRifleAutoFire[client] && TF2_GetPlayerClass(client) == TFClass_Sniper)
+	{
+		int rifle = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+		if (rifle == GetActiveWeapon(client))
+		{
+			float charge = GetEntPropFloat(rifle, Prop_Send, "m_flChargedDamage")/1.5;
+			if (charge > 0.0)
+			{
+				buttons &= ~IN_ATTACK;
+				g_bForceRifleSound = true; // We need to force the rifle sound as it won't play if we do this (see TF2_CalcIsAttackCritical)
+			}
+		}
+	}
+
 	static float nextFootstepTime[MAXTF2PLAYERS];
 	if (g_iPlayerFootstepType[client] == FootstepType_GiantRobot && GetTickedTime() >= nextFootstepTime[client] 
 		&& !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !IsPlayerStunned(client))
@@ -5497,7 +5727,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			{
 				TFClassType class = TF2_GetPlayerClass(client);
 				static char sample[PLATFORM_MAX_PATH];
-
+				
 				// No unique footstep sounds for these classes
 				if (class == TFClass_Sniper || class == TFClass_Engineer || class == TFClass_Spy)
 				{

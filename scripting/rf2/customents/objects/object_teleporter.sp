@@ -334,6 +334,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ENEMY)
 			{
 				TF2_StunPlayer(i, 20.0, _, TF_STUNFLAG_BONKSTUCK);
+				TF2_AddCondition(i, TFCond_FreezeInput, 20.0);
 				aliveEnemies = true;
 			}
 		}

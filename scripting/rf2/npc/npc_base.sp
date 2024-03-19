@@ -95,7 +95,7 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		}
 	}
 	
-	property NextBotGroundLocomotion Locomotion
+	property CBaseNPC_Locomotion Locomotion
 	{
 		public get()
 		{

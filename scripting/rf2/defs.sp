@@ -92,6 +92,8 @@
 #define SND_ACHIEVEMENT "misc/achievement_earned.wav"
 #define SND_DRAGONBORN "rf2/sfx/fus_ro_dah.wav"
 #define SND_DRAGONBORN2 "misc/halloween/spell_mirv_explode_secondary.wav"
+#define SND_AUTOFIRE_TOGGLE "buttons/button3.wav"
+#define SND_AUTOFIRE_SHOOT "weapons/smg1/smg1_fire1.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
@@ -266,7 +268,15 @@ enum
 	COLLISION_GROUP_NPC_ACTOR,		// Used so NPCs in scripts ignore the player.
 	COLLISION_GROUP_NPC_SCRIPTED,	// USed for NPCs in scripts that should not collide with each other
 	
-	LAST_SHARED_COLLISION_GROUP
+	// TF2-specific collision groups
+	TFCOLLISION_GROUP_GRENADES,
+	TFCOLLISION_GROUP_OBJECT,
+	TFCOLLISION_GROUP_OBJECT_SOLIDTOPLAYERMOVEMENT,
+	TFCOLLISION_GROUP_COMBATOBJECT,
+	TFCOLLISION_GROUP_ROCKETS,		// Solid to players, but not player movement. ensures touch calls are originating from rocket
+	TFCOLLISION_GROUP_RESPAWNROOMS, // CookieCat note: Only collides with players
+	TFCOLLISION_GROUP_TANK, 		// CookieCat note: Solid to everything except for players. Despite the name, it's only used by pumpkin bombs, not tanks.
+	TFCOLLISION_GROUP_ROCKET_BUT_NOT_WITH_OTHER_ROCKETS, // CookieCat note: Used by most projectiles, same as TFCOLLISION_GROUP_ROCKETS but doesn't collide with itself or that group
 };
 
 // m_nSolidType

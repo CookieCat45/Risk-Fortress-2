@@ -444,7 +444,8 @@ int EquipItemAsWearable(int client, int item)
 				// Remove one loadout wearable (don't remove zombie ones cause it causes funky stuff to happen)
 				if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client 
 					&& !g_bDontRemoveWearable[entity] && !g_bItemWearable[entity]
-					&& !IsVoodooCursedCosmetic(entity))
+					&& !IsVoodooCursedCosmetic(entity)
+					&& !IsWeaponWearable(entity))
 				{
 					TF2_RemoveWearable(client, entity);
 					break;
@@ -862,6 +863,48 @@ void UpdatePlayerItem(int client, int item)
 			{
 				TF2Attrib_RemoveByDefIndex(client, 62);
 				TF2Attrib_RemoveByDefIndex(client, 66);
+			}
+		}
+		
+		case ItemSpy_StealthyScarf:
+		{
+			int watch = GetPlayerWeaponSlot(client, WeaponSlot_InvisWatch);
+			if (watch != INVALID_ENT)
+			{
+				if (PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
+				{
+					TF2Attrib_SetByDefIndex(watch, 221, 1.0-fmin(1.0, CalcItemMod(client, item, 1))); // "mult decloak rate"
+				}
+				else
+				{
+					TF2Attrib_RemoveByDefIndex(watch, 221);
+				}
+			}
+		}
+		
+		case ItemSniper_VillainsVeil:
+		{
+			int rifle = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+			if (rifle != INVALID_ENT)
+			{
+				if (PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
+				{
+					// Huntsman charge speed uses the fast_reload attribute only (although it does affect the reload speed too)
+					char classname[64];
+					GetEntityClassname(rifle, classname, sizeof(classname));
+					if (strcmp2(classname, "tf_weapon_compound_bow"))
+					{
+						TF2Attrib_SetByDefIndex(rifle, 318, CalcItemMod_HyperbolicInverted(client, item, 0)); // "faster reload rate"
+					}
+					else
+					{
+						TF2Attrib_SetByDefIndex(rifle, 90, 1.0+CalcItemMod(client, item, 0)); // "SRifle Charge rate increased"
+					}
+				}
+				else
+				{
+					TF2Attrib_RemoveByDefIndex(rifle, 90);
+				}
 			}
 		}
 	}
@@ -2184,6 +2227,41 @@ public int OnStompPost(int attacker, int victim, float damageMultiplier, float d
 	return 0;
 }
 #endif
+
+void DoHeadshotBonuses(int attacker, int victim, float damage)
+{
+	if (PlayerHasItem(attacker, ItemSniper_HolyHunter) && CanUseCollectorItem(attacker, ItemSniper_HolyHunter))
+	{
+		float pos[3];
+		GetEntPos(victim, pos);
+		pos[2] += 30.0;
+		float radiusDamage = damage * GetItemMod(ItemSniper_HolyHunter, 0);
+		radiusDamage *= 1.0 + CalcItemMod(attacker, ItemSniper_HolyHunter, 1, -1);
+		float radius = GetItemMod(ItemSniper_HolyHunter, 2);
+		radius *= 1.0 + CalcItemMod(attacker, ItemSniper_HolyHunter, 3, -1);
+		DoRadiusDamage(attacker, attacker, pos, ItemSniper_HolyHunter, radiusDamage, DMG_BLAST, radius);
+		DoExplosionEffect(pos);
+	}
+	
+	if (PlayerHasItem(attacker, ItemSniper_Bloodhound) && CanUseCollectorItem(attacker, ItemSniper_Bloodhound))
+	{
+		int stacks = GetItemModInt(ItemSniper_Bloodhound, 0) + CalcItemModInt(attacker, ItemSniper_Bloodhound, 1, -1);
+		for (int i = 1; i <= stacks; i++)
+		{
+			TF2_MakeBleed(victim, attacker, GetItemMod(ItemSniper_Bloodhound, 2));
+		}
+		
+		if (stacks >= 20)
+		{
+			TriggerAchievement(attacker, ACHIEVEMENT_BLOODHOUND);
+		}
+	}
+	
+	if (PlayerHasItem(attacker, ItemSniper_VillainsVeil) && CanUseCollectorItem(attacker, ItemSniper_VillainsVeil))
+	{
+		g_flPlayerRifleHeadshotBonusTime[attacker] = GetItemMod(ItemSniper_VillainsVeil, 2);
+	}
+}
 
 static int g_iLastShownItem[MAXTF2PLAYERS];
 void ShowItemDesc(int client, int item)

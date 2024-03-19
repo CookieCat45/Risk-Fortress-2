@@ -97,12 +97,15 @@ enum
 	ItemStrange_Dragonborn = 80,
 	ItemPyro_PyromancerMask = 81,
 	ItemStrange_DemonicDome = 82,
+	ItemSpy_StealthyScarf = 83,
+	ItemSpy_Showstopper = 84,
+	ItemSniper_VillainsVeil = 85,
 	Item_MaxValid,
 };
 
 enum
 {
-	Quality_None = -1,
+	Quality_None,
 	Quality_Normal,
 	Quality_Genuine,
 	Quality_Unusual,

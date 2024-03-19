@@ -19,11 +19,9 @@ char g_szWeaponClassnameReplacement[TF_CLASSES][MAX_WEAPONS][64];
 
 bool g_bWeaponStaticAttributes[TF_CLASSES][MAX_WEAPONS];
 bool g_bWeaponStripAttributes[TF_CLASSES][MAX_WEAPONS];
-/*
 bool g_bWeaponHasStringAttributes[TF_CLASSES][MAX_WEAPONS];
 char g_szWeaponStringAttributeName[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][128];
 char g_szWeaponStringAttributeValue[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][PLATFORM_MAX_PATH];
-*/
 
 void LoadWeapons()
 {
@@ -36,8 +34,8 @@ void LoadWeapons()
 	}
 	
 	bool firstKey = true;
-	//bool firstAttrib = true;
-	int count;//, strAttribCount;
+	bool firstAttrib = true;
+	int count, strAttribCount;
 	char tfClassName[32];
 	
 	for (int i = 1; i < TF_CLASSES; i++)
@@ -57,14 +55,12 @@ void LoadWeapons()
 				g_bWeaponStaticAttributes[i][count] = asBool(weaponKey.GetNum("static_attributes", false));
 				g_bWeaponStripAttributes[i][count] = asBool(weaponKey.GetNum("strip_attributes", false));
 				
-				/*
 				// do we have any string attributes?
 				if (weaponKey.JumpToKey("string_attributes"))
 				{
 					while (firstAttrib ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
 					{
 						g_bWeaponHasStringAttributes[i][count] = true;
-						
 						weaponKey.GetSectionName(g_szWeaponStringAttributeName[i][count][strAttribCount], sizeof(g_szWeaponStringAttributeName[][][]));
 						weaponKey.GetString(NULL_STRING, g_szWeaponStringAttributeValue[i][count][strAttribCount], sizeof(g_szWeaponStringAttributeValue[][][]));
 						
@@ -88,7 +84,6 @@ void LoadWeapons()
 					firstAttrib = true;
 					weaponKey.GoBack();
 				}
-				*/
 				
 				count++;
 				firstKey = false;
@@ -105,29 +100,56 @@ void LoadWeapons()
 	delete weaponKey;
 }
 
-//static bool g_bSetStringAttributes;
-//static TFClassType g_StringAttributeClass;
-//static int g_iStringAttributeWeapon; // Not to be confused with entity indexes
+static bool g_bSetStringAttributes;
+static TFClassType g_StringAttributeClass;
+static int g_iStringAttributeWeapon; // Not to be confused with entity indexes
 static bool g_bDisableGiveItemForward;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
 {
+	// Breaks in Waiting for Players apparently????
+	if (g_bWaitingForPlayers)
+	{
+		item = TF2Items_CreateItem(OVERRIDE_ATTRIBUTES);
+		int attribArray[MAX_ATTRIBUTES];
+		int totalAttribs;
+		float valueArray[MAX_ATTRIBUTES];
+		int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);
+		for (int n = 0; n < count; n++)
+		{
+			if (!IsAttributeBlacklisted(attribArray[n]) && attribArray[n] > 0)
+			{
+				totalAttribs++;
+				if (totalAttribs <= MAX_ATTRIBUTES)
+				{
+					TF2Items_SetNumAttributes(item, totalAttribs);
+					TF2Items_SetAttribute(item, totalAttribs-1, attribArray[n], valueArray[n]);
+				}
+			}
+		}
+		
+		return Plugin_Changed;
+	}
+	
+	if (!RF2_IsEnabled() || !g_bRoundActive)
+		return Plugin_Continue;
+	
 	if (g_bDisableGiveItemForward || !IsPlayerSurvivor(client) || IsPlayerMinion(client))
 		return Plugin_Continue;
 	
 	Action action = Plugin_Continue;
-	
-	int flags = FORCE_GENERATION;
+	int flags;
 	TFClassType class = TF2_GetPlayerClass(client);
 	char buffer[64];
+	int totalAttribs;
 	IntToString(index, buffer, sizeof(buffer));
-	
+	bool found;
 	for (int i = 0; i < g_iWeaponCount[class]; i++)
 	{
 		if (StrContainsEx(g_szWeaponIndexIdentifier[class][i], buffer) == -1)
 			continue;
 		
+		found = true;
 		item = TF2Items_CreateItem(flags);
-		int totalAttribs;
 		bool newWeapon;
 		
 		// Using the OVERRIDE_CLASSNAME flag in this forward does not work properly,
@@ -206,7 +228,6 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			}
 		}
 		
-		/*
 		if (g_bWeaponHasStringAttributes[class][i])
 		{
 			// we'll have to set these in Post because we don't have the weapon entity yet
@@ -214,7 +235,6 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			g_StringAttributeClass = class;
 			g_iStringAttributeWeapon = i;
 		}
-		*/
 
 		if (totalAttribs > MAX_ATTRIBUTES)
 		{
@@ -231,7 +251,6 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			}
 			
 			TF2Items_SetFlags(item, flags);
-			
 			DataPack pack = CreateDataPack();
 			pack.WriteCell(client);
 			pack.WriteCell(item);
@@ -244,6 +263,28 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 		}
 		
 		break;
+	}
+	
+	if (!found)
+	{
+		// set static attributes by default
+		action = Plugin_Changed;
+		item = TF2Items_CreateItem(OVERRIDE_ATTRIBUTES);
+		int attribArray[MAX_ATTRIBUTES];
+		float valueArray[MAX_ATTRIBUTES];
+		int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);
+		for (int n = 0; n < count; n++)
+		{
+			if (!IsAttributeBlacklisted(attribArray[n]) && attribArray[n] > 0)
+			{
+				totalAttribs++;
+				if (totalAttribs <= MAX_ATTRIBUTES)
+				{
+					TF2Items_SetNumAttributes(item, totalAttribs);
+					TF2Items_SetAttribute(item, totalAttribs-1, attribArray[n], valueArray[n]);
+				}
+			}
+		}
 	}
 	
 	return action;
@@ -271,11 +312,9 @@ public void RF_ReplaceNewWeapon(DataPack pack)
 
 public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index, int level, int quality, int entity)
 {
-	// Can be an invalid entity, somehow
-	if (!IsValidEntity2(entity))
+	if (!RF2_IsEnabled() || !IsValidEntity2(entity))
 		return;
 	
-	/*
 	if (g_bSetStringAttributes)
 	{
 		TFClassType class = g_StringAttributeClass;
@@ -294,14 +333,24 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int inde
 					continue;
 				}
 				
-				TF2Attrib_SetFromStringValue(entity, g_szWeaponStringAttributeName[class][weapon][i],
-				g_szWeaponStringAttributeValue[class][weapon][i]);
+				PrintToServer(g_szWeaponStringAttributeName[class][weapon][i]);
+				TF2Attrib_SetFromStringValue(entity, g_szWeaponStringAttributeName[class][weapon][i], g_szWeaponStringAttributeValue[class][weapon][i]);
+			}
+			else
+			{
+				LogError("Unknown string attribute %s", g_szWeaponStringAttributeName[class][weapon][i]);
 			}
 		}
 		
 		g_bSetStringAttributes = false;
 	}
-	*/
+	
+	if (g_hHookIterateAttributes)
+	{
+		Address itemView = GetEntityAddress(entity) + view_as<Address>(g_iEconItem);
+		g_iIterateAttributesHookId[entity] = g_hHookIterateAttributes.HookRaw(Hook_Pre, itemView, DHook_IterateAttributes);
+		g_iIterateAttributesPostHookId[entity] = g_hHookIterateAttributes.HookRaw(Hook_Post, itemView, DHook_IterateAttributesPost);
+	}
 
 	SetEntProp(entity, Prop_Send, "m_bValidatedAttachedEntity", true);
 }
@@ -786,6 +835,18 @@ public MRESReturn DHook_RiflePostFramePost(int entity)
 	return MRES_Ignored;
 }
 
+public MRESReturn DHook_IterateAttributes(Address addr, DHookParam params)
+{
+	StoreToAddress(addr + view_as<Address>(g_iOnlyIterateItemViewAttributes), true, NumberType_Int8, false);
+	return MRES_Ignored;
+}
+
+public MRESReturn DHook_IterateAttributesPost(Address addr, DHookParam params)
+{
+	StoreToAddress(addr + view_as<Address>(g_iOnlyIterateItemViewAttributes), false, NumberType_Int8, false);
+	return MRES_Ignored;
+}
+
 bool IsVoodooCursedCosmetic(int wearable)
 {
 	int index = GetEntProp(wearable, Prop_Send, "m_iItemDefinitionIndex");
@@ -818,4 +879,16 @@ bool IsEnergyWeapon(int weapon)
 	char classname[64];
 	GetEntityClassname(weapon, classname, sizeof(classname));
 	return strcmp2(classname, "tf_weapon_raygun") || strcmp2(classname, "tf_weapon_particle_cannon") || strcmp2(classname, "tf_weapon_drg_pomson");
+}
+
+bool IsWeaponWearable(int wearable)
+{
+	int index = GetEntProp(wearable, Prop_Send, "m_iItemDefinitionIndex");
+	return index == 642 // Cozy Camper
+	|| index == 133 // Gunboats
+	|| index == 444 // Mantreads
+	|| index == 405 || index == 608 // Demo boots
+	|| index == 131 || index == 406 || index == 1099 || index == 1144 // Shields
+	|| index == 57 // Razorback
+	|| index == 231; // Darwin's Danger Shield
 }
