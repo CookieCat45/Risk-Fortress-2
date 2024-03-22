@@ -48,7 +48,6 @@ void LoadWeapons()
 			while (firstKey ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
 			{
 				weaponKey.GetSectionName(g_szWeaponIndexIdentifier[i][count], sizeof(g_szWeaponIndexIdentifier[][]));
-				
 				weaponKey.GetString("attributes", g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]));
 				weaponKey.GetString("classname", g_szWeaponClassnameReplacement[i][count], sizeof(g_szWeaponClassnameReplacement[][]));
 				g_iWeaponIndexReplacement[i][count] = weaponKey.GetNum("index", -1);
@@ -624,25 +623,6 @@ void TF2_RemoveLoadoutWearables(int client)
 	}
 }
 
-// Blacklist for attributes that waste slots or cause issues. Mostly for static attributes.
-bool IsAttributeBlacklisted(int id)
-{
-	return id == 796 || // "min viewmodel offset" (causes client crashes when set by plugins)
-	id == 2058 || // "meter_label" (another string attribute that can crash clients)
-	id >= 292 && id <= 294 || // "kill eater" attributes (these are for TF2 strange items, they do nothing for us but waste slots)
-	id == 388 || // "kill eater kill type"
-	id >= 379 && id <= 384 || // even MORE kill eater attributes
-	id == 214 || // another kill eater attribute...
-	id == 494 || id == 495 || // last of the kill eater attributes
-	id == 2029 || // "allowed in medieval mode"
-	id == 719 || // "weapon_uses_stattrack_module"
-	id == 731 || // "weapon_allow_inspect"
-	id == 724 || // "weapon_stattrak_module_scale"
-	id == 25 || // "hidden secondary max ammo penalty" (don't need these, players have infinite ammo)
-	id == 37 || // "hidden primary max ammo bonus"
-	id >= 76 && id <= 79; // more maxammo attributes
-}
-
 float GetWeaponProcCoefficient(int weapon)
 {
 	char classname[128];
@@ -891,4 +871,23 @@ bool IsWeaponWearable(int wearable)
 	|| index == 131 || index == 406 || index == 1099 || index == 1144 // Shields
 	|| index == 57 // Razorback
 	|| index == 231; // Darwin's Danger Shield
+}
+
+// Blacklist for attributes that waste slots or cause issues. Mostly for static attributes.
+bool IsAttributeBlacklisted(int id)
+{
+	return id == 796 || // "min viewmodel offset" (causes client crashes when set by plugins)
+	id == 2058 || // "meter_label" (another string attribute that can crash clients)
+	id >= 292 && id <= 294 || // "kill eater" attributes (these are for TF2 strange items, they do nothing for us but waste slots)
+	id == 388 || // "kill eater kill type"
+	id >= 379 && id <= 384 || // even MORE kill eater attributes
+	id == 214 || // another kill eater attribute...
+	id == 494 || id == 495 || // last of the kill eater attributes
+	id == 2029 || // "allowed in medieval mode"
+	id == 719 || // "weapon_uses_stattrack_module"
+	id == 731 || // "weapon_allow_inspect"
+	id == 724 || // "weapon_stattrak_module_scale"
+	id == 25 || // "hidden secondary max ammo penalty" (don't need these, players have infinite ammo)
+	id == 37 || // "hidden primary max ammo bonus"
+	id >= 76 && id <= 79; // more maxammo attributes
 }

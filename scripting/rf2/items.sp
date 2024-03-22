@@ -2243,7 +2243,7 @@ void DoHeadshotBonuses(int attacker, int victim, float damage)
 		DoExplosionEffect(pos);
 	}
 	
-	if (PlayerHasItem(attacker, ItemSniper_Bloodhound) && CanUseCollectorItem(attacker, ItemSniper_Bloodhound))
+	if (IsValidClient(victim) && PlayerHasItem(attacker, ItemSniper_Bloodhound) && CanUseCollectorItem(attacker, ItemSniper_Bloodhound))
 	{
 		int stacks = GetItemModInt(ItemSniper_Bloodhound, 0) + CalcItemModInt(attacker, ItemSniper_Bloodhound, 1, -1);
 		for (int i = 1; i <= stacks; i++)

@@ -71,10 +71,18 @@ static void OnCollide(RF2_Projectile_Skull skull, int other)
 	if (IsCombatChar(other) && IsValidClient(skull.Owner))
 	{
 		RF_TakeDamage(other, skull.index, skull.Owner, skull.Damage, DMG_GENERIC, ItemStrange_DemonicDome);
-		if (IsValidClient(other) && !IsBoss(other) && !RF2_Projectile_Skull.IsPlayerCursed(other)
-			&& RandChanceFloatEx(skull.Owner, 0.0001, 1.0, GetItemMod(ItemStrange_DemonicDome, 3)) && GetClientHealth(other) > 0)
+		if (IsValidClient(other))
 		{
-			InstantDeathCurse(other, skull.Owner);
+			if (!IsPlayerAlive(other))
+			{
+				// Summon a skeleton immediately if the enemy was killed by the projectile
+				SummonSkeleton(other);
+			}
+			if (!IsBoss(other) && !RF2_Projectile_Skull.IsPlayerCursed(other)
+			&& RandChanceFloatEx(skull.Owner, 0.0001, 1.0, GetItemMod(ItemStrange_DemonicDome, 3)) && GetClientHealth(other) > 0)
+			{
+				InstantDeathCurse(other, skull.Owner);
+			}
 		}
 	}
 }

@@ -1259,7 +1259,7 @@ public void OnClientDisconnect(int client)
 		return;
 	
 	StopMusicTrack(client);
-	if (g_bPlayerTimingOut[client] && IsPlayerSurvivor(client))
+	if (g_bPlayerTimingOut[client] && IsPlayerSurvivor(client) && !IsPlayerMinion(client))
 	{
 		RF2_PrintToChatAll("{yellow}%N {red}crashed or lost connection on RED and has 5 minutes to reconnect!", client);
 		PrintToServer("%N crashed or lost connection on RED and has 5 minutes to reconnect!", client);
@@ -1268,7 +1268,7 @@ public void OnClientDisconnect(int client)
 		{
 			int index = RF2_GetSurvivorIndex(client);
 			int invIndex = g_iPlayerInventoryIndex[client];
-			g_hCrashedPlayerSteamIDs.SetValue(authId, invIndex);
+			g_hCrashedPlayerSteamIDs.SetValue(authId, index);
 			FormatEx(class, sizeof(class), "%s_CLASS", authId);
 			g_hCrashedPlayerSteamIDs.SetValue(class, TF2_GetPlayerClass(client)); // Remember class
 			SaveSurvivorInventory(client, invIndex);
