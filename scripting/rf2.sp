@@ -2100,7 +2100,7 @@ public Action Timer_SurvivorDeath(Handle timer, int client)
 	{
 		ChangeClientTeam(client, 1);
 	}
-	else
+	else if (!IsSingleplayer())
 	{
 		g_bPlayerSpawningAsMinion[client] = true;
 		CreateTimer(0.5, Timer_MinionSpawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);

@@ -637,6 +637,7 @@ void SpawnMinion(int client)
 		{
 			SetVariantString("models/rf2/bots/bot_soldier.mdl");
 			CreateWeapon(client, "tf_weapon_shotgun_soldier", 10, "3 = 0.7");
+			CreateWeapon(client, "tf_weapon_shovel", 447, _, true);
 			g_iPlayerBaseHealth[client] = 500;
 			g_flPlayerMaxSpeed[client] = 280.0;
 		}
@@ -680,7 +681,9 @@ void SpawnMinion(int client)
 		case TFClass_Medic:
 		{
 			SetVariantString("models/rf2/bots/bot_medic.mdl");
-			CreateWeapon(client, "tf_weapon_medigun", 29, "9 = 0.0 ; 105 = 0.0 ; 7 = 0.75");
+			CreateWeapon(client, "tf_weapon_crossbow", 1079, "1 = 0.5", true);
+			CreateWeapon(client, "tf_weapon_medigun", 894, "9 = 0.0 ; 105 = 0.0 ; 7 = 0.75");
+			CreateWeapon(client, "tf_weapon_bonesaw", 1143, "1 = 0.8");
 			g_iPlayerBaseHealth[client] = 375;
 			g_flPlayerMaxSpeed[client] = 360.0;
 		}
