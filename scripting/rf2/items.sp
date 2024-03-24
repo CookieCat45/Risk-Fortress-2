@@ -198,11 +198,6 @@ bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
 int GetRandomItem(int normalWeight=0, int genuineWeight=0, 
 	int unusualWeight=0, int hauntedWeight=0, int strangeWeight=0, bool allowHauntedStrange=true)
 {
-	if (TF2_IsHolidayActive(TFHoliday_AprilFools))
-	{
-		return GetRandomItemEx(Quality_Haunted);
-	}
-	
 	ArrayList array = new ArrayList();
 	int quality, count, item;
 
@@ -258,12 +253,7 @@ int GetRandomItem(int normalWeight=0, int genuineWeight=0,
 }
 
 int GetRandomItemEx(int quality)
-{
-	if (TF2_IsHolidayActive(TFHoliday_AprilFools))
-	{
-		quality = GetRandomInt(1, 8) == 8 ? Quality_HauntedStrange : Quality_Haunted;
-	}
-	
+{	
 	ArrayList array = new ArrayList();
 	int item;
 	
