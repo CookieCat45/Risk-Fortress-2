@@ -23,6 +23,7 @@ static float g_flEnemyCashAward[MAX_ENEMIES];
 static bool g_bEnemyFullRage[MAX_ENEMIES];
 static bool g_bEnemyNoBleeding[MAX_ENEMIES];
 static bool g_bEnemyShouldGlow[MAX_ENEMIES];
+static bool g_bEnemyNoCrits[MAX_ENEMIES];
 
 static char g_szEnemyName[MAX_ENEMIES][MAX_NAME_LENGTH];
 static char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
@@ -180,6 +181,12 @@ methodmap Enemy
 	{
 		public get()			{ return g_bEnemyShouldGlow[this.Index]; }
 		public set(bool value)	{ g_bEnemyShouldGlow[this.Index] = value; }
+	}
+
+	property bool NoCrits
+	{
+		public get()			{ return g_bEnemyNoCrits[this.Index]; }
+		public set(bool value)	{ g_bEnemyNoCrits[this.Index] = value; }
 	}
 	
 	property int BotSkill
@@ -487,6 +494,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.FullRage = asBool(enemyKey.GetNum("full_rage", false));
 		enemy.NoBleeding = asBool(enemyKey.GetNum("no_bleeding", true));
 		enemy.ShouldGlow = asBool(enemyKey.GetNum("glow", enemy.IsBoss));
+		enemy.NoCrits = asBool(enemyKey.GetNum("no_crits", false));
 		
 		enemy.WeaponCount = 0;
 		for (int w = 0; w < TF_WEAPON_SLOTS; w++)

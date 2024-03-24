@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.8b"
+#define PLUGIN_VERSION "0.9b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -5111,11 +5111,14 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		
 		SetEntItemProc(attacker, Item_Null);
 		g_iEntLastHitItemProc[victim] = procItem;
-		
 		if (validWeapon)
 		{
 			static char wepClassname[64];
 			GetEntityClassname(weapon, wepClassname, sizeof(wepClassname));
+			if (strcmp2(wepClassname, "tf_weapon_flamethrower"))
+			{
+				damage *= GetPlayerFireRateMod(attacker, weapon); // Fire rate increases flamethrower damage, at a reduced rate
+			}
 			if (strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball") 
 				&& (damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE || damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING))
 			{
@@ -5314,8 +5317,9 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			critType = CritType_Crit;
 		}
 		
-		if (IsValidClient(victim) 
-			&& (TF2_IsPlayerInCondition(victim, TFCond_DefenseBuffed) || TF2_IsPlayerInCondition(victim, TFCond_RuneResist)))
+		if (IsValidClient(victim)
+			&& (IsValidClient(attacker) && IsEnemy(attacker) && Enemy(attacker).NoCrits 
+				|| TF2_IsPlayerInCondition(victim, TFCond_DefenseBuffed) || TF2_IsPlayerInCondition(victim, TFCond_RuneResist)))
 		{
 			critType = CritType_None;
 		}
@@ -5678,13 +5682,16 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			else if (class == TFClass_Sniper)
 			{
 				int rifle = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-				static char classname[64];
-				GetEntityClassname(rifle, classname, sizeof(classname));
-				if (rifle == GetActiveWeapon(client) && !strcmp2(classname, "tf_weapon_compound_bow"))
+				if (rifle != INVALID_ENT && rifle == GetActiveWeapon(client))
 				{
-					g_bPlayerRifleAutoFire[client] = !g_bPlayerRifleAutoFire[client];
-					g_bPlayerToggledAutoFire[client] = true;
-					EmitSoundToClient(client, SND_AUTOFIRE_TOGGLE);
+					static char classname[64];
+					GetEntityClassname(rifle, classname, sizeof(classname));
+					if (!strcmp2(classname, "tf_weapon_compound_bow"))
+					{
+						g_bPlayerRifleAutoFire[client] = !g_bPlayerRifleAutoFire[client];
+						g_bPlayerToggledAutoFire[client] = true;
+						EmitSoundToClient(client, SND_AUTOFIRE_TOGGLE);
+					}
 				}
 			}
 		}

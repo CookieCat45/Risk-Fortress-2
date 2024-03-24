@@ -136,7 +136,7 @@ void LoadItems()
 			// The effect of item modifiers are arbitrary, and depend on the item. Some may not use them at all.
 			for (int n = 0; n < MAX_ITEM_MODIFIERS; n++)
 			{
-				FormatEx(buffer, sizeof(buffer), "item_modifier_%i", n+1);
+				FormatEx(buffer, sizeof(buffer), "item_modifier_%i", n);
 				g_flItemModifier[item][n] = itemKey.GetFloat(buffer, 0.1);
 			}
 			

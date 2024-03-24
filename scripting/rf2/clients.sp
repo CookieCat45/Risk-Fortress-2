@@ -571,9 +571,7 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	if (weapon > 0)
 	{
 		GetEntityClassname(weapon, classname, sizeof(classname));
-		
-		// Dragon's Fury is different
-		if (strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
+		if (strcmp2(classname, "tf_weapon_flamethrower") || strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
 		{
 			multiplier += CalcItemMod(client, Item_MaimLicense, 0);
 			multiplier += float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1);
@@ -588,7 +586,7 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 			
 			return multiplier;
 		}
-		else if (StrContains(classname, "tf_weapon_sniperrifle") != -1)
+		else if (StrContains(classname, "tf_weapon_flaregun") != -1 || StrContains(classname, "tf_weapon_sniperrifle") != -1)
 		{
 			// Use reload multipliers instead, makes more sense
 			return GetPlayerReloadMod(client);
@@ -648,22 +646,27 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 
 float GetPlayerReloadMod(int client)
 {
-	float reloadMult = 1.0;
-	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_RoundedRifleman, 0);
-	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_TripleA, 0);
-	reloadMult *= CalcItemMod_HyperbolicInverted(client, Item_MaxHead, 3);
+	float multiplier = 1.0;
+	multiplier *= CalcItemMod_HyperbolicInverted(client, Item_RoundedRifleman, 0);
+	multiplier *= CalcItemMod_HyperbolicInverted(client, Item_TripleA, 0);
+	multiplier *= CalcItemMod_HyperbolicInverted(client, Item_MaxHead, 3);
 	
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)
 	{
-		reloadMult *= GetItemMod(Item_SaintMark, 0);
+		multiplier *= GetItemMod(Item_SaintMark, 0);
 	}
 	
 	if (g_flPlayerRifleHeadshotBonusTime[client] > 0.0)
 	{
-		reloadMult *= CalcItemMod_HyperbolicInverted(client, ItemSniper_VillainsVeil, 1);
+		multiplier *= CalcItemMod_HyperbolicInverted(client, ItemSniper_VillainsVeil, 1);
+	}
+
+	if (PlayerHasItem(client, Item_PointAndShoot) && g_iPlayerFireRateStacks[client] > 0)
+	{
+		multiplier *= (1.0 / (1.0 + (float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 3))));
 	}
 	
-	return reloadMult;
+	return multiplier;
 }
 
 int GetPlayerLuckStat(int client)
