@@ -688,7 +688,6 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 	{
 		IVision vision = CBaseEntity(bot.Client).MyNextBotPointer().GetVisionInterface();
 		CKnownEntity known = vision.GetPrimaryKnownThreat(true);
-		
 		int threat = INVALID_ENT;
 		if (known != NULL_KNOWN_ENTITY)
 		{
@@ -701,6 +700,12 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 			invuln = IsInvuln(threat);
 		}
 		
+		if (threat > 0 && IsBuilding(threat) && TF2_GetObjectType2(threat) != TFObject_Sentry)
+		{
+			// don't waste on dispensers/teleporters
+			return false;
+		}
+		
 		switch (item)
 		{
 			case ItemStrange_VirtualViewfinder, ItemStrange_Spellbook, ItemStrange_PartyHat, ItemStrange_RobotChicken: 
@@ -708,9 +713,33 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 				return threat > 0 && !invuln && vision.IsLookingAtTarget(threat);
 			}
 			
-			case ItemStrange_HeartOfGold: return true; // we check when we use this item instead, so always try to use
+			case ItemStrange_HeartOfGold:
+			{
+				// am I low?
+				if (GetClientHealth(bot.Client) <= RF2_GetCalculatedMaxHealth(bot.Client)/2)
+					return true;
+				
+				int team = GetClientTeam(bot.Client);
+				// are enough nearby teammates low?
+				int lowTeammates;
+				for (int i = 1; i <= MaxClients; i++)
+				{
+					if (i == bot.Client || !IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != team)
+						continue;
+					
+					if (GetClientHealth(i) <= RF2_GetCalculatedMaxHealth(i)/2 && DistBetween(bot.Client, i, true) < 500.0)
+					{
+						if (IsBoss(i))
+							return true; // always heal bosses
+						
+						lowTeammates++;
+					}
+				}
+				
+				return lowTeammates >= 3;
+			}
 			
-			case ItemStrange_LegendaryLid, ItemStrange_CroneDome, ItemStrange_HandsomeDevil:
+			case ItemStrange_LegendaryLid, ItemStrange_CroneDome, ItemStrange_HandsomeDevil, ItemStrange_DemonicDome:
 			{
 				if (threat > 0 && !invuln && vision.IsLookingAtTarget(threat))
 				{
@@ -718,15 +747,15 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 				}
 			}
 			
+			case ItemStrange_Dragonborn:
+			{
+				return DistBetween(bot.Client, threat, true) <= 250000.0;
+			}
+			
 			case ItemStrange_DarkHunter, ItemStrange_NastyNorsemann:
 			{
 				if (threat <= 0)
 					return false;
-				
-				if (IsBuilding(threat))
-				{
-					return TF2_GetObjectType2(threat) == TFObject_Sentry;
-				}
 				
 				return true;
 			}
@@ -739,6 +768,8 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 				}
 			}
 		}
+		
+		return threat > 0 && !invuln;
 	}
 	
 	return false;
@@ -1138,6 +1169,12 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				buttons &= ~IN_ATTACK;
 				buttons &= ~IN_ATTACK2;
 			}
+			else if (strcmp2(classname, "tf_weapon_lunchbox"))
+			{
+				// Never throw sandvich, always eat
+				buttons |= IN_ATTACK;
+				buttons &= ~IN_ATTACK2;
+			}
 		}
 		else if (melee != INVALID_ENT && melee == activeWep)
 		{
@@ -1444,6 +1481,11 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		}
 	}
 	
+	if (bot.HasFlag(TFBOTFLAG_ALWAYSATTACK))
+	{
+		buttons |= IN_ATTACK;
+	}
+	
 	buttons |= bot.ForcedButtons;
 	return Plugin_Continue;
 }
@@ -1470,7 +1512,7 @@ void UpdateBotQuota()
 }
 
 // -1 = let bot decide
-int TFBot_GetDesiredWeapon(TFBot bot, int &slot=0)
+int TFBot_GetDesiredWeapon(TFBot bot, int &slot=WeaponSlot_Primary)
 {
 	int threat = INVALID_ENT;
 	CKnownEntity known = bot.GetTarget();
@@ -1485,17 +1527,22 @@ int TFBot_GetDesiredWeapon(TFBot bot, int &slot=0)
 		return GetPlayerWeaponSlot(bot.Client, bot.DesiredWeaponSlot);
 	}
 	
-	if (TF2_GetPlayerClass(bot.Client) == TFClass_Scout)
+	TFClassType class = TF2_GetPlayerClass(bot.Client);
+	if (class == TFClass_Scout || class == TFClass_Heavy)
 	{
-		int drink = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Secondary);
-		bool bonk;
-		if (drink != INVALID_ENT)
+		int lunchbox = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Secondary);
+		bool bonk, sandvich;
+		if (lunchbox != INVALID_ENT)
 		{
 			static char classname[32];
-			GetEntityClassname(drink, classname, sizeof(classname));
+			GetEntityClassname(lunchbox, classname, sizeof(classname));
 			if (strcmp2(classname, "tf_weapon_lunchbox_drink"))
 			{
 				bonk = true;
+			}
+			else if (strcmp2(classname, "tf_weapon_lunchbox"))
+			{
+				sandvich = true;
 			}
 		}
 		
@@ -1507,7 +1554,7 @@ int TFBot_GetDesiredWeapon(TFBot bot, int &slot=0)
 				// Switch to primary if available
 				int weapon = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Primary);
 				slot = WeaponSlot_Primary;
-				if (weapon == -1)
+				if (weapon == INVALID_ENT)
 				{
 					weapon = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
 					slot = WeaponSlot_Melee;
@@ -1518,11 +1565,32 @@ int TFBot_GetDesiredWeapon(TFBot bot, int &slot=0)
 			else if (drinkEnergy >= 100.0)
 			{
 				slot = WeaponSlot_Secondary;
-				return drink;
+				return lunchbox;
+			}
+		}
+		else if (sandvich)
+		{
+			if (GetEntProp(bot.Client, Prop_Send, "m_iAmmo", _, GetEntProp(lunchbox, Prop_Send, "m_iPrimaryAmmoType")) > 0)
+			{
+				slot = WeaponSlot_Secondary;
+				return lunchbox;
+			}
+			else
+			{
+				// Switch to primary if available
+				int weapon = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Primary);
+				slot = WeaponSlot_Primary;
+				if (weapon == INVALID_ENT)
+				{
+					weapon = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
+					slot = WeaponSlot_Melee;
+				}
+				
+				return weapon;
 			}
 		}
 	}
-
+	
 	if (TF2_IsPlayerInCondition(bot.Client, TFCond_Charging) 
 		|| threat != INVALID_ENT && IsEnemy(bot.Client) && Enemy(bot.Client).BotMeleeDistance > 0.0 && DistBetween(bot.Client, threat) <= Enemy(bot.Client).BotMeleeDistance)
 	{

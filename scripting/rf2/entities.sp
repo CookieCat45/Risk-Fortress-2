@@ -412,7 +412,7 @@ int SpawnInfoParticle(const char[] effectName, const float pos[3], float duratio
 	TeleportEntity(particle, pos);
 	DispatchSpawn(particle);
 	ActivateEntity(particle);
-	AcceptEntityInput(particle, "start");
+	AcceptEntityInput(particle, "Start");
 	
 	if (parent != -1)
 	{
@@ -428,7 +428,7 @@ int SpawnInfoParticle(const char[] effectName, const float pos[3], float duratio
 }
 
 void TE_TFParticle(const char[] effectName, const float pos[3], int entity=-1, int attachType=PATTACH_ABSORIGIN, const char[] attachmentName="",
-bool reset=false, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0)
+bool reset=false, bool controlPoint=false, const float controlPointOffset[3]=NULL_VECTOR, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0)
 {
 	TE_Start("TFParticleEffect");
 	int index = GetParticleEffectIndex(effectName);
@@ -457,7 +457,21 @@ bool reset=false, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0
 		TE_WriteFloat("m_vecStart[1]", pos[1]);
 		TE_WriteFloat("m_vecStart[2]", pos[2]);
 		TE_WriteNum("m_iAttachType", attachType);
-		TE_WriteNum("m_bResetParticles", asBool(reset));
+		TE_WriteNum("m_bResetParticles", reset);
+		TE_WriteNum("m_bControlPoint1", controlPoint);
+		
+		if (controlPoint && !IsNullVector(controlPointOffset))
+		{
+			TE_WriteFloat("m_ControlPoint1.m_vecOffset[0]", controlPointOffset[0]);
+			TE_WriteFloat("m_ControlPoint1.m_vecOffset[1]", controlPointOffset[1]);
+			TE_WriteFloat("m_ControlPoint1.m_vecOffset[2]", controlPointOffset[2]);
+		}
+		else
+		{
+			TE_WriteFloat("m_ControlPoint1.m_vecOffset[0]", 0.0);
+			TE_WriteFloat("m_ControlPoint1.m_vecOffset[1]", 0.0);
+			TE_WriteFloat("m_ControlPoint1.m_vecOffset[2]", 0.0);
+		}
 		
 		if (clientAmount <= 0)
 		{

@@ -548,7 +548,7 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CBaseEntity::ApplyAbsVelocityImpulse");
 	}
-
+	
 	
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFWeaponBase::GetMaxClip1");
@@ -1497,6 +1497,15 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	AcceptEntityInput(gamerules, "SetBlueTeamRespawnWaveTime");
 	SpawnObjects();
 	
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "rf2_object*")) != INVALID_ENT)
+	{
+		if (RF2_Object_Base(entity).MapPlaced)
+		{
+			AcceptEntityInput(entity, "TurnOn");
+		}
+	}
+	
 	if (g_hPlayerTimer)
 		delete g_hPlayerTimer;
 
@@ -1589,7 +1598,14 @@ public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int par
 		{
 			char info[8];
 			menu.GetItem(param1, info, sizeof(info));
-			g_iDifficultyLevel = StringToInt(info);
+			if (TF2_IsHolidayActive(TFHoliday_AprilFools))
+			{
+				g_iDifficultyLevel = DIFFICULTY_TITANIUM;
+			}
+			else
+			{
+				g_iDifficultyLevel = StringToInt(info);
+			}
 			
 			char difficultyName[64];
 			GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName), _, true);
@@ -1689,9 +1705,9 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	
 	if (!g_bRoundActive)
 		return Plugin_Continue;
-
+	
 	int team = GetClientTeam(client);
-
+	
 	// If we're an enemy and spawn during the grace period, or somehow don't have a type, die
 	if (team == TEAM_ENEMY)
 	{
@@ -1770,7 +1786,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	{
 		TF2_AddCondition(client, TFCond_HalloweenThriller);
 	}
-
+	
 	if (GetClientTeam(client) == TEAM_ENEMY && IsArtifactActive(BLUArtifact_Silence))
 	{
 		if (GetRandomInt(1, 5) == 1)
@@ -1778,7 +1794,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 			TF2_AddCondition(client, TFCond_StealthedUserBuffFade);
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -4710,6 +4726,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_Compatriot, 0);
 		}
 		
+		if (PlayerHasItem(attacker, Item_BeaconFromBeyond) && RF2_Object_Teleporter.IsEventActive())
+		{
+			damage *= CalcItemMod_HyperbolicInverted(attacker, Item_BeaconFromBeyond, 1);
+		}
+		
 		if (inflictor > 0 && GetEntItemProc(inflictor) > Item_Null && GetEntItemProc(inflictor) <= MAX_ITEMS)
 		{
 			proc *= GetItemProcCoeff(GetEntItemProc(inflictor));
@@ -5371,7 +5392,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			case CritType_None:
 			{
 				damageType |= DMG_CRIT;
-
+				
 				if (critType == CritType_Crit)
 				{
 					if (!bonked)
@@ -5780,6 +5801,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 	if (!RF2_IsEnabled() || g_bWaitingForPlayers || !IsValidClient(client))
 		return Plugin_Continue;
 	
+	int originalPitch = pitch;
 	bool footsteps = StrContains(sample, "player/footsteps/", false) != -1;
 	if (channel != SNDCHAN_VOICE && !footsteps)
 		return Plugin_Continue;
@@ -5828,16 +5850,18 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 		{
 			class = TF2_GetPlayerClass(client);
 		}
-
+		
 		if (StrContains(sample, "vo/") != -1)
 		{
 			if (voiceType == VoiceType_Silent)
 			{
 				return Plugin_Stop;
 			}
-
+			
 			pitch = g_iPlayerVoicePitch[client];
-
+			if (pitch != originalPitch)
+				action = Plugin_Changed;
+			
 			if (voiceType == VoiceType_Robot)
 			{
 				action = Plugin_Changed;

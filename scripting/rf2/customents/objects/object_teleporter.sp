@@ -55,6 +55,12 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		.EndDataMapDesc();
 		factory.Install();
 	}
+	
+	public static bool IsEventActive()
+	{
+		RF2_Object_Teleporter teleporter = GetCurrentTeleporter();
+		return teleporter.IsValid() && teleporter.EventState == TELE_EVENT_ACTIVE;
+	}
 
 	property int EventState
 	{
@@ -551,6 +557,7 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 	float pos[3], telePos[3];
 	float radius = teleporter.Radius;
 	teleporter.GetAbsOrigin(telePos);
+	float bonus = 1.0;
 	
 	// calculate alive survivors first
 	for (int i = 1; i <= MaxClients; i++)
@@ -561,6 +568,10 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 		if (IsPlayerSurvivor(i))
 		{
 			aliveSurvivors++;
+			if (PlayerHasItem(i, Item_BeaconFromBeyond))
+			{
+				bonus += CalcItemMod(i, Item_BeaconFromBeyond, 0);
+			}
 		}
 		else if (g_bPlayerIsTeleporterBoss[i])
 		{
@@ -570,6 +581,10 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 	
 	float chargeToSet = teleporter.Charge;
 	float oldCharge = chargeToSet;
+	float chargeAdd = fmax(0.1 / float(aliveSurvivors), 0.03 -(float(aliveSurvivors-1)*0.001)) * bonus;
+	static char text[256];
+	FormatEx(text, sizeof(text), "%.0f", oldCharge);
+	teleporter.SetWorldText(text);
 	
 	// now let's see how many of them are actually in the radius, so we can add charge based on that
 	for (int i = 1; i <= MaxClients; i++)
@@ -585,7 +600,7 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 			{
 				if (chargeToSet < 100.0)
 				{
-					chargeToSet += fmax(0.1 / float(aliveSurvivors), 0.03 -(float(aliveSurvivors-1)*0.001));
+					chargeToSet += chargeAdd;
 				}
 				
 				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Teleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
@@ -599,15 +614,11 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 		{
 			FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Teleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
 		}
-		
-		static char text[256];
-		FormatEx(text, sizeof(text), "%.0f", oldCharge);
-		teleporter.SetWorldText(text);
 	}
 	
 	if (oldCharge < 100.0 && chargeToSet > 0.0 && oldCharge != chargeToSet)
 	{
-		teleporter.Charge = chargeToSet;
+		teleporter.Charge = fmin(chargeToSet, 100.0);
 	}
 	
 	// end once all teleporter bosses are dead and charge is 100%

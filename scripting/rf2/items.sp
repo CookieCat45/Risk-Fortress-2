@@ -205,7 +205,7 @@ int GetRandomItem(int normalWeight=0, int genuineWeight=0,
 	{
 		if (i == Quality_Collectors || i == Quality_HauntedStrange)
 			continue;
-		
+
 		switch (i)
 		{
 			case Quality_Normal: count = normalWeight;
@@ -222,7 +222,15 @@ int GetRandomItem(int normalWeight=0, int genuineWeight=0,
 			array.Push(i);
 	}
 	
-	quality = array.Get(GetRandomInt(0, array.Length-1));
+	if (TF2_IsHolidayActive(TFHoliday_AprilFools))
+	{
+		quality = Quality_Unusual;
+	}
+	else
+	{
+		quality = array.Get(GetRandomInt(0, array.Length-1));
+	}
+	
 	array.Clear();
 	
 	for (int i = 1; i <= GetTotalItems(); i++)
@@ -1249,7 +1257,9 @@ bool ActivateStrangeItem(int client)
 		{
 			const float range = 500.0;
 			int team = GetClientTeam(client);
-			
+			float pos[3];
+			char particle[32];
+			particle = team == view_as<int>(TFTeam_Red) ? "spell_overheal_red" : "spell_overheal_blue";
 			// Heal me and teammates around me
 			for (int i = 1; i <= MaxClients; i++)
 			{
@@ -1260,8 +1270,10 @@ bool ActivateStrangeItem(int client)
 					continue;
 				
 				int maxHealth = RF2_GetCalculatedMaxHealth(i);
-				int heal = RoundToFloor(maxHealth * GetItemMod(ItemStrange_HeartOfGold, 0));
+				int heal = RoundToFloor(float(maxHealth) * GetItemMod(ItemStrange_HeartOfGold, 0));
 				HealPlayer(i, heal);
+				GetEntPos(i, pos);
+				TE_TFParticle(particle, pos, i, PATTACH_ABSORIGIN_FOLLOW);
 			}
 			
 			EmitSoundToAll(SND_SPELL_OVERHEAL, client);

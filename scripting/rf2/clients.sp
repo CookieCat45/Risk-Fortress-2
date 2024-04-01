@@ -436,8 +436,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth-healthAttrib)); // "max health additive bonus"
 	int actualMaxHealth = SDK_GetPlayerMaxHealth(client);
 	g_iPlayerCalculatedMaxHealth[client] = actualMaxHealth;
-	
-	if (fullHeal)
+	if (fullHeal && GetClientHealth(client) < actualMaxHealth)
 	{
 		HealPlayer(client, actualMaxHealth+99999, false, _, false);
 	}

@@ -100,6 +100,7 @@ enum
 	ItemSpy_StealthyScarf = 83,
 	ItemSpy_Showstopper = 84,
 	ItemSniper_VillainsVeil = 85,
+	Item_BeaconFromBeyond = 86,
 	Item_MaxValid,
 };
 

@@ -34,6 +34,7 @@ static bool g_bEnemyBotAggressive[MAX_ENEMIES];
 static bool g_bEnemyBotRocketJump[MAX_ENEMIES];
 static bool g_bEnemyBotHoldFireUntilReloaded[MAX_ENEMIES];
 static bool g_bEnemyBotAlwaysJump[MAX_ENEMIES];
+static bool g_bEnemyBotAlwaysAttack[MAX_ENEMIES];
 static float g_flEnemyBotMeleeDistance[MAX_ENEMIES];
 
 // Weapons
@@ -217,6 +218,12 @@ methodmap Enemy
 	{
 		public get()			{ return g_bEnemyBotAlwaysJump[this.Index];  }
 		public set(bool value)	{ g_bEnemyBotAlwaysJump[this.Index] = value; }
+	}
+	
+	property bool BotAlwaysAttack
+	{
+		public get()			{ return g_bEnemyBotAlwaysAttack[this.Index];  }
+		public set(bool value)	{ g_bEnemyBotAlwaysAttack[this.Index] = value; }
 	}
 	
 	property float BotMeleeDistance
@@ -463,10 +470,11 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemyKey.GetString("model", g_szEnemyModel[e], sizeof(g_szEnemyModel[]), "models/player/soldier.mdl");
 		enemy.ModelScale = enemyKey.GetFloat("model_scale", enemy.IsBoss ? 1.75 : 1.0);
 		
-		if (FileExists(g_szEnemyModel[e]))
+		if (FileExists(g_szEnemyModel[e]) || FileExists(g_szEnemyModel[e], true))
 		{
 			PrecacheModel2(g_szEnemyModel[e]);
-			AddModelToDownloadsTable(g_szEnemyModel[e]);
+			if (!FileExists(g_szEnemyModel[e], true))
+				AddModelToDownloadsTable(g_szEnemyModel[e]);
 		}
 		else
 		{
@@ -485,6 +493,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.BotRocketJump = asBool(enemyKey.GetNum("tf_bot_rocketjump", false));
 		enemy.BotHoldFireReload = asBool(enemyKey.GetNum("tf_bot_hold_fire_until_reload", false));
 		enemy.BotAlwaysJump = asBool(enemyKey.GetNum("tf_bot_constant_jump", false));
+		enemy.BotAlwaysAttack = asBool(enemyKey.GetNum("tf_bot_always_attack", false));
 		enemy.BotMeleeDistance = enemyKey.GetFloat("tf_bot_melee_distance");
 		
 		// XP and cash awards on death
@@ -679,10 +688,15 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		{
 			TFBot(client).AddFlag(TFBOTFLAG_HOLDFIRE);
 		}
-
+		
 		if (enemy.BotAlwaysJump)
 		{
 			TFBot(client).AddFlag(TFBOTFLAG_SPAMJUMP);
+		}
+
+		if (enemy.BotAlwaysAttack)
+		{
+			TFBot(client).AddFlag(TFBOTFLAG_ALWAYSATTACK);
 		}
 	}
 	
@@ -713,7 +727,6 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	ScaleVector(mins, enemy.ModelScale);
 	ScaleVector(maxs, enemy.ModelScale);
 	float zOffset = 30.0 * enemy.ModelScale;
-	
 	float spawnPos[3];
 	// Engineers spawn further away from players
 	float extraDist = player && enemy.Class == TFClass_Engineer ? 3000.0 : 0.0;
@@ -743,15 +756,12 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	}
 	
 	g_bPlayerInSpawnQueue[client] = false;
-	
 	g_iPlayerEnemyType[client] = type;
 	g_iPlayerBaseHealth[client] = enemy.BaseHealth;
 	g_flPlayerMaxSpeed[client] = enemy.BaseSpeed;
-	
 	TF2_SetPlayerClass(client, enemy.Class);
 	TF2_RespawnPlayer(client);
 	TeleportEntity(client, spawnPos, NULL_VECTOR, NULL_VECTOR);
-	
 	SetEntPropFloat(client, Prop_Send, "m_flModelScale", g_flEnemyModelScale[type]);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 1.0);
 	
@@ -760,7 +770,6 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	SetVariantString(model);
 	AcceptEntityInput(client, "SetCustomModel");
 	SetEntProp(client, Prop_Send, "m_bUseClassAnimations", true);
-	
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMinsPreScaled", mins);
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMaxsPreScaled", maxs);
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMins", mins);
@@ -775,7 +784,6 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		enemy.GetWeaponName(i, name, sizeof(name));
 		enemy.GetWeaponAttributes(i, attributes, sizeof(attributes));
 		weapon = CreateWeapon(client, name, enemy.WeaponIndex(i), attributes, enemy.WeaponUseStaticAtts(i), enemy.WeaponVisible(i));
-		
 		if (activeWeapon == -1 && IsValidEntity2(weapon) && enemy.WeaponIsFirstActive(i))
 		{
 			activeWeapon = weapon;
@@ -841,7 +849,6 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	g_iPlayerVoiceType[client] = enemy.VoiceType;
 	g_iPlayerVoicePitch[client] = enemy.VoicePitch;
 	g_iPlayerFootstepType[client] = enemy.FootstepType;
-	
 	SetEntPropFloat(client, Prop_Send, "m_flHeadScale", enemy.HeadScale);
 	SetEntPropFloat(client, Prop_Send, "m_flTorsoScale", enemy.TorsoScale);
 	SetEntPropFloat(client, Prop_Send, "m_flHandScale", enemy.HandScale);
