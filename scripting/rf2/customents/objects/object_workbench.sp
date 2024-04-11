@@ -181,25 +181,29 @@ static void OnCreate(RF2_Object_Workbench bench)
 static void OnSpawnPost(int entity)
 {
 	RF2_Object_Workbench bench = RF2_Object_Workbench(entity);
-	CBaseEntity sprite = CBaseEntity(CreateEntityByName("env_sprite"));
-	bench.Sprite = sprite;
-	sprite.KeyValue("model", g_szItemSprite[bench.Item]);
-	sprite.KeyValueFloat("scale", g_flItemSpriteScale[bench.Item]);
-	sprite.KeyValue("rendermode", "9"); // mfw no CBaseEntity.KeyValueInt
-	float pos[3];
-	bench.GetAbsOrigin(pos);
-	pos[2] += 35.0;
-	sprite.Teleport(pos);
-	sprite.Spawn();
-	switch (GetItemQuality(bench.Item))
+	if (IsMapRunning())
 	{
-		case Quality_Genuine:		sprite.SetRenderColor(125, 255, 125);
-		case Quality_Unusual: 		sprite.SetRenderColor(200, 125, 255);
-		case Quality_Strange:		sprite.SetRenderColor(200, 150, 0);
-		case Quality_Collectors:	sprite.SetRenderColor(255, 100, 100);
-		case Quality_Haunted, 
-			Quality_HauntedStrange:	sprite.SetRenderColor(125, 255, 255);
+		CBaseEntity sprite = CBaseEntity(CreateEntityByName("env_sprite"));
+		bench.Sprite = sprite;
+		sprite.KeyValue("model", g_szItemSprite[bench.Item]);
+		sprite.KeyValueFloat("scale", g_flItemSpriteScale[bench.Item]);
+		sprite.KeyValue("rendermode", "9"); // mfw no CBaseEntity.KeyValueInt
+		float pos[3];
+		bench.GetAbsOrigin(pos);
+		pos[2] += 35.0;
+		sprite.Teleport(pos);
+		sprite.Spawn();
+		switch (GetItemQuality(bench.Item))
+		{
+			case Quality_Genuine:		sprite.SetRenderColor(125, 255, 125);
+			case Quality_Unusual: 		sprite.SetRenderColor(200, 125, 255);
+			case Quality_Strange:		sprite.SetRenderColor(200, 150, 0);
+			case Quality_Collectors:	sprite.SetRenderColor(255, 100, 100);
+			case Quality_Haunted, 
+				Quality_HauntedStrange:	sprite.SetRenderColor(125, 255, 255);
+		}
 	}
+	
 }
 
 static void OnRemove(RF2_Object_Workbench bench)

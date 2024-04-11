@@ -70,13 +70,11 @@ void LoadMapSettings(const char[] mapName)
 				if (g_szStageBGM[0])
 				{
 					AddSoundToDownloadsTable(g_szStageBGM);
-					PrecacheSound(g_szStageBGM);
 				}
 				
 				if (g_szBossBGM[0])
 				{
 					AddSoundToDownloadsTable(g_szBossBGM);
-					PrecacheSound(g_szBossBGM);
 				}
 				
 				mapKey.GetString("enemy_pack", g_szEnemyPackName, sizeof(g_szEnemyPackName), INVALID_PACK);

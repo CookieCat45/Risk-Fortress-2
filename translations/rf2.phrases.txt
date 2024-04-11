@@ -665,20 +665,24 @@
 	
 	"SpawnAs"
 	{
-		"#format"	"{1:N}"
-		"en"		"Spawn {1} as..."
+		"en"		"Spawn a..."
 	}
 	
-	"SpawnedAsEnemy"
+	"SpawnedEnemy"
 	{
-		"#format"	"{1:N},{2:s}"
-		"en"		"Spawned {1} as enemy: {2}"
+		"#format"	"{1:s}"
+		"en"		"Spawned a {1}"
 	}
 	
-	"SpawnedAsBoss"
+	"SpawnedBoss"
 	{
-		"#format"	"{1:N},{2:s}"
-		"en"		"Spawned {1} as boss: {2}"
+		"#format"	"{1:s}"
+		"en"		"Spawned a {1}"
+	}
+	
+	"NoValidTargets"
+	{
+		"en"		"Couldn't find a valid target!"
 	}
 	
 	"ToggleSurvivor"

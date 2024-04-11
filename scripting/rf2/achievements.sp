@@ -3,27 +3,32 @@
 
 enum
 {
-	ACHIEVEMENT_BIGDAMAGE,
-	ACHIEVEMENT_FULLITEMLOG,
-	ACHIEVEMENT_DIE,
-	ACHIEVEMENT_DIE100,
-	ACHIEVEMENT_MARKETGARDEN,
-	ACHIEVEMENT_GOOMBA,
-	ACHIEVEMENT_AIRJUMPS,
-	ACHIEVEMENT_BLOODHOUND,
-	ACHIEVEMENT_HEADSPLITTER,
-	ACHIEVEMENT_SAXTON,
-	ACHIEVEMENT_HALLOWEENBOSSES,
-	ACHIEVEMENT_POCKETMEDIC,
-	ACHIEVEMENT_SENTRIES,
-	ACHIEVEMENT_BADMAGIC,
-	ACHIEVEMENT_TELEPORTER,
-	ACHIEVEMENT_TANKBUSTER,
-	ACHIEVEMENT_DAMAGECAP,
-	ACHIEVEMENT_FIRERATECAP,
-	ACHIEVEMENT_LUCKY,
-	ACHIEVEMENT_THUNDER,
-	ACHIEVEMENT_DANCE,
+	ACHIEVEMENT_BIGDAMAGE = 0,
+	ACHIEVEMENT_FULLITEMLOG = 1,
+	ACHIEVEMENT_DIE = 2,
+	ACHIEVEMENT_DIE100 = 3,
+	ACHIEVEMENT_MARKETGARDEN = 4,
+	ACHIEVEMENT_GOOMBA = 5,
+	ACHIEVEMENT_AIRJUMPS = 6,
+	ACHIEVEMENT_BLOODHOUND = 7,
+	ACHIEVEMENT_HEADSPLITTER = 8,
+	ACHIEVEMENT_SAXTON = 9,
+	ACHIEVEMENT_HALLOWEENBOSSES = 10,
+	ACHIEVEMENT_POCKETMEDIC = 11,
+	ACHIEVEMENT_SENTRIES = 12,
+	ACHIEVEMENT_BADMAGIC = 13,
+	ACHIEVEMENT_TELEPORTER = 14,
+	ACHIEVEMENT_TANKBUSTER = 15,
+	ACHIEVEMENT_DAMAGECAP = 16,
+	ACHIEVEMENT_FIRERATECAP = 17,
+	ACHIEVEMENT_LUCKY = 18,
+	ACHIEVEMENT_THUNDER = 19,
+	ACHIEVEMENT_DANCE = 20,
+	ACHIEVEMENT_TEMPLESECRET = 21,
+	ACHIEVEMENT_SCOUTSTUN = 22,
+	ACHIEVEMENT_KILL10K = 23,
+	ACHIEVEMENT_KILL100K = 24,
+	ACHIEVEMENT_GOOMBACHAIN = 25,
 	
 	// * * * INSERT NEW ACHIEVEMENTS DIRECTLY ABOVE THIS COMMENT ONLY! * * *
 	MAX_ACHIEVEMENTS,
@@ -90,6 +95,12 @@ int GetAchievementGoal(int achievement)
 		case ACHIEVEMENT_MARKETGARDEN, ACHIEVEMENT_GOOMBA, ACHIEVEMENT_BADMAGIC: return 10;
 		
 		case ACHIEVEMENT_TANKBUSTER: return 200;
+		
+		case ACHIEVEMENT_SCOUTSTUN: return 300;
+		
+		case ACHIEVEMENT_KILL10K: return 10000;
+		
+		case ACHIEVEMENT_KILL100K: return 100000;
 	}
 	
 	return 1;
@@ -100,9 +111,20 @@ bool IsAchievementUnlocked(int client, int achievement)
 	return GetAchievementProgress(client, achievement) >= GetAchievementGoal(achievement);
 }
 
+bool g_bTropicsMapExists;
 bool IsAchievementHidden(int achievement)
 {
-	return achievement == ACHIEVEMENT_DANCE || achievement == ACHIEVEMENT_BADMAGIC;
+	if (achievement == ACHIEVEMENT_TEMPLESECRET)
+	{
+		return !g_bTropicsMapExists;
+	}
+	
+	if (achievement == ACHIEVEMENT_GOOMBA || achievement == ACHIEVEMENT_GOOMBACHAIN)
+	{
+		return !IsGoombaAvailable();
+	}
+	
+	return achievement == ACHIEVEMENT_DANCE || achievement == ACHIEVEMENT_BADMAGIC || achievement == ACHIEVEMENT_AIRJUMPS;
 }
 
 void OnAchievementUnlocked(int client, int achievement)
@@ -125,6 +147,7 @@ void OnAchievementUnlocked(int client, int achievement)
 
 int GetAchievementInternalName(int achievement, char[] buffer, int size)
 {
+	// really wish SourcePawn had a way to convert symbol names to strings...
 	switch (achievement)
 	{
 		case ACHIEVEMENT_BIGDAMAGE: return strcopy(buffer, size, "ACHIEVEMENT_BIGDAMAGE");
@@ -148,6 +171,11 @@ int GetAchievementInternalName(int achievement, char[] buffer, int size)
 		case ACHIEVEMENT_THUNDER: return strcopy(buffer, size, "ACHIEVEMENT_THUNDER");
 		case ACHIEVEMENT_LUCKY: return strcopy(buffer, size, "ACHIEVEMENT_LUCKY");
 		case ACHIEVEMENT_DANCE: return strcopy(buffer, size, "ACHIEVEMENT_DANCE");
+		case ACHIEVEMENT_TEMPLESECRET: return strcopy(buffer, size, "ACHIEVEMENT_TEMPLESECRET");
+		case ACHIEVEMENT_SCOUTSTUN: return strcopy(buffer, size, "ACHIEVEMENT_SCOUTSTUN");
+		case ACHIEVEMENT_KILL10K: return strcopy(buffer, size, "ACHIEVEMENT_KILL10K");
+		case ACHIEVEMENT_KILL100K: return strcopy(buffer, size, "ACHIEVEMENT_KILL100K");
+		case ACHIEVEMENT_GOOMBACHAIN: return strcopy(buffer, size, "ACHIEVEMENT_GOOMBACHAIN");
 	}
 	
 	if (!buffer[0])

@@ -33,6 +33,21 @@
 #define MAT_DEBUGEMPTY "debug/debugempty.vmt"
 #define MAT_BEAM "materials/sprites/laser.vmt"
 
+#define MODEL_BOT_SCOUT "models/rf2/bots/bot_scout.mdl"
+#define MODEL_BOT_SOLDIER "models/rf2/bots/bot_soldier.mdl"
+#define MODEL_BOT_PYRO "models/rf2/bots/bot_pyro.mdl"
+#define MODEL_BOT_DEMO "models/rf2/bots/bot_demo_fix1.mdl"
+#define MODEL_BOT_HEAVY "models/rf2/bots/bot_heavy.mdl"
+#define MODEL_BOT_ENGINEER "models/rf2/bots/bot_engineer.mdl"
+#define MODEL_BOT_MEDIC "models/rf2/bots/bot_medic.mdl"
+#define MODEL_BOT_SNIPER "models/rf2/bots/bot_sniper.mdl"
+#define MODEL_BOT_SPY "models/rf2/bots/bot_spy.mdl"
+#define MODEL_GIANT_SCOUT "models/rf2/boss_bots/bot_scout_boss.mdl"
+#define MODEL_GIANT_SOLDIER "models/rf2/boss_bots/bot_soldier_boss.mdl"
+#define MODEL_GIANT_PYRO "models/rf2/boss_bots/bot_pyro_boss.mdl"
+#define MODEL_GIANT_DEMO "models/rf2/boss_bots/bot_demo_boss_fix1.mdl"
+#define MODEL_GIANT_HEAVY "models/rf2/boss_bots/bot_heavy_boss.mdl"
+
 // Sounds -------------------------------------------------------------------------------------------------------------------------------------
 #define SND_ITEM_PICKUP "ui/item_default_pickup.wav"
 #define SND_GAME_OVER "music/mvm_lost_wave.wav"
@@ -94,6 +109,9 @@
 #define SND_DRAGONBORN2 "misc/halloween/spell_mirv_explode_secondary.wav"
 #define SND_AUTOFIRE_TOGGLE "buttons/button3.wav"
 #define SND_AUTOFIRE_SHOOT "weapons/smg1/smg1_fire1.wav"
+#define SND_STUN "player/pl_impact_stun.wav"
+#define SND_PARACHUTE "items/para_open.wav"
+#define SND_1UP "rf2/sfx/1up.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds

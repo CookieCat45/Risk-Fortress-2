@@ -32,6 +32,7 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineInputFunc("GameOver", InputFuncValueType_Void, Input_GameOver)
 			.DefineInputFunc("EnableEnemySpawning", InputFuncValueType_Void, Input_EnableEnemySpawning)
 			.DefineInputFunc("DisableEnemySpawning", InputFuncValueType_Void, Input_DisableEnemySpawning)
+			.DefineInputFunc("TriggerAchievement", InputFuncValueType_Integer, Input_TriggerAchievement)
 			.DefineOutput("OnTeleporterEventStart")
 			.DefineOutput("OnTeleporterEventComplete")
 			.DefineOutput("OnTankDestructionStart")
@@ -86,19 +87,35 @@ methodmap RF2_GameRules < CBaseEntity
 
 RF2_GameRules GetRF2GameRules()
 {
-	if (EntRefToEntIndex(g_iRF2GameRulesEntRef) == INVALID_ENT)
+	if (g_iRF2GameRulesEntRef == INVALID_ENT || EntRefToEntIndex(g_iRF2GameRulesEntRef) == INVALID_ENT)
 	{
-		g_iRF2GameRulesEntRef = EntIndexToEntRef(CreateEntityByName("rf2_gamerules"));
+		int entity = FindEntityByClassname(INVALID_ENT, "rf2_gamerules");
+		if (entity != INVALID_ENT)
+		{
+			g_iRF2GameRulesEntRef = EntIndexToEntRef(entity);
+		}
+		else
+		{
+			entity = CreateEntityByName("rf2_gamerules");
+			if (entity != INVALID_ENT)
+			{
+				g_iRF2GameRulesEntRef = EntIndexToEntRef(entity);
+			}
+		}
 	}
 	
-	return RF2_GameRules(EntRefToEntIndex(g_iRF2GameRulesEntRef));
+	int gameRules = EntRefToEntIndex(g_iRF2GameRulesEntRef);
+	if (gameRules == INVALID_ENT)
+	{
+		LogError("Warning! Failed to find rf2_gamerules entity");
+	}
+	
+	return RF2_GameRules(gameRules);
 }
 
 static void OnCreate(RF2_GameRules gamerules)
 {
-	g_iRF2GameRulesEntRef = EntIndexToEntRef(gamerules.index);
 	gamerules.AllowEnemySpawning = true;
-	
 	char teleModel[PLATFORM_MAX_PATH];
 	gamerules.GetTeleModel(teleModel, sizeof(teleModel));
 	if (teleModel[0] && FileExists(teleModel, true, NULL_STRING))
@@ -139,6 +156,12 @@ public void Input_EnableEnemySpawning(int entity, int activator, int caller, int
 public void Input_DisableEnemySpawning(int entity, int activator, int caller, int value)
 {
 	RF2_GameRules(entity).AllowEnemySpawning = false;
+}
+
+public void Input_TriggerAchievement(int entity, int activator, int caller, int value)
+{
+	if (IsValidClient(activator))
+		TriggerAchievement(activator, value);
 }
 
 int SpawnObjects()
@@ -219,7 +242,7 @@ int SpawnObjects()
 	
 	char name[64];
 	int count;
-	const int objectCount = 8;
+	const int objectCount = 9;
 	for (int i = 1; i <= objectCount; i++)
 	{
 		switch (i-1)
@@ -230,6 +253,7 @@ int SpawnObjects()
 			case Crate_Strange: count = strangeWeight;
 			case Crate_Haunted: count = hauntedWeight;
 			case Crate_Collectors: count = collectorWeight;
+			case Crate_Unusual: continue; // never spawn naturally
 			
 			// Non-crate objects
 			case CrateType_Max: strcopy(name, sizeof(name), "rf2_object_workbench"), count = workbenchWeight;

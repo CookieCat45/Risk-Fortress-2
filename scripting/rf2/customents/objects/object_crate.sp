@@ -5,6 +5,7 @@
 #define MODEL_CRATE_STRANGE "models/props_hydro/water_barrel.mdl"
 #define MODEL_CRATE_HAUNTED "models/player/items/crafting/halloween2015_case.mdl"
 #define MODEL_CRATE_COLLECTOR "models/props_island/mannco_case_small.mdl"
+#define MODEL_CRATE_UNUSUAL "models/workshop/cases/invasion_case/invasion_case_rare.mdl"
 
 static CEntityFactory g_Factory;
 enum
@@ -14,6 +15,7 @@ enum
 	Crate_Strange,
 	Crate_Collectors,
 	Crate_Haunted,
+	Crate_Unusual,
 	CrateType_Max,
 };
 
@@ -123,7 +125,8 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 		{
 			case Crate_Normal: cost = g_cvObjectBaseCost.FloatValue * costMult;
 			case Crate_Large, Crate_Collectors: cost = g_cvObjectBaseCost.FloatValue * costMult * 2.0;
-			case Crate_Strange: cost =g_cvObjectBaseCost.FloatValue * costMult * 1.5;
+			case Crate_Strange: cost = g_cvObjectBaseCost.FloatValue * costMult * 1.5;
+			case Crate_Unusual: cost = g_cvObjectBaseCost.FloatValue * costMult * 16.0;
 		}
 		
 		return float(RoundToFloor(cost));
@@ -169,6 +172,47 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 				this.SetModel(MODEL_CRATE_HAUNTED);
 				if (this.Item == Item_Null)
 					this.Item = GetRandomItem(_, _, _, 1);
+				
+				if (IsMapRunning())
+				{
+					float pos[3];
+					this.GetAbsOrigin(pos);
+					TE_TFParticle("spell_fireball_small_glow_blue", pos, this.index);
+					CBaseEntity light = CBaseEntity(CreateEntityByName("light_dynamic"));
+					light.KeyValue("_light", "100 255 255 200");
+					light.KeyValue("brightness", "5");
+					light.KeyValue("distance", "100");
+					this.WorldSpaceCenter(pos);
+					light.Teleport(pos);
+					light.Spawn();
+					ParentEntity(light.index, this.index);
+				}
+				
+			}
+			
+			case Crate_Unusual:
+			{
+				this.SetModel(MODEL_CRATE_UNUSUAL);
+				this.SetPropFloat(Prop_Send, "m_flModelScale", 1.2);
+				this.SetRenderColor(220, 100, 200);
+				if (this.Item == Item_Null)
+					this.Item = GetRandomItem(_, _, 1);
+				
+				if (IsMapRunning())
+				{
+					float pos[3];
+					this.GetAbsOrigin(pos);
+					TE_TFParticle("utaunt_arcane_purple_sparkle2", pos, this.index);
+					CBaseEntity light = CBaseEntity(CreateEntityByName("light_dynamic"));
+					light.KeyValue("_light", "255 100 255 200");
+					light.KeyValue("brightness", "6");
+					light.KeyValue("distance", "200");
+					this.WorldSpaceCenter(pos);
+					light.Teleport(pos);
+					light.Spawn();
+					ParentEntity(light.index, this.index);
+				}
+				
 			}
 		}
 		
@@ -200,11 +244,10 @@ RF2_Object_Crate SpawnCrate(int type, const float pos[3], bool bonus=false)
 
 void Crate_OnMapStart()
 {
-	PrecacheModel2(MODEL_CRATE, true);
+	AddModelToDownloadsTable(MODEL_CRATE);
 	PrecacheModel2(MODEL_CRATE_STRANGE, true);
 	PrecacheModel2(MODEL_CRATE_HAUNTED, true);
 	PrecacheModel2(MODEL_CRATE_COLLECTOR, true);
-	AddModelToDownloadsTable(MODEL_CRATE);
 }
 
 static void OnCreate(RF2_Object_Crate crate)
@@ -344,7 +387,7 @@ public Action Timer_SpawnItem(Handle timer, DataPack pack)
 	pos[2] = pack.ReadFloat();
 	SpawnItem(item, pos, client, 6.0);
 	
-	if (!GetCookieBool(client, g_coTutorialItemPickup))
+	if (client > 0 && !GetCookieBool(client, g_coTutorialItemPickup))
 	{
 		PrintKeyHintText(client, "%t", "ItemPickupTutorial");
 	}

@@ -384,7 +384,12 @@ void PickupCash(int client, int entity)
 			mult = 1.0;
 			if (GetPlayerCrateBonus(receiver) > 0 && !IsBossEventActive())
 			{
-				mult = 1.5;
+				mult += 0.5;
+			}
+			
+			if (g_bRingCashBonus)
+			{
+				mult += GetItemMod(ItemStrange_SpecialRing, 0);
 			}
 			
 			AddPlayerCash(receiver, g_flCashValue[entity] * mult);
@@ -414,7 +419,7 @@ int SpawnInfoParticle(const char[] effectName, const float pos[3], float duratio
 	ActivateEntity(particle);
 	AcceptEntityInput(particle, "Start");
 	
-	if (parent != -1)
+	if (parent != INVALID_ENT)
 	{
 		ParentEntity(particle, parent, attachment);
 	}
@@ -423,11 +428,11 @@ int SpawnInfoParticle(const char[] effectName, const float pos[3], float duratio
 	{
 		CreateTimer(duration, Timer_DeleteEntity, EntIndexToEntRef(particle), TIMER_FLAG_NO_MAPCHANGE);
 	}
-
+	
 	return particle;
 }
 
-void TE_TFParticle(const char[] effectName, const float pos[3], int entity=-1, int attachType=PATTACH_ABSORIGIN, const char[] attachmentName="",
+void TE_TFParticle(const char[] effectName, const float pos[3]=OFF_THE_MAP, int entity=-1, int attachType=PATTACH_ABSORIGIN, const char[] attachmentName="",
 bool reset=false, bool controlPoint=false, const float controlPointOffset[3]=NULL_VECTOR, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0)
 {
 	TE_Start("TFParticleEffect");
@@ -514,6 +519,72 @@ int GetParticleEffectIndex(const char[] name)
 	return index;
 }
 
+void SpawnParticleViaTrigger(int entity, const char[] effectName, const char[] attachmentName="", int attachType=PATTACH_ABSORIGIN)
+{
+	int trigger = CreateEntityByName("trigger_particle");
+	DispatchKeyValue(trigger, "particle_name", effectName);
+	DispatchKeyValue(trigger, "attachment_name", attachmentName);
+	DispatchKeyValueInt(trigger, "attachment_type", attachType);
+	DispatchKeyValueInt(trigger, "spawnflags", 64);
+	DispatchSpawn(trigger);
+	SetVariantString("!activator");
+	AcceptEntityInput(trigger, "StartTouch", entity, entity);
+	RemoveEdict(trigger);
+}
+
+/*
+void TE_DrawBox(int client, const float origin[3], const float endOrigin[3], const float constMins[3], const float constMaxs[3], 
+	float duration = 0.1, int laserIndex, const int color[4])
+{
+	float mins[3], maxs[3];
+	CopyVectors(constMins, mins);
+	CopyVectors(constMaxs, maxs);
+	if( mins[0] == maxs[0] && mins[1] == maxs[1] && mins[2] == maxs[2] )
+	{
+		mins = {-15.0, -15.0, -15.0};
+		maxs = {15.0, 15.0, 15.0};
+	}
+	else
+	{
+		AddVectors(endOrigin, maxs, maxs);
+		AddVectors(origin, mins, mins);
+	}
+
+	float pos1[3], pos2[3], pos3[3], pos4[3], pos5[3], pos6[3];
+	pos1 = maxs;
+	pos1[0] = mins[0];
+	pos2 = maxs;
+	pos2[1] = mins[1];
+	pos3 = maxs;
+	pos3[2] = mins[2];
+	pos4 = mins;
+	pos4[0] = maxs[0];
+	pos5 = mins;
+	pos5[1] = maxs[1];
+	pos6 = mins;
+	pos6[2] = maxs[2];
+	
+	TE_SendBeam(client, maxs, pos1, duration, laserIndex, color);
+	TE_SendBeam(client, maxs, pos2, duration, laserIndex, color);
+	TE_SendBeam(client, maxs, pos3, duration, laserIndex, color);
+	TE_SendBeam(client, pos6, pos1, duration, laserIndex, color);
+	TE_SendBeam(client, pos6, pos2, duration, laserIndex, color);
+	TE_SendBeam(client, pos6, mins, duration, laserIndex, color);
+	TE_SendBeam(client, pos4, mins, duration, laserIndex, color);
+	TE_SendBeam(client, pos5, mins, duration, laserIndex, color);
+	TE_SendBeam(client, pos5, pos1, duration, laserIndex, color);
+	TE_SendBeam(client, pos5, pos3, duration, laserIndex, color);
+	TE_SendBeam(client, pos4, pos3, duration, laserIndex, color);
+	TE_SendBeam(client, pos4, pos2, duration, laserIndex, color);
+}
+
+void TE_SendBeam(int client, const float mins[3], const float maxs[3], float duration = 0.1, int laserIndex, const int color[4])
+{
+	TE_SetupBeamPoints(mins, maxs, laserIndex, laserIndex, 0, 30, duration, 1.0, 1.0, 1, 0.0, color, 30);
+	TE_SendToClient(client);
+}
+*/
+
 void SetEntItemProc(int entity, int item)
 {
 	g_iItemDamageProc[entity] = item;
@@ -564,9 +635,16 @@ bool IsCombatChar(int entity)
 	return entity > 0 && CBaseEntity(entity).IsCombatCharacter();
 }
 
-void GetEntPos(int entity, float buffer[3])
+void GetEntPos(int entity, float buffer[3], bool center=false)
 {
-	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", buffer);
+	if (center)
+	{
+		CBaseEntity(entity).WorldSpaceCenter(buffer);
+	}
+	else
+	{
+		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", buffer);
+	}
 }
 
 void SetSequence(int entity, const char[] sequence, float playbackrate=1.0)

@@ -197,6 +197,8 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			
 			oldFog[i] = GetEntPropEnt(i, Prop_Data, "m_hCtrl");
 			SetEntPropEnt(i, Prop_Data, "m_hCtrl", fog);
+			if (fog == INVALID_ENT)
+				continue;
 			
 			DataPack pack;
 			CreateDataTimer(time, Timer_RestorePlayerFog, pack, TIMER_FLAG_NO_MAPCHANGE);
@@ -333,23 +335,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		RemoveEntity2(this.Bubble.index);
 		EmitSoundToAll(SND_TELEPORTER_CHARGED);
 		StopMusicTrackAll();
-		
-		bool aliveEnemies;
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ENEMY)
-			{
-				TF2_StunPlayer(i, 20.0, _, TF_STUNFLAG_BONKSTUCK);
-				TF2_AddCondition(i, TFCond_FreezeInput, 20.0);
-				aliveEnemies = true;
-			}
-		}
-		
-		if (aliveEnemies)
-		{
-			EmitSoundToAll(SND_ENEMY_STUN);
-		}
-		
+		StunRadioWave();
 		int entity = MaxClients+1;
 		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 		{
@@ -467,8 +453,6 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 
 void Teleporter_OnMapStart()
 {
-	PrecacheModel2(MODEL_TELEPORTER, true);
-	PrecacheModel2(MODEL_TELEPORTER_RADIUS, true);
 	AddModelToDownloadsTable(MODEL_TELEPORTER);
 	AddModelToDownloadsTable(MODEL_TELEPORTER_RADIUS);
 	AddMaterialToDownloadsTable("materials/rf2/objects/matteleporterclean");

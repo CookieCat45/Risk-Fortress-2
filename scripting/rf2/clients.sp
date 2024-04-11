@@ -28,10 +28,12 @@ void RefreshClient(int client, bool force=false)
 	g_iPlayerBossType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;
 	g_iPlayerAirDashCounter[client] = 0;
+	g_iPlayerGoombaChain[client] = 0;
 	g_iPlayerEnemySpawnType[client] = -1;
 	g_iPlayerBossSpawnType[client] = -1;
 	g_flPlayerRegenBuffTime[client] = 0.0;
 	g_flPlayerRifleHeadshotBonusTime[client] = 0.0;
+	g_flPlayerGravityJumpBonusTime[client] = 0.0;
 	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
@@ -547,6 +549,34 @@ void CalculatePlayerMiscStats(int client)
 	}
 }
 
+void UpdatePlayerGravity(int client)
+{
+	float gravity = 1.0;
+	if (PlayerHasItem(client, ItemScout_MonarchWings) && CanUseCollectorItem(client, ItemScout_MonarchWings) && g_iPlayerAirDashCounter[client] > 0)
+	{
+		float angles[3];
+		GetClientEyeAngles(client, angles);
+		bool weighDown = (angles[0] >= 65.0) && asBool(GetClientButtons(client) & IN_DUCK);
+		if (g_flPlayerGravityJumpBonusTime[client] > 0.0)
+		{
+			if (!weighDown)
+			{
+				gravity -= GetItemMod(ItemScout_MonarchWings, 1);
+			}
+			else
+			{
+				gravity += GetItemMod(ItemScout_MonarchWings, 3);
+			}
+		}
+		else if (weighDown)
+		{
+			gravity += GetItemMod(ItemScout_MonarchWings, 3);
+		}
+	}
+	
+	SetEntityGravity(client, gravity*CalcItemMod_HyperbolicInverted(client, Item_UFO, 0));
+}
+
 float GetPlayerCash(int client)
 {
 	return g_flPlayerCash[client];
@@ -781,8 +811,9 @@ public Action Timer_VampireSapper(Handle timer, int client)
 	return Plugin_Continue;
 }
 
-void OnPlayerAirDash(int client, int count)
+void OnPlayerAirDash(int client)
 {
+	/*
 	int airDashLimit = 1;
 	airDashLimit += GetPlayerItemCount(client, ItemScout_MonarchWings);
 	
@@ -797,9 +828,23 @@ void OnPlayerAirDash(int client, int count)
 		TriggerAchievement(client, ACHIEVEMENT_AIRJUMPS);
 	}
 	
+	
 	if (PlayerHasItem(client, ItemScout_MonarchWings))
 	{
 		TF2_AddCondition(client, TFCond_Buffed, GetItemMod(ItemScout_MonarchWings, 1));
+	}
+	*/
+	
+	if (PlayerHasItem(client, ItemScout_MonarchWings) && CanUseCollectorItem(client, ItemScout_MonarchWings))
+	{
+		float vel[3], pos[3];
+		vel[2] = 125.0 * (1.0+CalcItemMod(client, ItemScout_MonarchWings, 0));
+		SDK_ApplyAbsVelocityImpulse(client, vel);
+		g_flPlayerGravityJumpBonusTime[client] = GetItemMod(ItemScout_MonarchWings, 2);
+		UpdatePlayerGravity(client);
+		EmitSoundToAll(SND_PARACHUTE, client);
+		GetEntPos(client, pos);
+		TE_TFParticle("taunt_flip_land", pos);
 	}
 }
 

@@ -472,9 +472,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		
 		if (FileExists(g_szEnemyModel[e]) || FileExists(g_szEnemyModel[e], true))
 		{
-			PrecacheModel2(g_szEnemyModel[e]);
-			if (!FileExists(g_szEnemyModel[e], true))
-				AddModelToDownloadsTable(g_szEnemyModel[e]);
+			AddModelToDownloadsTable(g_szEnemyModel[e]);
 		}
 		else
 		{
@@ -852,7 +850,6 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	SetEntPropFloat(client, Prop_Send, "m_flHeadScale", enemy.HeadScale);
 	SetEntPropFloat(client, Prop_Send, "m_flTorsoScale", enemy.TorsoScale);
 	SetEntPropFloat(client, Prop_Send, "m_flHandScale", enemy.HandScale);
-	
 	if (g_bPlayerSpawnedByTeleporter[client])
 	{
 		TE_TFParticle("eyeboss_tp_player", spawnPos);
@@ -1103,4 +1100,23 @@ int GetActiveEnemiesOfType(int type)
 	}
 	
 	return count;
+}
+
+void StunRadioWave()
+{
+	bool aliveEnemies;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ENEMY)
+		{
+			TF2_AddCondition(i, TFCond_MVMBotRadiowave, 20.0);
+			aliveEnemies = true;
+		}
+	}
+	
+	if (aliveEnemies)
+	{
+		EmitSoundToAll(SND_ENEMY_STUN);
+		EmitSoundToAll(SND_STUN);
+	}
 }

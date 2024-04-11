@@ -25,12 +25,13 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_givecash", Command_GiveCash, ADMFLAG_SLAY, "Give cash to a RED player. /rf2_givecash <player> <amount>");
 	RegAdminCmd("rf2_givexp", Command_GiveXP, ADMFLAG_SLAY, "Give XP to a RED player. /rf2_givexp <player> <amount>");
 	RegAdminCmd("rf2_start_teleporter", Command_StartTeleporterEvent, ADMFLAG_SLAY, "Starts the Teleporter event.");
-	RegAdminCmd("rf2_spawn_boss", Command_ForceBoss, ADMFLAG_SLAY, "Force a (non-survivor) player to become a boss. /rf2_spawn_boss <player>");
-	RegAdminCmd("rf2_spawn_enemy", Command_ForceEnemy, ADMFLAG_SLAY, "Force a (non-survivor) player to become an enemy. /rf2_spawn_enemy <player>");
+	RegAdminCmd("rf2_spawn_boss", Command_ForceBoss, ADMFLAG_SLAY, "Spawn a boss.");
+	RegAdminCmd("rf2_spawn_enemy", Command_ForceEnemy, ADMFLAG_SLAY, "Spawn an enemy.");
 	RegAdminCmd("rf2_set_difficulty", Command_SetDifficulty, ADMFLAG_SLAY, "Sets the difficulty level. 0 = Scrap, 1 = Iron, 2 = Steel, 3 = Titanium");
 	RegAdminCmd("rf2_setnextmap", Command_ForceMap, ADMFLAG_SLAY, "Forces the next map to be the map specified. This will not immediately change the map.");
 	RegAdminCmd("rf2_make_survivor", Command_MakeSurvivor, ADMFLAG_SLAY, "Force a player to become a Survivor.\nWill not work if the maximum survivor count has been reached.");
 	RegAdminCmd("rf2_addseconds", Command_AddSeconds, ADMFLAG_SLAY, "Add seconds to the difficulty timer. /rf2_addseconds <seconds>");
+	RegAdminCmd("rf2_particle_test", Command_ParticleTest, ADMFLAG_SLAY, "For testing particle effects.\n/rf2_particle_test <effect name> <method>.\n0 = Spawn via TE, 1 = Spawn via info_particle system, 2 = Spawn via trigger_particle.");
 	
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
@@ -1087,23 +1088,7 @@ public Action Command_ForceBoss(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	char arg1[32];
-	GetCmdArg(1, arg1, sizeof(arg1));
-	int target = FindTarget(client, arg1);
-	
-	if (target == INVALID_ENT)
-	{
-		ReplyToTargetError(client, COMMAND_TARGET_NONE);
-	}
-	else if (IsPlayerSurvivor(target))
-	{
-		RF2_ReplyToCommand(client, "%t", "CantUseOnSurvivor");
-	}
-	else
-	{
-		ShowBossSpawnMenu(client, target);
-	}
-	
+	ShowBossSpawnMenu(client);
 	return Plugin_Handled;
 }
 
@@ -1121,32 +1106,15 @@ public Action Command_ForceEnemy(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	char arg1[32];
-	GetCmdArg(1, arg1, sizeof(arg1));
-	int target = FindTarget(client, arg1);
-	
-	if (target == INVALID_ENT)
-	{
-		ReplyToTargetError(client, COMMAND_TARGET_NONE);
-	}
-	else if (IsPlayerSurvivor(target))
-	{
-		RF2_ReplyToCommand(client, "%t", "CantUseOnSurvivor");
-	}
-	else
-	{
-		ShowEnemySpawnMenu(client, target);
-	}
-	
+	ShowEnemySpawnMenu(client);
 	return Plugin_Handled;	
 }
 
-void ShowBossSpawnMenu(int client, int target)
+void ShowBossSpawnMenu(int client)
 {
 	Menu menu = new Menu(Menu_SpawnBoss);
 	char buffer[128], info[16], bossName[256];
-	
-	menu.SetTitle("%T", "SpawnAs", LANG_SERVER, target);
+	menu.SetTitle("%T", "SpawnAs", client);
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
 		if (!EnemyByIndex(i).IsBoss)
@@ -1154,7 +1122,7 @@ void ShowBossSpawnMenu(int client, int target)
 		
 		EnemyByIndex(i).GetName(bossName, sizeof(bossName));
 		strcopy(buffer, sizeof(buffer), bossName);
-		FormatEx(info, sizeof(info), "%i;%i_", target, i);
+		FormatEx(info, sizeof(info), "%i", i);
 		menu.AddItem(info, buffer);
 	}
 	
@@ -1167,32 +1135,30 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 	{
 		case MenuAction_Select:
 		{
-			char info[32], buffer[32];
+			char info[8];
 			menu.GetItem(param2, info, sizeof(info));
-			SplitString(info, ";", buffer, sizeof(buffer));
-			
-			int client = StringToInt(buffer);
-			ReplaceStringEx(info, sizeof(info), buffer, "");
-			ReplaceStringEx(info, sizeof(info), ";", "");
-			
-			if (!IsValidClient(client) || IsPlayerSurvivor(client))
+			int type = StringToInt(info);
+			int target = GetRandomPlayer(TEAM_ENEMY, false);
+			if (!IsValidClient(target))
 			{
-				RF2_PrintToChat(param1, "%t", "TargetInvalid");
+				target = GetRandomPlayer(TEAM_ENEMY, true);
+			}
+			
+			if (IsValidClient(target))
+			{
+				RefreshClient(target);
+				float pos[3];
+				GetEntPos(param1, pos);
+				char bossName[256];
+				SpawnBoss(target, type, pos, false, 0.0, 3000.0);
+				EnemyByIndex(type).GetName(bossName, sizeof(bossName));
+				RF2_PrintToChat(param1, "%t", "SpawnedBoss", bossName);
 			}
 			else
 			{
-				SplitString(info, "_", buffer, sizeof(buffer));
-				int type = StringToInt(buffer);
-				char bossName[256];
-				
-				RefreshClient(client);
-				float pos[3];
-				GetEntPos(param1, pos);
-				
-				SpawnBoss(client, type, pos, false, 0.0, 2000.0);
-				Enemy(client).GetName(bossName, sizeof(bossName));
-				RF2_PrintToChat(param1, "%t", "SpawnedAsBoss", client, bossName);
+				RF2_PrintToChat(param1, "%t", "NoValidTargets");
 			}
+			
 		}
 		case MenuAction_End:
 		{
@@ -1203,12 +1169,11 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 	return 0;
 }
 
-void ShowEnemySpawnMenu(int client, int target)
+void ShowEnemySpawnMenu(int client)
 {
 	Menu menu = new Menu(Menu_SpawnEnemy);
 	char buffer[128], info[16], enemyName[256];
-	
-	menu.SetTitle("%T", "SpawnAs", LANG_SERVER, target);
+	menu.SetTitle("%T", "SpawnAs", client);
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
 		if (EnemyByIndex(i).IsBoss)
@@ -1216,11 +1181,11 @@ void ShowEnemySpawnMenu(int client, int target)
 		
 		EnemyByIndex(i).GetName(enemyName, sizeof(enemyName));
 		strcopy(buffer, sizeof(buffer), enemyName);
-		FormatEx(info, sizeof(info), "%i;%i_", target, i);
+		FormatEx(info, sizeof(info), "%i", i);
 		menu.AddItem(info, buffer);
 	}
 	
-	menu.Display(client, MENU_TIME_FOREVER);	
+	menu.Display(client, MENU_TIME_FOREVER);
 }
 
 public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
@@ -1229,31 +1194,28 @@ public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
 	{
 		case MenuAction_Select:
 		{
-			char info[32], buffer[32];
+			char info[8];
 			menu.GetItem(param2, info, sizeof(info));
-			SplitString(info, ";", buffer, sizeof(buffer));
-			
-			int client = StringToInt(buffer);
-			ReplaceStringEx(info, sizeof(info), buffer, "");
-			ReplaceStringEx(info, sizeof(info), ";", "");
-			
-			if (!IsValidClient(client) || IsPlayerSurvivor(client))
+			int type = StringToInt(info);
+			int target = GetRandomPlayer(TEAM_ENEMY, false);
+			if (!IsValidClient(target))
 			{
-				RF2_PrintToChat(param1, "%t", "TargetInvalid");
+				target = GetRandomPlayer(TEAM_ENEMY, true);
+			}
+			
+			if (IsValidClient(target))
+			{
+				RefreshClient(target);
+				float pos[3];
+				GetEntPos(param1, pos);
+				char enemyName[256];
+				SpawnEnemy(target, type, pos, 0.0, 3000.0);
+				EnemyByIndex(type).GetName(enemyName, sizeof(enemyName));
+				RF2_PrintToChat(param1, "%t", "SpawnedEnemy", enemyName);
 			}
 			else
 			{
-				SplitString(info, "_", buffer, sizeof(buffer));
-				int type = StringToInt(buffer);
-				char enemyName[256];
-				
-				RefreshClient(client);
-				float pos[3];
-				GetEntPos(param1, pos);
-				
-				SpawnEnemy(client, type, pos, 0.0, 2000.0);
-				EnemyByIndex(type).GetName(enemyName, sizeof(enemyName));
-				RF2_PrintToChat(param1, "%t", "SpawnedAsEnemy", client, enemyName);
+				RF2_PrintToChat(param1, "%t", "NoValidTargets");
 			}
 		}
 		case MenuAction_End:
@@ -1859,4 +1821,26 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 			g_bPlayerIsAFK[i] = false;
 		}
 	}
+}
+
+public Action Command_ParticleTest(int client, int args)
+{
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+
+	float pos[3];
+	GetEntPos(client, pos, true);
+	char effect[128];
+	GetCmdArg(1, effect, sizeof(effect));
+	switch (GetCmdArgInt(2))
+	{
+		case 0: SpawnInfoParticle(effect, pos, 15.0);
+		case 1: TE_TFParticle(effect, pos);
+		case 2: SpawnParticleViaTrigger(client, effect);
+	}
+
+	return Plugin_Handled;
 }

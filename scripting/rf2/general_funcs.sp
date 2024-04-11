@@ -134,6 +134,11 @@ void ReloadPlugin(bool changeMap=true)
 	}
 }
 
+bool IsMapRunning()
+{
+	return g_bMapRunning;
+}
+
 void UTIL_ScreenFade(int player, int color[4], float fadeTime, float fadeHold, int flags)
 {
 	BfWrite bf = UserMessageToBfWrite(StartMessageOne("Fade", player, USERMSG_RELIABLE));
@@ -308,7 +313,7 @@ void SetHudDifficulty(int difficulty)
 			g_iMainHudR = 90;
 			g_iMainHudG = 0;
 			g_iMainHudB = 0;
-			g_szHudDifficulty = "HAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHA";
+			g_szHudDifficulty = "HAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHA";
 		}
 	}
 }
@@ -419,7 +424,7 @@ void UpdateGameDescription()
 }
 
 // It does not matter if the .mdl extension is included in the path or not.
-void AddModelToDownloadsTable(const char[] file)
+void AddModelToDownloadsTable(const char[] file, bool precache=true)
 {
 	char buffer[PLATFORM_MAX_PATH];
 	char extension[16];
@@ -442,6 +447,10 @@ void AddModelToDownloadsTable(const char[] file)
 		if (FileExists(buffer))
 		{
 			AddFileToDownloadsTable(buffer);
+			if (precache && strcmp2(extension, ".mdl"))
+			{
+				PrecacheModel2(buffer);
+			}
 		}
 		else if (strcmp2(extension, ".mdl") && !FileExists(buffer, true)) // we only care about reporting if the .mdl file missing, and non Valve files
 		{
@@ -453,7 +462,7 @@ void AddModelToDownloadsTable(const char[] file)
 }
 
 // This will ensure that sound/ is at the beginning of the file path if it isn't.
-void AddSoundToDownloadsTable(const char[] file)
+void AddSoundToDownloadsTable(const char[] file, bool precache=true)
 {
 	char buffer[PLATFORM_MAX_PATH];
 	strcopy(buffer, sizeof(buffer), file);
@@ -466,6 +475,12 @@ void AddSoundToDownloadsTable(const char[] file)
 	if (FileExists(buffer))
 	{
 		AddFileToDownloadsTable(buffer);
+		if (precache)
+		{
+			// I don't know if sound/ should be omitted here but I'm doing it just in case
+			ReplaceStringEx(buffer, sizeof(buffer), "sound/", "");
+			PrecacheSound2(buffer);
+		}
 	}
 	else if (!FileExists(buffer, true)) // don't show warnings for Valve files.
 	{
@@ -524,7 +539,7 @@ void PrecacheSoundArray(const char[][] soundArray, int size, bool download=true)
 		PrecacheSound2(soundArray[i], true);
 		if (download)
 		{
-			AddSoundToDownloadsTable(soundArray[i]);
+			AddSoundToDownloadsTable(soundArray[i], false);
 		}
 	}
 }

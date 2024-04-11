@@ -68,10 +68,9 @@ void BadassTank_Init()
 void BadassTank_OnMapStart()
 {
 	g_iBadassTankModelIndex = PrecacheModel2(MODEL_TANK_BADASS, true);
-	PrecacheSound2(SND_TANK_LASERSHOOT, true);
+	AddModelToDownloadsTable(MODEL_TANK_BADASS, false);
 	PrecacheSound2(SND_TANK_LASERRISE, true);
 	PrecacheSound2(SND_TANK_LASERRISE_END, true);
-	AddModelToDownloadsTable(MODEL_TANK_BADASS);
 	AddSoundToDownloadsTable(SND_TANK_LASERSHOOT);
 	PrecacheSoundArray(g_szTankLaserVoices, sizeof(g_szTankLaserVoices));
 	PrecacheSoundArray(g_szTankBarrageVoices, sizeof(g_szTankBarrageVoices));
@@ -148,22 +147,7 @@ void EndTankDestructionMode()
 		PrintCenterText(i, text);
 	}
 	
-	bool aliveEnemies;
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ENEMY)
-		{
-			TF2_StunPlayer(i, 20.0, _, TF_STUNFLAG_BONKSTUCK);
-			TF2_AddCondition(i, TFCond_FreezeInput, 20.0);
-			aliveEnemies = true;
-		}
-	}
-	
-	if (aliveEnemies)
-	{
-		EmitSoundToAll(SND_ENEMY_STUN);
-	}
-	
+	StunRadioWave();
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 	{

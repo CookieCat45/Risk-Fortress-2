@@ -34,13 +34,12 @@ methodmap RF2_Projectile_Shuriken < RF2_Projectile_Base
 
 void Shuriken_OnMapStart()
 {
-	PrecacheModel2(MODEL_SHURIKEN, true);
-	PrecacheScriptSound(GSND_SHURIKEN_HITCHAR);
-	PrecacheScriptSound(GSND_SHURIKEN_HITWORLD);
 	AddModelToDownloadsTable(MODEL_SHURIKEN);
 	AddMaterialToDownloadsTable("materials/rf2/projectiles/body");
 	AddMaterialToDownloadsTable("materials/rf2/projectiles/blade");
 	AddMaterialToDownloadsTable("materials/rf2/projectiles/ring");
+	PrecacheScriptSound(GSND_SHURIKEN_HITCHAR);
+	PrecacheScriptSound(GSND_SHURIKEN_HITWORLD);
 }
 
 static void OnCreate(RF2_Projectile_Shuriken shuriken)

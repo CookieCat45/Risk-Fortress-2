@@ -121,6 +121,7 @@ methodmap RF2_Item < CBaseEntity
 		text.KeyValue("message", worldText);
 		text.KeyValueFloat("textsize", 6.0);
 		text.KeyValue("orientation", "1");
+		text.KeyValue("rendermode", "9");
 		switch (g_iItemQuality[this.Type])
 		{
 			case Quality_Normal:		SetVariantColor({255, 255, 255, 160});
@@ -156,8 +157,8 @@ static void OnSpawn(int entity)
 	RF2_Item item = RF2_Item(entity);
 	item.KeyValue("model", g_szItemSprite[item.Type]);
 	item.KeyValueFloat("scale", g_flItemSpriteScale[item.Type]);
-	item.CreateWorldText();
-	CreateTimer(0.5, Timer_WorldText, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	//item.CreateWorldText();
+	CreateTimer(0.1, Timer_SelectGlow, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
 RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float ownTime=0.0)
@@ -180,12 +181,12 @@ RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float 
 	int quality = GetItemQuality(type);
 	switch (quality)
 	{
-		case Quality_Genuine:		item.SetRenderColor(125, 255, 125);
-		case Quality_Unusual: 		item.SetRenderColor(200, 125, 255);
-		case Quality_Strange:		item.SetRenderColor(200, 150, 0);
-		case Quality_Collectors:	item.SetRenderColor(255, 100, 100);
+		case Quality_Genuine:		item.SetRenderColor(125, 255, 125, 100);
+		case Quality_Unusual: 		item.SetRenderColor(200, 125, 255, 100);
+		case Quality_Strange:		item.SetRenderColor(200, 150, 0, 100);
+		case Quality_Collectors:	item.SetRenderColor(255, 100, 100, 100);
 		case Quality_Haunted, 
-			Quality_HauntedStrange:	item.SetRenderColor(125, 255, 255);
+			Quality_HauntedStrange:	item.SetRenderColor(125, 255, 255, 100);
 	}
 	
 	if (quality == Quality_Unusual && g_iItemSpriteUnusualEffect[type] >= 0)
@@ -199,27 +200,45 @@ RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float 
 	return item;
 }
 
-static Action Timer_WorldText(Handle timer, int entity)
+static Action Timer_SelectGlow(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Stop;
 	
 	RF2_Item item = RF2_Item(entity);
-	float pos[3];
-	item.GetAbsOrigin(pos);
-	int nearestPlayer = GetNearestPlayer(pos, _, 500.0, TEAM_SURVIVOR, _, true);
-	if (nearestPlayer != INVALID_ENT && IsPlayerSurvivor(nearestPlayer))
+	bool glow;
+	for (int i = 1; i <= MaxClients; i++)
 	{
+		if (IsClientInGame(i) && IsPlayerSurvivor(i))
+		{
+			if (GetItemInPickupRange(i) == item)
+			{
+				glow = true;
+				break;
+			}
+		}
+	}
+	
+	int color[4];
+	GetEntityRenderColor(item.index, color[0], color[1], color[2], color[3]);
+	if (glow)
+	{
+		item.SetRenderColor(color[0], color[1], color[2], 255);
 		if (!IsValidEntity2(item.WorldText))
 		{
 			item.CreateWorldText();
 		}
 	}
-	else if (IsValidEntity2(item.WorldText))
+	else
 	{
-		RemoveEntity2(item.WorldText);
+		item.SetRenderColor(color[0], color[1], color[2], 100);
+		if (IsValidEntity2(item.WorldText))
+		{
+			RemoveEntity2(item.WorldText);
+			item.WorldText = INVALID_ENT;
+		}
 	}
-	
+
 	return Plugin_Continue;
 }
 
@@ -267,8 +286,14 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, f
 	if (IsPlayerSurvivor(client) && GetItemQuality(type) != Quality_Strange)
 	{
 		int index = RF2_GetSurvivorIndex(client);
-		if (g_iItemsTaken[index] > 0)
+		if (GetItemQuality(type) == Quality_Unusual)
+		{
+			g_iItemsTaken[index] -= 3;
+		}
+		else
+		{
 			g_iItemsTaken[index]--;
+		}
 	}
 	
 	return item;
@@ -279,28 +304,8 @@ bool PickupItem(int client)
 	if (g_bItemPickupCooldown[client])
 		return false;
 	
-	const float range = 90.0;
-	float eyePos[3], endPos[3], eyeAng[3], direction[3];
-	GetClientEyePosition(client, eyePos);
-	CopyVectors(eyePos, endPos);
-	GetClientEyeAngles(client, eyeAng);
-	GetAngleVectors(eyeAng, direction, NULL_VECTOR, NULL_VECTOR);
-	NormalizeVector(direction, direction);
-	endPos[0] += direction[0] * range;
-	endPos[1] += direction[1] * range;
-	endPos[2] += direction[2] * range;
-	TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_DontHitSelf, client);
-	TR_GetEndPosition(endPos);
-	
-	RF2_Item item = RF2_Item(GetNearestEntity(endPos, "rf2_item"));
-	if (!item.IsValid())
-	{
-		return false;
-	}
-	
-	float pos[3];
-	item.GetAbsOrigin(pos);
-	if (GetVectorDistance(pos, endPos, true) <= sq(range))
+	RF2_Item item = GetItemInPickupRange(client);
+	if (item.IsValid())
 	{
 		bool itemShare = IsItemSharingEnabled();
 		int survivorIndex = RF2_GetSurvivorIndex(client);
@@ -376,7 +381,14 @@ bool PickupItem(int client)
 			
 			if (!IsEquipmentItem(type))
 			{
-				g_iItemsTaken[survivorIndex]++;
+				if (quality == Quality_Unusual)
+				{
+					g_iItemsTaken[survivorIndex] += 3;
+				}
+				else
+				{
+					g_iItemsTaken[survivorIndex]++;
+				}
 				
 				// Notify our player that they've reached their limit.
 				if (itemShare && g_iItemLimit[survivorIndex] > 0 && g_iItemsTaken[survivorIndex] >= g_iItemLimit[survivorIndex])
@@ -403,6 +415,37 @@ bool PickupItem(int client)
 	}
 	
 	return false;
+}
+
+RF2_Item GetItemInPickupRange(int client)
+{
+	const float range = 90.0;
+	float eyePos[3], endPos[3], eyeAng[3], direction[3];
+	GetClientEyePosition(client, eyePos);
+	CopyVectors(eyePos, endPos);
+	GetClientEyeAngles(client, eyeAng);
+	GetAngleVectors(eyeAng, direction, NULL_VECTOR, NULL_VECTOR);
+	NormalizeVector(direction, direction);
+	endPos[0] += direction[0] * range;
+	endPos[1] += direction[1] * range;
+	endPos[2] += direction[2] * range;
+	TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_DontHitSelf, client);
+	TR_GetEndPosition(endPos);
+	
+	RF2_Item item = RF2_Item(GetNearestEntity(endPos, "rf2_item"));
+	if (!item.IsValid())
+	{
+		return RF2_Item(INVALID_ENT);
+	}
+	
+	float pos[3];
+	item.GetAbsOrigin(pos);
+	if (GetVectorDistance(pos, endPos, true) <= sq(range))
+	{
+		return item;
+	}
+	
+	return RF2_Item(INVALID_ENT);
 }
 
 public Action Timer_ItemPickupCooldown(Handle timer, int client)

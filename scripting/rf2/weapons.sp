@@ -7,6 +7,7 @@
 #pragma newdecls required
 
 #define MAX_STRING_ATTRIBUTES 8
+#define AIRBLAST_HITBOX {128.0, 128.0, 64.0}
 
 int g_iWeaponCount[TF_CLASSES];
 
@@ -67,7 +68,6 @@ void LoadWeapons()
 						{
 							if (FileExists(g_szWeaponStringAttributeValue[i][count][strAttribCount]))
 							{
-								PrecacheModel2(g_szWeaponStringAttributeValue[i][count][strAttribCount]);
 								AddModelToDownloadsTable(g_szWeaponStringAttributeValue[i][count][strAttribCount]);
 							}
 							else
@@ -234,7 +234,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			g_StringAttributeClass = class;
 			g_iStringAttributeWeapon = i;
 		}
-
+		
 		if (totalAttribs > MAX_ATTRIBUTES)
 		{
 			LogError("[TF2Items_OnGiveNamedItem] Item %i (%s) reached attribute limit of %i", index, classname, MAX_ATTRIBUTES);

@@ -60,6 +60,7 @@ methodmap RF2_RaidBoss_Galleom < RF2_NPC_Base
 
 void Galleom_OnMapStart()
 {
+	//AddModelToDownloadsTable(MODEL_GALLEOM);
 	PrecacheModel2(MODEL_GALLEOM, true);
 	PrecacheSound(SND_FIST_SLAM, true);
 	PrecacheSound(SND_JUMP, true);
@@ -72,7 +73,6 @@ void Galleom_OnMapStart()
 	PrecacheSound(SND_GALLEOM_ROAR, true);
 	PrecacheSound(SND_JET_LOOP, true);
 	PrecacheSound(SND_JET_START, true);
-	//AddModelToDownloadsTable(MODEL_GALLEOM);
 }
 
 static void OnCreate(RF2_RaidBoss_Galleom boss)

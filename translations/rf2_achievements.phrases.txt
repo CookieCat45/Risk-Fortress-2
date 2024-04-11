@@ -88,6 +88,26 @@
 	{
 		"en"	"[SECRET] Darkness falls across the land..."
 	}
+	"ACHIEVEMENT_TEMPLESECRET"
+	{
+		"en"	"An Unusual Room"
+	}
+	"ACHIEVEMENT_SCOUTSTUN"
+	{
+		"en"	"Light-Headed"
+	}
+	"ACHIEVEMENT_KILL10K"
+	{
+		"en"	"Bolt Buster"
+	}
+	"ACHIEVEMENT_KILL100K"
+	{
+		"en"	"Metalcide"
+	}
+	"ACHIEVEMENT_GOOMBACHAIN"
+	{
+		"en"	"1up Trick"
+	}
 	
 	//
 	// Descriptions
@@ -176,5 +196,25 @@
 	"ACHIEVEMENT_DANCE_DESC"
 	{
 		"en"	"Discover the secret of the Spellbook Magazine."
+	}
+	"ACHIEVEMENT_TEMPLESECRET_DESC"
+	{
+		"en"	"Open the secret room in Tropics."
+	}
+	"ACHIEVEMENT_SCOUTSTUN_DESC"
+	{
+		"en"	"As a Scout, stun 300 robots with Scattergun headshots using the Fed-Fightin' Fedora."
+	}
+	"ACHIEVEMENT_KILL10K_DESC"
+	{
+		"en"	"Destroy 10,000 robots."
+	}
+	"ACHIEVEMENT_KILL100K_DESC"
+	{
+		"en"	"Destroy 100,000 robots."
+	}
+	"ACHIEVEMENT_GOOMBACHAIN_DESC"
+	{
+		"en"	"As a Scout, land 15 goomba stomps in a row without touching the ground with the Long Fall Loafers."
 	}
 }

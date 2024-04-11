@@ -101,6 +101,8 @@ enum
 	ItemSpy_Showstopper = 84,
 	ItemSniper_VillainsVeil = 85,
 	Item_BeaconFromBeyond = 86,
+	ItemStrange_SpecialRing = 87,
+	ItemScout_FedFedora = 88,
 	Item_MaxValid,
 };
 

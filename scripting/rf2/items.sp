@@ -222,15 +222,7 @@ int GetRandomItem(int normalWeight=0, int genuineWeight=0,
 			array.Push(i);
 	}
 	
-	if (TF2_IsHolidayActive(TFHoliday_AprilFools))
-	{
-		quality = Quality_Unusual;
-	}
-	else
-	{
-		quality = array.Get(GetRandomInt(0, array.Length-1));
-	}
-	
+	quality = array.Get(GetRandomInt(0, array.Length-1));
 	array.Clear();
 	
 	for (int i = 1; i <= GetTotalItems(); i++)
@@ -599,17 +591,15 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case Item_UFO:
 		{
+			UpdatePlayerGravity(client);
 			if (PlayerHasItem(client, Item_UFO))
 			{
-				SetEntityGravity(client, CalcItemMod_HyperbolicInverted(client, Item_UFO, 0));
-				
 				float pushForce = 1.0 + CalcItemMod_Hyperbolic(client, Item_UFO, 1);
 				TF2Attrib_SetByDefIndex(client, 329, pushForce); // "airblast vulnerability multiplier"
 				TF2Attrib_SetByDefIndex(client, 525, pushForce); // "damage force increase"
 			}
 			else
 			{
-				SetEntityGravity(client, 1.0);
 				TF2Attrib_RemoveByDefIndex(client, 329);
 				TF2Attrib_RemoveByDefIndex(client, 525);
 			}
@@ -887,7 +877,7 @@ void UpdatePlayerItem(int client, int item)
 			{
 				if (PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
 				{
-					// Huntsman charge speed uses the fast_reload attribute only (although it does affect the reload speed too)
+					// Huntsman charge speed uses the fast_reload attribute only (although it does affect the reload speed too but W/E)
 					char classname[64];
 					GetEntityClassname(rifle, classname, sizeof(classname));
 					if (strcmp2(classname, "tf_weapon_compound_bow"))
@@ -905,13 +895,29 @@ void UpdatePlayerItem(int client, int item)
 				}
 			}
 		}
+		
+		case ItemScout_FedFedora:
+		{
+			int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+			if (primary != INVALID_ENT)
+			{
+				if (PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
+				{
+					TF2Attrib_SetByDefIndex(primary, 45, 1.0 + CalcItemMod(client, ItemScout_FedFedora, 0)); // "bullets per shot bonus"
+				}
+				else
+				{
+					TF2Attrib_RemoveByDefIndex(primary, 45);
+				}
+			}
+		}
 	}
 	
 	if (!PlayerHasItem(client, item) && !IsEquipmentItem(item) || IsEquipmentItem(item) && GetPlayerEquipmentItem(client) != item)
 	{
 		RemoveItemAsWearable(client, item); // Remove the wearable if we don't have the item anymore.
 		
-		// Try and see if we can find another wearable to equip
+		// See if we can find another wearable to equip
 		int qualityPriority = GetQualityEquipPriority(GetItemQuality(item));
 		while (qualityPriority >= 0)
 		{
@@ -1272,11 +1278,21 @@ bool ActivateStrangeItem(int client)
 				int maxHealth = RF2_GetCalculatedMaxHealth(i);
 				int heal = RoundToFloor(float(maxHealth) * GetItemMod(ItemStrange_HeartOfGold, 0));
 				HealPlayer(i, heal);
-				GetEntPos(i, pos);
-				TE_TFParticle(particle, pos, i, PATTACH_ABSORIGIN_FOLLOW);
+				CBaseEntity(i).WorldSpaceCenter(pos);
+				SpawnInfoParticle(particle, pos, 3.0, i);
 			}
 			
 			EmitSoundToAll(SND_SPELL_OVERHEAL, client);
+		}
+		
+		case ItemStrange_SpecialRing:
+		{
+			if (g_bRingCashBonus)
+				return false;
+			
+			g_bRingCashBonus = true;
+			EmitSoundToAll(SND_CASH);
+			CreateTimer(GetItemMod(ItemStrange_SpecialRing, 1), Timer_EndRingBonus, _, TIMER_FLAG_NO_MAPCHANGE);
 		}
 		
 		case ItemStrange_Spellbook:
@@ -1615,6 +1631,12 @@ bool ActivateStrangeItem(int client)
 	
 	g_iPlayerEquipmentItemCharges[client]--;
 	return true;
+}
+
+public Action Timer_EndRingBonus(Handle timer)
+{
+	g_bRingCashBonus = false;
+	return Plugin_Continue;
 }
 
 public Action Timer_FusRoDah(Handle timer, int client)
@@ -2027,7 +2049,7 @@ bool GetItemModBool(int item, int slot)
 
 int GetPlayerItemCount(int client, int item, bool allowMinions=false)
 {
-	if (!allowMinions && IsPlayerMinion(client))
+	if (!allowMinions && IsPlayerMinion(client) || !IsPlayerAlive(client))
 		return 0;
 	
 	return g_iPlayerItem[client][item];
@@ -2041,7 +2063,7 @@ int GetPlayerEquipmentItem(int client)
 float CalcItemMod(int client, int item, int slot, int extraAmount=0)
 {
 	// hack to prevent minions from utilizing items
-	if (IsPlayerMinion(client))
+	if (IsPlayerMinion(client) || !IsPlayerAlive(client))
 		item = Item_Null;
 	
 	return g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount);
@@ -2049,7 +2071,7 @@ float CalcItemMod(int client, int item, int slot, int extraAmount=0)
 
 float CalcItemMod_Hyperbolic(int client, int item, int slot, int extraAmount=0)
 {
-	if (IsPlayerMinion(client))
+	if (IsPlayerMinion(client) || !IsPlayerAlive(client))
 		item = Item_Null;
 	
 	return 1.0 - 1.0 / (1.0 + g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
@@ -2057,7 +2079,7 @@ float CalcItemMod_Hyperbolic(int client, int item, int slot, int extraAmount=0)
 
 float CalcItemMod_HyperbolicInverted(int client, int item, int slot, int extraAmount=0)
 {
-	if (IsPlayerMinion(client))
+	if (IsPlayerMinion(client) || !IsPlayerAlive(client))
 		item = Item_Null;
 	
 	return 1.0 / (1.0 + g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
@@ -2065,7 +2087,7 @@ float CalcItemMod_HyperbolicInverted(int client, int item, int slot, int extraAm
 
 int CalcItemModInt(int client, int item, int slot, int extraAmount=0)
 {
-	if (IsPlayerMinion(client))
+	if (IsPlayerMinion(client) || !IsPlayerAlive(client))
 		item = Item_Null;
 
 	return RoundToFloor(g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
@@ -2214,6 +2236,18 @@ public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &
 		damageBonus = GetItemMod(ItemScout_LongFallBoots, 0) + (1.0 + CalcItemMod(attacker, ItemScout_LongFallBoots, 1, -1));
 		jumpPower = GetItemMod(ItemScout_LongFallBoots, 2) + (1.0 * CalcItemMod(attacker, ItemScout_LongFallBoots, 3, -1));
 		SetEntItemProc(attacker, ItemScout_LongFallBoots);
+		g_iPlayerGoombaChain[attacker]++;
+		if (g_iPlayerGoombaChain[attacker] > 8)
+		{
+			EmitSoundToAll(SND_1UP, attacker);
+			EmitSoundToAll(SND_1UP, attacker);
+		}
+		
+		if (g_iPlayerGoombaChain[attacker] >= 15)
+		{
+			TriggerAchievement(attacker, ACHIEVEMENT_GOOMBACHAIN);
+		}
+		
 		return Plugin_Changed;
 	}
 	

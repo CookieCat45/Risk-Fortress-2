@@ -538,6 +538,7 @@ static void OnCreate(RF2_Projectile_Base proj)
 	proj.SetHitboxMins({-20.0, -20.0, -20.0});
 	proj.SetHitboxMaxs({20.0, 20.0, 20.0});
 	SetEntityCollisionGroup(proj.index, COLLISION_GROUP_PROJECTILE);
+	proj.AddFlag(FL_GRENADE); // so airblasting works
 	proj.OnCollide = new PrivateForward(ET_Hook, Param_Any, Param_Cell);
 	proj.HookOnCollide(Projectile_OnCollide);
 	SDKHook(proj.index, SDKHook_SpawnPost, OnSpawnPost);
@@ -576,7 +577,8 @@ static void OnSpawnPost(int entity)
 	{
 		float pos[3];
 		proj.GetAbsOrigin(pos);
-		TE_TFParticle(trail, pos, proj.index, PATTACH_ABSORIGIN_FOLLOW);
+		SpawnParticleViaTrigger(proj.index, trail, _, PATTACH_ABSORIGIN_FOLLOW);
+		//TE_TFParticle(trail, pos, proj.index, PATTACH_ABSORIGIN_FOLLOW);
 	}
 	
 	if (proj.Flying)
