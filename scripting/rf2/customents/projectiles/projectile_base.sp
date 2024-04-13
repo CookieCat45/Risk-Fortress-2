@@ -54,6 +54,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			.DefineBoolField("m_bFlying")
 			.DefineBoolField("m_bHoming")
 			.DefineBoolField("m_bDeactivateOnHit")
+			.DefineBoolField("m_bAltParticleSpawn")
 			.DefineEntityField("m_hHomingTarget")
 			.DefineFloatField("m_flHomingSpeed")
 			.DefineFloatField("m_flLastHomingTime")
@@ -194,6 +195,20 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			{
 				this.LastHomingTime = GetGameTime();
 			}
+		}
+	}
+	
+	// Spawns trail particle via TE instead of trigger_particle
+	property bool AltParticleSpawn
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bAltParticleSpawn"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bAltParticleSpawn", value);
 		}
 	}
 	
@@ -575,10 +590,16 @@ static void OnSpawnPost(int entity)
 	proj.Team == TEAM_SURVIVOR ? proj.GetRedTrail(trail, sizeof(trail)) : proj.GetBlueTrail(trail, sizeof(trail));
 	if (trail[0])
 	{
-		float pos[3];
-		proj.GetAbsOrigin(pos);
-		SpawnParticleViaTrigger(proj.index, trail, _, PATTACH_ABSORIGIN_FOLLOW);
-		//TE_TFParticle(trail, pos, proj.index, PATTACH_ABSORIGIN_FOLLOW);
+		if (proj.AltParticleSpawn)
+		{
+			float pos[3];
+			proj.GetAbsOrigin(pos);
+			TE_TFParticle(trail, pos, proj.index, PATTACH_ABSORIGIN_FOLLOW);
+		}
+		else
+		{
+			SpawnParticleViaTrigger(proj.index, trail, _, PATTACH_ABSORIGIN_FOLLOW);
+		}
 	}
 	
 	if (proj.Flying)

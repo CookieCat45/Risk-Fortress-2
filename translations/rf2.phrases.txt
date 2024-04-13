@@ -517,6 +517,16 @@
 	// COMMAND PHRASES
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	
+	"DisabledByServer"
+	{
+		"en"		"This has been disabled by the server."
+	}
+	
+	"AlreadyExtended"
+	{
+		"en"		"The Waiting for Players time has already been extended."
+	}
+	
 	"GaveItem"
 	{
 		"#format"	"{1:N},{2:d},{3:s},{4:s},{5:N},{6:d}"
@@ -713,6 +723,12 @@
 	{
 		"#format"	"{1:s}"
 		"en"		"Toggle item chat messages ({1})"
+	}
+
+	"ToggleItemHats"
+	{
+		"#format"	"{1:s}"
+		"en"		"Disable items being equipped as cosmetics ({1})"
 	}
 
 	"StayInSpec"

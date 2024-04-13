@@ -19,11 +19,11 @@ void BakeCookies()
 	g_coItemsCollected[1] = RegClientCookie("rf2_items_collected_2", "Items collected for logbook.", CookieAccess_Private);
 	g_coItemsCollected[2] = RegClientCookie("rf2_items_collected_3", "Items collected for logbook.", CookieAccess_Private);
 	g_coItemsCollected[3] = RegClientCookie("rf2_items_collected_4", "Items collected for logbook.", CookieAccess_Private);
-	g_coTutorialItemPickup = RegClientCookie("rf2_tutorial_item_pickup", "Item pickup tutorial.", CookieAccess_Public);
-	g_coTutorialSurvivor = RegClientCookie("rf2_tutorial_survivor", "Survivor tutorial.", CookieAccess_Public);
+	g_coTutorialItemPickup = RegClientCookie("rf2_tutorial_item_pickup", "Item pickup tutorial.", CookieAccess_Protected);
+	g_coTutorialSurvivor = RegClientCookie("rf2_tutorial_survivor", "Survivor tutorial.", CookieAccess_Protected);
 	g_coNewPlayer = RegClientCookie("rf2_new_player", "New Player", CookieAccess_Private);
 	g_coDisableItemMessages = RegClientCookie("rf2_disable_item_msg", "Disable item chat messages", CookieAccess_Protected);
-	g_coSwapStrangeButton = RegClientCookie("rf2_swap_strange_button", "Changes the strange activation button to ATTACK3 instead of RELOAD.", CookieAccess_Protected);
+	g_coDisableItemCosmetics = RegClientCookie("rf2_disable_item_cosmetics", "Disable items being attached to player as cosmetics.", CookieAccess_Protected);
 	
 	char name[64];
 	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
@@ -99,6 +99,13 @@ public void OnClientCookiesCached(int client)
 	if (!buffer[0])
 	{
 		SetCookieBool(client, g_coDisableItemMessages, false);
+	}
+	
+	// Item Cosmetic Preference
+	GetClientCookie(client, g_coDisableItemCosmetics, buffer, sizeof(buffer));
+	if (!buffer[0])
+	{
+		SetCookieBool(client, g_coDisableItemCosmetics, false);
 	}
 	
 	// Survivor Points

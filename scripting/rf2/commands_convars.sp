@@ -43,7 +43,8 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_logbook", Command_ItemLog, "Shows a list of items that you've collected.");
 	RegConsoleCmd("rf2_achievements", Command_Achievements, "Shows a list of achievements in Risk Fortress 2.");
 	RegConsoleCmd("rf2_use_strange", Command_UseStrange, "Uses your Strange item, meant to be binded to a key from the console");
-	RegConsoleCmd("rf2_interact", Command_Interact, "Functions identically to the E key, can be binded to a key from the console");
+	RegConsoleCmd("rf2_interact", Command_Interact, "Functions identically to Call for Medic key, can be binded to a key from the console");
+	RegConsoleCmd("rf2_extend_wait", Command_ExtendWait, "Extends Waiting for Players time significantly.");
 	//RegConsoleCmd("rf2_helpmenu", Command_HelpMenu, "Shows the help menu.");
 	
 	char buffer[8];
@@ -109,6 +110,7 @@ void LoadCommandsAndCvars()
 	g_cvAllowHumansInBlue = CreateConVar("rf2_blue_allow_humans", "0", "If nonzero, allow humans to spawn in BLU Team.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvTimeBeforeRestart = CreateConVar("rf2_time_before_restart", "18000", "Time in seconds before the server will restart after a run ends, to clear server memory. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvHiddenServerStartTime = CreateConVar("rf2_server_start_time", "0", _, FCVAR_HIDDEN);
+	g_cvWaitExtendTime = CreateConVar("rf2_wait_extend_time", "600", "If the vote to extend Waiting for Players passes, extend the wait time to this in seconds. 0 to disable extending.", FCVAR_NOTIFY, true, 0.0);
 	
 	// Debug
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
@@ -620,6 +622,80 @@ public int Menu_SkipWaitVote(Menu menu, MenuAction action, int param1, int param
 			if (param1 == 0 && g_bWaitingForPlayers)
 			{
 				InsertServerCommand("mp_restartgame_immediate 1");
+			}
+		}
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+	
+	return 0;
+}
+
+public Action Command_ExtendWait(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	if (g_bWaitExtended)
+	{
+		RF2_ReplyToCommand(client, "%t", "AlreadyExtended");
+		return Plugin_Handled;
+	}
+	
+	if (g_cvWaitExtendTime.FloatValue <= 0.0)
+	{
+		RF2_ReplyToCommand(client, "%t", "DisabledByServer");
+		return Plugin_Handled;
+	}
+	
+	if (IsVoteInProgress())
+	{
+		RF2_ReplyToCommand(client, "%t", "VoteInProgress");
+		return Plugin_Handled;
+	}
+	
+	if (g_bWaitingForPlayers)
+	{
+		Menu vote = new Menu(Menu_ExtendWaitVote);
+		vote.SetTitle("Extend waiting for players? (%N)", client);
+		vote.AddItem("Yes", "Yes");
+		vote.AddItem("No", "No");
+		vote.ExitButton = false;
+		vote.DisplayVoteToAll(10);
+	}
+	else
+	{
+		RF2_ReplyToCommand(client, "%t", "WaitingInactive");
+	}
+	
+	return Plugin_Handled;
+}
+
+public int Menu_ExtendWaitVote(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_VoteEnd:
+		{
+			if (param1 == 0 && g_bWaitingForPlayers)
+			{
+				ConVar waitTime = FindConVar("mp_waitingforplayers_time");
+				float oldWaitTime = waitTime.FloatValue;
+				waitTime.FloatValue = g_cvWaitExtendTime.FloatValue;
+				InsertServerCommand("mp_waitingforplayers_restart 1");
+				waitTime.FloatValue = oldWaitTime;
+				g_bWaitExtended = true;
 			}
 		}
 		case MenuAction_End:
@@ -1357,6 +1433,9 @@ void ShowClientSettingsMenu(int client)
 	
 	FormatEx(buffer, sizeof(buffer), "%T", "ToggleItemMsg", lang, !GetCookieBool(client, g_coDisableItemMessages) ? on : off);
 	menu.AddItem("rf2_disable_item_msg", buffer);
+	
+	FormatEx(buffer, sizeof(buffer), "%T", "ToggleItemHats", lang, GetCookieBool(client, g_coDisableItemCosmetics) ? on : off);
+	menu.AddItem("rf2_disable_item_cosmetics", buffer);
 	
 	menu.Display(client, MENU_TIME_FOREVER);
 }

@@ -357,16 +357,19 @@ void GiveItem(int client, int type, int amount=1, bool addToLogbook=false)
 
 int EquipItemAsWearable(int client, int item)
 {
+	if (GetCookieBool(client, g_coDisableItemCosmetics))
+		return INVALID_ENT;
+	
 	if (GetItemQuality(item) == Quality_Collectors && !CanUseCollectorItem(client, item))
-		return -1;
+		return INVALID_ENT;
 	
 	if (GetPlayerWearableCount(client, true) >= MAX_ITEMS && GetItemQuality(item) != Quality_Strange)
-		return -1;
+		return INVALID_ENT;
 	
 	if (HasItemAsWearable(client, item))
-		return -1;
+		return INVALID_ENT;
 	
-	int wearable = -1;
+	int wearable = INVALID_ENT;
 	int entity = MaxClients+1;
 	int index;
 	bool valid = true;

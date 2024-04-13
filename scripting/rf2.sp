@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.10b"
+#define PLUGIN_VERSION "0.10.1b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -50,6 +50,7 @@ bool g_bPluginReloading;
 bool g_bTankBossMode;
 bool g_bGoombaAvailable;
 bool g_bRoundEnding;
+bool g_bWaitExtended;
 float g_flWaitRestartTime;
 int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
@@ -306,6 +307,7 @@ ConVar g_cvArtifactChance;
 ConVar g_cvAllowHumansInBlue;
 ConVar g_cvTimeBeforeRestart;
 ConVar g_cvHiddenServerStartTime;
+ConVar g_cvWaitExtendTime;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -327,7 +329,7 @@ Cookie g_coItemsCollected[4];
 Cookie g_coAchievementCookies[MAX_ACHIEVEMENTS];
 Cookie g_coNewPlayer;
 Cookie g_coDisableItemMessages;
-Cookie g_coSwapStrangeButton;
+Cookie g_coDisableItemCosmetics;
 
 // TFBots
 TFBot g_TFBot[MAXTF2PLAYERS];
@@ -962,6 +964,7 @@ void CleanUp()
 	g_bGracePeriod = false;
 	g_bWaitingForPlayers = false;
 	g_bRoundEnding = false;
+	g_bWaitExtended = false;
 	g_flNextAutoReloadCheckTime = 0.0;
 	g_flAutoReloadTime = 0.0;
 	g_hPlayerTimer = null;
@@ -4430,17 +4433,6 @@ public void RF_ProjectileSpawnPost(int entity)
 				g_bFiredWhileRocketJumping[entity] = true;
 			}
 		}
-		else if (strcmp2(buffer, "tf_projectile_arrow"))
-		{
-			int type = GetEntProp(entity, Prop_Send, "m_iProjectileType");
-			if (type == 8 || type == 19) // TF_PROJECTILE_ARROW or TF_PROJECTILE_FESTIVE_ARROW
-			{
-				if (TF2Attrib_HookValueInt(0, "set_weapon_mode", launcher) >= 1) // no headshots
-				{
-					SetEntProp(entity, Prop_Send, "m_iProjectileType", 18); // TF_PROJECTILE_BUILDING_REPAIR_BOLT
-				}
-			}
-		}
 	}
 }
 
@@ -4503,7 +4495,9 @@ public Action Hook_OnTraceAttack(int victim, int &attacker, int &inflictor, floa
 	{
 		if (PlayerHasItem(attacker, ItemScout_FedFedora) && CanUseCollectorItem(attacker, ItemScout_FedFedora))
 		{
-			if (damageType & DMG_BUCKSHOT && GetActiveWeapon(attacker) == GetPlayerWeaponSlot(attacker, WeaponSlot_Primary) && hitGroup == 1)
+			// This hook gets called when shooting teammates apparently??
+			if (damageType & DMG_BUCKSHOT && hitGroup == 1 && IsValidClient(victim) && GetClientTeam(attacker) != GetClientTeam(victim)
+				&& GetActiveWeapon(attacker) == GetPlayerWeaponSlot(attacker, WeaponSlot_Primary))
 			{
 				if (IsValidClient(victim) && !IsBoss(victim) && !IsPlayerStunned(victim))
 				{
@@ -5719,11 +5713,13 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	
 	static bool reloadPressed[MAXTF2PLAYERS];
 	bool allowPress;
+	/*
 	if (GetCookieBool(client, g_coSwapStrangeButton))
 	{
 		allowPress = buttons & IN_ATTACK3 && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) != GetActiveWeapon(client);
 	}
-	else if (buttons & IN_RELOAD)
+	*/
+	if (buttons & IN_RELOAD)
 	{
 		allowPress = true;
 	}

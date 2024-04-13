@@ -44,6 +44,7 @@ static void OnCreate(RF2_Projectile_Beam beam)
 	beam.DeactivateTime = 0.0;
 	beam.SetRedTrail("drg_cow_rockettrail_fire");
 	beam.SetBlueTrail("drg_cow_rockettrail_fire_blue");
+	beam.AltParticleSpawn = true;
 	beam.SetFireSound(SND_DEMO_BEAM);
 	beam.HookOnCollide(Beam_OnCollide);
 }

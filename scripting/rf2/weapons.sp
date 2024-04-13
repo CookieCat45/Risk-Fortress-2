@@ -886,6 +886,7 @@ bool IsAttributeBlacklisted(int id)
 	id == 2029 || // "allowed in medieval mode"
 	id == 719 || // "weapon_uses_stattrack_module"
 	id == 731 || // "weapon_allow_inspect"
+	id == 817 || // "inspect_viewmodel_offset"
 	id == 724 || // "weapon_stattrak_module_scale"
 	id == 25 || // "hidden secondary max ammo penalty" (don't need these, players have infinite ammo)
 	id == 37 || // "hidden primary max ammo bonus"

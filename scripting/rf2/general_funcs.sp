@@ -674,6 +674,7 @@ bool IsGoombaAvailable()
 	return g_bGoombaAvailable;
 }
 
+/*
 // Returns number of strings found and removed from the list
 int ClearStringFromArrayList(ArrayList list, const char[] string)
 {
@@ -692,6 +693,7 @@ int ClearStringFromArrayList(ArrayList list, const char[] string)
 	
 	return count;
 }
+*/
 
 bool IsServerAutoRestartEnabled()
 {

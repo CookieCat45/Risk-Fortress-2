@@ -295,6 +295,7 @@ int SpawnObjects()
 	
 	PrintToServer("[RF2] Object Spawn Counts\nCrates: %i (Bonus: %i)\nOther: %i", minCrates+bonusCrates, bonusCrates, spawnCount-minCrates);
 	int scrapperCount;
+	bool graveStoneSpawn;
 	while (spawns < spawnCount+bonusCrates && attempts < 1000)
 	{
 		GetSpawnPoint(worldCenter, spawnPos, 0.0, distance, _, true);
@@ -314,17 +315,19 @@ int SpawnObjects()
 			objectArray.GetString(GetRandomInt(0, objectArray.Length-1), name, sizeof(name));
 			if (strcmp2(name, "rf2_object_scrapper"))
 			{
+				// Only 2 scrappers
+				if (scrapperCount >= 2)
+					continue;
+				
 				scrapperCount++;
-				if (scrapperCount >= g_iStagesCompleted <= 0 ? 1 : 2)
-				{
-					// Only 1-2 scrappers
-					ClearStringFromArrayList(objectArray, "rf2_object_scrapper");
-				}
 			}
 			else if (strcmp2(name, "rf2_object_gravestone"))
 			{
 				// Only one gravestone
-				ClearStringFromArrayList(objectArray, "rf2_object_gravestone");
+				if (graveStoneSpawn)
+					continue;
+				
+				graveStoneSpawn = true;
 			}
 			
 			CreateObject(name, spawnPos);
@@ -351,7 +354,7 @@ void DespawnObjects(bool force=false)
 {
 	char classname[128];
 	int entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
+	while ((entity = FindEntityByClassname(entity, "rf2_*")) != INVALID_ENT)
 	{
 		GetEntityClassname(entity, classname, sizeof(classname));
 		if (strcmp2(classname, "rf2_item") || StrContains(classname, "rf2_object") == 0 && (force || !RF2_Object_Base(entity).MapPlaced))
