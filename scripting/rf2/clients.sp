@@ -1250,9 +1250,22 @@ bool ClientPlayGesture(int client, const char[] gesture)
 	{
 		return SDKCall(g_hSDKPlayGesture, client, gesture);
 	}
-
+	
 	return false;
 }
+
+#if SOURCEMOD_V_MINOR >= 12
+// NOTE: SourceMod 1.12 is needed for this to work as it has TE_WriteEnt, so this won't work for now
+void DoPlayerAnimEvent(int client, Activity activity, int event)
+{
+	
+	TE_Start("PlayerAnimEvent");
+	TE_WriteEnt("m_hPlayer", client);
+	TE_WriteNum("m_iEvent", event);
+	TE_WriteNum("m_nData", view_as<int>(activity));
+	TE_SendToAll();
+}
+#endif
 
 bool IsPlayerSpectator(int client)
 {

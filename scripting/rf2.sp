@@ -50,7 +50,6 @@ bool g_bPluginReloading;
 bool g_bTankBossMode;
 bool g_bGoombaAvailable;
 bool g_bRoundEnding;
-bool g_bWaitExtended;
 float g_flWaitRestartTime;
 int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
@@ -964,7 +963,6 @@ void CleanUp()
 	g_bGracePeriod = false;
 	g_bWaitingForPlayers = false;
 	g_bRoundEnding = false;
-	g_bWaitExtended = false;
 	g_flNextAutoReloadCheckTime = 0.0;
 	g_flAutoReloadTime = 0.0;
 	g_hPlayerTimer = null;
@@ -1821,7 +1819,7 @@ public Action Timer_SkipWaitHint(Handle timer, int client)
 	if (!(client = GetClientOfUserId(client)))
 		return Plugin_Continue;
 	
-	PrintHintText(client, "If everyone is connected, you can skip Waiting For Players with the /rf2_skipwait command.");
+	PrintHintText(client, "%t", "SkipWaitHint");
 	return Plugin_Continue;
 }
 

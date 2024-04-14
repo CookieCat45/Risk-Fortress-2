@@ -114,7 +114,6 @@ void LoadCommandsAndCvars()
 	
 	// Debug
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
-	RegAdminCmd("rf2_debug_playgesture", Command_PlayGesture, ADMFLAG_SLAY, "Plays a gesture animation on yourself");
 	RegAdminCmd("rf2_debug_entitycount", Command_EntityCount, ADMFLAG_SLAY, "Shows the total number of networked entities (edicts) in the server.");
 	RegAdminCmd("rf2_debug_thriller_test", Command_ThrillerTest, ADMFLAG_ROOT, "\"Darkness falls across the land, the dancing hour is close at hand...\"");
 	g_cvDebugNoMapChange = CreateConVar("rf2_debug_skip_map_change", "0", "If nonzero, prevents the map from changing on round end.", FCVAR_NOTIFY, true, 0.0);
@@ -647,12 +646,6 @@ public Action Command_ExtendWait(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	if (g_bWaitExtended)
-	{
-		RF2_ReplyToCommand(client, "%t", "AlreadyExtended");
-		return Plugin_Handled;
-	}
-	
 	if (g_cvWaitExtendTime.FloatValue <= 0.0)
 	{
 		RF2_ReplyToCommand(client, "%t", "DisabledByServer");
@@ -667,12 +660,24 @@ public Action Command_ExtendWait(int client, int args)
 	
 	if (g_bWaitingForPlayers)
 	{
-		Menu vote = new Menu(Menu_ExtendWaitVote);
-		vote.SetTitle("Extend waiting for players? (%N)", client);
-		vote.AddItem("Yes", "Yes");
-		vote.AddItem("No", "No");
-		vote.ExitButton = false;
-		vote.DisplayVoteToAll(10);
+		if (GetTotalHumans(false) <= 1)
+		{
+			ConVar waitTime = FindConVar("mp_waitingforplayers_time");
+			float oldWaitTime = waitTime.FloatValue;
+			waitTime.FloatValue = g_cvWaitExtendTime.FloatValue;
+			InsertServerCommand("mp_waitingforplayers_restart 1");
+			CreateTimer(1.2, Timer_ResetWaitTime, oldWaitTime, TIMER_FLAG_NO_MAPCHANGE);
+		}
+		else
+		{
+			Menu vote = new Menu(Menu_ExtendWaitVote);
+			vote.SetTitle("Extend waiting for players? (%N)", client);
+			vote.AddItem("Yes", "Yes");
+			vote.AddItem("No", "No");
+			vote.ExitButton = false;
+			vote.DisplayVoteToAll(10);
+		}
+		
 	}
 	else
 	{
@@ -694,8 +699,7 @@ public int Menu_ExtendWaitVote(Menu menu, MenuAction action, int param1, int par
 				float oldWaitTime = waitTime.FloatValue;
 				waitTime.FloatValue = g_cvWaitExtendTime.FloatValue;
 				InsertServerCommand("mp_waitingforplayers_restart 1");
-				waitTime.FloatValue = oldWaitTime;
-				g_bWaitExtended = true;
+				CreateTimer(1.2, Timer_ResetWaitTime, oldWaitTime, TIMER_FLAG_NO_MAPCHANGE);
 			}
 		}
 		case MenuAction_End:
@@ -705,6 +709,12 @@ public int Menu_ExtendWaitVote(Menu menu, MenuAction action, int param1, int par
 	}
 	
 	return 0;
+}
+
+public Action Timer_ResetWaitTime(Handle timer, float value)
+{
+	FindConVar("mp_waitingforplayers_time").FloatValue = value;
+	return Plugin_Continue;
 }
 
 public Action Command_SurvivorQueue(int client, int args)
@@ -1858,28 +1868,6 @@ public int Menu_HelpMenu(Menu menu, MenuAction action, int param1, int param2)
 	}
 	
 	return 0;
-}
-
-public Action Command_PlayGesture(int client, int args)
-{
-	if (client == 0)
-	{
-		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
-		return Plugin_Handled;
-	}
-	
-	char gesture[256];
-	GetCmdArg(1, gesture, sizeof(gesture));
-	if (ClientPlayGesture(client, gesture))
-	{
-		RF2_ReplyToCommand(client, "Playing gesture '%s'", gesture);
-	}
-	else
-	{
-		RF2_ReplyToCommand(client, "Couldn't find gesture '%s'", gesture);
-	}
-	
-	return Plugin_Handled;
 }
 
 public Action Command_SimulateCrash(int client, int args)

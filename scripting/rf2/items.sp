@@ -1544,7 +1544,12 @@ bool ActivateStrangeItem(int client)
 			ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
 				GetItemMod(ItemStrange_LegendaryLid, 2), GetItemMod(ItemStrange_LegendaryLid, 0), -2.0);
 			
+			#if SOURCEMOD_V_MINOR >= 12
+			DoPlayerAnimEvent(client, ACT_MP_THROW, PLAYERANIMEVENT_CUSTOM_GESTURE);
+			#else
 			ClientPlayGesture(client, "ACT_MP_THROW");
+			#endif
+
 			EmitSoundToAll(SND_THROW, client);
 		}
 		
@@ -1557,7 +1562,12 @@ bool ActivateStrangeItem(int client)
 			ShootProjectile(client, "rf2_projectile_bomb", pos, angles, 
 				GetItemMod(ItemStrange_CroneDome, 3), GetItemMod(ItemStrange_CroneDome, 1), -2.0);
 			
+			#if SOURCEMOD_V_MINOR >= 12
+			DoPlayerAnimEvent(client, ACT_MP_THROW, PLAYERANIMEVENT_CUSTOM_GESTURE);
+			#else
 			ClientPlayGesture(client, "ACT_MP_THROW");
+			#endif
+			
 			EmitSoundToAll(SND_THROW, client);
 		}
 		
@@ -1570,7 +1580,12 @@ bool ActivateStrangeItem(int client)
 			ShootProjectile(client, "rf2_projectile_kunai", pos, angles, 
 				GetItemMod(ItemStrange_HandsomeDevil, 2), GetItemMod(ItemStrange_HandsomeDevil, 0), -2.0);
 			
+			#if SOURCEMOD_V_MINOR >= 12
+			DoPlayerAnimEvent(client, ACT_MP_THROW, PLAYERANIMEVENT_CUSTOM_GESTURE);
+			#else
 			ClientPlayGesture(client, "ACT_MP_THROW");
+			#endif
+
 			EmitSoundToAll(SND_THROW, client);
 		}
 		
@@ -1599,7 +1614,12 @@ bool ActivateStrangeItem(int client)
 				skull.HomingTarget = target;
 			}
 			
+			#if SOURCEMOD_V_MINOR >= 12
+			DoPlayerAnimEvent(client, ACT_MP_THROW, PLAYERANIMEVENT_CUSTOM_GESTURE);
+			#else
 			ClientPlayGesture(client, "ACT_MP_THROW");
+			#endif
+
 			EmitSoundToAll(SND_SPELL_FIREBALL, client);
 			RF_TakeDamage(client, client, client, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE, ItemStrange_DemonicDome);
 		}

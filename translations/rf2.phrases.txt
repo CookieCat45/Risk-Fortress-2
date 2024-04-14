@@ -313,6 +313,11 @@
 	// OTHER PHRASES
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	
+	"SkipWaitHint"
+	{
+		"en"		"If everyone is connected, you can skip waiting with the /rf2_skipwait command.\nAlternatively, /rf2_extend_wait can extend it."
+	}
+	
 	"WaitingStart"
 	{
 		"en"		"[RF2] Waiting For Players sequence started."

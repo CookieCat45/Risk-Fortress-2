@@ -37,7 +37,7 @@
 		}
 		"Signatures"
 		{
-			"CBaseEntity::Intersects"
+			"CBaseEntity::Intersects" // not needed for now
 			{
 				"linux"		"@_ZN11CBaseEntity10IntersectsEPS_"
 				"windows"	"\x55\x8B\xEC\x83\x2A\x18\x00\x56\x74\x6E\x8B\x75\x08\x83\x2A\x18\x00\x74\x65\x8B\x2A\x2A\x2A\x00\x00\x81\x2A\x2A\x2A\x00\x00\xD9\xEE\x57\x51"
@@ -46,28 +46,38 @@
 			{
 				"linux"		"@_ZN11CBaseEntity23ApplyAbsVelocityImpulseERK6Vector"
 				"windows"	"\x55\x8B\xEC\xF3\x0F\x10\x05\x2A\x2A\x2A\x2A\x83\xEC\x18"
+				"linux64"	"@_ZN11CBaseEntity23ApplyAbsVelocityImpulseERK6Vector"
+				"windows64" "\x48\x89\x5C\x24\x08\x57\x48\x83\xEC\x50\xF3\x0F\x10\x05\x4E\x21\xD4\x00"
 			}
 			"CTFWeaponBase::GetMaxClip1"
 			{
 				"linux"		"@_ZNK13CTFWeaponBase11GetMaxClip1Ev"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x08\x56\x8B\xF1\x8B\x06\x8B\x80\x2A\x06\x00\x00"
+				"linux64"	"@_ZNK13CTFWeaponBase11GetMaxClip1Ev"
+				"windows64"	"\x40\x53\x48\x83\xEC\x50\x48\x8B\x01\x48\x8B\xD9\xFF\x90\xD8\x0D\x00\x00"
 			}
 			"CTFWeaponBaseMelee::DoSwingTraceInternal"
 			{
     			"linux"		"@_ZN18CTFWeaponBaseMelee20DoSwingTraceInternalER10CGameTracebP10CUtlVectorIS0_10CUtlMemoryIS0_iEE"
 				"windows"	"\x53\x8B\xDC\x83\xEC\x08\x83\xE4\xF0\x83\xC4\x04\x55\x8B\x6B\x04\x89\x6C\x24\x04\x8B\xEC\x81\xEC\x38\x05\x00\x00\xA1"
+				"linux64"	"@_ZN18CTFWeaponBaseMelee20DoSwingTraceInternalER10CGameTracebP10CUtlVectorIS0_10CUtlMemoryIS0_iEE"
+				"windows64"	"\x48\x89\x74\x24\x18\x55\x57\x41\x55\x41\x56\x41\x57\x48\x8D\xAC\x24\xA0\xF6\xFF\xFF"
 			}
 			"CTFWeaponBase::SetReloadTimer"
 			{
 				"linux"		"@_ZN13CTFWeaponBase14SetReloadTimerEf"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x0C\x56\x57\x6A\x00\x68\x88\xF8"
+				"linux64"	"@_ZN13CTFWeaponBase14SetReloadTimerEf"
+				"windows64"	"\x48\x89\x5C\x24\x20\x57\x48\x83\xEC\x60\x0F\x29\x7C\x24\x40"
 			}
 			"CTFPlayer::TeamFortress_SetSpeed"
 			{
 				"linux"		"@_ZN9CTFPlayer21TeamFortress_SetSpeedEv"
 				"windows"	"\x55\x8B\xEC\xA1\x2A\x2A\x2A\x2A\x83\xEC\x1C\x53"
+				"linux64"	"@_ZN9CTFPlayer21TeamFortress_SetSpeedEv"
+				"windows64"	"\x40\x55\x48\x83\xEC\x60\x48\x8B\x05\x03\x3D\x7A\x00"
 			}
-			"CTFPlayer::PlayGesture"
+			"CTFPlayer::PlayGesture" // Remove in SourceMod 1.12
 			{
 				"linux"		"@_ZN9CTFPlayer11PlayGestureEPKc"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x30\x53\x56\x8B\x75\x08\x57\x56\x8B\xF9\xE8\x2A\x2A\x2A\x2A\x8B\xD8"
@@ -76,46 +86,71 @@
 			{
 				"linux"		"@_ZN9CTFPlayer18ApplyPunchImpulseXEf"
 				"windows"	"\x55\x8B\xEC\x53\x56\x8B\xF1\xB3\x01"
+				"linux64"	"@_ZN9CTFPlayer18ApplyPunchImpulseXEf"
+				"windows64"	"\x48\x89\x5C\x24\x08\x57\x48\x83\xEC\x40\x48\x8D\x81\x20\x27\x00\x00"
 			}
 			"HandleRageGain"
 			{
 				"linux"		"@_Z14HandleRageGainP9CTFPlayerjff"
 				"windows"	"\x55\x8B\xEC\x56\x8B\x75\x08\x85\xF6\x0F\x84\x2A\x2A\x00\x00\x53\x57\x8D\xBE\x2A\x2A\x00\x00\x85\xFF\x0F\x84\x2A\x2A\x00\x00\x83\x7F\x04\x03"
+				"linux64"	"@_Z14HandleRageGainP9CTFPlayerjff"
+				"windows64"	"\x48\x85\xC9\x0F\x84\x2A\x2A\x2A\x2A\x53\x55"
 			}
 			"CBaseObject::DoQuickBuild"
 			{
 				"linux"		"@_ZN11CBaseObject12DoQuickBuildEb"
 				"windows"	"\x55\x8B\xEC\x53\x56\x57\x8B\xF9\x80\xBF\x2A\x2A\x00\x00\x00\x74\x08\x8B\x07"
+				"linux64"	"@_ZN11CBaseObject12DoQuickBuildEb"
+				"windows64"	"\x48\x89\x5C\x24\x10\x57\x48\x83\xEC\x20\x80\xB9\x66\x0C\x00\x00\x00"
 			}
 			"CObjectSentrygun::Attack"
 			{
 				"linux"		"@_ZN16CObjectSentrygun6AttackEv"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x34\x56\x8B\xF1\x8B\x06\xFF\x90\x2A\x2A\x2A\x2A\x8B\xCE"
+				"linux64"	"@_ZN16CObjectSentrygun6AttackEv"
+				"windows64"	"\x48\x89\x5C\x24\x10\x57\x48\x83\xEC\x70\x48\x8B\x01\x48\x8B\xD9\xFF\x90\x40\x06\x00\x00"
 			}
 			"CTFBot::RealizeSpy"
 			{
 				"linux"		"@_ZN6CTFBot10RealizeSpyEP9CTFPlayer"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x30\x53\x8B\x5D\x08\x57\x8B\xF9\x53\x89\x7D\xFC\x2A\x2A\x2A\xFF\xFF\x84\xC0"
+				"linux64"	"@_ZN6CTFBot10RealizeSpyEP9CTFPlayer"
+				"windows64"	"\x48\x89\x54\x24\x10\x48\x89\x4C\x24\x08\x41\x54\x41\x57"
 			}
 			"CTFBot::OnWeaponFired"
 			{
 				"linux"		"@_ZN6CTFBot13OnWeaponFiredEP20CBaseCombatCharacterP17CBaseCombatWeapon"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x18\x53\x56\x57\x33\xDB\x8B\xF9\x8B\x0D\x2A\x2A\x2A\x2A\x89\x5D\xE8\x89\x5D\xEC\x89\x5D\xF4\x8B\x41\x08\x89\x5D\xF8\x85\xC0\x74\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x93\x0A\x00\x00"
+				"linux64"	"@_ZN6CTFBot13OnWeaponFiredEP20CBaseCombatCharacterP17CBaseCombatWeapon"
+				"windows64"	"\x4C\x8B\xDC\x49\x89\x5B\x10\x49\x89\x6B\x18\x49\x89\x73\x20\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x83\xEC\x60\x48\x8B\x05\xED\x10\x24\x00"
 			}
 			"CZombie::SetSkeletonType"
 			{
 				"linux"		"@_ZN7CZombie15SetSkeletonTypeENS_14SkeletonType_tE"
 				"windows"	"\x55\x8B\xEC\x8B\x45\x08\x56\x8B\xF1\x57\x89\x86\xF0\x08\x00\x00\x83\xF8\x01\x0F\x85\xA7\x00\x00\x00\x8B\x06"
+				"linux64"	"@_ZN7CZombie15SetSkeletonTypeENS_14SkeletonType_tE"
+				"windows64"	""
 			}
-			"CHeadlessHatmanAttack::IsPotentiallyChaseable"
+			// Replace the above with this after x64 update (use SDKCall_Static)
+			"CZombie::SpawnAtPos"
+			{
+				"linux"		"@_ZN7CZombie10SpawnAtPosERK6VectorfiP11CBaseEntityNS_14SkeletonType_tE"
+				"windows"	""
+				"linux"		"@_ZN7CZombie10SpawnAtPosERK6VectorfiP11CBaseEntityNS_14SkeletonType_tE"
+				"windows64"	"\x48\x89\x5C\x24\x08\x48\x89\x6C\x24\x10\x48\x89\x74\x24\x18\x57\x48\x83\xEC\x40\x48\x8B\xE9\x0F\x29\x74\x24\x30"
+			}
+			"CHeadlessHatmanAttack::IsPotentiallyChaseable" // no idea where this is
 			{
 				"linux"		"@_ZN21CHeadlessHatmanAttack22IsPotentiallyChaseableEP15CHeadlessHatmanP9CTFPlayer"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x14\x56\x8B\x75\x0C\x89\x4D\xFC"
+				"linux64"	"@_ZN21CHeadlessHatmanAttack22IsPotentiallyChaseableEP15CHeadlessHatmanP9CTFPlayer"
 			}
 			"CEyeballBoss::FindClosestVisibleVictim"
 			{
 				"linux"		"@_ZN12CEyeballBoss24FindClosestVisibleVictimEv"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x2C\xF3\x0F\x10\x05\x2A\x2A\x2A\x2A\x53"
+				"linux64"	"@_ZN12CEyeballBoss24FindClosestVisibleVictimEv"
+				"windows64"	"\x48\x8B\xC4\x48\x89\x48\x08\x41\x54\x48\x81\xEC\x80\x00\x00\x00\x48\x89\x58\x20"
 			}
 		}
 		
