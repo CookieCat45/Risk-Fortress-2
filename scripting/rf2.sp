@@ -1533,7 +1533,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	
 	if (g_hPlayerTimer)
 		delete g_hPlayerTimer;
-
+	
 	if (g_hHudTimer)
 		delete g_hHudTimer;
 
@@ -1715,10 +1715,21 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	
 	if (g_bWaitingForPlayers)
 	{
+		/*
+		if (g_bGameInitialized)
+		{
+			int invIndex = PickInventoryIndex(client);
+			if (invIndex != -1 && g_iPlayerInventoryIndex[client] != invIndex)
+			{
+				g_iPlayerInventoryIndex[client] = invIndex;
+				LoadSurvivorInventory(client, invIndex);
+			}
+		}
+		*/
+		
 		CreateTimer(1.0, Timer_SkipWaitHint, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-		return Plugin_Continue;
 	}
-	
+
 	if (!g_bRoundActive)
 		return Plugin_Continue;
 	
@@ -1789,27 +1800,19 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	ClientCommand(client, "slot10");
 	TF2Attrib_SetByDefIndex(client, 269, 1.0); // "mod see enemy health"
 	TF2Attrib_SetByDefIndex(client, 275, 1.0); // "cancel falling damage"
-
-	// Initialize our stats (health, speed, kb resist) the next frame to ensure it's correct
-	RequestFrame(RF_InitStats, client);
-
-	// Calculate max speed on a timer again to fix a... weird issue with players spawning in and being REALLY slow.
-	// I don't know why it happens, but this fixes it, so, cool I guess?
-	CreateTimer(0.1, Timer_FixSpeedIssue, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-
+	
 	TF2_AddCondition(client, TFCond_UberchargedHidden, 0.2);
 	if (g_bThrillerActive)
 	{
 		TF2_AddCondition(client, TFCond_HalloweenThriller);
 	}
 	
-	if (GetClientTeam(client) == TEAM_ENEMY && IsArtifactActive(BLUArtifact_Silence))
-	{
-		if (GetRandomInt(1, 5) == 1)
-		{
-			TF2_AddCondition(client, TFCond_StealthedUserBuffFade);
-		}
-	}
+	// Initialize our stats (health, speed, kb resist) the next frame to ensure it's correct
+	RequestFrame(RF_InitStats, client);
+	
+	// Calculate max speed on a timer again to fix a... weird issue with players spawning in and being REALLY slow.
+	// I don't know why it happens, but this fixes it, so, cool I guess?
+	CreateTimer(0.1, Timer_FixSpeedIssue, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	
 	return Plugin_Continue;
 }
@@ -1831,7 +1834,7 @@ public void RF_InitStats(int client)
 		CalculatePlayerMaxSpeed(client);
 		CalculatePlayerMiscStats(client);
 		
-		if (GetClientTeam(client) == TEAM_ENEMY)
+		if (g_bRoundActive && GetClientTeam(client) == TEAM_ENEMY)
 		{
 			int powerUpLevel = IsBoss(client) ? g_cvBossPowerupLevel.IntValue : g_cvEnemyPowerupLevel.IntValue;
 			if (powerUpLevel > 0 && g_iEnemyLevel >= powerUpLevel && RandChanceInt(0, powerUpLevel*8, g_iEnemyLevel))
@@ -1849,7 +1852,7 @@ public Action Timer_FixSpeedIssue(Handle timer, int client)
 {
 	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
 		return Plugin_Continue;
-
+	
 	CalculatePlayerMaxSpeed(client);
 	return Plugin_Continue;
 }
@@ -1867,12 +1870,10 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	if (g_bWaitingForPlayers)
 	{
 		CreateTimer(0.1, Timer_RespawnPlayerPreRound, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
-		return Plugin_Continue;
 	}
-	else if (!g_bRoundActive)
-	{
+
+	if (!g_bRoundActive)
 		return Plugin_Continue;
-	}
 	
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	//int inflictor = event.GetInt("inflictor_entindex");
@@ -1921,6 +1922,11 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	
 	if (victimTeam == TEAM_ENEMY)
 	{
+		if (!IsFakeClient(victim))
+		{
+			SetClientName(victim, g_szPlayerOriginalName[victim]);
+		}
+		
 		if (!g_bGracePeriod)
 		{
 			float pos[3];
@@ -2093,11 +2099,6 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			pack.WriteFloat(pos[1]);
 			pack.WriteFloat(pos[2]);
 		}
-	}
-	
-	if (victimTeam == TEAM_ENEMY && !IsFakeClient(victim))
-	{
-		SetClientName(victim, g_szPlayerOriginalName[victim]);
 	}
 	
 	bool wasSurvivor = IsPlayerSurvivor(victim);
@@ -2895,15 +2896,25 @@ public Action Timer_PlayerHud(Handle timer)
 			
 			if (g_iPlayerEquipmentItemCharges[i] > 0)
 			{
-				if (g_flPlayerEquipmentItemCooldown[i] > 0.0) // multi-stack recharge?
+				static char buttonText[32];
+				if (HoldingReloadUseWeapon(i))
 				{
-					Format(strangeItemInfo, sizeof(strangeItemInfo), "%s[%i] READY! RELOAD (R) [%.1f]",
-						strangeItemInfo, g_iPlayerEquipmentItemCharges[i], g_flPlayerEquipmentItemCooldown[i]);
+					buttonText = "TAB+RELOAD (TAB+R)";
 				}
 				else
 				{
-					Format(strangeItemInfo, sizeof(strangeItemInfo), "%s[%i] READY! RELOAD (R)",
-						strangeItemInfo, g_iPlayerEquipmentItemCharges[i]);
+					buttonText = "RELOAD (R)";
+				}
+				
+				if (g_flPlayerEquipmentItemCooldown[i] > 0.0) // multi-stack recharge?
+				{
+					Format(strangeItemInfo, sizeof(strangeItemInfo), "%s[%i] READY! %s [%.1f]",
+						strangeItemInfo, g_iPlayerEquipmentItemCharges[i], buttonText, g_flPlayerEquipmentItemCooldown[i]);
+				}
+				else
+				{
+					Format(strangeItemInfo, sizeof(strangeItemInfo), "%s[%i] READY! %s",
+						strangeItemInfo, g_iPlayerEquipmentItemCharges[i], buttonText);
 				}
 			}
 			else
@@ -3131,7 +3142,7 @@ public Action Timer_Difficulty(Handle timer)
 
 public Action Timer_PlayerTimer(Handle timer)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive)
+	if (!RF2_IsEnabled())
 	{
 		g_hPlayerTimer = null;
 		return Plugin_Stop;
@@ -3150,7 +3161,7 @@ public Action Timer_PlayerTimer(Handle timer)
 		if (!IsClientInGame(i))
 			continue;
 		
-		if (!IsPlayerAlive(i))
+		if (g_bRoundActive && !IsPlayerAlive(i))
 		{
 			team = GetClientTeam(i);
 			if (team == TEAM_SURVIVOR)
@@ -3177,7 +3188,6 @@ public Action Timer_PlayerTimer(Handle timer)
 		if (weapon != INVALID_ENT)
 		{
 			ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType");
-
 			if (ammoType > TFAmmoType_None && ammoType < TFAmmoType_Metal)
 			{
 				GivePlayerAmmo(i, 999999, ammoType, true);
@@ -3704,12 +3714,9 @@ public void Hook_PreThink(int client)
 		TF2_RespawnPlayer(client);
 	}
 	
-	if (!g_bRoundActive)
-		return;
-	
 	float engineTime = GetEngineTime();
 	bool bot = IsFakeClient(client);
-	if (!bot && !IsStageCleared() && g_flLoopMusicAt[client] > 0.0 && engineTime >= g_flLoopMusicAt[client])
+	if (g_bRoundActive && !bot && !IsStageCleared() && g_flLoopMusicAt[client] > 0.0 && engineTime >= g_flLoopMusicAt[client])
 	{
 		RF2_Object_Teleporter teleporter = GetCurrentTeleporter();
 		if (!teleporter.IsValid() || teleporter.EventState != TELE_EVENT_PREPARING)
@@ -3722,7 +3729,7 @@ public void Hook_PreThink(int client)
 	if (!IsPlayerAlive(client))
 		return;
 	
-	if (bot)
+	if (g_bRoundActive && bot)
 	{
 		TFBot_Think(TFBot(client));
 	}
@@ -3744,7 +3751,7 @@ public void Hook_PreThink(int client)
 	}
 	
 	TFClassType class = TF2_GetPlayerClass(client);
-	if (class == TFClass_Engineer)
+	if (g_bRoundActive && class == TFClass_Engineer)
 	{
 		float tickedTime = GetTickedTime();
 		if (tickedTime >= g_flPlayerNextMetalRegen[client])
@@ -3916,7 +3923,7 @@ int g_iLastFiredWeapon[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 float g_flWeaponFireTime[MAXTF2PLAYERS];
 public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName, bool &result)
 {
-	if (!RF2_IsEnabled() || g_bWaitingForPlayers)
+	if (!RF2_IsEnabled() || !g_bRoundActive)
 		return Plugin_Continue;
 	
 	bool changed;
@@ -5727,40 +5734,9 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		if (!reloadPressed[client])
 		{
 			// Don't conflict with the Vaccinator or Eureka Effect. Player must be pressing IN_SCORE when holding these weapons.
-			bool tabRequired;
-			int initial;
-
-			if (TF2_GetPlayerClass(client) == TFClass_Medic)
+			if ((buttons & IN_SCORE || !HoldingReloadUseWeapon(client)) && GetPlayerEquipmentItem(client) > Item_Null)
 			{
-				int medigun = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-				if (medigun != INVALID_ENT && GetActiveWeapon(client) == medigun)
-				{
-					initial = TF2Attrib_HookValueInt(0, "set_charge_type", medigun);
-					
-					if (initial == 3)
-					{
-						tabRequired = true;
-					}
-				}
-			}
-			else if (TF2_GetPlayerClass(client) == TFClass_Engineer)
-			{
-				int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-				if (wrench != INVALID_ENT && GetActiveWeapon(client) == wrench)
-				{
-					initial = TF2Attrib_HookValueInt(0, "alt_fire_teleport_to_spawn", wrench);
-
-					if (initial > 0)
-					{
-						tabRequired = true;
-					}
-				}
-			}
-			
-			if ((!tabRequired || buttons & IN_SCORE) && GetPlayerEquipmentItem(client) > Item_Null)
-			{
-				bool activated = ActivateStrangeItem(client);
-				if (!activated)
+				if (!ActivateStrangeItem(client))
 				{
 					EmitGameSoundToClient(client, "Player.DenyWeaponSelection");
 				}

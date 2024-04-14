@@ -923,7 +923,11 @@ public Action Command_UseStrange(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	ActivateStrangeItem(client);
+	if (!ActivateStrangeItem(client))
+	{
+		EmitGameSoundToClient(client, "Player.DenyWeaponSelection");
+	}
+
 	return Plugin_Handled;
 }
 

@@ -324,7 +324,7 @@ void LoadSurvivorInventory(int client, int index)
 {
 	g_iPlayerEquipmentItem[client] = g_iSavedEquipmentItem[index];
 	g_iPlayerEquipmentItemCharges[client] = 1;
-	if (GetPlayerEquipmentItem(client) != Item_Null && PlayerHasItem(client, Item_BatteryCanteens))
+	if (!g_bWaitingForPlayers && GetPlayerEquipmentItem(client) != Item_Null && PlayerHasItem(client, Item_BatteryCanteens))
 	{
 		g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
 		CreateTimer(0.1, Timer_EquipmentCooldown, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -342,18 +342,21 @@ void LoadSurvivorInventory(int client, int index)
 		}
 	}
 	
-	SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier());
-	g_iPlayerLevel[client] = g_iSavedLevel[index];
-	g_flPlayerXP[client] = g_flSavedXP[index];
-	g_iItemsTaken[RF2_GetSurvivorIndex(client)] = 0;
-	
-	if (g_iPlayerLevel[client] > 1)
+	if (!g_bWaitingForPlayers)
 	{
-		g_flPlayerNextLevelXP[client] = g_flSavedNextLevelXP[index];
-	}
-	else
-	{
-		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
+		SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier());
+		g_iPlayerLevel[client] = g_iSavedLevel[index];
+		g_flPlayerXP[client] = g_flSavedXP[index];
+		g_iItemsTaken[RF2_GetSurvivorIndex(client)] = 0;
+		
+		if (g_iPlayerLevel[client] > 1)
+		{
+			g_flPlayerNextLevelXP[client] = g_flSavedNextLevelXP[index];
+		}
+		else
+		{
+			g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
+		}
 	}
 }
 
@@ -724,12 +727,12 @@ int PickInventoryIndex(int client)
 	GetClientName(client, name, sizeof(name));
 	if (GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId)))
 	{
-		if (!g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, index))
+		if (g_hPlayerSteamIDToInventoryIndex && !g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, index))
 		{
 			g_hPlayerNameToInventoryIndex.GetValue(name, index);
 		}
 	}
-	else
+	else if (g_hPlayerNameToInventoryIndex)
 	{
 		g_hPlayerNameToInventoryIndex.GetValue(name, index);
 	}

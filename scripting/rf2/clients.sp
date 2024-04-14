@@ -495,13 +495,8 @@ int SDK_GetPlayerMaxHealth(int client)
 
 float CalculatePlayerMaxSpeed(int client)
 {
-	if (g_bWaitingForPlayers)
-	{
-		return GetClassMaxSpeed(TF2_GetPlayerClass(client));
-	}
-	
-	float speed = g_flPlayerMaxSpeed[client];
 	float classMaxSpeed = GetClassMaxSpeed(TF2_GetPlayerClass(client));
+	float speed = g_bWaitingForPlayers ? classMaxSpeed : g_flPlayerMaxSpeed[client];
 	
 	if (PlayerHasItem(client, Item_RobinWalkers))
 	{
@@ -1298,6 +1293,35 @@ int GetPlayerWearableCount(int client, bool itemOnly=false)
 int GetActiveWeapon(int client)
 {
 	return GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+}
+
+// Eureka Effect/Vaccinator
+bool HoldingReloadUseWeapon(int client)
+{
+	if (TF2_GetPlayerClass(client) == TFClass_Medic)
+	{
+		int medigun = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
+		if (medigun != INVALID_ENT && GetActiveWeapon(client) == medigun)
+		{
+			if (TF2Attrib_HookValueInt(0, "set_charge_type", medigun) == 3)
+			{
+				return true;
+			}
+		}
+	}
+	else if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+	{
+		int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
+		if (wrench != INVALID_ENT && GetActiveWeapon(client) == wrench)
+		{
+			if (TF2Attrib_HookValueInt(0, "alt_fire_teleport_to_spawn", wrench) > 0)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 /*

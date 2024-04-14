@@ -590,7 +590,7 @@ static void OnSpawnPost(int entity)
 	proj.Team == TEAM_SURVIVOR ? proj.GetRedTrail(trail, sizeof(trail)) : proj.GetBlueTrail(trail, sizeof(trail));
 	if (trail[0])
 	{
-		if (proj.AltParticleSpawn)
+		if (!proj.AltParticleSpawn)
 		{
 			float pos[3];
 			proj.GetAbsOrigin(pos);
