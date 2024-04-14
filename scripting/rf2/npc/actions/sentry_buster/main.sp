@@ -73,7 +73,7 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	GetEntPos(target, targetPos);
 	IVision vision = actor.MyNextBotPointer().GetVisionInterface();
 	if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) 
-		&& vision.IsLineOfSightClearToEntity(target))
+		&& vision.IsLineOfSightClearToEntity(target) && actor.LastUnstuckTime+1.0 < GetGameTime())
 	{
 		return action.ChangeTo(RF2_SentryBusterDetonateAction(), "KABOOM");
 	}
@@ -89,8 +89,7 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 		actor.BaseNpc.flGravity = 800.0;
 	}
 	
-	if (loco.GetGroundSpeed() <= 85.0 && DistBetween(actor.index, target) <= g_cvSuicideBombRange.FloatValue 
-		|| loco.IsStuck())
+	if (loco.GetGroundSpeed() <= 85.0 && DistBetween(actor.index, target) <= g_cvSuicideBombRange.FloatValue || loco.IsStuck())
 	{
 		int attempts = actor.RepathAttempts;
 		if (attempts >= 60)

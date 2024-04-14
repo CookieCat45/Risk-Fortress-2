@@ -31,7 +31,10 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		g_Factory.BeginDataMapDesc()
 			.DefineEntityField("m_hTarget")
 			.DefineEntityField("m_hGlow")
-			//.DefineIntField("m_PathFollower")
+			.DefineBoolField("m_bDoUnstuckChecks")
+			.DefineFloatField("m_flLastUnstuckTime")
+			.DefineFloatField("m_flDormantTime")
+			.DefineVectorField("m_vecStuckPos")
 			.DefineIntField("m_iDefendTeam", _, "defendteam") // we won't target this team
 		.EndDataMapDesc();
 		g_Factory.Install();
@@ -57,13 +60,6 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		{
 			return GetEntPathFollower(this.index);
 		}
-		
-		/*
-		public set(PathFollower pf)
-		{
-			this.SetProp(Prop_Data, "m_PathFollower", pf);
-		}
-		*/
 	}
 
 	property int FollowerIndex
@@ -76,6 +72,45 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		public set(int value)
 		{
 			g_iEntityPathFollowerIndex[this.index] = value;
+		}
+	}
+
+	property bool DoUnstuckChecks
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bDoUnstuckChecks"));
+		}
+
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bDoUnstuckChecks", value);
+		}
+	}
+
+	property float LastUnstuckTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flLastUnstuckTime");
+		}
+
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flLastUnstuckTime", value);
+		}
+	}
+
+	property float DormantTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flDormantTime");
+		}
+
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flDormantTime", value);
 		}
 	}
 	
@@ -261,6 +296,21 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 			AcceptEntityInput(this.GlowEnt, "SetGlowColor");
 		}
 	}
+
+	public void GetStuckPos(float buffer[3])
+	{
+		this.GetPropVector(Prop_Data, "m_vecStuckPos", buffer);
+	}
+	
+	public void SetStuckPos(const float vec[3])
+	{
+		this.SetPropVector(Prop_Data, "m_vecStuckPos", vec);
+	}
+}
+
+void BaseNPC_OnMapStart()
+{
+	PrecacheSound(SND_BOSS_DEATH, true);
 }
 
 CEntityFactory GetBaseNPCFactory()
@@ -272,25 +322,32 @@ static void OnCreate(RF2_NPC_Base npc)
 {
 	SDKHook(npc.index, SDKHook_OnTakeDamageAlivePost, OnTakeDamageAlivePost);
 	SDKHook(npc.index, SDKHook_ThinkPost, ThinkPost);
+	SDKHook(npc.index, SDKHook_SpawnPost, OnSpawnPost);
 	npc.DefendTeam = -1;
-	//npc.Path = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+	npc.DoUnstuckChecks = true;
 	npc.FollowerIndex = GetFreePathFollowerIndex(npc.index);
 }
 
 static void OnRemove(RF2_NPC_Base npc)
 {
-	/*
-	if (npc.Path)
-	{
-		npc.Path.Destroy();
-		npc.Path = view_as<PathFollower>(0);
-	}
-	*/
+
 }
 
 static void ThinkPost(int entity)
 {
 	RF2_NPC_Base(entity).SetNextThink(GetGameTime());
+}
+
+static void OnSpawnPost(int entity)
+{
+	RF2_NPC_Base npc = RF2_NPC_Base(entity);
+	if (npc.DoUnstuckChecks)
+	{
+		float pos[3];
+		npc.GetAbsOrigin(pos);
+		npc.SetStuckPos(pos);
+		CreateTimer(0.5, Timer_UnstuckCheck, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	}
 }
 
 static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3])
@@ -320,7 +377,60 @@ static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
 	}
 }
 
-void BaseNPC_OnMapStart()
+static Action Timer_UnstuckCheck(Handle timer, int entity)
 {
-	PrecacheSound(SND_BOSS_DEATH, true);
+	RF2_NPC_Base npc = RF2_NPC_Base(EntRefToEntIndex(entity));
+	if (!npc.IsValid() || !npc.DoUnstuckChecks)
+	{
+		return Plugin_Stop;
+	}
+	
+	bool stuck;
+	float pos[3], oldStuckPos[3], mins[3], maxs[3];
+	npc.GetAbsOrigin(pos);
+	npc.GetStuckPos(oldStuckPos);
+	npc.SetStuckPos(pos);
+	npc.BaseNpc.GetBodyMins(mins);
+	npc.BaseNpc.GetBodyMaxs(maxs);
+	if (GetVectorDistance(oldStuckPos, pos, true) <= 64.0)
+	{
+		npc.DormantTime += 0.5;
+		PrintToChatAll("Dormant Time = %.1f", npc.DormantTime);
+	}
+	else
+	{
+		npc.DormantTime = 0.0;
+	}
+	
+	if (npc.DormantTime >= 2.0)
+	{
+		stuck = true;
+	}
+	else if (npc.DormantTime >= 0.5)
+	{
+		float mins2[3], maxs2[3];
+		CopyVectors(mins, mins2);
+		CopyVectors(maxs, maxs2);
+		ScaleVector(mins2, 0.9);
+		ScaleVector(maxs2, 0.9);
+		TR_TraceHullFilter(pos, pos, mins, maxs, MASK_NPCSOLID_BRUSHONLY, TraceFilter_WallsOnly);
+		if (TR_DidHit())
+		{
+			stuck = true;
+		}
+	}
+	
+	if (stuck)
+	{
+		float spawnPos[3];
+		CNavArea area = GetSpawnPoint(pos, spawnPos, 0.0, 300.0, 4, true, mins, maxs, MASK_NPCSOLID_BRUSHONLY, maxs[2]*0.25);
+		if (area)
+		{
+			npc.LastUnstuckTime = GetGameTime();
+			npc.DormantTime = 0.0;
+			npc.Teleport(spawnPos);
+		}
+	}
+	
+	return Plugin_Continue;
 }

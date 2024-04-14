@@ -35,6 +35,7 @@ methodmap RF2_SentryBusterDetonateAction < NextBotAction
 
 static int OnStart(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor, NextBotAction prevAction)
 {
+	actor.DoUnstuckChecks = false;
 	int sequence = actor.LookupSequence("taunt04");
 	actor.SetProp(Prop_Data, "m_takedamage", DAMAGE_NO);
 	if (sequence == -1)
