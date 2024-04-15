@@ -814,7 +814,7 @@ public void OnMapStart()
 		AddCommandListener(OnChangeSpec, "spec_next");
 		AddCommandListener(OnChangeSpec, "spec_prev");
 		AddCommandListener(OnBuildCommand, "build");
-
+		
 		HookEntityOutput("tank_boss", "OnKilled", Output_OnTankKilled);
 		HookEntityOutput("rf2_tank_boss_badass", "OnKilled", Output_OnTankKilled);
 		HookUserMessage(GetUserMessageId("SayText2"), UserMessageHook_SayText2, true);
@@ -956,6 +956,7 @@ void CleanUp()
 	RemoveCommandListener(OnBuildCommand, "build");
 	
 	UnhookEntityOutput("tank_boss", "OnKilled", Output_OnTankKilled);
+	UnhookEntityOutput("rf2_tank_boss_badass", "OnKilled", Output_OnTankKilled);
 	UnhookUserMessage(GetUserMessageId("SayText2"), UserMessageHook_SayText2, true);
 	RemoveNormalSoundHook(PlayerSoundHook);
 	RemoveTempEntHook("TFBlood", TEHook_TFBlood);
@@ -1399,7 +1400,7 @@ void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (i == client || !IsClientInGame(i) || IsPlayerSurvivor(i) || !GetCookieBool(i, g_coBecomeSurvivor) || GetClientTeam(i) <= 1)
+		if (i == client || !IsClientInGame(i) || IsPlayerSurvivor(i) || AreClientCookiesCached(i) && !GetCookieBool(i, g_coBecomeSurvivor) || GetClientTeam(i) <= 1)
 			continue;
 		
 		// If we are allowing bots, they lose points in favor of players.

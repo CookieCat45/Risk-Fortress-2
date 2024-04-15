@@ -70,7 +70,7 @@ bool CreateSurvivors()
 	ArrayList survivorList = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || IsPlayerSpectator(i) || humanCount > 1 && !GetCookieBool(i, g_coBecomeSurvivor))
+		if (!IsClientInGame(i) || IsPlayerSpectator(i) || humanCount > 1 && (AreClientCookiesCached(i) && !GetCookieBool(i, g_coBecomeSurvivor)))
 			continue;
 			
 		if (IsFakeClient(i))
@@ -267,6 +267,11 @@ public int SortSurvivorListByPoints(int index1, int index2, ArrayList array, Han
 	// move bots, AFK people and those who don't want to be survivors to the end of the list
 	bool survivor1 = GetCookieBool(client1, g_coBecomeSurvivor);
 	bool survivor2 = GetCookieBool(client2, g_coBecomeSurvivor);
+	if (!AreClientCookiesCached(client1))
+		survivor1 = true;
+	if (!AreClientCookiesCached(client2))
+		survivor2 = true;
+	
 	if (!survivor1 && !survivor2)
 	{
 		return 0;

@@ -105,3 +105,5 @@ scripting/include/goomba.inc
 translations/goomba.phrases.txt
 scripting/goomba_tf.sp
 scripting/include/handledebugger.inc
+scripting/thirdperson.sp
+/scripting/compiled
