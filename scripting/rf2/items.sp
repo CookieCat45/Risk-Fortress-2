@@ -101,7 +101,7 @@ void LoadItems()
 		ThrowError("Keyvalues section \"items\" does not exist in %s", config);
 	}
 	
-	for (int i = 0; i < Item_MaxValid; i++)
+	for (int i = 0; i <= GetTotalItems(); i++)
 	{
 		if (i == 0 && itemKey.GotoFirstSubKey() || itemKey.GotoNextKey())
 		{
@@ -162,6 +162,11 @@ void LoadItems()
 				{
 					g_flEquipmentItemCooldown[item] = itemKey.GetFloat("strange_cooldown", 40.0);
 					g_flEquipmentItemMinCooldown[item] = itemKey.GetFloat("strange_cooldown_min", 0.0);
+				}
+				
+				case Quality_Community: // Should never ever be in the item pool
+				{
+					g_bItemInDropPool[item] = false;
 				}
 			}
 			
@@ -497,6 +502,7 @@ int GetQualityEquipPriority(int quality)
 		case Quality_Haunted: return 3;
 		case Quality_Unusual: return 4;
 		case Quality_Strange, Quality_HauntedStrange: return 5;
+		case Quality_Community: return 6;
 	}
 	
 	return -1;
@@ -1243,7 +1249,7 @@ bool ActivateStrangeItem(int client)
 	if (equipment == ItemStrange_PartyHat)
 	{
 		ArrayList equipmentList = new ArrayList();
-		for (int i = 1; i < Item_MaxValid; i++)
+		for (int i = 1; i <= GetTotalItems(); i++)
 		{
 			if (i == ItemStrange_PartyHat || !g_bItemInDropPool[i] || !IsEquipmentItem(i))
 				continue;
@@ -1619,9 +1625,62 @@ bool ActivateStrangeItem(int client)
 			#else
 			ClientPlayGesture(client, "ACT_MP_THROW");
 			#endif
-
+			
 			EmitSoundToAll(SND_SPELL_FIREBALL, client);
 			RF_TakeDamage(client, client, client, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE, ItemStrange_DemonicDome);
+		}
+		
+		case ItemStrange_ModestHat:
+		{
+			RF2_Item item = GetItemInPickupRange(client);
+			if (!item.IsValid() || !item.CanBeShuffledBy(client))
+			{
+				return false;
+			}
+			
+			ArrayList randomItems = new ArrayList();
+			int type = item.Type;
+			int quality = GetItemQuality(type);
+			for (int i = 1; i <= GetTotalItems(); i++)
+			{
+				if (g_bItemInDropPool[i] && (GetItemQuality(i) == quality || IsHauntedItem(i) && IsHauntedItem(type)) && i != type)
+				{
+					if (quality == Quality_Collectors && g_iCollectorItemClass[type] != g_iCollectorItemClass[i])
+						continue;
+
+					randomItems.Push(i);
+				}
+			}
+			
+			if (randomItems.Length > 0)
+			{
+				int randomItem = randomItems.Get(GetRandomInt(0, randomItems.Length-1));
+				RF2_Item newItem = RF2_Item(CreateEntityByName("rf2_item"));
+				newItem.Type = randomItem;
+				newItem.Shuffled = true;
+				newItem.Owner = client;
+				newItem.OwnTime = 8.0;
+				CreateTimer(0.1, Timer_ClearItemOwner, EntIndexToEntRef(newItem.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+				
+				float pos[3];
+				item.GetAbsOrigin(pos);
+				newItem.Teleport(pos);
+				newItem.Spawn();
+				EmitSoundToAll(SND_USE_WORKBENCH, newItem.index);
+				TE_TFParticle("mvm_loot_smoke", pos);
+				RemoveEntity2(item.index);
+				if (quality == Quality_Unusual)
+				{
+					TriggerAchievement(client, ACHIEVEMENT_RECYCLER);
+				}
+			}
+			else
+			{
+				delete randomItems;
+				return false;
+			}
+			
+			delete randomItems;
 		}
 	}
 	
@@ -2007,7 +2066,9 @@ int GetQualityName(int quality, char[] buffer, int size)
 		case Quality_Collectors: cells = strcopy(buffer, size, "Collectors");
 		case Quality_Strange: cells = strcopy(buffer, size, "Strange");
 		case Quality_Haunted, Quality_HauntedStrange: cells = strcopy(buffer, size, "Haunted");
+		case Quality_Community: cells = strcopy(buffer, size, "Community");
 	}
+	
 	return cells;
 }
 
@@ -2021,6 +2082,7 @@ int GetActualItemQuality(int quality)
 		case Quality_Collectors: return TF2Quality_Collectors;
 		case Quality_Strange: return TF2Quality_Strange;
 		case Quality_Haunted, Quality_HauntedStrange: return TF2Quality_Haunted;
+		case Quality_Community: return TF2Quality_Community;
 	}
 	
 	return TF2Quality_Normal;
@@ -2136,12 +2198,12 @@ float GetItemProcCoeff(int item)
 }
 
 // Returns a list of items sorted by quality
-ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true)
+ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true, bool allowCommunity=false)
 {
 	ArrayList items = new ArrayList();
-	for (int i = 1; i < Item_MaxValid; i++)
+	for (int i = 1; i <= GetTotalItems(); i++)
 	{
-		if (poolOnly && !g_bItemInDropPool[i] && !IsScrapItem(i))
+		if (poolOnly && !g_bItemInDropPool[i] && !IsScrapItem(i) && (!allowCommunity || GetItemQuality(i) != Quality_Community))
 			continue;
 		
 		if (!allowMetals && IsScrapItem(i))
@@ -2174,6 +2236,12 @@ public int SortItemList(int index1, int index2, ArrayList array, Handle hndl)
 	if (quality1 == quality2)
 		return 0;
 	
+	if (quality1 == Quality_Community)
+		return 1;
+	
+	if (quality2 == Quality_Community)
+		return -1;
+
 	return quality1 > quality2 ? -1 : 1;
 }
 
@@ -2320,6 +2388,11 @@ void DoHeadshotBonuses(int attacker, int victim, float damage)
 	{
 		g_flPlayerRifleHeadshotBonusTime[attacker] = GetItemMod(ItemSniper_VillainsVeil, 2);
 	}
+}
+
+bool IsHauntedItem(int item)
+{
+	return GetItemQuality(item) == Quality_Haunted || GetItemQuality(item) == Quality_HauntedStrange;
 }
 
 static int g_iLastShownItem[MAXTF2PLAYERS];

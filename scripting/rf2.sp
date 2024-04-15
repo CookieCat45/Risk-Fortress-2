@@ -329,6 +329,7 @@ Cookie g_coAchievementCookies[MAX_ACHIEVEMENTS];
 Cookie g_coNewPlayer;
 Cookie g_coDisableItemMessages;
 Cookie g_coDisableItemCosmetics;
+Cookie g_coEarnedAllAchievements;
 
 // TFBots
 TFBot g_TFBot[MAXTF2PLAYERS];

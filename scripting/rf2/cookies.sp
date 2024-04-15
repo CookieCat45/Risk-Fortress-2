@@ -24,6 +24,7 @@ void BakeCookies()
 	g_coNewPlayer = RegClientCookie("rf2_new_player", "New Player", CookieAccess_Private);
 	g_coDisableItemMessages = RegClientCookie("rf2_disable_item_msg", "Disable item chat messages", CookieAccess_Protected);
 	g_coDisableItemCosmetics = RegClientCookie("rf2_disable_item_cosmetics", "Disable items being attached to player as cosmetics.", CookieAccess_Protected);
+	g_coEarnedAllAchievements = RegClientCookie("rf2_all_achievements", "All Achievements Earned", CookieAccess_Protected);
 	
 	char name[64];
 	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
@@ -119,6 +120,12 @@ public void OnClientCookiesCached(int client)
 	if (!buffer[0])
 	{
 		SetCookieBool(client, g_coNewPlayer, false);
+	}
+	
+	GetClientCookie(client, g_coEarnedAllAchievements, buffer, sizeof(buffer));
+	if (!buffer[0])
+	{
+		SetCookieBool(client, g_coEarnedAllAchievements, false);
 	}
 	
 	if (!g_bRoundActive && !GetCookieBool(client, g_coStayInSpecOnJoin) && GetTotalHumans(false) > 1)

@@ -26,10 +26,12 @@ methodmap RF2_Item < CBaseEntity
 		g_Factory.BeginDataMapDesc()
 			.DefineIntField("m_iIndex", _, "type")
 			.DefineBoolField("m_bDropped")
+			.DefineBoolField("m_bShuffled")
 			.DefineEntityField("m_hItemOwner")
 			.DefineEntityField("m_hSubject")
 			.DefineEntityField("m_hOriginalItemOwner")
 			.DefineEntityField("m_hWorldTextEnt")
+			.DefineFloatField("m_flItemOwnTime")
 		.EndDataMapDesc();
 		g_Factory.Install();
 	}
@@ -57,6 +59,19 @@ methodmap RF2_Item < CBaseEntity
 		public set (bool value)
 		{
 			this.SetProp(Prop_Data, "m_bDropped", value);
+		}
+	}
+	
+	property bool Shuffled
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bShuffled"));
+		}
+		
+		public set (bool value)
+		{
+			this.SetProp(Prop_Data, "m_bShuffled", value);
 		}
 	}
 	
@@ -96,6 +111,19 @@ methodmap RF2_Item < CBaseEntity
 		public set (int entity)
 		{
 			this.SetPropEnt(Prop_Data, "m_hOriginalItemOwner", entity);
+		}
+	}
+	
+	property float OwnTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flItemOwnTime");
+		}
+
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flItemOwnTime", value);
 		}
 	}
 
@@ -141,6 +169,73 @@ methodmap RF2_Item < CBaseEntity
 		text.Spawn();
 		ParentEntity(text.index, this.index);
 	}
+	
+	public void UpdateWorldText()
+	{
+		if (!IsValidEntity2(this.WorldText))
+			return;
+		
+		static char worldText[256], ownerText[128];
+		ownerText = "";
+		if (IsValidClient(this.Owner))
+		{
+			if (IsValidClient(this.Subject))
+			{
+				FormatEx(ownerText, sizeof(ownerText), "Belongs to %N - Dropped for %N [%.0f]\n", this.Owner, this.Subject, this.OwnTime);
+			}
+			else
+			{
+				FormatEx(ownerText, sizeof(ownerText), "Belongs to %N [%.0f]\n", this.Owner, this.OwnTime);
+			}
+		}
+		
+		if (this.Shuffled)
+		{
+			FormatEx(worldText, sizeof(worldText), "%s%s\nCall for Medic to pick up [Shuffled]", ownerText, g_szItemName[this.Type]);
+		}
+		else
+		{
+			int client = INVALID_ENT;
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (PlayerHasItem(i, ItemStrange_ModestHat) && GetItemInPickupRange(i) == this && this.CanBeShuffledBy(client))
+				{
+					client = i;
+					break;
+				}
+			}
+			
+			if (client != INVALID_ENT)
+			{
+				FormatEx(worldText, sizeof(worldText), "%s%s\nCall for Medic to pick up [R to Shuffle]", ownerText, g_szItemName[this.Type]);
+			}
+			else
+			{
+				FormatEx(worldText, sizeof(worldText), "%s%s\nCall for Medic to pick up", ownerText, g_szItemName[this.Type]);
+			}
+		}
+		
+		SetVariantString(worldText);
+		CBaseEntity(this.WorldText).AcceptInput("SetText");
+	}
+	
+	public void InitRenderColor()
+	{
+		switch (GetItemQuality(this.Type))
+		{
+			case Quality_Genuine:		this.SetRenderColor(125, 255, 125, 100);
+			case Quality_Unusual: 		this.SetRenderColor(200, 125, 255, 100);
+			case Quality_Strange:		this.SetRenderColor(200, 150, 0, 100);
+			case Quality_Collectors:	this.SetRenderColor(255, 100, 100, 100);
+			case Quality_Haunted, 
+				Quality_HauntedStrange:	this.SetRenderColor(125, 255, 255, 100);
+		}
+	}
+	
+	public bool CanBeShuffledBy(int client)
+	{
+		return !this.Dropped && !this.Shuffled && (this.Owner == INVALID_ENT || this.Owner == client || this.Subject == client);
+	}
 }
 
 static void OnCreate(RF2_Item item)
@@ -157,8 +252,17 @@ static void OnSpawn(int entity)
 	RF2_Item item = RF2_Item(entity);
 	item.KeyValue("model", g_szItemSprite[item.Type]);
 	item.KeyValueFloat("scale", g_flItemSpriteScale[item.Type]);
-	//item.CreateWorldText();
-	CreateTimer(0.1, Timer_SelectGlow, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	item.InitRenderColor();
+	int type = item.Type;
+	if (GetItemQuality(type) == Quality_Unusual && g_iItemSpriteUnusualEffect[type] >= 0)
+	{
+		float pos[3];
+		item.GetAbsOrigin(pos);
+		pos[2] += 25.0;
+		TE_TFParticle(g_szUnusualEffectName[g_iItemSpriteUnusualEffect[type]], pos, item.index, PATTACH_ABSORIGIN);
+	}
+	
+	CreateTimer(0.1, Timer_UpdateItem, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
 RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float ownTime=0.0)
@@ -174,33 +278,15 @@ RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float 
 		item.Owner = spawner;
 		if (ownTime > 0.0)
 		{
-			CreateTimer(ownTime, Timer_ClearItemOwner, EntIndexToEntRef(item.index), TIMER_FLAG_NO_MAPCHANGE);
+			item.OwnTime = ownTime;
+			CreateTimer(0.1, Timer_ClearItemOwner, EntIndexToEntRef(item.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
-	}
-	
-	int quality = GetItemQuality(type);
-	switch (quality)
-	{
-		case Quality_Genuine:		item.SetRenderColor(125, 255, 125, 100);
-		case Quality_Unusual: 		item.SetRenderColor(200, 125, 255, 100);
-		case Quality_Strange:		item.SetRenderColor(200, 150, 0, 100);
-		case Quality_Collectors:	item.SetRenderColor(255, 100, 100, 100);
-		case Quality_Haunted, 
-			Quality_HauntedStrange:	item.SetRenderColor(125, 255, 255, 100);
-	}
-	
-	if (quality == Quality_Unusual && g_iItemSpriteUnusualEffect[type] >= 0)
-	{
-		float effectPos[3];
-		CopyVectors(pos, effectPos);
-		effectPos[2] += 25.0;
-		TE_TFParticle(g_szUnusualEffectName[g_iItemSpriteUnusualEffect[type]], effectPos, item.index, PATTACH_ABSORIGIN);
 	}
 	
 	return item;
 }
 
-static Action Timer_SelectGlow(Handle timer, int entity)
+static Action Timer_UpdateItem(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Stop;
@@ -228,6 +314,8 @@ static Action Timer_SelectGlow(Handle timer, int entity)
 		{
 			item.CreateWorldText();
 		}
+		
+		item.UpdateWorldText();
 	}
 	else
 	{
@@ -266,7 +354,8 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, f
 	
 	if (ownTime > 0.0) // If we own this item but the owner/subject takes too long to pick it up, it's free for taking
 	{
-		CreateTimer(ownTime, Timer_ClearItemOwner, EntIndexToEntRef(item.index), TIMER_FLAG_NO_MAPCHANGE);
+		item.OwnTime = ownTime;
+		CreateTimer(0.1, Timer_ClearItemOwner, EntIndexToEntRef(item.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else
 	{
@@ -461,9 +550,15 @@ public Action Timer_ClearItemOwner(Handle timer, int entity)
 {
 	RF2_Item item = RF2_Item(EntRefToEntIndex(entity));
 	if (!item.IsValid())
-		return Plugin_Continue;
+		return Plugin_Stop;
 	
-	item.Owner = INVALID_ENT;
-	item.Subject = INVALID_ENT;	
+	item.OwnTime -= 0.1;
+	if (item.OwnTime <= 0.0)
+	{
+		item.Owner = INVALID_ENT;
+		item.Subject = INVALID_ENT;
+		return Plugin_Stop;
+	}
+	
 	return Plugin_Continue;
 }

@@ -243,7 +243,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	}
 	else // we should still update our items in case this is a respawn
 	{
-		for (int i = 1; i < Item_MaxValid; i++)
+		for (int i = 1; i <= GetTotalItems(); i++)
 		{
 			if (PlayerHasItem(client, i))
 			{
@@ -251,7 +251,8 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 			}
 		}
 	}
-
+	
+	GiveCommunityItems(client);
 	if (!IsFakeClient(client) && !GetCookieBool(client, g_coTutorialSurvivor))
 	{
 		CreateTimer(1.0, Timer_SurvivorTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
@@ -324,13 +325,13 @@ void LoadSurvivorInventory(int client, int index)
 {
 	g_iPlayerEquipmentItem[client] = g_iSavedEquipmentItem[index];
 	g_iPlayerEquipmentItemCharges[client] = 1;
-	if (!g_bWaitingForPlayers && GetPlayerEquipmentItem(client) != Item_Null && PlayerHasItem(client, Item_BatteryCanteens))
+	if (GetPlayerEquipmentItem(client) != Item_Null && PlayerHasItem(client, Item_BatteryCanteens))
 	{
 		g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
 		CreateTimer(0.1, Timer_EquipmentCooldown, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
-	for (int i = 0; i < Item_MaxValid; i++)
+	for (int i = 1; i <= GetTotalItems(); i++)
 	{
 		if (IsEquipmentItem(i))
 			continue;
@@ -342,21 +343,18 @@ void LoadSurvivorInventory(int client, int index)
 		}
 	}
 	
-	if (!g_bWaitingForPlayers)
+	SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier());
+	g_iPlayerLevel[client] = g_iSavedLevel[index];
+	g_flPlayerXP[client] = g_flSavedXP[index];
+	g_iItemsTaken[RF2_GetSurvivorIndex(client)] = 0;
+	
+	if (g_iPlayerLevel[client] > 1)
 	{
-		SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier());
-		g_iPlayerLevel[client] = g_iSavedLevel[index];
-		g_flPlayerXP[client] = g_flSavedXP[index];
-		g_iItemsTaken[RF2_GetSurvivorIndex(client)] = 0;
-		
-		if (g_iPlayerLevel[client] > 1)
-		{
-			g_flPlayerNextLevelXP[client] = g_flSavedNextLevelXP[index];
-		}
-		else
-		{
-			g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
-		}
+		g_flPlayerNextLevelXP[client] = g_flSavedNextLevelXP[index];
+	}
+	else
+	{
+		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
 	}
 }
 
@@ -365,7 +363,7 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 	if (index < 0)
 		return;
 		
-	for (int i = 0; i < Item_MaxValid; i++)
+	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (IsEquipmentItem(i))
 			continue;
@@ -803,4 +801,12 @@ bool IsItemSharingEnabled()
 		return false;
 	
 	return true;
+}
+
+void GiveCommunityItems(int client)
+{
+	if (!PlayerHasItem(client, ItemCommunity_MercMedal) && (GetCookieBool(client, g_coEarnedAllAchievements) || PlayerHasAllAchievements(client)))
+	{
+		GiveItem(client, ItemCommunity_MercMedal);
+	}
 }

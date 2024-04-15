@@ -43,7 +43,7 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 		bool collector;
 		for (int i = 1; i <= GetTotalItems(); i++)
 		{
-			if (IsScrapItem(i) || IsEquipmentItem(i) || !PlayerHasItem(client, i, true))
+			if (IsScrapItem(i) || IsEquipmentItem(i) || !PlayerHasItem(client, i, true) || GetItemQuality(i) == Quality_Community)
 				continue;
 			
 			if (GetItemQuality(i) == Quality_Collectors)
@@ -193,7 +193,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 						GiveItem(param1, scrap, 1, true);
 						PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[scrap]);
 					}
-					else // haunted item, give haunted key
+					else if (IsHauntedItem(item)) // haunted item, give haunted key
 					{
 						GiveItem(param1, Item_HauntedKey, 1, true);
 						PrintCenterText(param1, "%t", "UsedScrapperHaunted", g_szItemName[item]);

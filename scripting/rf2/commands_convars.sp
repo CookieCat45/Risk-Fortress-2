@@ -116,6 +116,7 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
 	RegAdminCmd("rf2_debug_entitycount", Command_EntityCount, ADMFLAG_SLAY, "Shows the total number of networked entities (edicts) in the server.");
 	RegAdminCmd("rf2_debug_thriller_test", Command_ThrillerTest, ADMFLAG_ROOT, "\"Darkness falls across the land, the dancing hour is close at hand...\"");
+	RegAdminCmd("rf2_debug_unlock_achievements", Command_UnlockAllAchievements, ADMFLAG_ROOT, "Unlocks every achievement.");
 	g_cvDebugNoMapChange = CreateConVar("rf2_debug_skip_map_change", "0", "If nonzero, prevents the map from changing on round end.", FCVAR_NOTIFY, true, 0.0);
 	g_cvDebugShowObjectSpawns = CreateConVar("rf2_debug_show_object_spawns", "0", "If nonzero, when an object spawns, its name and location will be printed to the console.", FCVAR_NOTIFY, true, 0.0);
 	g_cvDebugDontEndGame = CreateConVar("rf2_debug_dont_end_game", "0", "If nonzero, don't end the game if all of the survivors die.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -199,7 +200,7 @@ public Action Command_GiveItem(int client, int args)
 	for (int i = 1; i <= GetTotalItems(); i++)
 	{
 		GetItemName(i, name, sizeof(name), false);
-		if (g_bItemInDropPool[i] && StrContains(name, arg2, false) != -1)
+		if ((g_bItemInDropPool[i] || IsScrapItem(i)) && StrContains(name, arg2, false) != -1)
 		{
 			item = i;
 			break;
@@ -300,7 +301,7 @@ public Action Command_GiveAllItems(int client, int args)
 		{
 			for (int j = 1; j <= GetTotalItems(); j++)
 			{
-				if (!g_bItemInDropPool[j])
+				if (!g_bItemInDropPool[j] && !IsScrapItem(j))
 					continue;
 				
 				// no equipment items, this will just create a mess
@@ -1543,7 +1544,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 	int flags = target == inspectTarget ? ITEMDRAW_DISABLED : ITEMDRAW_DEFAULT;
 	char qualityName[32];
 	GetQualityName(Quality_Strange, qualityName, sizeof(qualityName));
-	ArrayList items = GetSortedItemList();
+	ArrayList items = GetSortedItemList(_, _, true);
 	int item;
 	for (int i = 0; i < items.Length; i++)
 	{
@@ -1596,7 +1597,14 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 			{
 				int item = StringToInt(info);
 				ShowItemDesc(param1, item);
-				ShowItemDropMenu(param1, item);
+				if (GetItemQuality(item) != Quality_Community)
+				{
+					ShowItemDropMenu(param1, item);
+				}
+				else
+				{
+					ShowItemMenu(param1);
+				}
 			}
 			else
 			{
@@ -1911,6 +1919,28 @@ public Action Command_ParticleTest(int client, int args)
 		case 0: SpawnInfoParticle(effect, pos, 15.0);
 		case 1: TE_TFParticle(effect, pos);
 		case 2: SpawnParticleViaTrigger(client, effect);
+	}
+	
+	return Plugin_Handled;
+}
+
+public Action Command_UnlockAllAchievements(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
+	{
+		SetAchievementProgress(client, i, 999999999);
 	}
 
 	return Plugin_Handled;

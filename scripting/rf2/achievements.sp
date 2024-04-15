@@ -29,6 +29,7 @@ enum
 	ACHIEVEMENT_KILL10K = 23,
 	ACHIEVEMENT_KILL100K = 24,
 	ACHIEVEMENT_GOOMBACHAIN = 25,
+	ACHIEVEMENT_RECYCLER = 26,
 	
 	// * * * INSERT NEW ACHIEVEMENTS DIRECTLY ABOVE THIS COMMENT ONLY! * * *
 	MAX_ACHIEVEMENTS,
@@ -101,6 +102,8 @@ int GetAchievementGoal(int achievement)
 		case ACHIEVEMENT_KILL10K: return 10000;
 		
 		case ACHIEVEMENT_KILL100K: return 100000;
+
+		case ACHIEVEMENT_RECYCLER: return 10;
 	}
 	
 	return 1;
@@ -109,6 +112,31 @@ int GetAchievementGoal(int achievement)
 bool IsAchievementUnlocked(int client, int achievement)
 {
 	return GetAchievementProgress(client, achievement) >= GetAchievementGoal(achievement);
+}
+
+bool PlayerHasAllAchievements(int client)
+{
+	int count;
+	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
+	{
+		if (!IsAchievementHidden(i) && IsAchievementUnlocked(client, i))
+			count++;
+	}
+	
+	PrintToServer("%i/%i", count, GetTotalAchievements());
+	return count >= GetTotalAchievements();
+}
+
+int GetTotalAchievements(bool allowHidden=false)
+{
+	int count;
+	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
+	{
+		if (allowHidden || !IsAchievementHidden(i))
+			count++;
+	}
+	
+	return count;
 }
 
 bool g_bTropicsMapExists;
@@ -140,6 +168,12 @@ void OnAchievementUnlocked(int client, int achievement)
 		
 		GetAchievementName(achievement, name, sizeof(name), i);
 		RF2_PrintToChat(i, "{yellow}%N{default} has earned the achievement {lightgreen}%s", client, name);
+	}
+	
+	if (PlayerHasAllAchievements(client))
+	{
+		SetCookieBool(client, g_coEarnedAllAchievements, true);
+		PrintCenterText(client, "CONGRATULATIONS!!! You've earned all of the achievements!\nYou've been rewarded with a commemorative Merc Medal!");
 	}
 	
 	PrintHintText(client, "To view your achievements, use the /rf2_achievements command.");
@@ -176,6 +210,7 @@ int GetAchievementInternalName(int achievement, char[] buffer, int size)
 		case ACHIEVEMENT_KILL10K: return strcopy(buffer, size, "ACHIEVEMENT_KILL10K");
 		case ACHIEVEMENT_KILL100K: return strcopy(buffer, size, "ACHIEVEMENT_KILL100K");
 		case ACHIEVEMENT_GOOMBACHAIN: return strcopy(buffer, size, "ACHIEVEMENT_GOOMBACHAIN");
+		case ACHIEVEMENT_RECYCLER: return strcopy(buffer, size, "ACHIEVEMENT_RECYCLER");
 	}
 	
 	if (!buffer[0])

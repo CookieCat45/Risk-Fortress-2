@@ -103,6 +103,8 @@ enum
 	Item_BeaconFromBeyond = 86,
 	ItemStrange_SpecialRing = 87,
 	ItemScout_FedFedora = 88,
+	ItemStrange_ModestHat = 89,
+	ItemCommunity_MercMedal = 90,
 	Item_MaxValid,
 };
 
@@ -116,6 +118,7 @@ enum
 	Quality_Collectors,
 	Quality_Strange,
 	Quality_HauntedStrange,
+	Quality_Community,
 	Quality_MaxValid,
 };
 
