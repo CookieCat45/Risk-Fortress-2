@@ -105,6 +105,7 @@ enum
 	ItemScout_FedFedora = 88,
 	ItemStrange_ModestHat = 89,
 	ItemCommunity_MercMedal = 90,
+	Item_AlienParasite = 91,
 	Item_MaxValid,
 };
 

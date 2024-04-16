@@ -45,7 +45,9 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_use_strange", Command_UseStrange, "Uses your Strange item, meant to be binded to a key from the console");
 	RegConsoleCmd("rf2_interact", Command_Interact, "Functions identically to Call for Medic key, can be binded to a key from the console");
 	RegConsoleCmd("rf2_extend_wait", Command_ExtendWait, "Extends Waiting for Players time significantly.");
-	//RegConsoleCmd("rf2_helpmenu", Command_HelpMenu, "Shows the help menu.");
+	RegConsoleCmd("rf2_discord", Command_Discord, "Show link to the Risk Fortress 2 Discord server.");
+	RegConsoleCmd("rf2_helpmenu", Command_HelpMenu, "Shows the help menu.");
+	RegConsoleCmd("rf2_help", Command_HelpMenu, "Shows the help menu.");
 	
 	char buffer[8];
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
@@ -716,6 +718,12 @@ public Action Timer_ResetWaitTime(Handle timer, float value)
 {
 	FindConVar("mp_waitingforplayers_time").FloatValue = value;
 	return Plugin_Continue;
+}
+
+public Action Command_Discord(int client, int args)
+{
+	RF2_ReplyToCommand(client, "Risk Fortress 2 Discord: {yellow}https://discord.gg/jXje8aKMQK");
+	return Plugin_Handled;
 }
 
 public Action Command_SurvivorQueue(int client, int args)
@@ -1849,36 +1857,152 @@ public Action Command_HelpMenu(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	Menu menu = new Menu(Menu_HelpMenu);
-	char msg[512];
-	FormatEx(msg, sizeof(msg), "%T", "Help1", client);
-	menu.AddItem("help1", msg, ITEMDRAW_DISABLED);
-	for (int i = 1; i <= 6; i++)
-		menu.AddItem("dummy", "", ITEMDRAW_DISABLED);
-	FormatEx(msg, sizeof(msg), "%T", "Help2", client);
-	for (int i = 1; i <= 6; i++)
-		menu.AddItem("dummy", "", ITEMDRAW_DISABLED);
-	menu.AddItem("help2", msg, ITEMDRAW_DISABLED);
-	FormatEx(msg, sizeof(msg), "%T", "Help3", client);
-	menu.AddItem("help3", msg, ITEMDRAW_DISABLED);
-	FormatEx(msg, sizeof(msg), "%T", "Help4", client);
-	menu.AddItem("help4", msg, ITEMDRAW_DISABLED);
-	FormatEx(msg, sizeof(msg), "%T", "Help5", client);
-	menu.AddItem("help5", msg, ITEMDRAW_DISABLED);
-	menu.Display(client, MENU_TIME_FOREVER);
+	ShowHelpMenu(client);
 	return Plugin_Handled;
+}
+
+void ShowHelpMenu(int client)
+{
+	Menu menu = new Menu(Menu_HelpMenu);
+	menu.SetTitle("Risk Fortress 2 - Help Menu (/rf2_helpmenu)");
+	menu.AddItem("tutorial", "What is this gamemode? What's going on?");
+	menu.AddItem("commands", "Show list of commands");
+	menu.AddItem("discord", "Show Discord link in the chat");
+	menu.Display(client, MENU_TIME_FOREVER);
+	g_bPlayerOpenedHelpMenu[client] = true;
+	SetCookieBool(client, g_coNewPlayer, true);
 }
 
 public int Menu_HelpMenu(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action)
 	{
-		case MenuAction_Cancel:
+		case MenuAction_Select:
 		{
-			PrintCenterText(param1, "%t", "HelpMenu");
+			char info[32];
+			menu.GetItem(param2, info, sizeof(info));
+			if (strcmp2(info, "tutorial"))
+			{
+				ShowTutorialMenu(param1);
+			}
+			else if (strcmp2(info, "commands"))
+			{
+				ShowCommandsList(param1);
+			}
+			else if (strcmp2(info, "discord"))
+			{
+				RF2_PrintToChat(param1, "Risk Fortress 2 Discord: {yellow}https://discord.gg/jXje8aKMQK");
+				ShowHelpMenu(param1);
+			}
+		}
+		
+		case MenuAction_End:
+		{
+			delete menu;
 		}
 	}
 	
+	return 0;
+}
+
+void ShowCommandsList(int client)
+{
+	Menu menu = new Menu(Menu_CommandsList);
+	menu.ExitBackButton = true;
+	menu.SetTitle("Risk Fortress 2 Commands List - Select to use");
+	menu.AddItem("rf2_settings", "rf2_settings - Configure your settings");
+	menu.AddItem("rf2_achievements", "rf2_achievements - Shows list of achievements");
+	menu.AddItem("rf2_skipwait", "rf2_skipwait - Skips Waiting for Players");
+	menu.AddItem("rf2_extend_wait", "rf2_extend_wait - Extends Waiting for Players time");
+	menu.AddItem("rf2_discord", "rf2_discord - Shows link to Risk Fortress 2 Discord in the chat");
+	menu.AddItem("rf2_helpmenu", "rf2_helpmenu - Shows the help menu");
+	menu.AddItem("rf2_itemlog", "rf2_itemlog - Shows list of items that you've collected");
+	menu.AddItem("rf2_endlevel", "rf2_endlevel - Used to end the round in Tank Destruction or other modes");
+	menu.AddItem("rf2_reset_tutorial", "rf2_reset_tutorial - Resets tutorial messages");
+	menu.AddItem("rf2_items", "rf2_items - Meant to be binded to a key, opens inventory menu", ITEMDRAW_DISABLED);
+	menu.AddItem("rf2_use_strange", "rf2_use_strange - Meant to be binded to a key, activates Strange item", ITEMDRAW_DISABLED);
+	menu.AddItem("rf2_interact", "rf2_interact - Meant to be binded to a key, functions like Call for Medic to interact with objects", ITEMDRAW_DISABLED);
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int Menu_CommandsList(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			char info[32];
+			menu.GetItem(param2, info, sizeof(info));
+			FakeClientCommand(param1, info);
+		}
+
+		case MenuAction_Cancel:
+		{
+			if (param2 == MenuCancel_ExitBack)
+			{
+				ShowHelpMenu(param1);
+			}
+		}
+		
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+
+	return 0;
+}
+
+void ShowTutorialMenu(int client)
+{
+	Menu menu = new Menu(Menu_Tutorial);
+	char text[512];
+	FormatEx(text, sizeof(text), "%T", "Help1", client);
+	menu.AddItem("msg", text, ITEMDRAW_DISABLED);
+	menu.AddItem("0", "Back");
+	menu.AddItem("2", "Next");
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int Menu_Tutorial(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			char info[32];
+			menu.GetItem(param2, info, sizeof(info));
+			int page = StringToInt(info);
+			if (page > 0)
+			{
+				Menu newMenu = new Menu(Menu_Tutorial);
+				char msg[512], nextPage[4];
+				FormatEx(msg, sizeof(msg), "Help%i", page);
+				Format(msg, sizeof(msg), "%T", msg, param1);
+				newMenu.AddItem("msg", msg, ITEMDRAW_DISABLED);
+				FormatEx(info, sizeof(info), "%i", page-1);
+				newMenu.AddItem(info, "Back");
+				if (page < 5)
+				{
+					FormatEx(nextPage, sizeof(nextPage), "%i", page+1);
+					newMenu.AddItem(nextPage, "Next");
+				}
+
+				newMenu.Display(param1, MENU_TIME_FOREVER);
+				
+			}
+			else
+			{
+				ShowHelpMenu(param1);
+			}
+		}
+		
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+
 	return 0;
 }
 

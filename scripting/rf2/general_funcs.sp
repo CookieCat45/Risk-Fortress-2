@@ -444,15 +444,17 @@ void AddModelToDownloadsTable(const char[] file, bool precache=true)
 		}
 		
 		Format(buffer, sizeof(buffer), "%s%s", buffer, extension);
-		if (FileExists(buffer))
+		if (FileExists(buffer, true))
 		{
-			AddFileToDownloadsTable(buffer);
-			if (precache && strcmp2(extension, ".mdl"))
+			if (FileExists(buffer)) // Non VPK file
+				AddFileToDownloadsTable(buffer);
+			
+			if (precache && i == 1)
 			{
 				PrecacheModel2(buffer);
 			}
 		}
-		else if (strcmp2(extension, ".mdl") && !FileExists(buffer, true)) // we only care about reporting if the .mdl file missing, and non Valve files
+		else if (i == 1) // we only care about reporting if the .mdl file missing
 		{
 			LogError("File \"%s\" is missing from the server files. It will not be added to the downloads table.", buffer);
 		}
@@ -466,15 +468,16 @@ void AddSoundToDownloadsTable(const char[] file, bool precache=true)
 {
 	char buffer[PLATFORM_MAX_PATH];
 	strcopy(buffer, sizeof(buffer), file);
-	
 	if (StrContains(buffer, "sound/") != 0)
 	{
 		FormatEx(buffer, sizeof(buffer), "sound/%s", file);
 	}
 	
-	if (FileExists(buffer))
+	if (FileExists(buffer, true))
 	{
-		AddFileToDownloadsTable(buffer);
+		if (FileExists(buffer)) // Non VPK file
+			AddFileToDownloadsTable(buffer);
+			
 		if (precache)
 		{
 			// I don't know if sound/ should be omitted here but I'm doing it just in case
@@ -482,7 +485,7 @@ void AddSoundToDownloadsTable(const char[] file, bool precache=true)
 			PrecacheSound2(buffer);
 		}
 	}
-	else if (!FileExists(buffer, true)) // don't show warnings for Valve files.
+	else
 	{
 		LogError("File \"%s\" is missing from the server files. It will not be added to the downloads table.", buffer);
 	}
@@ -491,44 +494,38 @@ void AddSoundToDownloadsTable(const char[] file, bool precache=true)
 // This will remove the extension and attempt to download both the .vmt and .vtf files with the file path given. 
 // If neither exist, an error is logged. 
 // materials/ MUST be included in the file path!
-stock void AddMaterialToDownloadsTable(const char[] file)
+stock void AddMaterialToDownloadsTable(const char[] file, bool precache=false)
 {	
-	bool exists, valveFile;
+	bool exists;
 	char buffer[PLATFORM_MAX_PATH];
 	strcopy(buffer, sizeof(buffer), file);
 	ReplaceStringEx(buffer, sizeof(buffer), ".vmt", "");
 	ReplaceStringEx(buffer, sizeof(buffer), ".vtf", "");
-	
-	Format(buffer, sizeof(buffer), "%s.vmt", buffer);
-	if (FileExists(buffer))
+	StrCat(buffer, sizeof(buffer), ".vmt");
+	if (FileExists(buffer, true))
 	{
 		exists = true;
-		AddFileToDownloadsTable(buffer);
-	}
-	else if (FileExists(buffer, true)) // Check if the file exists in the game's .vpk files
-	{
-		valveFile = true;
-	}
-	
-	if (!valveFile)
-	{
-		ReplaceStringEx(buffer, sizeof(buffer), ".vmt", "");
-		Format(buffer, sizeof(buffer), "%s.vtf", buffer);
-		if (FileExists(buffer))
-		{
-			exists = true;
+		if (FileExists(buffer)) // Non VPK file
 			AddFileToDownloadsTable(buffer);
-		}
-		else if (FileExists(buffer, true))
+		
+		if (precache)
 		{
-			valveFile = true;
+			PrecacheModel2(buffer, true);
 		}
-	}	
+	}
 	
-	if (!exists && !valveFile)
+	ReplaceStringEx(buffer, sizeof(buffer), ".vmt", ".vtf");
+	if (FileExists(buffer, true))
+	{
+		exists = true;
+		if (FileExists(buffer)) // Non VPK file
+			AddFileToDownloadsTable(buffer);
+	}
+	
+	if (!exists)
 	{
 		ReplaceStringEx(buffer, sizeof(buffer), ".vtf", "");
-		LogError("Neither a .vmt or .vtf file exists for the file path: \"%s\". It will not be added to the downloads table.", buffer);
+		LogError("Neither a .vmt or .vtf file exists for the file: \"%s\". It will not be added to the downloads table.", buffer);
 	}
 }
 

@@ -123,7 +123,6 @@ bool PlayerHasAllAchievements(int client)
 			count++;
 	}
 	
-	PrintToServer("%i/%i", count, GetTotalAchievements());
 	return count >= GetTotalAchievements();
 }
 

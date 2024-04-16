@@ -118,7 +118,7 @@ static void OnCreate(RF2_GameRules gamerules)
 	gamerules.AllowEnemySpawning = true;
 	char teleModel[PLATFORM_MAX_PATH];
 	gamerules.GetTeleModel(teleModel, sizeof(teleModel));
-	if (teleModel[0] && FileExists(teleModel, true, NULL_STRING))
+	if (teleModel[0] && FileExists(teleModel, true))
 	{
 		PrecacheModel2(teleModel);
 	}

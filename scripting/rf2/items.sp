@@ -125,7 +125,6 @@ void LoadItems()
 			
 			if (FileExists(g_szItemSprite[item], true))
 			{
-				PrecacheModel2(g_szItemSprite[item]);
 				AddMaterialToDownloadsTable(g_szItemSprite[item]);
 			}
 			else

@@ -66,7 +66,7 @@ void LoadWeapons()
 						
 						if (strcmp2(g_szWeaponStringAttributeName[i][count][strAttribCount], "custom projectile model"))
 						{
-							if (FileExists(g_szWeaponStringAttributeValue[i][count][strAttribCount]))
+							if (FileExists(g_szWeaponStringAttributeValue[i][count][strAttribCount], true))
 							{
 								AddModelToDownloadsTable(g_szWeaponStringAttributeValue[i][count][strAttribCount]);
 							}

@@ -469,8 +469,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemyKey.GetString("name", g_szEnemyName[e], sizeof(g_szEnemyName[]), "unnamed");
 		enemyKey.GetString("model", g_szEnemyModel[e], sizeof(g_szEnemyModel[]), "models/player/soldier.mdl");
 		enemy.ModelScale = enemyKey.GetFloat("model_scale", enemy.IsBoss ? 1.75 : 1.0);
-		
-		if (FileExists(g_szEnemyModel[e]) || FileExists(g_szEnemyModel[e], true))
+		if (FileExists(g_szEnemyModel[e], true))
 		{
 			AddModelToDownloadsTable(g_szEnemyModel[e]);
 		}

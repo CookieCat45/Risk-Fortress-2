@@ -24,6 +24,7 @@ void RefreshClient(int client, bool force=false)
 {
 	g_bPlayerViewingItemMenu[client] = false;
 	g_bPlayerIsTeleporterBoss[client] = false;
+	g_bPlayerOpenedHelpMenu[client] = false;
 	g_iPlayerEnemyType[client] = -1;
 	g_iPlayerBossType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;

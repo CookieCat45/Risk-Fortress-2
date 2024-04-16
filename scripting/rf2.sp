@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.10.1b"
+#define PLUGIN_VERSION "0.10.2b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -124,6 +124,7 @@ bool g_bPlayerIsMinion[MAXTF2PLAYERS];
 bool g_bPlayerSpawningAsMinion[MAXTF2PLAYERS];
 bool g_bPlayerRifleAutoFire[MAXTF2PLAYERS];
 bool g_bPlayerToggledAutoFire[MAXTF2PLAYERS];
+bool g_bPlayerOpenedHelpMenu[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -3333,17 +3334,18 @@ public Action Timer_PluginMessage(Handle timer)
 		return Plugin_Stop;
 	
 	static int message;
-	const int maxMessages = 6;
+	const int maxMessages = 7;
 	
 	switch (message)
 	{
-		case 0: RF2_PrintToChatAll("%t", "TipSettings");
+		case 0: RF2_PrintToChatAll("%t", "TipNewPlayer");
 		case 1: RF2_PrintToChatAll("%t", "TipItemLog");
 		case 2: RF2_PrintToChatAll("%t", "TipCredits", PLUGIN_VERSION);
 		case 3: RF2_PrintToChatAll("%t", "TipQueue");
 		case 4: RF2_PrintToChatAll("%t", "TipMenu");
 		case 5:	RF2_PrintToChatAll("%t", "TipDiscord");
 		case 6: RF2_PrintToChatAll("%t", "TipAchievements");
+		case 7: RF2_PrintToChatAll("%t", "TipSettings");
 	}
 	
 	message++;
@@ -5334,6 +5336,11 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				}
 			}
 			
+			if (PlayerHasItem(attacker, Item_AlienParasite))
+			{
+				HealPlayer(attacker, CalcItemModInt(attacker, Item_AlienParasite, 0));
+			}
+			
 			if (IsPlayerSurvivor(attacker))
 			{
 				if (damage >= 10000.0)
@@ -5360,6 +5367,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	CritType originalCritType = critType;
 	float proc = g_flDamageProc;
 	float originalDamage = damage;
+	int originalDamageType = damageType;
 	bool validWeapon = weapon > 0 && !IsCombatChar(weapon); // Apparently the weapon can be the attacker??
 	if (IsValidClient(attacker) && attacker != victim && IsValidEntity2(inflictor))
 	{
@@ -5472,10 +5480,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		}
 	}
 	
-	// Changing the crit type here will not change the damage, so we have to modify the damage ourselves.
-	// An issue will also occur when changing the crit type here where it plays the wrong effect or no effect at all.
-	// We can only fake a missing crit effect; an incorrect crit effect (such as minicrit -> crit spawning the minicrit effect) cannot be fixed.
-	//bool bonked = IsValidClient(victim) && TF2_IsPlayerInCondition(victim, TFCond_Bonked);
+	// Changing the crit type here will not change the damage, so we have to modify the damage manually
 	if (originalCritType != critType)
 	{
 		switch (originalCritType)
@@ -5483,70 +5488,37 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			case CritType_None:
 			{
 				damageType |= DMG_CRIT;
-				
-				if (critType == CritType_Crit)
+				if (critType == CritType_Crit) // None -> Crit
 				{
-					/*
-					if (!bonked)
-					{
-						TE_TFParticle("crit_text", damagePosition, victim);
-						EmitGameSoundToClient(attacker, GSND_CRIT);
-					}
-					*/
-
 					damage *= 3.0;
 				}
-				else // Mini crit
+				else // None -> Mini-Crit
 				{
-					/*
-					if (!bonked)
-					{
-						TE_TFParticle("minicrit_text", damagePosition, victim);
-						mitGameSoundToClient(attacker, GSND_MINICRIT);
-					}
-					*/
-
 					damage *= 1.35;
 				}
 			}
 
 			case CritType_MiniCrit:
 			{
-				if (critType == CritType_Crit)
+				if (critType == CritType_Crit) // Mini-Crit -> Crit
 				{
-					/*
-					if (!bonked)
-					{
-						TE_TFParticle("crit_text", damagePosition, victim);
-						EmitGameSoundToClient(attacker, GSND_CRIT);
-					}
-					*/
-					
-					damage *= 0.741;
+					damage /= 1.35;
 					damage *= 3.0;
 				}
-				else // Non crit
+				else // Mini-Crit -> None
 				{
-					damage *= 0.741;
+					damage /= 1.35;
 				}
 			}
-
+			
 			case CritType_Crit:
 			{
-				if (critType == CritType_MiniCrit)
+				if (critType == CritType_MiniCrit) // Crit -> Mini-Crit
 				{
-					/*
-					if (!bonked)
-					{
-						TE_TFParticle("minicrit_text", damagePosition, victim);
-						EmitGameSoundToClient(attacker, GSND_MINICRIT);
-					}
-					*/
-					
 					damage /= 3.0;
 					damage *= 1.35;
 				}
-				else // Non crit
+				else // Crit -> None
 				{
 					damage /= 3.0;
 				}
@@ -5555,7 +5527,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	}
 	
 	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
-	return damage != originalDamage ? Plugin_Changed : Plugin_Continue;
+	return damage != originalDamage || originalDamageType != damageType || originalCritType != critType ? Plugin_Changed : Plugin_Continue;
 }
 
 public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
@@ -5719,19 +5691,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	}
 	
 	static bool reloadPressed[MAXTF2PLAYERS];
-	bool allowPress;
-	/*
-	if (GetCookieBool(client, g_coSwapStrangeButton))
-	{
-		allowPress = buttons & IN_ATTACK3 && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) != GetActiveWeapon(client);
-	}
-	*/
-	if (buttons & IN_RELOAD)
-	{
-		allowPress = true;
-	}
-	
-	if (!bot && allowPress)
+	if (!bot && buttons & IN_RELOAD)
 	{
 		if (!reloadPressed[client])
 		{
