@@ -176,6 +176,9 @@ static void OnCreate(RF2_Object_Workbench bench)
 	
 	bench.SetWorldText(text);
 	bench.TextZOffset = 90.0;
+	char name[256];
+	FormatEx(name, sizeof(name), "Workbench (%s)", g_szItemName[bench.Item]);
+	bench.SetObjectName(name);
 }
 
 static void OnSpawnPost(int entity)

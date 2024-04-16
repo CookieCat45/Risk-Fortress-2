@@ -125,6 +125,7 @@ bool g_bPlayerSpawningAsMinion[MAXTF2PLAYERS];
 bool g_bPlayerRifleAutoFire[MAXTF2PLAYERS];
 bool g_bPlayerToggledAutoFire[MAXTF2PLAYERS];
 bool g_bPlayerOpenedHelpMenu[MAXTF2PLAYERS];
+bool g_bPlayerHealOnHitCooldown[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -146,6 +147,7 @@ float g_flPlayerRegenBuffTime[MAXTF2PLAYERS];
 float g_flPlayerKnifeStunCooldown[MAXTF2PLAYERS];
 float g_flPlayerRifleHeadshotBonusTime[MAXTF2PLAYERS];
 float g_flPlayerGravityJumpBonusTime[MAXTF2PLAYERS];
+float g_flPlayerTimeSinceLastPing[MAXTF2PLAYERS];
 
 int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
@@ -162,16 +164,17 @@ int g_iPlayerVoicePitch[MAXTF2PLAYERS] = {SNDPITCH_NORMAL, ...};
 int g_iPlayerFootstepType[MAXTF2PLAYERS] = {FootstepType_Normal, ...};
 int g_iPlayerFireRateStacks[MAXTF2PLAYERS];
 int g_iPlayerAirDashCounter[MAXTF2PLAYERS];
-int g_iPlayerLastAttackedTank[MAXTF2PLAYERS] = {-1, ...};
+int g_iPlayerLastAttackedTank[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 int g_iItemsTaken[MAX_SURVIVORS];
 int g_iItemLimit[MAX_SURVIVORS];
-int g_iPlayerVampireSapperAttacker[MAXTF2PLAYERS] = {-1, ...};
+int g_iPlayerVampireSapperAttacker[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 int g_iPlayerLastScrapMenuItem[MAXTF2PLAYERS];
 int g_iPlayerLastItemMenuItem[MAXTF2PLAYERS];
 int g_iPlayerLastDropMenuItem[MAXTF2PLAYERS];
 int g_iPlayerLastItemLogItem[MAXTF2PLAYERS];
 int g_iPlayerUnusualsUnboxed[MAXTF2PLAYERS];
 int g_iPlayerGoombaChain[MAXTF2PLAYERS];
+int g_iPlayerLastPingedEntity[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 
 char g_szPlayerOriginalName[MAXTF2PLAYERS][MAX_NAME_LENGTH];
 ArrayList g_hPlayerExtraSentryList[MAXTF2PLAYERS];
@@ -192,6 +195,7 @@ bool g_bCashBomb[MAX_EDICTS];
 bool g_bFiredWhileRocketJumping[MAX_EDICTS];
 bool g_bDontRemoveWearable[MAX_EDICTS];
 bool g_bItemWearable[MAX_EDICTS];
+bool g_bEntityGlowing[MAX_EDICTS];
 
 float g_flBusterSpawnTime;
 float g_flProjectileForcedDamage[MAX_EDICTS];
@@ -203,6 +207,7 @@ float g_flLastHalloweenBossAttackTime[MAX_EDICTS][MAXTF2PLAYERS];
 
 ArrayList g_hHHHTargets;
 ArrayList g_hMonoculusTargets;
+Handle g_hEntityGlowResetTimer[MAX_EDICTS];
 
 // Timers
 Handle g_hPlayerTimer;
@@ -331,6 +336,7 @@ Cookie g_coNewPlayer;
 Cookie g_coDisableItemMessages;
 Cookie g_coDisableItemCosmetics;
 Cookie g_coEarnedAllAchievements;
+Cookie g_coPingObjectsHint;
 
 // TFBots
 TFBot g_TFBot[MAXTF2PLAYERS];
@@ -1106,6 +1112,7 @@ void LoadAssets()
 	PrecacheSound2(SND_AUTOFIRE_SHOOT, true);
 	PrecacheSound2(SND_STUN, true);
 	PrecacheSound2(SND_PARACHUTE, true);
+	PrecacheSound2(SND_HINT, true);
 	PrecacheSound2("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack02.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack03.mp3", true);
@@ -1874,7 +1881,8 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	{
 		CreateTimer(0.1, Timer_RespawnPlayerPreRound, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 	}
-
+	
+	KillAnnotation(victim);
 	if (!g_bRoundActive)
 		return Plugin_Continue;
 	
@@ -3159,6 +3167,7 @@ public Action Timer_PlayerTimer(Handle timer)
 	int maxHealth, health, healAmount, weapon, ammoType;
 	int sentry = INVALID_ENT;
 	int team;
+	static float timeSincePingHint[MAXTF2PLAYERS];
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i))
@@ -3194,6 +3203,21 @@ public Action Timer_PlayerTimer(Handle timer)
 			if (ammoType > TFAmmoType_None && ammoType < TFAmmoType_Metal)
 			{
 				GivePlayerAmmo(i, 999999, ammoType, true);
+			}
+		}
+		
+		if (timeSincePingHint[i]+30.0 <= GetTickedTime() && !GetCookieBool(i, g_coPingObjectsHint))
+		{
+			int target = GetClientAimTarget(i, false);
+			if (RF2_Object_Base(target).IsValid())
+			{
+				static char classname[128];
+				GetEntityClassname(weapon, classname, sizeof(classname));
+				if (StrContains(classname, "tf_weapon_sniperrifle") == -1)
+				{
+					PrintHintText(i, "%t", "PingObjectsHint");
+					timeSincePingHint[i] = GetTickedTime();
+				}
 			}
 		}
 		
@@ -4247,6 +4271,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	if (!RF2_IsEnabled() || entity < 0 || entity >= MAX_EDICTS)
 		return;
 	
+	g_hEntityGlowResetTimer[entity] = null;
 	g_flCashValue[entity] = 0.0;
 	g_iEntityPathFollowerIndex[entity] = -1;
 	g_iItemDamageProc[entity] = Item_Null;
@@ -4257,6 +4282,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bDontRemoveWearable[entity] = false;
 	g_bItemWearable[entity] = false;
 	g_bCashBomb[entity] = false;
+	g_bEntityGlowing[entity] = false;
 	g_bFiredWhileRocketJumping[entity] = false;
 	g_flTeleporterNextSpawnTime[entity] = -1.0;
 	SetAllInArray(g_flLastHalloweenBossAttackTime[entity], sizeof(g_flLastHalloweenBossAttackTime[]), 0.0);
@@ -4369,6 +4395,10 @@ public void OnEntityDestroyed(int entity)
 	
 	g_iEntityPathFollowerIndex[entity] = -1;
 	g_flCashValue[entity] = 0.0;
+	if (IsCombatChar(entity) || RF2_Object_Base(entity).IsValid() || RF2_Item(entity).IsValid())
+	{
+		KillAnnotation(entity);
+	}
 }
 
 public void RF_DragonFuryCritCheck(int entity)
@@ -5336,9 +5366,11 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				}
 			}
 			
-			if (PlayerHasItem(attacker, Item_AlienParasite))
+			if (PlayerHasItem(attacker, Item_AlienParasite) && !g_bPlayerHealOnHitCooldown[attacker])
 			{
 				HealPlayer(attacker, CalcItemModInt(attacker, Item_AlienParasite, 0));
+				g_bPlayerHealOnHitCooldown[attacker] = true;
+				CreateTimer(0.1, Timer_HealOnHitCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 			}
 			
 			if (IsPlayerSurvivor(attacker))
@@ -5479,7 +5511,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			}
 		}
 	}
-	
+
 	// Changing the crit type here will not change the damage, so we have to modify the damage manually
 	if (originalCritType != critType)
 	{
@@ -5526,6 +5558,31 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		}
 	}
 	
+	if (IsValidClient(victim) && PlayerHasItem(victim, Item_MetalHelmet))
+	{
+		if (damageType & DMG_BULLET || damageType & DMG_BUCKSHOT)
+		{
+			damage *= CalcItemMod_HyperbolicInverted(victim, Item_MetalHelmet, 1);
+		}
+
+		if (critType != CritType_None)
+		{
+			float baseDmg;
+			if (critType == CritType_Crit)
+			{
+				baseDmg = damage/3.0;
+			}
+			else if (critType == CritType_MiniCrit)
+			{
+				baseDmg = damage/1.35;
+			}
+			
+			float dmgBonus = damage-baseDmg;
+			dmgBonus *= CalcItemMod_HyperbolicInverted(victim, Item_MetalHelmet, 0);
+			damage = baseDmg+dmgBonus;
+		}
+	}
+	
 	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
 	return damage != originalDamage || originalDamageType != damageType || originalCritType != critType ? Plugin_Changed : Plugin_Continue;
 }
@@ -5546,8 +5603,17 @@ public Action Timer_ExecutionerBleedCooldown(Handle timer, int client)
 {
 	if (!(client = GetClientOfUserId(client)))
 		return Plugin_Continue;
-
+	
 	g_bExecutionerBleedCooldown[client] = false;
+	return Plugin_Continue;
+}
+
+public Action Timer_HealOnHitCooldown(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Continue;
+	
+	g_bPlayerHealOnHitCooldown[client] = false;
 	return Plugin_Continue;
 }
 
@@ -5651,7 +5717,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	
 	if (g_bWaitingForPlayers || !IsPlayerAlive(client))
 		return Plugin_Continue;
-
+	
 	Action action = Plugin_Continue;
 	if (bot)
 	{
@@ -5715,34 +5781,55 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	static bool attack3Pressed[MAXTF2PLAYERS];
 	if (!bot && buttons & IN_ATTACK3)
 	{
+		bool canPing = true;
 		if (!attack3Pressed[client])
 		{
-			TFClassType class = TF2_GetPlayerClass(client);
-			if (class == TFClass_Engineer)
+			if (!(buttons & IN_SCORE))
 			{
-				if (g_hPlayerExtraSentryList[client].Length > 0 && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) == GetActiveWeapon(client))
+				TFClassType class = TF2_GetPlayerClass(client);
+				if (class == TFClass_Engineer)
 				{
-					int entity = g_hPlayerExtraSentryList[client].Get(0);
-					if (IsValidEntity2(entity))
+					if (GetPlayerWeaponSlot(client, WeaponSlot_PDA2) == GetActiveWeapon(client))
 					{
-						SetVariantInt(GetEntProp(entity, Prop_Send, "m_iHealth")+9999);
-						AcceptEntityInput(entity, "RemoveHealth");
+						canPing = false;
+
+						if (g_hPlayerExtraSentryList[client].Length > 0)
+						{
+							int entity = g_hPlayerExtraSentryList[client].Get(0);
+							if (IsValidEntity2(entity))
+							{
+								SetVariantInt(GetEntProp(entity, Prop_Send, "m_iHealth")+9999);
+								AcceptEntityInput(entity, "RemoveHealth");
+							}
+						}
+					}
+				}
+				else if (class == TFClass_Sniper)
+				{
+					int rifle = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+					if (rifle != INVALID_ENT && rifle == GetActiveWeapon(client))
+					{
+						static char classname[64];
+						GetEntityClassname(rifle, classname, sizeof(classname));
+						if (!strcmp2(classname, "tf_weapon_compound_bow"))
+						{
+							canPing = false;
+							g_bPlayerRifleAutoFire[client] = !g_bPlayerRifleAutoFire[client];
+							g_bPlayerToggledAutoFire[client] = true;
+							EmitSoundToClient(client, SND_AUTOFIRE_TOGGLE);
+						}
 					}
 				}
 			}
-			else if (class == TFClass_Sniper)
+		}
+		
+		if (canPing)
+		{
+			if (IsPlayerSurvivor(client) && g_flPlayerTimeSinceLastPing[client]+PING_COOLDOWN < GetTickedTime())
 			{
-				int rifle = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-				if (rifle != INVALID_ENT && rifle == GetActiveWeapon(client))
+				if (PingObjects(client))
 				{
-					static char classname[64];
-					GetEntityClassname(rifle, classname, sizeof(classname));
-					if (!strcmp2(classname, "tf_weapon_compound_bow"))
-					{
-						g_bPlayerRifleAutoFire[client] = !g_bPlayerRifleAutoFire[client];
-						g_bPlayerToggledAutoFire[client] = true;
-						EmitSoundToClient(client, SND_AUTOFIRE_TOGGLE);
-					}
+					g_flPlayerTimeSinceLastPing[client] = GetTickedTime();
 				}
 			}
 		}

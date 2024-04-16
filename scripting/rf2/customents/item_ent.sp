@@ -181,11 +181,11 @@ methodmap RF2_Item < CBaseEntity
 		{
 			if (IsValidClient(this.Subject))
 			{
-				FormatEx(ownerText, sizeof(ownerText), "Belongs to %N - Dropped for %N [%.0f]\n", this.Owner, this.Subject, this.OwnTime);
+				FormatEx(ownerText, sizeof(ownerText), "(Belongs to %N - Dropped for %N [%.0f])\n", this.Owner, this.Subject, this.OwnTime);
 			}
 			else
 			{
-				FormatEx(ownerText, sizeof(ownerText), "Belongs to %N [%.0f]\n", this.Owner, this.OwnTime);
+				FormatEx(ownerText, sizeof(ownerText), "(Belongs to %N [%.0f])\n", this.Owner, this.OwnTime);
 			}
 		}
 		
@@ -348,7 +348,12 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, f
 		item.Subject = subject;
 		if (subject != client)
 		{
-			PrintCenterText(subject, "%t", "DroppedItemForYou", client, g_szItemName[type]);
+			char text[256];
+			FormatEx(text, sizeof(text), "%T", "DroppedItemForYou", subject, client, g_szItemName[type]);
+			float pos2[3];
+			CopyVectors(pos, pos2);
+			pos2[2] += 50.0;
+			ShowAnnotation(subject, pos2, text, 8.0, INVALID_ENT, item.index);
 		}
 	}
 	

@@ -389,7 +389,7 @@ void TFBot_Think(TFBot bot)
 		ForceWeaponSwitch(bot.Client, desiredSlot);
 	}
 	
-	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer)
+	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer && !IsValidEntity2(bot.BuildingTarget))
 	{
 		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
 		// Aggressive AI, relentlessly pursues target and strafes on higher difficulties. Mostly for melee.
@@ -401,7 +401,7 @@ void TFBot_Think(TFBot bot)
 				GetEntPos(threat, threatPos);
 				int skill = bot.GetSkillLevel();
 				
-				if (threat <= MaxClients && skill >= TFBotDifficulty_Hard)
+				if (threat <= MaxClients && skill >= TFBotSkill_Hard)
 				{
 					float angles[3];
 					float direction[3];
@@ -436,7 +436,7 @@ void TFBot_Think(TFBot bot)
 					if (!bot.HasFlag(TFBOTFLAG_STRAFING))
 					{
 						// Expert bots strafe more often.
-						if (skill >= TFBotDifficulty_Expert)
+						if (skill >= TFBotSkill_Expert)
 						{
 							bot.StrafeTime = GetRandomFloat(0.8, 1.35);
 						}
@@ -818,7 +818,6 @@ void TFBot_TraverseMap(TFBot &bot)
 		// Are we after a building?
 		if (IsValidEntity2(bot.BuildingTarget) && !GetEntProp(bot.BuildingTarget, Prop_Send, "m_bCarried"))
 		{
-			TFBot_PathToEntity(bot, bot.BuildingTarget, 2500.0, true);
 			return;
 		}
 		else if (RF2_GetSubDifficulty() >= SubDifficulty_Impossible && GetClientTeam(bot.Client) == TEAM_ENEMY)
@@ -887,7 +886,7 @@ void TFBot_TraverseMap(TFBot &bot)
 	}
 }
 
-void TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool ignoreGoal=false)
+stock void TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool ignoreGoal=false)
 {
 	ILocomotion locomotion = bot.GetLocomotion();
 	INextBot nextBot = bot.GetNextBot();
@@ -905,7 +904,7 @@ void TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool ignor
 	}
 }
 
-void TFBot_PathToEntity(TFBot bot, int entity, float distance=1000.0, bool ignoreGoal=false)
+stock void TFBot_PathToEntity(TFBot bot, int entity, float distance=1000.0, bool ignoreGoal=false)
 {
 	ILocomotion locomotion = bot.GetLocomotion();
 	INextBot nextBot = bot.GetNextBot();
@@ -928,6 +927,10 @@ void TFBot_ForceLookAtPos(TFBot bot, const float pos[3])
 	float angles[3], eyePos[3];
 	GetClientEyePosition(bot.Client, eyePos);
 	GetVectorAnglesTwoPoints(eyePos, pos, angles);
+	
+	// avoid DataTable warning spam
+	angles[0] = fmin(90.0, angles[0]);
+	angles[0] = fmax(-90.0, angles[0]);
 	TeleportEntity(bot.Client, _, angles);
 	bot.GetLocomotion().FaceTowards(pos); // for good measure
 }
@@ -1197,7 +1200,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		float myPos[3], threatPos[3];
 		GetEntPos(client, myPos);
 		
-		bool sentry, usingSapper;
+		bool sentry, usingSapper, foundBuilding;
 		float distance;
 		const float maxDistance = 1500.0;
 		const float sapRange = 400.0;
@@ -1239,26 +1242,28 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 						}
 					}
 				}
-				
-				continue;
 			}
 			
 			GetEntPos(entity, threatPos);
 			distance = GetVectorDistance(myPos, threatPos, true);
 			if (distance <= sq(maxDistance))
 			{
-				bot.BuildingTarget = entity;
-				
 				if (bot.GetVision().GetKnown(entity) == NULL_KNOWN_ENTITY)
 					bot.GetVision().AddKnownEntity(entity);
 				
 				bool hasSapper = asBool(GetEntProp(entity, Prop_Send, "m_bHasSapper"));
-				
-				if (!hasSapper && !usingSapper && distance <= sq(sapRange))
+				if (hasSapper && entity == bot.BuildingTarget)
 				{
-					// Sap immediately if in range
-					if (sapper != INVALID_ENT)
+					bot.BuildingTarget = INVALID_ENT;
+				}
+				
+				if (!hasSapper && !usingSapper && sapper != INVALID_ENT)
+				{
+					bot.BuildingTarget = entity;
+					foundBuilding = true;
+					if (distance <= sq(sapRange))
 					{
+						// Sap immediately if in range
 						usingSapper = true;
 						bool sapperActive = (GetActiveWeapon(client) == sapper);
 						bot.DesiredWeaponSlot = WeaponSlot_Secondary;
@@ -1280,12 +1285,38 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 					sentryList.Push(entity);
 				}
 				
-				if (primary != INVALID_ENT && hasSapper && !usingSapper && sentry)
+				if (primary != INVALID_ENT && hasSapper && !usingSapper && sentry && !foundBuilding)
 				{
 					// shoot an already sapped sentry
 					shootTarget = entity;
 					highestLevel = GetEntProp(entity, Prop_Send, "m_iUpgradeLevel");
 				}
+			}
+		}
+		
+		bool shouldDecloak = sentry;
+		if (IsValidEntity2(bot.BuildingTarget))
+		{
+			float pos[3];
+			GetEntPos(bot.BuildingTarget, pos);
+			TFBot_PathToPos(bot, pos, 5000.0);
+			shouldDecloak = true;
+		}
+		else
+		{
+			bot.BuildingTarget = INVALID_ENT;
+		}
+		
+		bool cloaked = TF2_IsPlayerInCondition(client, TFCond_Cloaked);
+		if (shouldDecloak)
+		{
+			if (cloaked)
+			{
+				buttons |= IN_ATTACK2;
+			}
+			else
+			{
+				buttons &= ~IN_ATTACK2;
 			}
 		}
 		
@@ -1333,9 +1364,24 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		}
 		
 		delete sentryList;
-		
-		if (IsValidClient(threat) && !sentry && !usingSapper && bot.GetVision().IsLineOfSightClearToEntity(threat))
+		static float timeIdle[MAXTF2PLAYERS];
+		if (!sentry && !usingSapper && IsValidClient(threat) && bot.GetVision().IsLineOfSightClearToEntity(threat))
 		{
+			timeIdle[client] = 0.0;
+			// decloak if we have a target and are close enough
+			float dist = DistBetween(client, threat, true);
+			if (dist <= 360000.0)
+			{
+				if (cloaked)
+				{
+					buttons |= IN_ATTACK2;
+				}
+				else
+				{
+					buttons &= ~IN_ATTACK2;
+				}
+			}
+			
 			if (bot.GetVision().IsLookingAtTarget(threat, 0.7))
 			{
 				GetClientEyePosition(client, myPos);
@@ -1366,7 +1412,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 					g_flTFBotSpyTimeInFOV[client][threat] = fmax(g_flTFBotSpyTimeInFOV[client][threat], 0.0);
 				}
 				
-				if (bot.GetTimeInFOV(threat) > 0.7 && primary != INVALID_ENT)
+				if (primary != INVALID_ENT && !cloaked && bot.GetTimeInFOV(threat) > 1.5 && dist > 122500.0)
 				{
 					// shoot
 					bot.DesiredWeaponSlot = WeaponSlot_Primary;
@@ -1378,10 +1424,10 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 					int perfectAimChance;
 					switch (bot.GetSkillLevel())
 					{
-						case TFBotDifficulty_Easy: perfectAimChance = 0;
-						case TFBotDifficulty_Normal: perfectAimChance = 20;
-						case TFBotDifficulty_Hard: perfectAimChance = 50;
-						case TFBotDifficulty_Expert: perfectAimChance = 100;
+						case TFBotSkill_Easy: perfectAimChance = 0;
+						case TFBotSkill_Normal: perfectAimChance = 20;
+						case TFBotSkill_Hard: perfectAimChance = 60;
+						case TFBotSkill_Expert: perfectAimChance = 90;
 					}
 					
 					if (RandChanceInt(1, 100, perfectAimChance))
@@ -1399,16 +1445,44 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 						ForceWeaponSwitch(client, WeaponSlot_Melee);
 					}
 					
-					const float range = 200.0;
-					if (GetVectorDistance(myPos, threatPos, true) <= Pow(range, 2.0))
+					const float range = 100.0;
+					if (!cloaked && dist <= Pow(range, 2.0))
 					{
 						buttons |= IN_ATTACK;
 					}
+					
+					// try to get directly behind the player
+					float threatCenter[3], pos[3], vec[3];
+					GetEntPos(threat, threatCenter, true);
+					GetAngleVectors(eyeAng, vec, NULL_VECTOR, NULL_VECTOR);
+					NormalizeVector(vec, vec);
+					pos[0] = threatCenter[0] - 90.0 * vec[0];
+					pos[1] = threatCenter[1] - 90.0 * vec[1];
+					pos[2] = threatCenter[2] - 90.0 * vec[2];
+					TFBot_PathToPos(bot, pos, 2000.0);
 				}
 			}
 		}
 		else
 		{
+			if (!foundBuilding && !sentry && !usingSapper && bot.BuildingTarget == INVALID_ENT)
+			{
+				timeIdle[client] += GetTickInterval();
+				if (timeIdle[client] >= 2.5)
+				{
+					// if we aren't doing anything at the moment, cloak
+					if (cloaked)
+					{
+						buttons &= ~IN_ATTACK2;
+					}
+					else
+					{
+						buttons |= IN_ATTACK2;
+					}
+				}
+				
+			}
+			
 			SetAllInArray(g_flTFBotSpyTimeInFOV[client], sizeof(g_flTFBotSpyTimeInFOV[]), 0.0);
 		}
 	}

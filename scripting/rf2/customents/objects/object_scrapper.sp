@@ -89,6 +89,7 @@ static void OnCreate(RF2_Object_Scrapper scrapper)
 	scrapper.HookInteract(Scrapper_OnInteract);
 	scrapper.TextZOffset = 35.0;
 	scrapper.SetWorldText("Call for Medic to scrap your items!");
+	scrapper.SetObjectName("Scrapper");
 }
 
 static Action Scrapper_OnInteract(int client, RF2_Object_Scrapper scrapper)

@@ -348,14 +348,14 @@ void OnDifficultyChanged(int newLevel)
 			
 			case DIFFICULTY_STEEL:
 			{
-				if (skill < TFBotDifficulty_Hard && skill != TFBotDifficulty_Expert)
-					TFBot(i).SetSkillLevel(TFBotDifficulty_Hard);
+				if (skill < TFBotSkill_Hard && skill != TFBotSkill_Expert)
+					TFBot(i).SetSkillLevel(TFBotSkill_Hard);
 			}
 			
 			case DIFFICULTY_TITANIUM:
 			{
-				if (skill < TFBotDifficulty_Expert)
-					TFBot(i).SetSkillLevel(TFBotDifficulty_Expert);
+				if (skill < TFBotSkill_Expert)
+					TFBot(i).SetSkillLevel(TFBotSkill_Expert);
 			}
 		}
 	}

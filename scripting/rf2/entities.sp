@@ -532,8 +532,7 @@ void SpawnParticleViaTrigger(int entity, const char[] effectName, const char[] a
 	RemoveEdict(trigger);
 }
 
-/*
-void TE_DrawBox(int client, const float origin[3], const float endOrigin[3], const float constMins[3], const float constMaxs[3], 
+stock void TE_DrawBox(int client, const float origin[3], const float endOrigin[3], const float constMins[3], const float constMaxs[3], 
 	float duration = 0.1, int laserIndex, const int color[4])
 {
 	float mins[3], maxs[3];
@@ -578,12 +577,28 @@ void TE_DrawBox(int client, const float origin[3], const float endOrigin[3], con
 	TE_SendBeam(client, pos4, pos2, duration, laserIndex, color);
 }
 
-void TE_SendBeam(int client, const float mins[3], const float maxs[3], float duration = 0.1, int laserIndex, const int color[4])
+stock void TE_DrawBoxAll(const float origin[3], const float endOrigin[3], const float constMins[3], const float constMaxs[3], 
+	float duration = 0.1, int laserIndex, const int color[4])
+{
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i))
+		{
+			TE_DrawBox(i, origin, endOrigin, constMins, constMaxs, duration, laserIndex, color);
+		}
+	}
+}
+
+stock void TE_SendBeam(int client, const float mins[3], const float maxs[3], float duration = 0.1, int laserIndex, const int color[4])
 {
 	TE_SetupBeamPoints(mins, maxs, laserIndex, laserIndex, 0, 30, duration, 1.0, 1.0, 1, 0.0, color, 30);
 	TE_SendToClient(client);
 }
-*/
+
+stock void DebugTinyBox(float pos[3], float duration=0.5)
+{
+	TE_DrawBoxAll(pos, pos, {8.0, 8.0, 0.0}, {8.0, 8.0, 8.0}, duration, g_iBeamModel, {0, 255, 255, 255});
+}
 
 void SetEntItemProc(int entity, int item)
 {
@@ -759,7 +774,16 @@ int ToggleGlow(int entity, bool state, int color[4]={255, 255, 255, 255})
 	}
 	
 	state ? AcceptEntityInput(glow, "Enable") : AcceptEntityInput(glow, "Disable");
+	g_bEntityGlowing[entity] = state;
 	return glow;
+}
+
+bool IsGlowing(int entity, bool pingGlow=false)
+{
+	if (pingGlow && !g_hEntityGlowResetTimer[entity])
+		return false;
+	
+	return g_bEntityGlowing[entity] || IsValidClient(entity) && GetEntProp(entity, Prop_Send, "m_bGlowEnabled");
 }
 
 stock void PrintEntClassname(int entity)
@@ -783,6 +807,52 @@ bool IsSkeleton(int entity)
 	static char classname[16];
 	GetEntityClassname(entity, classname, sizeof(classname));
 	return strcmp2(classname, "tf_zombie");
+}
+
+int GetEntityDisplayName(int entity, char[] buffer, int size)
+{
+	static char classname[128];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	if (strcmp2(classname, "rf2_npc_sentry_buster"))
+	{
+		return strcopy(buffer, size, "Sentry Buster");
+	}
+	else if (strcmp2(classname, "tank_boss"))
+	{
+		return strcopy(buffer, size, "Tank");
+	}
+	else if (strcmp2(classname, "rf2_tank_boss_badass"))
+	{
+		return strcopy(buffer, size, "Badass Tank");
+	}
+	else if (strcmp2(classname, "headless_hatman"))
+	{
+		return strcopy(buffer, size, "The Horseless Headless Horsemann");
+	}
+	else if (strcmp2(classname, "eyeball_boss"))
+	{
+		return strcopy(buffer, size, "MONOCULUS!");
+	}
+	else if (strcmp2(classname, "tf_zombie"))
+	{
+		if (GetEntPropFloat(entity, Prop_Send, "m_flModelScale") > 1.0)
+		{
+			return strcopy(buffer, size, "Skeleton King");
+		}
+		
+		return strcopy(buffer, size, "Skeleton");
+	}
+	else if (IsBuilding(entity))
+	{
+		switch (TF2_GetObjectType2(entity))
+		{
+			case TFObject_Sentry: return strcopy(buffer, size, "Sentry Gun");
+			case TFObject_Dispenser: return strcopy(buffer, size, "Dispenser");
+			case TFObject_Teleporter: return strcopy(buffer, size, "Teleporter");
+		}
+	}
+	
+	return strcopy(buffer, size, "[unknown]");
 }
 
 void SDK_ApplyAbsVelocityImpulse(int entity, const float vel[3])

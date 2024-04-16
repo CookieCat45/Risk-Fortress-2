@@ -480,6 +480,7 @@ static void OnCreate(RF2_Object_Teleporter teleporter)
 	teleporter.HookInteract(Teleporter_OnInteract);
 	teleporter.SetWorldText("Call for Medic to start the Teleporter event!");
 	teleporter.TextZOffset = 70.0;
+	teleporter.SetObjectName("The Teleporter");
 }
 
 static void OnRemove(RF2_Object_Teleporter teleporter)

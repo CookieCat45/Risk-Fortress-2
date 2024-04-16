@@ -485,7 +485,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.BaseSpeed = enemyKey.GetFloat("speed", 300.0);
 		
 		// bot stuff
-		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotDifficulty_Normal);
+		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotSkill_Normal);
 		enemy.BotAggressive = asBool(enemyKey.GetNum("tf_bot_aggressive", false));
 		enemy.BotRocketJump = asBool(enemyKey.GetNum("tf_bot_rocketjump", false));
 		enemy.BotHoldFireReload = asBool(enemyKey.GetNum("tf_bot_hold_fire_until_reload", false));
@@ -657,9 +657,9 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		{
 			case DIFFICULTY_STEEL:
 			{
-				if (enemy.BotSkill < TFBotDifficulty_Hard && enemy.BotSkill != TFBotDifficulty_Expert)
+				if (enemy.BotSkill < TFBotSkill_Hard && enemy.BotSkill != TFBotSkill_Expert)
 				{
-					TFBot(client).SetSkillLevel(TFBotDifficulty_Hard);
+					TFBot(client).SetSkillLevel(TFBotSkill_Hard);
 				}
 				else
 				{
@@ -667,7 +667,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 				}
 			}
 			
-			case DIFFICULTY_TITANIUM: TFBot(client).SetSkillLevel(TFBotDifficulty_Expert);
+			case DIFFICULTY_TITANIUM: TFBot(client).SetSkillLevel(TFBotSkill_Expert);
 			default: TFBot(client).SetSkillLevel(enemy.BotSkill);
 		}
 		

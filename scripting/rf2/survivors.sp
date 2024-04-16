@@ -83,7 +83,7 @@ bool CreateSurvivors()
 			}
 			else
 			{
-				SetEntProp(i, Prop_Send, "m_nBotSkill", TFBotDifficulty_Expert);
+				SetEntProp(i, Prop_Send, "m_nBotSkill", TFBotSkill_Expert);
 			}
 		}
 		

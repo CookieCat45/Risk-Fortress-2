@@ -141,6 +141,8 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 				this.SetModel(MODEL_CRATE);
 				if (this.Item == Item_Null)
 					this.Item = GetRandomItem(79, 20, 1);
+
+				this.SetObjectName("Crate");
 			}
 			
 			case Crate_Large:
@@ -150,6 +152,8 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 				this.TextZOffset = 90.0;
 				if (this.Item == Item_Null)
 					this.Item = GetRandomItem(_, 85, 15);
+
+				this.SetObjectName("Large Crate");
 			}
 			
 			case Crate_Strange:
@@ -159,12 +163,24 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 				this.TextZOffset = 100.0;
 				if (this.Item == Item_Null)
 					this.Item = GetRandomItemEx(Quality_Strange);
+				
+				this.SetObjectName("Strange Barrel");
 			}
 			
 			case Crate_Collectors:
 			{
 				// our item is decided when we're opened
 				this.SetModel(MODEL_CRATE_COLLECTOR);
+				this.SetObjectName("Collector's Crate");
+
+				// hack to adjust position, since due to the model it'll be a bit sunk into the ground
+				if (!this.MapPlaced)
+				{
+					float pos[3];
+					this.GetAbsOrigin(pos);
+					pos[2] += 20.0;
+					this.Teleport(pos);
+				}
 			}
 			
 			case Crate_Haunted:
@@ -177,7 +193,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 				{
 					float pos[3];
 					this.GetAbsOrigin(pos);
-					TE_TFParticle("spell_fireball_small_glow_blue", pos, this.index);
+					SpawnInfoParticle("spell_fireball_small_glow_blue", pos, _, this.index);
 					CBaseEntity light = CBaseEntity(CreateEntityByName("light_dynamic"));
 					light.KeyValue("_light", "100 255 255 200");
 					light.KeyValue("brightness", "5");
@@ -188,6 +204,15 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 					ParentEntity(light.index, this.index);
 				}
 				
+				this.SetObjectName("Haunted Case");
+				// hack to adjust position, since due to the model it'll be a bit sunk into the ground
+				if (!this.MapPlaced)
+				{
+					float pos[3];
+					this.GetAbsOrigin(pos);
+					pos[2] += 20.0;
+					this.Teleport(pos);
+				}
 			}
 			
 			case Crate_Unusual:
@@ -213,6 +238,15 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 					ParentEntity(light.index, this.index);
 				}
 				
+				this.SetObjectName("Unusual Crate");
+				// hack to adjust position, since due to the model it'll be a bit sunk into the ground
+				if (!this.MapPlaced)
+				{
+					float pos[3];
+					this.GetAbsOrigin(pos);
+					pos[2] += 20.0;
+					this.Teleport(pos);
+				}
 			}
 		}
 		

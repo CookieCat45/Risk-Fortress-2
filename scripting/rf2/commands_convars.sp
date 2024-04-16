@@ -44,6 +44,7 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_achievements", Command_Achievements, "Shows a list of achievements in Risk Fortress 2.");
 	RegConsoleCmd("rf2_use_strange", Command_UseStrange, "Uses your Strange item, meant to be binded to a key from the console");
 	RegConsoleCmd("rf2_interact", Command_Interact, "Functions identically to Call for Medic key, can be binded to a key from the console");
+	RegConsoleCmd("rf2_ping", Command_Ping, "Ping an object, meant to be binded to a key from the console");
 	RegConsoleCmd("rf2_extend_wait", Command_ExtendWait, "Extends Waiting for Players time significantly.");
 	RegConsoleCmd("rf2_discord", Command_Discord, "Show link to the Risk Fortress 2 Discord server.");
 	RegConsoleCmd("rf2_helpmenu", Command_HelpMenu, "Shows the help menu.");
@@ -947,7 +948,7 @@ public Action Command_Interact(int client, int args)
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
 	}
-
+	
 	if (client == 0)
 	{
 		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
@@ -955,6 +956,31 @@ public Action Command_Interact(int client, int args)
 	}
 	
 	OnCallForMedic(client);
+	return Plugin_Handled;
+}
+
+public Action Command_Ping(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	if (IsPlayerSurvivor(client) && g_flPlayerTimeSinceLastPing[client]+PING_COOLDOWN < GetTickedTime())
+	{
+		if (PingObjects(client))
+		{
+			g_flPlayerTimeSinceLastPing[client] = GetTickedTime();
+		}
+	}
+	
 	return Plugin_Handled;
 }
 
@@ -1919,9 +1945,10 @@ void ShowCommandsList(int client)
 	menu.AddItem("rf2_itemlog", "rf2_itemlog - Shows list of items that you've collected");
 	menu.AddItem("rf2_endlevel", "rf2_endlevel - Used to end the round in Tank Destruction or other modes");
 	menu.AddItem("rf2_reset_tutorial", "rf2_reset_tutorial - Resets tutorial messages");
-	menu.AddItem("rf2_items", "rf2_items - Meant to be binded to a key, opens inventory menu", ITEMDRAW_DISABLED);
-	menu.AddItem("rf2_use_strange", "rf2_use_strange - Meant to be binded to a key, activates Strange item", ITEMDRAW_DISABLED);
-	menu.AddItem("rf2_interact", "rf2_interact - Meant to be binded to a key, functions like Call for Medic to interact with objects", ITEMDRAW_DISABLED);
+	menu.AddItem("rf2_items", "rf2_items - Meant to be binded to a key, opens inventory menu. Default is [TAB/SCOREBOARD] + Call for Medic.", ITEMDRAW_DISABLED);
+	menu.AddItem("rf2_use_strange", "rf2_use_strange - Meant to be binded to a key, activates Strange item. Default is R/RELOAD key", ITEMDRAW_DISABLED);
+	menu.AddItem("rf2_interact", "rf2_interact - Meant to be binded to a key, functions like Call for Medic to interact with objects.", ITEMDRAW_DISABLED);
+	menu.AddItem("rf2_ping", "rf2_ping - Meant to be binded to a key, pings an object you are looking at. Default is Middle Mouse/ATTACK3.", ITEMDRAW_DISABLED);
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 

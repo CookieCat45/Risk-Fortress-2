@@ -57,6 +57,11 @@
 		"en"		"Item Sharing has been disabled, feel free to loot the map"
 	}
 	
+	"PingObjectsHint"
+	{
+		"en"		"Middle Mouse Button/ATTACK3: Ping Objects"
+	}
+	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// AFK PHRASES
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -360,17 +365,17 @@
 	
 	"SurvivorTutorial2"
 	{
-		"en"		"You can interact with any flashing objects by looking at them and pressing [E].\nIf you want to see these tutorial messages again, use the /rf2_reset_tutorial command."
+		"en"		"You can interact with most flashing objects by looking at them and Calling for Medic.\nIf you want to see these tutorial messages again, use the /rf2_reset_tutorial command."
 	}
 	
 	"ItemPickupTutorial"
 	{
-		"en"		"To pick up an item, look at it and press the [E] key."
+		"en"		"To pick up an item, look at it and Call for Medic!"
 	}
 	
 	"ItemPickupTutorial2"
 	{
-		"en"		"To drop an item, select it in your item menu. Open the item menu by pressing [TAB] + [E]."
+		"en"		"To drop an item, select it in your item menu. Open the item menu by pressing [TAB/SCOREBOARD BUTTON] + Call for Medic."
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

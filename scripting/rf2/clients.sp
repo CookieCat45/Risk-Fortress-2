@@ -25,6 +25,8 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerViewingItemMenu[client] = false;
 	g_bPlayerIsTeleporterBoss[client] = false;
 	g_bPlayerOpenedHelpMenu[client] = false;
+	g_bPlayerHealOnHitCooldown[client] = false;
+	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;
 	g_iPlayerBossType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;
@@ -54,6 +56,7 @@ void RefreshClient(int client, bool force=false)
 		SetEntityGravity(client, 1.0);
 		SetEntProp(client, Prop_Send, "m_bGlowEnabled", false);
 		RequestFrame(RF_ResetMinionFlag, client); // so the correct death voice sound plays
+		ToggleGlow(client, false);
 		
 		// Clear our custom model on a timer so our ragdoll uses the correct model if we're dying.
 		CreateTimer(0.5, Timer_ResetModel, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
@@ -699,6 +702,163 @@ int GetPlayerLuckStat(int client)
 	return CalcItemModInt(client, Item_LuckyCatHat, 0) - CalcItemModInt(client, Item_MisfortuneFedora, 0);
 }
 
+bool PingObjects(int client)
+{
+	int entity = GetClientAimTarget(client, false);
+	RF2_Object_Base obj = RF2_Object_Base(entity);
+	char text[256];
+	if (IsCombatChar(entity) && IsLOSClear(client, entity))
+	{
+		// ping enemies
+		char phrase[64];
+		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == GetClientTeam(client))
+		{
+			phrase = "wants to help: ";
+		}
+		else
+		{
+			phrase = "wants to attack: ";
+		}
+		
+		if (IsValidClient(entity))
+		{
+			FormatEx(text, sizeof(text), "%N %s%N", client, phrase, entity);
+		}
+		else
+		{
+			char name[128];
+			GetEntityDisplayName(entity, name, sizeof(name));
+			FormatEx(text, sizeof(text), "%N %s%s", client, phrase, name);
+		}
+		
+		if (IsGlowing(entity, true) || !IsGlowing(entity, true) && !IsGlowing(entity))
+		{
+			if (g_hEntityGlowResetTimer[entity])
+			{
+				delete g_hEntityGlowResetTimer[entity];
+				g_hEntityGlowResetTimer[entity] = null;
+			}
+			
+			ToggleGlow(entity, true);
+			g_hEntityGlowResetTimer[entity] = CreateTimer(8.0, Timer_ResetCharacterGlow, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+		}
+		
+		float pos[3];
+		GetEntPos(entity, pos, true);
+		ShowAnnotationToAll(pos, text, 8.0, entity, entity);
+	}
+	else if (obj.IsValid() && IsLOSClear(client, entity))
+	{
+		// ping objects
+		char objName[64];
+		obj.GetObjectName(objName, sizeof(objName));
+		FormatEx(text, sizeof(text), "%N has found: %s", client, objName);
+		obj.PingMe(text);
+	}
+	else
+	{
+		// ping items
+		RF2_Item item = GetItemInPickupRange(client);
+		entity = item.index;
+		if (item.IsValid())
+		{
+			FormatEx(text, sizeof(text), "%N has found: %s", client, g_szItemName[item.Type]);
+			float pos[3];
+			item.GetAbsOrigin(pos);
+			pos[2] += 50.0;
+			ShowAnnotationToAll(pos, text, 8.0, INVALID_ENT, item.index);
+		}
+	}
+	
+	if (IsValidEntity2(entity))
+	{
+		if (entity != g_iPlayerLastPingedEntity[client] && (g_iPlayerLastPingedEntity[client] == INVALID_ENT || IsValidEntity2(g_iPlayerLastPingedEntity[client])))
+		{
+			if (g_iPlayerLastPingedEntity[client] >= 0)
+				KillAnnotation(g_iPlayerLastPingedEntity[client]);
+			
+			g_iPlayerLastPingedEntity[client] = entity;
+		}
+		
+		SetCookieBool(client, g_coPingObjectsHint, true);
+		return true;
+	}
+
+	return false;
+}
+
+void ShowAnnotation(int client, float pos[3], const char[] text, float duration=8.0, int parent=INVALID_ENT, int id=-1, const char[] sound=SND_HINT)
+{
+	if (id >= 0)
+	{
+		KillAnnotation(id);
+	}
+
+	Event event = CreateEvent("show_annotation", true);
+	event.SetFloat("worldPosX", pos[0]);
+	event.SetFloat("worldPosY", pos[1]);
+	event.SetFloat("worldPosZ", pos[2]);
+	event.SetFloat("lifetime", duration);
+	event.SetInt("id", id);
+	event.SetInt("follow_entindex", parent);
+	event.SetString("text", text);
+	event.FireToClient(client);
+	if (sound[0])
+	{
+		EmitSoundToClient(client, sound);
+	}
+	
+	delete event;
+}
+
+void ShowAnnotationToAll(float pos[3], const char[] text, float duration=8.0, int parent=INVALID_ENT, int id=-1, const char[] sound=SND_HINT)
+{
+	if (id >= 0)
+	{
+		KillAnnotation(id);
+	}
+	
+	Event event = CreateEvent("show_annotation", true);
+	event.SetFloat("worldPosX", pos[0]);
+	event.SetFloat("worldPosY", pos[1]);
+	event.SetFloat("worldPosZ", pos[2]);
+	event.SetFloat("lifetime", duration);
+	event.SetInt("id", id);
+	event.SetInt("follow_entindex", parent);
+	event.SetString("text", text);
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i))
+		{	
+			event.FireToClient(i);
+			if (sound[0])
+			{
+				EmitSoundToClient(i, sound);
+			}
+		}
+	}
+	
+	delete event;
+}
+
+void KillAnnotation(int entity)
+{
+	Event annotation = CreateEvent("hide_annotation", true);
+	annotation.SetInt("id", entity);
+	annotation.Fire();
+}
+
+public Action Timer_ResetCharacterGlow(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
+		return Plugin_Continue;
+	
+	ToggleGlow(entity, false);
+	g_hEntityGlowResetTimer[entity] = null;
+	return Plugin_Continue;
+}
+
 void ApplyVampireSapper(int client, int attacker, float damage=10.0, float duration=8.0)
 {
 	if (!g_bPlayerHasVampireSapper[client])
@@ -1340,16 +1500,16 @@ float GetConditionDuration(int client, TFCond cond)
 
 public bool TraceFilter_PlayerTeam(int entity, int mask, int client)
 {
-	if (entity <= MaxClients && entity != client && GetClientTeam(entity) == GetClientTeam(client))
+	if (entity > 0 && entity <= MaxClients && entity != client && GetClientTeam(entity) == GetClientTeam(client))
 		return true;
-
+	
 	return false;
 }
 
 public bool TraceFilter_EnemyTeam(int entity, int mask, int client)
 {
-	if (entity <= MaxClients && entity != client && GetClientTeam(entity) != GetClientTeam(client))
+	if (entity > 0 && entity <= MaxClients && entity != client && GetClientTeam(entity) != GetClientTeam(client))
 		return true;
-
+	
 	return false;
 }

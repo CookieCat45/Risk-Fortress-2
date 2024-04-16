@@ -121,6 +121,7 @@ static void OnCreate(RF2_Object_Gravestone grave)
 	grave.TextZOffset = 110.0;
 	grave.TextSize = 12.0;
 	grave.SetTextColor({75, 200, 200, 255});
+	grave.SetObjectName("Gravestone");
 }
 
 static Action Gravestone_OnInteract(int client, RF2_Object_Gravestone grave)

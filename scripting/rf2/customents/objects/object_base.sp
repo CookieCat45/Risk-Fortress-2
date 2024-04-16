@@ -37,12 +37,13 @@ methodmap RF2_Object_Base < CBaseAnimating
 			.DefineFloatField("m_flCost", _, "cost")
 			.DefineBoolField("m_bActive", _, "active")
 			.DefineBoolField("m_bMapPlaced")
+			.DefineEntityField("m_hGlow")
 			.DefineEntityField("m_hWorldTextEnt")
 			.DefineStringField("m_szWorldText")
 			.DefineFloatField("m_flTextZOffset")
 			.DefineFloatField("m_flTextSize")
 			.DefineColorField("m_TextColor")
-			.DefineEntityField("m_hGlow")
+			.DefineStringField("m_szObjectName")
 			.DefineIntField("m_OnInteractForward")
 			.DefineInputFunc("SetActive", InputFuncValueType_Boolean, Input_SetActive)
 		.EndDataMapDesc();
@@ -107,6 +108,19 @@ methodmap RF2_Object_Base < CBaseAnimating
 		public set(bool value)
 		{
 			this.SetProp(Prop_Data, "m_bMapPlaced", value);
+		}
+	}
+
+	property Handle GlowTimer
+	{
+		public get()
+		{
+			return g_hEntityGlowResetTimer[this.index];
+		}
+		
+		public set(Handle timer)
+		{
+			g_hEntityGlowResetTimer[this.index] = timer;
 		}
 	}
 	
@@ -260,7 +274,34 @@ methodmap RF2_Object_Base < CBaseAnimating
 			AcceptEntityInput(this.GlowEnt, "SetGlowColor");
 		}
 	}
-
+	
+	public void GetObjectName(char[] buffer, int size)
+	{
+		this.GetPropString(Prop_Data, "m_szObjectName", buffer, size);
+	}
+	
+	public void SetObjectName(const char[] name)
+	{
+		this.SetPropString(Prop_Data, "m_szObjectName", name);
+	}
+	
+	public void PingMe(const char[] text, float duration=8.0)
+	{
+		float pos[3];
+		this.WorldSpaceCenter(pos);
+		ShowAnnotationToAll(pos, text, duration, this.index, this.index);
+		if (IsGlowing(this.index, true) || !IsGlowing(this.index, true) && !IsGlowing(this.index))
+		{
+			this.SetGlow(true);
+			if (this.GlowTimer)
+			{
+				delete this.GlowTimer;
+			}
+			
+			this.GlowTimer = CreateTimer(duration, Timer_ResetGlow, EntIndexToEntRef(this.index), TIMER_FLAG_NO_MAPCHANGE);
+		}
+	}
+	
 	// Fixed from baseentity.inc
 	/**
 	 * Gets a network property as a color.
@@ -383,6 +424,22 @@ static Action Timer_WorldText(Handle timer, int entity)
 		}
 	}
 	
+	return Plugin_Continue;
+}
+
+static Action Timer_ResetGlow(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+		return Plugin_Continue;
+	
+	if (RF2_Object_Teleporter(entity).IsValid() && RF2_Object_Teleporter(entity).EventState != TELE_EVENT_INACTIVE)
+	{
+		RF2_Object_Base(entity).GlowTimer = null;
+		return Plugin_Continue;
+	}
+	
+	RF2_Object_Base(entity).SetGlow(false);
+	RF2_Object_Base(entity).GlowTimer = null;
 	return Plugin_Continue;
 }
 

@@ -14,6 +14,7 @@
 #define INVALID_ENT INVALID_ENT_REFERENCE
 #define MAX_PATH_FOLLOWERS 60
 #define MAX_INVENTORIES 64
+#define PING_COOLDOWN 1.2
 
 // Configs -------------------------------------------------------------------------------------------------------------------------------------
 #define ConfigPath "configs/rf2"
@@ -112,6 +113,7 @@
 #define SND_STUN "player/pl_impact_stun.wav"
 #define SND_PARACHUTE "items/para_open.wav"
 #define SND_1UP "rf2/sfx/1up.wav"
+#define SND_HINT "ui/hint.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
@@ -186,10 +188,10 @@ enum
 // TFBots -------------------------------------------------------------------------------------------------------------------------------------
 enum
 {
-	TFBotDifficulty_Easy,
-	TFBotDifficulty_Normal,
-	TFBotDifficulty_Hard,
-	TFBotDifficulty_Expert,
+	TFBotSkill_Easy,
+	TFBotSkill_Normal,
+	TFBotSkill_Hard,
+	TFBotSkill_Expert,
 };
 
 #define TFBOTFLAG_AGGRESSIVE (1 << 0) // Bot should always act aggressive (relentlessly chase target)
