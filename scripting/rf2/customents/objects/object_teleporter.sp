@@ -361,7 +361,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
 			RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
 			PrintHintText(i, "%t", "GotItemReward", name);
-			if (wasSharingEnabled)
+			if (wasSharingEnabled && !IsItemSharingEnabled())
 			{
 				PrintKeyHintText(i, "%t", "ItemSharingDisabled");
 			}
@@ -670,6 +670,7 @@ public void OnTeleporterVoteFinish(Menu menu, int numVotes, int numClients, cons
 	}
 }
 
+static bool g_bIsConfirmation;
 public void OnNextStageVoteFinish(Menu menu, int numVotes, int numClients, const int[][] clientInfo, int numItems, const int[][] itemInfo)
 {
 	if (numVotes > 0)
@@ -695,7 +696,45 @@ public void OnNextStageVoteFinish(Menu menu, int numVotes, int numClients, const
 		
 		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0)
 		{
-			ForceTeamWin(TEAM_SURVIVOR);
+			if (!g_bIsConfirmation && AreAnyPlayersLackingItems())
+			{
+				Menu vote = new Menu(Menu_TeleporterVote);
+				vote.SetTitle("Are you sure you want to leave? There are still players who are lacking items!");
+				vote.VoteResultCallback = OnNextStageVoteFinish;
+				vote.AddItem("Yes", "Yes");
+				vote.AddItem("No", "No");
+				vote.ExitButton = false;
+				
+				int clients[MAX_SURVIVORS];
+				int clientCount;
+				for (int i = 1; i <= MaxClients; i++)
+				{
+					if (!IsClientInGame(i))
+						continue;
+						
+					if (GetClientTeam(i) == TEAM_SURVIVOR)
+					{
+						clients[clientCount] = i;
+						clientCount++;
+						if (clientCount >= MAX_SURVIVORS)
+						{
+							break;
+						}
+					}
+				}
+				
+				vote.DisplayVote(clients, clientCount, 12);
+				g_bIsConfirmation = true;
+			}
+			else
+			{
+				ForceTeamWin(TEAM_SURVIVOR);
+				g_bIsConfirmation = false;
+			}
+		}
+		else
+		{
+			g_bIsConfirmation = false;
 		}
 	}
 }

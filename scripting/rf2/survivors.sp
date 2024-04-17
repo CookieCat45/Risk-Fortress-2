@@ -220,6 +220,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 				}
 			}
 			
+			/*
 			if (g_iLoopCount >= 2 && g_iSavedItem[invIndex][Item_PrideScarf] < itemsToGive/3)
 			{
 				// Give a bunch of health otherwise the player just endlessly dies at this point
@@ -227,6 +228,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 				GiveItem(client, Item_SpiralSallet, 10-imin(g_iSavedItem[invIndex][Item_SpiralSallet], 10));
 				GiveItem(client, Item_ClassCrown);
 			}
+			*/
 			
 			if (g_iSavedEquipmentItem[invIndex] == Item_Null)
 			{
@@ -348,7 +350,13 @@ void LoadSurvivorInventory(int client, int index)
 		}
 	}
 	
-	SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier());
+	float cashBonus = 1.0 + (2.0 * float(g_iLoopCount));
+	if (g_bTankBossMode)
+	{
+		cashBonus += 2.0;
+	}
+	
+	SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier() * cashBonus);
 	g_iPlayerLevel[client] = g_iSavedLevel[index];
 	g_flPlayerXP[client] = g_flSavedXP[index];
 	g_iItemsTaken[RF2_GetSurvivorIndex(client)] = 0;
@@ -795,8 +803,19 @@ bool IsItemSharingEnabled()
 	if (!g_cvItemShareEnabled.BoolValue)
 		return false;
 	
-	if (g_iLoopCount >= 1 && g_cvItemShareEnabled.IntValue == 1)
+	if (g_iLoopCount >= g_cvItemShareDisableLoopCount.IntValue && g_cvItemShareEnabled.IntValue == 1)
 		return false;
+	
+	if (g_cvItemShareDisableThreshold.FloatValue > 0.0 && !IsSingleplayer(false))
+	{
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (IsClientInGame(i) && IsPlayerSurvivor(i) && !DoesPlayerHaveEnoughItems(i))
+			{
+				return true; // not all players have enough items yet, stay enabled
+			}
+		}
+	}
 	
 	if (IsStageCleared() && g_cvItemShareEnabled.IntValue == 1)
 		return false;
@@ -806,6 +825,29 @@ bool IsItemSharingEnabled()
 		return false;
 	
 	return true;
+}
+
+bool DoesPlayerHaveEnoughItems(int client)
+{
+	int index = RF2_GetSurvivorIndex(client);
+	float itemPct = float(g_iItemsTaken[index]) / float(g_iItemLimit[index]);
+	return itemPct >= g_cvItemShareDisableThreshold.FloatValue;
+}
+
+bool AreAnyPlayersLackingItems()
+{
+	if (!IsItemSharingEnabled())
+		return false;
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && IsPlayerSurvivor(i) && !DoesPlayerHaveEnoughItems(i))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void GiveCommunityItems(int client)

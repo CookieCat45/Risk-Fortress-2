@@ -1481,8 +1481,18 @@ bool HoldingReloadUseWeapon(int client)
 			}
 		}
 	}
-
+	
 	return false;
+}
+
+int GetSpectateTarget(int client)
+{
+	return GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
+}
+
+bool IsInspectButtonPressed(int client)
+{
+	return GetEntPropFloat(client, Prop_Send, "m_flInspectTime") > 0.0;
 }
 
 /*

@@ -411,7 +411,7 @@ bool PickupItem(int client)
 		bool dropped = item.Dropped;
 		
 		// hotfix
-		if (GetPlayersOnTeam(TEAM_SURVIVOR, true, true) <= 1)
+		if (GetPlayersOnTeam(TEAM_SURVIVOR, false, false) <= 1)
 		{
 			g_iItemLimit[survivorIndex] = 0;
 		}
@@ -505,6 +505,8 @@ bool PickupItem(int client)
 		
 		g_bItemPickupCooldown[client] = true;
 		CreateTimer(0.2, Timer_ItemPickupCooldown, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		
+
 		return true;
 	}
 	

@@ -313,6 +313,8 @@ ConVar g_cvAllowHumansInBlue;
 ConVar g_cvTimeBeforeRestart;
 ConVar g_cvHiddenServerStartTime;
 ConVar g_cvWaitExtendTime;
+ConVar g_cvItemShareDisableThreshold;
+ConVar g_cvItemShareDisableLoopCount;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -3166,7 +3168,12 @@ public Action Timer_PlayerTimer(Handle timer)
 	
 	int maxHealth, health, healAmount, weapon, ammoType;
 	int sentry = INVALID_ENT;
-	int team;
+	int team, index;
+	static char names[2048];
+	names = "";
+	bool stageCleared = IsStageCleared();
+	bool itemShare = IsItemSharingEnabled();
+	bool missingItems;
 	static float timeSincePingHint[MAXTF2PLAYERS];
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -3193,6 +3200,16 @@ public Action Timer_PlayerTimer(Handle timer)
 			}
 			
 			continue;
+		}
+		
+		if (stageCleared && itemShare && IsPlayerSurvivor(i))
+		{
+			if (!DoesPlayerHaveEnoughItems(i))
+			{
+				missingItems = true;
+				index = RF2_GetSurvivorIndex(i);
+				Format(names, sizeof(names), "%s- %N (%i/%i)\n", names, i, g_iItemsTaken[index], g_iItemLimit[index]);
+			}
 		}
 		
 		// All players have infinite reserve ammo
@@ -3349,6 +3366,17 @@ public Action Timer_PlayerTimer(Handle timer)
 		}
 	}
 	
+	if (missingItems)
+	{
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_ENEMY)
+			{
+				PrintKeyHintText(i, "Players who are lacking items:\n%s", names);
+			}
+		}
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -3484,16 +3512,10 @@ Action OnCallForMedic(int client)
 {
 	if (!IsPlayerAlive(client))
 	{
-		for (int i = 1; i <= MaxClients; i++)
+		int target = GetSpectateTarget(client);
+		if (IsValidClient(target) && IsPlayerSurvivor(target))
 		{
-			if (i == client || !IsClientInGame(i) || !IsPlayerSurvivor(i))
-				continue;
-			
-			if (GetEntPropEnt(client, Prop_Send, "m_hObserverTarget") == i)
-			{
-				ShowItemMenu(client, i);
-				break;
-			}
+			ShowItemMenu(client, target);
 		}
 		
 		return Plugin_Continue;
@@ -3505,15 +3527,6 @@ Action OnCallForMedic(int client)
 		{
 			ShowItemMenu(client); // shortcut
 			return Plugin_Handled;
-		}
-		else
-		{
-			int target = GetClientAimTarget(client);
-			if (IsValidClient(target) && IsPlayerSurvivor(target))
-			{
-				ShowItemMenu(client, target);
-				return Plugin_Handled;
-			}
 		}
 		
 		if (PickupItem(client))
@@ -3659,25 +3672,8 @@ public Action OnChangeSpec(int client, const char[] command, int args)
 {
 	if (!IsSingleplayer(false))
 		ResetAFKTime(client);
-
-	RequestFrame(RF_CheckSpecTarget, GetClientUserId(client));
-	return Plugin_Continue;
-}
-
-public void RF_CheckSpecTarget(int client)
-{
-	client = GetClientOfUserId(client);
-
-	// apparently can be invalid?
-	if (!IsValidClient(client))
-		return;
 	
-	/*int specTarget = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
-	if (IsValidClient(specTarget) && IsPlayerSurvivor(specTarget) && !GetCookieBool(specTarget, g_coDisableSpecMenu))
-	{
-		ShowItemMenu(client, specTarget);
-	}
-	*/
+	return Plugin_Continue;
 }
 
 public Action OnBuildCommand(int client, const char[] command, int args)
@@ -3754,6 +3750,24 @@ public void Hook_PreThink(int client)
 		}
 	}
 	
+	if (IsInspectButtonPressed(client))
+	{
+		int target = INVALID_ENT;
+		if (IsPlayerAlive(client))
+		{
+			target = GetClientAimTarget(client);
+		}
+		else
+		{
+			target = GetSpectateTarget(client);
+		}
+		
+		if (IsValidClient(target) && IsPlayerSurvivor(target))
+		{
+			ShowItemMenu(client, target);
+		}
+	}
+	
 	if (!IsPlayerAlive(client))
 		return;
 	
@@ -3793,7 +3807,7 @@ public void Hook_PreThink(int client)
 			{
 				metal = RoundToFloor(float(g_cvEngiMetalRegenAmount.IntValue) * (1.0 + float(GetPlayerLevel(client)) * 0.12));
 			}
-
+			
 			GivePlayerAmmo(client, metal, TFAmmoType_Metal, true);
 			float time = g_bGracePeriod ? 0.2 : g_cvEngiMetalRegenInterval.FloatValue;
 			g_flPlayerNextMetalRegen[client] = tickedTime + time;

@@ -381,12 +381,15 @@ public void Output_OnTankKilled(const char[] output, int caller, int activator, 
 		SpawnCashDrop(totalCash*0.1, pos, GetRandomInt(2, 3), vel);
 	}
 	
+	if (IsStageCleared())
+		return;
+
 	bool wasSharingEnabled = IsItemSharingEnabled();
 	g_iTanksKilledObjective++;
 	g_iTotalTanksKilled++;
 	if (g_iTanksKilledObjective >= g_iTankKillRequirement)
 	{
-		if (wasSharingEnabled)
+		if (wasSharingEnabled && !IsItemSharingEnabled())
 		{
 			for (int i = 1; i <= MaxClients; i++)
 			{
@@ -396,7 +399,7 @@ public void Output_OnTankKilled(const char[] output, int caller, int activator, 
 				}
 			}
 		}
-
+		
 		EndTankDestructionMode();
 	}
 }

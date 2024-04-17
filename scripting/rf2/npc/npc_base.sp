@@ -395,7 +395,6 @@ static Action Timer_UnstuckCheck(Handle timer, int entity)
 	if (GetVectorDistance(oldStuckPos, pos, true) <= 64.0)
 	{
 		npc.DormantTime += 0.5;
-		PrintToChatAll("Dormant Time = %.1f", npc.DormantTime);
 	}
 	else
 	{
