@@ -291,6 +291,7 @@ int SpawnCashDrop(float cashValue, float pos[3], int size=1, float vel[3]={0.0, 
 	SDKHook(entity, SDKHook_GroundEntChangedPost, Hook_CashGroundEntChangedPost);
 	TeleportEntity(entity, pos);
 	DispatchSpawn(entity);
+	SetEntProp(entity, Prop_Send, "m_bDistributed", true); // prevent money from being removed when resting in an area with no nav mesh
 	SetEntityMoveType(entity, MOVETYPE_FLYGRAVITY);
 	SetEntityMoveCollide(entity, MOVECOLLIDE_FLY_BOUNCE);
 	CBaseEntity(entity).SetAbsVelocity(vel);
