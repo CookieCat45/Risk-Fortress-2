@@ -371,7 +371,7 @@ void PickupCash(int client, int entity)
 		ArrayList clientArray = new ArrayList();
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+			if (!IsClientInGame(i) || !IsPlayerSurvivor(i) && !IsPlayerMinion(i))
 				continue;
 			
 			clientArray.Push(i);

@@ -4609,7 +4609,7 @@ public Action Hook_CashTouch(int entity, int other)
 	{
 		if (!IsPlayerSurvivor(other) && !IsPlayerMinion(other))
 			return Plugin_Handled;
-
+		
 		PickupCash(other, entity);
 	}
 	
