@@ -348,7 +348,7 @@ void DoSentryBusterWave()
 	
 	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)
 	{
-		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != TEAM_SURVIVOR)
+		if (GetEntTeam(entity) != TEAM_SURVIVOR)
 			continue;
 		
 		builder = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");

@@ -524,7 +524,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 				}
 			}
 			
-			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == this.Team)
+			if (GetEntTeam(entity) == this.Team)
 				continue;
 			
 			dist = DistBetween(this.index, entity);
@@ -728,7 +728,7 @@ public bool TraceFilter_Projectile(int entity, int mask, RF2_Projectile_Base sel
 	if (entity == self.index || !IsValidClient(entity) && !IsNPC(entity))
 		return false;
 	
-	if (self.Team == GetEntProp(entity, Prop_Data, "m_iTeamNum") || self.Owner == entity)
+	if (self.Team == GetEntTeam(entity) || self.Owner == entity)
 		return false;
 	
 	return true;

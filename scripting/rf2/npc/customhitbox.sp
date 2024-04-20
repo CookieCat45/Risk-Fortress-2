@@ -154,7 +154,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 			this.Inflictor = owner;
 		}
 		
-		int team = GetEntProp(owner, Prop_Data, "m_iTeamNum");
+		int team = GetEntTeam(owner);
 		float force[3], vel[3];
 		this.GetDamageForce(force);
 		if (!g_hHitEntities)
@@ -168,7 +168,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 			if (!IsCombatChar(entity))
 				continue;
 			
-			if (entity == owner || GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
+			if (entity == owner || GetEntTeam(entity) == team)
 				continue;
 			
 			if (DoEntitiesIntersect(this.index, entity))

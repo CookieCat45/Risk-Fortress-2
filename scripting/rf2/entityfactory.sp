@@ -20,6 +20,7 @@ void InstallEnts()
 	RF2_Projectile_Fireball.Init();
 	RF2_Projectile_Kunai.Init();
 	RF2_Projectile_Skull.Init();
+	RF2_DispenserShield.Init();
 	RF2_NPC_Base.Init();
 	RF2_CustomHitbox.Init();
 	RF2_SentryBuster.Init();

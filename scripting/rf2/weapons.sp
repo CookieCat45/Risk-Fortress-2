@@ -249,6 +249,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 				TF2Items_SetItemIndex(item, index);
 			}
 			
+			flags |= FORCE_GENERATION;
 			TF2Items_SetFlags(item, flags);
 			DataPack pack = CreateDataPack();
 			pack.WriteCell(client);
@@ -296,17 +297,20 @@ public void RF_ReplaceNewWeapon(DataPack pack)
 	Handle item = pack.ReadCell();
 	delete pack;
 	
+	if (!item)
+		return;
+	
+	RequestFrame(RF_ResetGiveItemBool); // just in case
 	g_bDisableGiveItemForward = true;
 	int weapon = TF2Items_GiveNamedItem(client, item);
 	g_bDisableGiveItemForward = false;
-	//char classname[64];
-	//TF2Items_GetClassname(item, classname, sizeof(classname));
-	
-	//TF2Items_OnGiveNamedItem_Post(client, 
-	//classname, TF2Items_GetItemIndex(item), TF2Items_GetLevel(item), TF2Items_GetQuality(item), weapon);
-	
 	delete item;
 	EquipPlayerWeapon(client, weapon);
+}
+
+public void RF_ResetGiveItemBool()
+{
+	g_bDisableGiveItemForward = false;
 }
 
 public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index, int level, int quality, int entity)
@@ -352,6 +356,20 @@ public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int inde
 	}
 
 	SetEntProp(entity, Prop_Send, "m_bValidatedAttachedEntity", true);
+	RequestFrame(RF_MeleeSmackHook, EntIndexToEntRef(entity));
+}
+
+public void RF_MeleeSmackHook(int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+		return;
+	
+	int client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+	if (IsValidClient(client) && GetPlayerWeaponSlot(client, WeaponSlot_Melee) == entity)
+	{
+		g_hHookMeleeSmack.HookEntity(Hook_Pre, entity, DHook_MeleeSmack);
+		g_hHookMeleeSmack.HookEntity(Hook_Post, entity, DHook_MeleeSmackPost);
+	}
 }
 
 int CreateWeapon(int client, char[] classname, int index, const char[] attributes = "", bool staticAttributes=false, bool visible=true, int quality = TF2Quality_Unique)
@@ -691,38 +709,43 @@ void SDK_EquipWearable(int client, int entity)
 	}
 }
 
-public MRESReturn Detour_DoSwingTrace(int weapon, DHookReturn returnVal, DHookParam params)
+public MRESReturn DHook_MeleeSmack(int weapon)
 {
-	if (!RF2_IsEnabled())
-		return MRES_Ignored;
-	
 	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
-	char classname[32];
-	GetEntityClassname(weapon, classname, sizeof(classname));
-	if (IsValidClient(owner) && PlayerHasItem(owner, Item_HorrificHeadsplitter) && !strcmp2(classname, "tf_weapon_knife"))
+	if (IsValidClient(owner) && PlayerHasItem(owner, Item_HorrificHeadsplitter))
 	{
 		g_bMeleeMiss[owner] = true;
 	}
 	
-	// Don't hit teammates (note: only works for BLU team, but that's what we want anyway)
+	// Melee goes through bubble shields (still makes the sound of hitting it but whatever)
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "rf2_dispenser_shield")) != INVALID_ENT)
+	{
+		SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_NONE);
+		SetEntityCollisionGroup(entity, COLLISION_GROUP_NONE);
+	}
+	
+	// Don't hit teammates (note: only works for BLU team(?), but that's what we want anyway)
 	GameRules_SetProp("m_bPlayingMannVsMachine", true);
 	return MRES_Ignored;
 }
 
-public MRESReturn Detour_DoSwingTracePost(int weapon, DHookReturn returnVal, DHookParam params)
+public MRESReturn DHook_MeleeSmackPost(int weapon)
 {
-	if (!RF2_IsEnabled())
-		return MRES_Ignored;
-	
 	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
-	char classname[32];
-	GetEntityClassname(weapon, classname, sizeof(classname));
-	if (IsValidClient(owner) && g_bMeleeMiss[owner] && !strcmp2(classname, "tf_weapon_knife"))
+	if (IsValidClient(owner) && g_bMeleeMiss[owner])
 	{
 		if (PlayerHasItem(owner, Item_HorrificHeadsplitter))
 		{
 			RequestFrame(RF_MissCheck, GetClientUserId(owner));
 		}
+	}
+	
+	int entity = MaxClients+1;
+	while ((entity = FindEntityByClassname(entity, "rf2_dispenser_shield")) != INVALID_ENT)
+	{
+		SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_VPHYSICS);
+		SetEntityCollisionGroup(entity, TFCOLLISION_GROUP_COMBATOBJECT);
 	}
 	
 	GameRules_SetProp("m_bPlayingMannVsMachine", false);
@@ -732,9 +755,7 @@ public MRESReturn Detour_DoSwingTracePost(int weapon, DHookReturn returnVal, DHo
 public void RF_MissCheck(int client)
 {
 	if (!(client = GetClientOfUserId(client)))
-	{
 		return;
-	}
 	
 	bool missed = g_bMeleeMiss[client];
 	g_bMeleeMiss[client] = false;

@@ -247,7 +247,7 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 			if (IsValidClient(entity) && !IsPlayerAlive(entity))
 				continue;
 			
-			targetTeam = GetEntProp(entity, Prop_Data, "m_iTeamNum");
+			targetTeam = GetEntTeam(entity);
 			if (targetTeam == this.Team || targetTeam == this.DefendTeam)
 				continue;
 			
@@ -310,7 +310,7 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 
 void BaseNPC_OnMapStart()
 {
-	PrecacheSound(SND_BOSS_DEATH, true);
+	PrecacheSound2(SND_BOSS_DEATH, true);
 }
 
 CEntityFactory GetBaseNPCFactory()

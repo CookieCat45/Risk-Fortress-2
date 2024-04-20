@@ -66,7 +66,7 @@ int g_iTotalBossesKilled;
 int g_iTotalTanksKilled;
 int g_iTotalItemsFound;
 int g_iTanksKilledObjective;
-int g_iTankKillRequirement;
+int g_iTankKillRequirement = 1;
 int g_iTanksSpawned;
 int g_iMetalItemsDropped;
 int g_iWorldCenterEntity = INVALID_ENT;
@@ -224,9 +224,8 @@ Handle g_hSDKPlayGesture;
 Handle g_hSDKIntersects;
 Handle g_hSDKWeaponSwitch;
 Handle g_hSDKRealizeSpy;
-Handle g_hSDKSetZombieType;
+Handle g_hSDKSpawnZombie;
 Handle g_hSDKAbsVelImpulse;
-DynamicDetour g_hDetourDoSwingTrace;
 DynamicDetour g_hDetourSentryAttack;
 DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourSetReloadTimer;
@@ -239,6 +238,8 @@ DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookVPhysicsCollision;
 DynamicHook g_hHookRiflePostFrame;
 DynamicHook g_hHookIterateAttributes;
+DynamicHook g_hHookIsCombatItem;
+DynamicHook g_hHookMeleeSmack;
 int g_iEconItem;
 int g_iOnlyIterateItemViewAttributes;
 int g_iIterateAttributesHookId[MAX_EDICTS];
@@ -360,6 +361,7 @@ ArrayList g_hActiveArtifacts;
 #include "rf2/customents/gamerules.sp"
 #include "rf2/customents/item_ent.sp"
 #include "rf2/customents/healthtext.sp"
+#include "rf2/customents/dispenser_shield.sp"
 
 #include "rf2/customents/objects/object_base.sp"
 #include "rf2/customents/objects/object_teleporter.sp"
@@ -474,7 +476,7 @@ public void OnPluginEnd()
 			DynamicHook.RemoveHook(g_iIterateAttributesHookId[i]);
 			g_iIterateAttributesHookId[i] = INVALID_HOOK_ID;
 		}
-
+		
 		if (g_iIterateAttributesPostHookId[i])
 		{
 			DynamicHook.RemoveHook(g_iIterateAttributesPostHookId[i]);
@@ -544,7 +546,14 @@ void LoadGameData()
 		LogError("[DHooks] Failed to create virtual hook for CPhysicsProp::VPhysicsCollision");
 	}
 	
-
+	
+	g_hHookIsCombatItem = new DynamicHook(gamedata.GetOffset("CBaseEntity::IsCombatItem"), HookType_Entity, ReturnType_Bool, ThisPointer_CBaseEntity);
+	if (!g_hHookIsCombatItem)
+	{
+		LogError("[DHooks] Failed to create virtual hook for CBaseEntity::IsCombatItem");
+	}
+	
+	
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CBaseEntity::Intersects");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer); // pOther
@@ -583,10 +592,10 @@ void LoadGameData()
 	}
 	
 	
-	g_hDetourDoSwingTrace = DynamicDetour.FromConf(gamedata, "CTFWeaponBaseMelee::DoSwingTraceInternal");
-	if (!g_hDetourDoSwingTrace || !g_hDetourDoSwingTrace.Enable(Hook_Pre, Detour_DoSwingTrace) || !g_hDetourDoSwingTrace.Enable(Hook_Post, Detour_DoSwingTracePost))
+	g_hHookMeleeSmack = new DynamicHook(gamedata.GetOffset("CTFWeaponBaseMelee::Smack"), HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
+	if (!g_hHookMeleeSmack)
 	{
-		LogError("[DHooks] Failed to create detour for CTFWeaponBaseMelee::DoSwingTraceInternal");
+		LogError("[DHooks] Failed to create virtual hook for CTFWeaponBaseMelee::Smack");
 	}
 	
 	
@@ -638,13 +647,18 @@ void LoadGameData()
 	}
 	
 	
-	StartPrepSDKCall(SDKCall_Entity);
-	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CZombie::SetSkeletonType");
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	g_hSDKSetZombieType = EndPrepSDKCall();
-	if (!g_hSDKSetZombieType)
+	StartPrepSDKCall(SDKCall_Static);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CZombie::SpawnAtPos");
+	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef); // position
+	PrepSDKCall_AddParameter(SDKType_Float, SDKPass_ByValue); // lifetime
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // team
+	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer, VDECODE_FLAG_ALLOWNULL); // owner
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // skeleton type
+	PrepSDKCall_SetReturnInfo(SDKType_CBaseEntity, SDKPass_Pointer);
+	g_hSDKSpawnZombie = EndPrepSDKCall();
+	if (!g_hSDKSpawnZombie)
 	{
-		LogError("[SDK] Failed to create call for CZombie::SetSkeletonType");
+		LogError("[SDK] Failed to create call for CZombie::SpawnAtPos");
 	}
 	
 	
@@ -764,7 +778,7 @@ public void OnMapStart()
 		{
 			LogMessage("This server has only %i maxplayers. 32 maxplayers is recommended for Risk Fortress 2.", GetMaxHumanPlayers());
 		}
-
+		
 		if (!TheNavMesh.IsLoaded())
 		{
 			SetFailState("[NAV] The NavMesh for map \"%s\" does not exist", mapName);
@@ -783,6 +797,7 @@ public void OnMapStart()
 			maxSpeed.FloatValue = 900.0;
 		}
 		
+		GameRules_SetProp("m_nForceUpgrades", 2);
 		// These are ConVars we're OK with being set by server.cfg, but we'll set our personal defaults.
 		// If configs wish to change these, they will be overridden by them later.
 		FindConVar("sv_alltalk").SetBool(true);
@@ -987,7 +1002,7 @@ void CleanUp()
 	g_iRF2GameRulesEntRef = INVALID_ENT;
 	g_bTankBossMode = false;
 	g_iTanksKilledObjective = 0;
-	g_iTankKillRequirement = 0;
+	g_iTankKillRequirement = 1;
 	g_iTanksSpawned = 0;
 	g_bThrillerActive = false;
 	g_iThrillerRepeatCount = 0;
@@ -1216,7 +1231,7 @@ public void OnClientPutInServer(int client)
 		
 		if (g_hHookTakeHealth)
 		{
-			DHookEntity(g_hHookTakeHealth, false, client, _, DHook_TakeHealth);
+			g_hHookTakeHealth.HookEntity(Hook_Pre, client, DHook_TakeHealth);
 		}
 		
 		g_hPlayerExtraSentryList[client] = new ArrayList();
@@ -2247,9 +2262,9 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 			if (!IsCombatChar(entity) || IsValidClient(entity) && !IsPlayerAlive(entity))
 				continue;
 			
-			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
+			if (GetEntTeam(entity) == team)
 				continue;
-
+			
 			GetEntPos(entity, enemyPos);
 			enemyPos[2] += 30.0;
 			
@@ -2345,11 +2360,12 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	int building = event.GetInt("index");
+	TFObjectType type = TF2_GetObjectType2(building);
 	bool carryDeploy = asBool(GetEntProp(building, Prop_Send, "m_bCarryDeploy"));
 	if (!carryDeploy && (IsPlayerMinion(client) || GetPlayerBuildingCount(client, TFObject_Sentry, false) > 1))
 	{
 		SetEntPropFloat(building, Prop_Send, "m_flModelScale", 0.6);
-		if (TF2_GetObjectType2(building) == TFObject_Sentry)
+		if (type== TFObject_Sentry)
 		{
 			if (!IsPlayerMinion(client))
 			{
@@ -2373,11 +2389,21 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 			AcceptEntityInput(building, "AddHealth");
 		}
 	}
-	else if (GetClientTeam(client) == TEAM_ENEMY && TF2_GetObjectType2(building) == TFObject_Teleporter)
+	else if (type == TFObject_Dispenser && IsPlayerSurvivor(client) && !IsPlayerMinion(client))
+	{
+		RF2_DispenserShield shield = GetDispenserShield(building);
+		if (!shield.IsValid())
+		{
+			shield = CreateDispenserShield(GetEntTeam(client), building);
+			// shield will start inactive. Wait until the dispenser finishes building.
+			CreateTimer(0.1, Timer_DispenserShieldThink, EntIndexToEntRef(shield.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		}
+	}
+	else if (GetClientTeam(client) == TEAM_ENEMY && type == TFObject_Teleporter)
 	{
 		if (g_flTeleporterNextSpawnTime[building] < 0.0)
 			g_flTeleporterNextSpawnTime[building] = GetTickedTime()+(36.0/float(GetEntProp(building, Prop_Send, "m_iUpgradeLevel")));
-
+		
 		RequestFrame(RF_TeleporterThink, EntIndexToEntRef(building));
 	}
 	
@@ -2389,6 +2415,61 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	if (GetPlayerBuildingCount(client, TFObject_Sentry) >= 10)
 	{
 		TriggerAchievement(client, ACHIEVEMENT_SENTRIES);
+	}
+	
+	return Plugin_Continue;
+}
+
+public Action Timer_DispenserShieldThink(Handle timer, int entity)
+{
+	RF2_DispenserShield shield = RF2_DispenserShield(EntRefToEntIndex(entity));
+	if (!shield.IsValid() || !IsValidEntity2(shield.Dispenser))
+	{
+		if (shield.IsValid())
+			RemoveEntity2(shield.index);
+		
+		return Plugin_Stop;
+	}
+	
+	bool active = !asBool(GetEntProp(shield.Dispenser, Prop_Send, "m_bBuilding")) && !asBool(GetEntProp(shield.Dispenser, Prop_Send, "m_bCarried"));
+	if (!shield.Enabled)
+	{
+		if (active)
+		{
+			shield.Toggle(true, true);
+		}
+	}
+	else if (!active)
+	{
+		shield.Toggle(false, true);
+	}
+	else
+	{
+		int dispLevel = GetEntProp(shield.Dispenser, Prop_Send, "m_iUpgradeLevel");
+		if (dispLevel != shield.Level && dispLevel > shield.Level)
+		{
+			shield.Level = dispLevel;
+			char model[PLATFORM_MAX_PATH];
+			switch (dispLevel)
+			{
+				case 1:
+				{
+					model = MODEL_DISPENSER_SHIELD_L1;
+				}
+				case 2:
+				{
+					model = MODEL_DISPENSER_SHIELD_L2;
+					EmitGameSoundToAll("WeaponMedigun_Vaccinator.Charged_tier_03", shield.index);
+				}
+				case 3:
+				{
+					model = MODEL_DISPENSER_SHIELD;
+					EmitGameSoundToAll("WeaponMedigun_Vaccinator.Charged_tier_04", shield.index);
+				}
+			}
+			
+			shield.SetModel(model);
+		}
 	}
 	
 	return Plugin_Continue;
@@ -4030,12 +4111,6 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 			SetEntItemProc(beam, ItemDemo_ConjurersCowl);
 			g_flPlayerNextDemoSpellTime[client] = GetTickedTime() + GetItemMod(ItemDemo_ConjurersCowl, 6);
 		}
-		
-		if (PlayerHasItem(client, Item_HorrificHeadsplitter) && strcmp2(weaponName, "tf_weapon_knife"))
-		{
-			g_bMeleeMiss[client] = true;
-			RequestFrame(RF_MissCheck, GetClientUserId(client));
-		}
 	}
 	
 	// A player is firing tf_weapon_sniperrifle_classic in midair.
@@ -4280,11 +4355,13 @@ public void OnGameFrame()
 	}
 }
 
+bool g_bProjectileIgnoreShields[MAX_EDICTS];
 public void OnEntityCreated(int entity, const char[] classname)
 {
 	if (!RF2_IsEnabled() || entity < 0 || entity >= MAX_EDICTS)
 		return;
 	
+	g_bProjectileIgnoreShields[entity] = false;
 	g_hEntityGlowResetTimer[entity] = null;
 	g_flCashValue[entity] = 0.0;
 	g_iEntityPathFollowerIndex[entity] = -1;
@@ -4303,8 +4380,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_iIterateAttributesHookId[entity] = INVALID_HOOK_ID;
 	g_iIterateAttributesPostHookId[entity] = INVALID_HOOK_ID;
 	
-	if (strcmp2(classname, "tf_projectile_rocket") || strcmp2(classname, "tf_projectile_energy_ball")
-		|| strcmp2(classname, "tf_projectile_flare") || strcmp2(classname, "tf_projectile_arrow"))
+	if (StrContains(classname, "tf_projectile") == 0)
 	{
 		SDKHook(entity, SDKHook_SpawnPost, Hook_ProjectileSpawnPost);
 	}
@@ -4457,13 +4533,14 @@ bool IsEntityBlacklisted(const char[] classname)
 
 public void Hook_ProjectileSpawnPost(int entity)
 {
-	RequestFrame(RF_ProjectileSpawnPost, EntIndexToEntRef(entity)); // just in case
+	RequestFrame(RF_ProjectileSpawnPost, EntIndexToEntRef(entity));
 }
 
 public void RF_ProjectileSpawnPost(int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return;
+	
 
 	int launcher = GetEntPropEnt(entity, Prop_Send, "m_hLauncher");
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
@@ -4575,7 +4652,15 @@ float g_flDamageProc;
 public Action Hook_OnTakeDamageAlive(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
 float damageForce[3], float damagePosition[3], int damageCustom)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive)
+	if (!RF2_IsEnabled())
+		return Plugin_Continue;
+	
+	if (IsValidClient(victim))
+	{
+		GameRules_SetProp("m_bPlayingMannVsMachine", false); // prevent server crash from a dhook we use
+	}
+	
+	if (!g_bRoundActive)
 		return Plugin_Continue;
 	
 	bool attackerIsClient = IsValidClient(attacker);
@@ -4614,7 +4699,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (inflictorIsBuilding)
 	{
-		if (GetEntProp(inflictor, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+		if (GetEntTeam(inflictor) == TEAM_ENEMY)
 			damageType |= DMG_PREVENT_PHYSICS_FORCE;
 		
 		if (victim == attacker)
@@ -4694,6 +4779,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (attackerIsClient)
 	{
+		if (IsPlayerMinion(attacker) && weapon > 0)
+		{
+			CBaseEntity(attacker).RemoveFlag(FL_NOTARGET);
+		}
+		
 		proc *= GetDamageCustomProcCoefficient(damageCustom);
 		if (validWeapon)
 		{
@@ -4846,7 +4936,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		// buildings went for a very long time without being affected by ANY damage modifications.
 		// It's fixed now, but to avoid severely disrupting Engineer's balancing,
 		// RED Team buildings are not affected by enemy damage multipliers.
-		if (!victimIsBuilding || GetEntProp(victim, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+		if (!victimIsBuilding || GetEntTeam(victim) == TEAM_ENEMY)
 		{
 			if (!selfDamage || procItem != ItemStrange_DemonicDome && procItem != Item_HorrificHeadsplitter)
 				damage *= GetPlayerDamageMult(attacker);
@@ -5343,7 +5433,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 							if (entity == victim || !IsCombatChar(entity) || hitEnemies.FindValue(entity) != INVALID_ENT)
 								continue;
 							
-							if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
+							if (GetEntTeam(entity) == team)
 								continue;
 							
 							if (IsValidClient(entity) && !IsPlayerAlive(entity))

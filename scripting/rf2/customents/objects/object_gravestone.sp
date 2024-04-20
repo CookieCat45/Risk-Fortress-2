@@ -50,13 +50,7 @@ methodmap RF2_Object_Gravestone < RF2_Object_Base
 		CNavArea area = GetSpawnPoint(gravePos, pos, 500.0, 3000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID, 50.0);
 		if (area)
 		{
-			int king = CreateEntityByName("tf_zombie");
-			SDK_SetSkeletonType(king, 1);
-			SetEntProp(king, Prop_Data, "m_iTeamNum", 5);
-			TeleportEntity(king, pos);
-			DispatchSpawn(king);
-			SDK_SetSkeletonType(king, 1); // Seems to reset after spawning, causing a bug where he t-poses after the ground slam attack
-			
+			int king = SDK_SpawnSkeleton(pos, 1);
 			int health = RoundToFloor(KING_BASE_HEALTH + ((RF2_GetEnemyLevel()-1)*400));
 			SetEntProp(king, Prop_Data, "m_iMaxHealth", health);
 			SetEntProp(king, Prop_Data, "m_iHealth", health);
@@ -129,17 +123,6 @@ static Action Gravestone_OnInteract(int client, RF2_Object_Gravestone grave)
 	if (GetPlayerCash(client) >= grave.Cost)
 	{
 		AddPlayerCash(client, -grave.Cost);
-		if (grave.SummonSkeletonKing() == INVALID_ENT)
-		{
-			RequestFrame(RF_GraveSpawnRetry, EntIndexToEntRef(grave.index));
-		}
-		
-		// Hide the gravestone and disable it, don't remove it because we may still need it in case of spawn failures
-		grave.Active = false;
-		grave.SetRenderMode(RENDER_NONE);
-		grave.SetProp(Prop_Send, "m_nSolidType", SOLID_NONE);
-		SetEntityCollisionGroup(grave.index, COLLISION_GROUP_DEBRIS);
-		
 		float pos[3];
 		grave.WorldSpaceCenter(pos);
 		TE_TFParticle("ghost_appearation", pos);
@@ -148,6 +131,18 @@ static Action Gravestone_OnInteract(int client, RF2_Object_Gravestone grave)
 		EmitSoundToAll(SND_BOSS_RUMBLE);
 		EmitGameSoundToAll("Halloween.skeleton_laugh_giant");
 		PrintCenterTextAll("The Skeleton King has awoken!\n  Slay him for a Gargoyle Key!");
+		if (grave.SummonSkeletonKing() == INVALID_ENT)
+		{
+			RequestFrame(RF_GraveSpawnRetry, EntIndexToEntRef(grave.index));
+			grave.Active = false;
+			grave.SetRenderMode(RENDER_NONE);
+			grave.SetProp(Prop_Send, "m_nSolidType", SOLID_NONE);
+			SetEntityCollisionGroup(grave.index, COLLISION_GROUP_DEBRIS);
+		}
+		else
+		{
+			RemoveEntity2(grave.index);
+		}
 	}
 	else
 	{
@@ -167,6 +162,10 @@ public void RF_GraveSpawnRetry(int entity)
 	if (grave.SummonSkeletonKing() == INVALID_ENT)
 	{
 		RequestFrame(RF_GraveSpawnRetry, EntIndexToEntRef(grave.index));
+	}
+	else
+	{
+		RemoveEntity2(grave.index);
 	}
 }
 

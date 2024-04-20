@@ -352,12 +352,15 @@ int SpawnObjects()
 
 void DespawnObjects(bool force=false)
 {
-	char classname[128];
 	int entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "rf2_*")) != INVALID_ENT)
+	while ((entity = FindEntityByClassname(entity, "rf2_item")) != INVALID_ENT)
 	{
-		GetEntityClassname(entity, classname, sizeof(classname));
-		if (strcmp2(classname, "rf2_item") || StrContains(classname, "rf2_object") == 0 && (force || !RF2_Object_Base(entity).MapPlaced))
+		RemoveEntity2(entity);
+	}
+	
+	while ((entity = FindEntityByClassname(entity, "rf2_object*")) != INVALID_ENT)
+	{
+		if (force || !RF2_Object_Base(entity).MapPlaced)
 		{
 			RemoveEntity2(entity);
 		}

@@ -342,7 +342,7 @@ enum
 	COLLISION_GROUP_NPC_SCRIPTED,	// USed for NPCs in scripts that should not collide with each other
 	
 	// TF2-specific collision groups
-	TFCOLLISION_GROUP_GRENADES,
+	TFCOLLISION_GROUP_SHIELD,
 	TFCOLLISION_GROUP_OBJECT,
 	TFCOLLISION_GROUP_OBJECT_SOLIDTOPLAYERMOVEMENT,
 	TFCOLLISION_GROUP_COMBATOBJECT,
@@ -351,6 +351,51 @@ enum
 	TFCOLLISION_GROUP_TANK, 		// CookieCat note: Solid to everything except for players. Despite the name, it's only used by pumpkin bombs, not tanks.
 	TFCOLLISION_GROUP_ROCKET_BUT_NOT_WITH_OTHER_ROCKETS, // CookieCat note: Used by most projectiles, same as TFCOLLISION_GROUP_ROCKETS but doesn't collide with itself or that group
 };
+
+// entity flags, CBaseEntity::m_iEFlags
+#define EFL_KILLME						(1<<0)	// This entity is marked for death -- This allows the game to actually delete ents at a safe time
+#define EFL_DORMANT						(1<<1)	// Entity is dormant, no updates to client
+#define EFL_NOCLIP_ACTIVE				(1<<2)	// Lets us know when the noclip command is active.
+#define EFL_SETTING_UP_BONES			(1<<3)	// Set while a model is setting up its bones.
+#define EFL_KEEP_ON_RECREATE_ENTITIES 	(1<<4) // This is a special entity that should not be deleted when we restart entities only
+
+#define EFL_HAS_PLAYER_CHILD			(1<<4)	// One of the child entities is a player.
+
+#define EFL_DIRTY_SHADOWUPDATE			(1<<5)	// Client only- need shadow manager to update the shadow...
+#define EFL_NOTIFY						(1<<6)	// Another entity is watching events on this entity (used by teleport)
+
+// The default behavior in ShouldTransmit is to not send an entity if it doesn't
+// have a model. Certain entities want to be sent anyway because all the drawing logic
+// is in the client DLL. They can set this flag and the engine will transmit them even
+// if they don't have a model.
+#define EFL_FORCE_CHECK_TRANSMIT	(1<<7)
+	
+#define EFL_BOT_FROZEN				(1<<8)	// This is set on bots that are frozen.
+#define EFL_SERVER_ONLY				(1<<9)	// Non-networked entity.
+#define EFL_NO_AUTO_EDICT_ATTACH	(1<<10) // Don't attach the edict; we're doing it explicitly
+	
+// Some dirty bits with respect to abs computations
+#define EFL_DIRTY_ABSTRANSFORM =				(1<<11)
+#define EFL_DIRTY_ABSVELOCITY =					(1<<12)
+#define EFL_DIRTY_ABSANGVELOCITY =				(1<<13)
+//#define EFL_DIRTY_SURROUNDING_COLLISION_BOUNDS	(1<<14)
+#define EFL_DIRTY_SPATIAL_PARTITION				(1<<15)
+//	UNUSED										(1<<16)
+#define EFL_IN_SKYBOX						(1<<17)	// This is set if the entity detects that it's in the skybox. This forces it to pass the "in PVS" for transmission.
+#define EFL_USE_PARTITION_WHEN_NOT_SOLID 	(1<<18)	// Entities with this flag set show up in the partition even when not solid
+#define EFL_TOUCHING_FLUID					(1<<19)	// Used to determine if an entity is floating
+#define EFL_IS_BEING_LIFTED_BY_BARNACLE	 	(1<<20)
+#define EFL_NO_ROTORWASH_PUSH				(1<<21)		// I shouldn't be pushed by the rotorwash
+#define EFL_NO_THINK_FUNCTION				(1<<22)
+#define EFL_NO_GAME_PHYSICS_SIMULATION 		(1<<23)
+#define EFL_CHECK_UNTOUCH					(1<<24)
+#define EFL_DONTBLOCKLOS					(1<<25)		// I shouldn't block NPC line-of-sight
+#define EFL_DONTWALKON						(1<<26)		// NPC;s should not walk on this entity
+#define EFL_NO_DISSOLVE						(1<<27)		// These guys shouldn't dissolve
+#define EFL_NO_MEGAPHYSCANNON_RAGDOLL	 	(1<<28)	// Mega physcannon can't ragdoll these guys.
+#define EFL_NO_WATER_VELOCITY_CHANGE  		(1<<29)	// Don't adjust this entity's velocity when transitioning into water
+#define EFL_NO_PHYSCANNON_INTERACTION 		(1<<30)	// Physcannon can't pick these up or punt them
+#define EFL_NO_DAMAGE_FORCES				(1<<31)	// Doesn't accept forces from physics damage
 
 // m_nSolidType
 #define SOLID_NONE 0 // no solid model
@@ -373,6 +418,19 @@ enum
 #define FSOLID_USE_TRIGGER_BOUNDS 0x0080 // Uses a special trigger bounds separate from the normal OBB
 #define FSOLID_ROOT_PARENT_ALIGNED 0x0100 // Collisions are defined in root parent's local coordinate space
 #define FSOLID_TRIGGER_TOUCH_DEBRIS 0x0200 // This trigger will touch debris objects
+
+enum
+{
+	USE_OBB_COLLISION_BOUNDS = 0,
+	USE_BEST_COLLISION_BOUNDS,		// Always use the best bounds (most expensive)
+	USE_HITBOXES,
+	USE_SPECIFIED_BOUNDS,
+	USE_GAME_CODE,
+	USE_ROTATION_EXPANDED_BOUNDS,
+	USE_COLLISION_BOUNDS_NEVER_VPHYSICS,
+	
+	SURROUNDING_TYPE_BIT_COUNT = 3
+};
 
 enum // ParticleAttachment_t
 {

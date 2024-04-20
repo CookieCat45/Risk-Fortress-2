@@ -151,7 +151,7 @@ void EndTankDestructionMode()
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 	{
-		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+		if (GetEntTeam(entity) == TEAM_ENEMY)
 		{
 			SetEntityHealth(entity, 1);
 			RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
@@ -481,7 +481,7 @@ public void Hook_BadassTankThink(int entity)
 			float pos[3];
 			GetEntPos(entity, pos);
 			pos[2] += 100.0;
-			int team = GetEntProp(entity, Prop_Data, "m_iTeamNum");
+			int team = GetEntTeam(entity);
 			int enemyTeam = team == TEAM_ENEMY ? TEAM_SURVIVOR : TEAM_ENEMY;
 			
 			if (newSpecial != SPECIAL_NONE 
@@ -566,7 +566,7 @@ public void Hook_BadassTankThink(int entity)
 				{
 					float pos[3];
 					const float range = 2500.0;
-					int team = GetEntProp(entity, Prop_Data, "m_iTeamNum");
+					int team = GetEntTeam(entity);
 					int enemyTeam = team == TEAM_ENEMY ? TEAM_SURVIVOR : TEAM_ENEMY;
 					int attachment = LookupEntityAttachment(entity, ATT_LASER);
 					GetEntityAttachment(entity, attachment, pos, NULL_VECTOR);

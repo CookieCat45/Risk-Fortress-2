@@ -107,3 +107,11 @@ scripting/goomba_tf.sp
 scripting/include/handledebugger.inc
 scripting/thirdperson.sp
 /scripting/compiled
+scripting/include/cbasenpc/nextbot/path/chase.inc
+scripting/compile.exe
+scripting/compile.dat
+scripting/include/cbasenpc/nextbot/path/follower.inc
+scripting/include/cbasenpc/takedamageinfo.inc
+scripting/include/collisionhook.inc
+scripting/include/entitylump.inc
+scripting/spcomp64.exe

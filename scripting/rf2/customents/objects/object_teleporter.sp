@@ -289,7 +289,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			{
 				for (int i = 1; i <= MaxClients; i++)
 				{
-					if (!IsClientInGame(i) || IsFakeClient(i) || !IsPlayerSurvivor(i) || !IsPlayerMinion(i))
+					if (!IsClientInGame(i) || IsFakeClient(i) || !IsPlayerSurvivor(i) && !IsPlayerMinion(i))
 						continue;
 					
 					TriggerAchievement(i, ACHIEVEMENT_HALLOWEENBOSSES);
@@ -339,7 +339,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		int entity = MaxClients+1;
 		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 		{
-			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == TEAM_ENEMY)
+			if (GetEntTeam(entity) == TEAM_ENEMY)
 			{
 				SetEntityHealth(entity, 1);
 				RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
@@ -391,7 +391,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		boss = MaxClients+1;
 		while ((boss = FindEntityByClassname(boss, "eyeball_boss")) != INVALID_ENT)
 		{
-			if (GetEntProp(boss, Prop_Data, "m_iTeamNum") != 5)
+			if (GetEntTeam(boss) != 5)
 				continue;
 			
 			SetEntProp(boss, Prop_Data, "m_iHealth", 1);

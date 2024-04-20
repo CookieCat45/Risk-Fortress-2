@@ -729,6 +729,7 @@ void SpawnMinion(int client)
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 2.5);
 	TF2Attrib_SetByDefIndex(client, 62, 0.25); // "dmg taken from crit reduced"
 	TF2Attrib_SetByDefIndex(client, 252, 0.25); // "damage force reduction"
+	CBaseEntity(client).AddFlag(FL_NOTARGET);
 }
 
 int PickInventoryIndex(int client)

@@ -79,7 +79,6 @@ methodmap RF2_Companion_Base < RF2_NPC_Base
 			.DefineIntField("m_iMoveYPoseParam")
 		.EndDataMapDesc();
 		g_Factory.Install();
-		HookMapStart(BaseNPC_OnMapStart);
 	}
 	
 	public static CEntityFactory GetFactory()

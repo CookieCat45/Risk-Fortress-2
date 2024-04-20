@@ -132,7 +132,7 @@ bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLA
 						{
 							while ((sentry = FindEntityByClassname(sentry, "obj_sentrygun")) != INVALID_ENT)
 							{
-								if (GetEntProp(sentry, Prop_Data, "m_iTeamNum") == filterTeam && GetEntPropEnt(sentry, Prop_Send, "m_hBuilder") == i && !IsSentryDisposable(sentry))
+								if (GetEntTeam(sentry) == filterTeam && GetEntPropEnt(sentry, Prop_Send, "m_hBuilder") == i && !IsSentryDisposable(sentry))
 								{
 									GetEntPos(sentry, sentryPos);
 									if (GetVectorDistance(spawnPos, sentryPos, true) <= sqMinDist)
@@ -189,7 +189,7 @@ public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 	
 	if (team > 0 && IsCombatChar(entity))
 	{
-		if (team == GetEntProp(entity, Prop_Data, "m_iTeamNum"))
+		if (team == GetEntTeam(entity))
 			return false;
 	}
 	

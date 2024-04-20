@@ -1536,12 +1536,7 @@ bool ActivateStrangeItem(int client)
 			ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
 				GetItemMod(ItemStrange_LegendaryLid, 2), GetItemMod(ItemStrange_LegendaryLid, 0), -2.0);
 			
-			#if SOURCEMOD_V_MINOR >= 12
-			DoPlayerAnimEvent(client, ACT_MP_THROW, PLAYERANIMEVENT_CUSTOM_GESTURE);
-			#else
 			ClientPlayGesture(client, "ACT_MP_THROW");
-			#endif
-
 			EmitSoundToAll(SND_THROW, client);
 		}
 		
@@ -1554,12 +1549,7 @@ bool ActivateStrangeItem(int client)
 			ShootProjectile(client, "rf2_projectile_bomb", pos, angles, 
 				GetItemMod(ItemStrange_CroneDome, 3), GetItemMod(ItemStrange_CroneDome, 1), -2.0);
 			
-			#if SOURCEMOD_V_MINOR >= 12
-			DoPlayerAnimEvent(client, ACT_MP_THROW, PLAYERANIMEVENT_CUSTOM_GESTURE);
-			#else
 			ClientPlayGesture(client, "ACT_MP_THROW");
-			#endif
-			
 			EmitSoundToAll(SND_THROW, client);
 		}
 		
@@ -1572,12 +1562,7 @@ bool ActivateStrangeItem(int client)
 			ShootProjectile(client, "rf2_projectile_kunai", pos, angles, 
 				GetItemMod(ItemStrange_HandsomeDevil, 2), GetItemMod(ItemStrange_HandsomeDevil, 0), -2.0);
 			
-			#if SOURCEMOD_V_MINOR >= 12
-			DoPlayerAnimEvent(client, ACT_MP_THROW, PLAYERANIMEVENT_CUSTOM_GESTURE);
-			#else
 			ClientPlayGesture(client, "ACT_MP_THROW");
-			#endif
-
 			EmitSoundToAll(SND_THROW, client);
 		}
 		
@@ -1606,12 +1591,7 @@ bool ActivateStrangeItem(int client)
 				skull.HomingTarget = target;
 			}
 			
-			#if SOURCEMOD_V_MINOR >= 12
-			DoPlayerAnimEvent(client, ACT_MP_THROW, PLAYERANIMEVENT_CUSTOM_GESTURE);
-			#else
 			ClientPlayGesture(client, "ACT_MP_THROW");
-			#endif
-			
 			EmitSoundToAll(SND_SPELL_FIREBALL, client);
 			RF_TakeDamage(client, client, client, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE, ItemStrange_DemonicDome);
 		}
@@ -1743,7 +1723,7 @@ public Action Timer_FusRoDah(Handle timer, int client)
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "tf_projectile*")) != INVALID_ENT)
 	{
-		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != team && DistBetween(client, entity) <= range*1.25)
+		if (GetEntTeam(entity) != team && DistBetween(client, entity) <= range*1.25)
 		{
 			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
 			ScaleVector(vel, -2.0);
@@ -1757,7 +1737,7 @@ public Action Timer_FusRoDah(Handle timer, int client)
 	RF2_Projectile_Base proj;
 	while ((entity = FindEntityByClassname(entity, "rf2_projectile*")) != INVALID_ENT)
 	{
-		if (GetEntProp(entity, Prop_Data, "m_iTeamNum") != team && DistBetween(client, entity) <= range*1.25)
+		if (GetEntTeam(entity) != team && DistBetween(client, entity) <= range*1.25)
 		{
 			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
 			ScaleVector(vel, -2.0);
@@ -1861,10 +1841,8 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 		vec = endPos;
 	}
 	
-	Handle trace = TR_TraceRayFilterEx(pos, vec, MASK_PLAYERSOLID_BRUSHONLY, type, TraceFilter_WallsOnly);
-	TR_GetEndPosition(end, trace);
-	delete trace;
-	
+	TR_TraceRayFilter(pos, vec, MASK_PLAYERSOLID_BRUSHONLY, type, TraceFilter_WallsOnly);
+	TR_GetEndPosition(end);
 	TE_SetupBeamPoints(pos, end, g_iBeamModel, 0, 0, 0, 0.4, size, size, 0, 2.0, colors, 8);
 	TE_SendToAll();
 	EmitSoundToAll(SND_LASER, attacker);
@@ -1882,17 +1860,15 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 	float mins[3], maxs[3];
 	mins[0] = -size; mins[1] = -size; mins[2] = -size;
 	maxs[0] = size; maxs[1] = size; maxs[2] = size;
-	trace = TR_TraceHullFilterEx(pos, end, mins, maxs, MASK_PLAYERSOLID_BRUSHONLY, TraceFilter_BeamHitbox, attacker);
-	
-	int team = GetEntProp(attacker, Prop_Data, "m_iTeamNum");
-	int entity = -1;
+	TR_TraceHullFilter(pos, end, mins, maxs, MASK_PLAYERSOLID_BRUSHONLY, TraceFilter_BeamHitbox, attacker);
+	int team = GetEntTeam(attacker);
+	int entity = INVALID_ENT;
 	while ((entity = FindEntityByClassname(entity, "*")) != -1)
 	{
 		if (entity > 0 && g_bLaserHitDetected[entity])
 		{
 			g_bLaserHitDetected[entity] = false;
-			
-			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
+			if (GetEntTeam(entity) == team)
 				continue;
 			
 			RF_TakeDamage(entity, attacker, attacker, damage, damageFlags, item);

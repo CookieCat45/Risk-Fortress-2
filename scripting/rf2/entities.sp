@@ -33,9 +33,9 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 
 	while ((entity = FindEntityByClassname(entity, classname)) != -1)
 	{
-		if (team > -1 && GetEntProp(entity, Prop_Data, "m_iTeamNum") != team)
+		if (team > -1 && GetEntTeam(entity) != team)
 			continue;
-
+		
 		GetEntPos(entity, pos);
 		if (trace)
 		{
@@ -125,7 +125,7 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 	SetEntityOwner(entity, owner);
 	if (owner > 0)
 	{
-		int team = GetEntProp(owner, Prop_Data, "m_iTeamNum");
+		int team = GetEntTeam(owner);
 		SetEntProp(entity, Prop_Data, "m_iTeamNum", team);
 		SetEntProp(entity, Prop_Send, "m_iTeamNum", team);
 	}
@@ -205,7 +205,7 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 {
 	float enemyPos[3];
 	float distance, falloffMultiplier, calculatedDamage;
-	int attackerTeam = GetEntProp(attacker, Prop_Data, "m_iTeamNum");
+	int attackerTeam = GetEntTeam(attacker);
 	int entity = -1;
 	ArrayList hitEnts;
 	if (returnHitEnts)
@@ -223,8 +223,8 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 		
 		if ((!IsValidClient(entity) || !IsPlayerAlive(entity)) && !IsNPC(entity) && !IsBuilding(entity) || entity == attacker && !allowSelfDamage)
 			continue;
-
-		if (attackerTeam == GetEntProp(entity, Prop_Data, "m_iTeamNum") && (entity != attacker || entity == attacker && !allowSelfDamage))
+		
+		if (attackerTeam == GetEntTeam(entity) && (entity != attacker || entity == attacker && !allowSelfDamage))
 			continue;
 
 		GetEntPos(entity, enemyPos);
@@ -647,6 +647,10 @@ bool IsNPC(int entity)
 
 bool IsCombatChar(int entity)
 {
+	// Dispenser shields extend tf_taunt_prop, which extends CBaseCombatCharacter
+	if (RF2_DispenserShield(entity).IsValid())
+		return false;
+	
 	return entity > 0 && CBaseEntity(entity).IsCombatCharacter();
 }
 
@@ -793,13 +797,31 @@ stock void PrintEntClassname(int entity)
 	PrintToChatAll(classname);
 }
 
-// Set type of tf_zombie (0 = normal, 1 = king, 2 = small)
-void SDK_SetSkeletonType(int entity, int type)
+int GetEntTeam(int entity)
 {
-	if (g_hSDKSetZombieType)
+	return GetEntProp(entity, Prop_Data, "m_iTeamNum");
+}
+
+void SetEntTeam(int entity, int team)
+{
+	SetEntProp(entity, Prop_Data, "m_iTeamNum", team);
+	SetEntProp(entity, Prop_Send, "m_iTeamNum", team);
+}
+
+bool InSameTeam(int ent1, int ent2)
+{
+	return GetEntTeam(ent1) == GetEntTeam(ent2);
+}
+
+// Type of tf_zombie: 0 = normal, 1 = king, 2 = small
+int SDK_SpawnSkeleton(const float pos[3], int type, int team=5, int owner=INVALID_ENT, float lifeTime=0.0)
+{
+	if (g_hSDKSpawnZombie)
 	{
-		SDKCall(g_hSDKSetZombieType, entity, type);
+		return SDKCall(g_hSDKSpawnZombie, pos, lifeTime, team, owner, type);
 	}
+	
+	return INVALID_ENT;
 }
 
 bool IsSkeleton(int entity)

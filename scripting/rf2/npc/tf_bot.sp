@@ -1216,7 +1216,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		ArrayList sentryList = new ArrayList();
 		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 		{
-			if (GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
+			if (GetEntTeam(entity) == team)
 				continue;
 			
 			if (GetEntProp(entity, Prop_Send, "m_bCarried"))
@@ -1330,7 +1330,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			for (int i = 0; i < sentryList.Length; i++)
 			{
 				entity = sentryList.Get(i);
-				if (entity == shootTarget || GetEntProp(entity, Prop_Data, "m_iTeamNum") == team)
+				if (entity == shootTarget || GetEntTeam(entity) == team)
 					continue;
 				
 				if (!GetEntProp(entity, Prop_Send, "m_bDisabled"))
