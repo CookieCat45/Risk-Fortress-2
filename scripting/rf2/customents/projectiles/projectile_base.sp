@@ -560,7 +560,7 @@ static void OnCreate(RF2_Projectile_Base proj)
 	SDKHook(proj.index, SDKHook_VPhysicsUpdate, OnVPhysicsUpdate);
 	if (g_hHookVPhysicsCollision)
 	{
-		DHookEntity(g_hHookVPhysicsCollision, true, proj.index, _, DHook_ProjectileCollision);
+		g_hHookVPhysicsCollision.HookEntity(Hook_Post, proj.index, DHook_ProjectileCollision);
 	}
 }
 

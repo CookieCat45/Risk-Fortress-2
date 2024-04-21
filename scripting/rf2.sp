@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.10.2b"
+#define PLUGIN_VERSION "0.10.3b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -309,7 +309,6 @@ ConVar g_cvMeleeCritChanceBonus;
 ConVar g_cvEngiMetalRegenInterval;
 ConVar g_cvEngiMetalRegenAmount;
 ConVar g_cvHauntedKeyDropChanceMax;
-ConVar g_cvArtifactChance;
 ConVar g_cvAllowHumansInBlue;
 ConVar g_cvTimeBeforeRestart;
 ConVar g_cvHiddenServerStartTime;
@@ -349,7 +348,6 @@ ArrayList g_hTFBotEngineerBuildings[MAXTF2PLAYERS];
 //int g_iSpyDisguiseModels[10];
 bool g_bThrillerActive;
 int g_iThrillerRepeatCount;
-ArrayList g_hActiveArtifacts;
 
 #include "rf2/overrides.sp"
 #include "rf2/items.sp"
@@ -386,7 +384,6 @@ ArrayList g_hActiveArtifacts;
 #include "rf2/buildings.sp"
 #include "rf2/natives_forwards.sp"
 #include "rf2/commands_convars.sp"
-#include "rf2/artifacts.sp"
 #include "rf2/achievements.sp"
 #include "rf2/npc/nav.sp"
 #include "rf2/npc/tf_bot.sp"
@@ -421,9 +418,7 @@ public void OnPluginStart()
 	BakeCookies();
 	LoadTranslations("common.phrases");
 	LoadTranslations("rf2.phrases");
-	LoadTranslations("rf2_artifacts.phrases");
 	LoadTranslations("rf2_achievements.phrases");
-	g_hActiveArtifacts = new ArrayList();
 	g_hCrashedPlayerSteamIDs = new StringMap();
 	g_hHHHTargets = new ArrayList();
 	g_hMonoculusTargets = new ArrayList();
@@ -1018,7 +1013,6 @@ void CleanUp()
 	g_hMonoculusTargets.Clear();
 	SetAllInArray(g_hCrashedPlayerTimers, sizeof(g_hCrashedPlayerTimers), INVALID_HANDLE);
 	StopMusicTrackAll();
-	DisableAllArtifacts();
 	
 	// Just to be safe...
 	int entity = MaxClients+1;
@@ -1120,8 +1114,6 @@ void LoadAssets()
 	PrecacheSound2(SND_RUNE_KING, true);
 	PrecacheSound2(SND_THROW, true);
 	PrecacheSound2(SND_TELEPORTER_BLU, true);
-	PrecacheSound2(SND_ARTIFACT_ROLL, true);
-	PrecacheSound2(SND_ARTIFACT_SELECT, true);
 	PrecacheSound2(SND_DOOMSDAY_EXPLODE, true);
 	PrecacheSound2(SND_ACHIEVEMENT, true);
 	PrecacheSound2(SND_DRAGONBORN2, true);
@@ -1570,7 +1562,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	g_hPlayerTimer = CreateTimer(0.1, Timer_PlayerTimer, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	g_hHudTimer = CreateTimer(0.1, Timer_PlayerHud, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	g_hDifficultyTimer = CreateTimer(1.0, Timer_Difficulty, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-
+	
 	StopMusicTrackAll();
 	CreateTimer(0.25, Timer_PlayMusicDelay, _, TIMER_FLAG_NO_MAPCHANGE);
 
@@ -1588,11 +1580,6 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	if (g_bTankBossMode)
 	{
 		RF2_PrintToChatAll("%t", "TanksWillArrive", g_flGracePeriodTime);
-	}
-
-	if (GetRandomInt(1, g_cvArtifactChance.IntValue) == 1)
-	{
-		//RollArtifacts();
 	}
 	
 	Call_StartForward(g_fwGracePeriodStart);
@@ -2615,11 +2602,6 @@ public Action OnPlayerHealOnHit(Event event, const char[] name, bool dontBroadca
 	
 	int client = event.GetInt("entindex");
 	int amount = event.GetInt("amount");
-	if (IsPlayerSurvivor(client) && IsArtifactActive(REDArtifact_Restoration))
-	{
-		amount = RoundToFloor(float(amount) * 2.0);
-	}
-	
 	event.SetInt("amount", RoundToFloor(float(amount) * GetPlayerHealthMult(client)));
 	return Plugin_Changed;
 }
@@ -2726,11 +2708,6 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	}
 	
 	duration = fmax(duration, g_cvEnemyMinSpawnWaveTime.FloatValue);
-	if (IsArtifactActive(BLUArtifact_Swarm))
-	{
-		duration *= 0.6;
-	}
-	
 	CreateTimer(duration, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
 	if (g_cvDebugDisableEnemySpawning.BoolValue || WaitingForPlayerRejoin(true) || !GetRF2GameRules().AllowEnemySpawning)
 		return Plugin_Continue;
@@ -2855,48 +2832,6 @@ public Action Timer_SpawnEnemy(Handle timer, int client)
 	g_iPlayerEnemySpawnType[client] = -1;
 	g_iPlayerBossSpawnType[client] = -1;
 	
-	return Plugin_Continue;
-}
-
-public Action Timer_BusterSpawnWave(Handle timer)
-{
-	if (!g_bRoundActive || IsStageCleared())
-		return Plugin_Stop;
-	
-	if (IsSentryBusterActive())
-		return Plugin_Continue;
-	
-	bool sentryActive;
-	int entity = MaxClients+1;
-	int owner;
-	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)
-	{
-		owner = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
-		if (IsValidClient(owner) && IsPlayerSurvivor(owner))
-		{
-			// don't count disposable sentries because we don't care about them
-			if (IsSentryDisposable(entity))
-				continue;
-			
-			sentryActive = true;
-			break;
-		}
-	}
-	
-	if (sentryActive)
-	{
-		g_flBusterSpawnTime -= 1.0;
-		if (g_flBusterSpawnTime <= 0.0)
-		{
-			DoSentryBusterWave();
-			g_flBusterSpawnTime = g_cvBusterSpawnInterval.FloatValue;
-		}
-	}
-	else
-	{
-		g_flBusterSpawnTime = fmin(g_flBusterSpawnTime+8.0, g_cvBusterSpawnInterval.FloatValue);
-	}
-
 	return Plugin_Continue;
 }
 
@@ -3146,18 +3081,7 @@ public Action Timer_Difficulty(Handle timer)
 	if (g_bGameOver || g_bGracePeriod || WaitingForPlayerRejoin(true) || GetRF2GameRules().TimerPaused)
 		return Plugin_Continue;
 	
-	float secondsToAdd = 1.0;
-	if (IsArtifactActive(REDArtifact_Patience))
-	{
-		secondsToAdd *= 0.5;
-	}
-
-	if (IsArtifactActive(BLUArtifact_Haste))
-	{
-		secondsToAdd *= 2.0;
-	}
-	
-	g_flSecondsPassed += secondsToAdd;
+	g_flSecondsPassed += 1.0;
 	if (g_flSecondsPassed >= 60.0 * (float(g_iMinutesPassed+1)))
 	{
 		float seconds = g_flSecondsPassed - (float(g_iMinutesPassed) * 60.0);

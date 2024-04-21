@@ -111,7 +111,6 @@ void LoadCommandsAndCvars()
 	g_cvEngiMetalRegenInterval = CreateConVar("rf2_engineer_metal_regen_interval", "2.5", "Interval in seconds that an Engineer will regenerate metal, -1.0 to disable", FCVAR_NOTIFY);
 	g_cvEngiMetalRegenAmount = CreateConVar("rf2_engineer_metal_regen_amount", "30", "The base amount of metal an Engineer will regen per interval lapse", FCVAR_NOTIFY, true, 0.0);
 	g_cvHauntedKeyDropChanceMax = CreateConVar("rf2_haunted_key_drop_chance_max", "135", "1 in N chance for a Haunted Key to drop when an enemy is slain.", FCVAR_NOTIFY, true, 0.0);
-	g_cvArtifactChance = CreateConVar("rf2_artifact_chance", "1", "1 in N chance for Artifacts to be rolled at the beginning of a stage.", FCVAR_NOTIFY, true, 0.0);
 	g_cvAllowHumansInBlue = CreateConVar("rf2_blue_allow_humans", "0", "If nonzero, allow humans to spawn in BLU Team.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvTimeBeforeRestart = CreateConVar("rf2_time_before_restart", "18000", "Time in seconds before the server will restart after a run ends, to clear server memory. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvHiddenServerStartTime = CreateConVar("rf2_server_start_time", "0", _, FCVAR_HIDDEN);

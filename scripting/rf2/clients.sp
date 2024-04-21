@@ -257,12 +257,7 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 	{
 		return 0;
 	}
-	
-	if (IsPlayerSurvivor(client) && IsArtifactActive(REDArtifact_Restoration))
-	{
-		amount *= 2;
-	}
-	
+
 	int amountHealed = amount;
 	SetEntityHealth(client, health+amount);
 	
@@ -1231,11 +1226,6 @@ public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam
 	{
 		float health = DHookGetParam(params, 1);
 		health *= GetPlayerHealthMult(entity);
-		if (IsPlayerSurvivor(entity) && IsArtifactActive(REDArtifact_Restoration))
-		{
-			health *= 2.0;
-		}
-		
 		params.Set(1, health);
 		return MRES_ChangedHandled;
 	}

@@ -1,8 +1,3 @@
-#if defined _RF2_sentry_buster_included
- #endinput
-#endif
-#define _RF2_sentry_buster_included
-
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -66,7 +61,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		HookMapStart(SentryBuster_OnMapStart);
 		g_cvPhysPush = FindConVar("phys_pushscale");
 		g_cvSuicideBombRange = FindConVar("tf_bot_suicide_bomb_range");
-		g_cvBusterSpawnInterval = CreateConVar("rf2_sentry_buster_spawn_interval", "120", "Interval in seconds that Sentry Busters will spawn if RED has sentries.", FCVAR_NOTIFY, true, 0.0);
+		g_cvBusterSpawnInterval = CreateConVar("rf2_sentry_buster_spawn_interval", "100", "Interval in seconds that Sentry Busters will spawn if RED has sentries.", FCVAR_NOTIFY, true, 0.0);
 	}
 	
 	public static RF2_SentryBuster Create(int target)
@@ -172,31 +167,26 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 			if (vision.IsLineOfSightClearToEntity(victim.index))
 			{
 				float damage;
-				bool boss = (victim.index <= MaxClients && IsBoss(victim.index));
-				
 				if (IsBuilding(victim.index))
 				{
 					damage = float(victim.GetProp(Prop_Data, "m_iHealth")) * 10.0;
+					RF_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST);
 				}
 				else
 				{
-					damage = BUSTER_BASE_DAMAGE;
-
-					if (boss)
+					if (victim.index <= MaxClients && IsPlayerSurvivor(victim.index) && !IsPlayerMinion(victim.index))
 					{
-						damage *= 0.1;
+						// don't instantly kill Survivors, instead do 80% max hp
+						damage = float(RF2_GetCalculatedMaxHealth(victim.index)) * 0.8;
 					}
-				}
-				
-				if (!boss)
-				{
+					else
+					{
+						damage = BUSTER_BASE_DAMAGE;
+					}
+					
 					float force[3];
 					CalculateMeleeDamageForce(damage, delta, 1.0, force);
 					RF_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST, _, _, force, center);
-				}
-				else
-				{
-					RF_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST|DMG_PREVENT_PHYSICS_FORCE, _, _, _, center);
 				}
 			}
 		}
@@ -220,39 +210,6 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		delete playerList;
 		RemoveEntity2(this.index);
 	}
-	
-	/*
-	public bool IsLOSClearFromTarget(int target, bool checkGlass = true)
-	{
-		int traceEnt;
-		float eyePos[3], targetPos[3];
-		this.WorldSpaceCenter(eyePos);
-		CBaseEntity(target).WorldSpaceCenter(targetPos);
-		if (IsValidClient(target))
-		{
-			GetClientEyePosition(target, targetPos);
-		}
-		
-		int flags = CONTENTS_SOLID | CONTENTS_MOVEABLE | CONTENTS_MIST | CONTENTS_MONSTERCLIP;
-		if (checkGlass)
-		{
-			flags = flags | CONTENTS_GRATE | CONTENTS_WINDOW;
-		}
-		
-		Handle trace = TR_TraceRayFilterEx(eyePos, targetPos, flags,
-			RayType_EndPoint, TraceFilter_DontHitSelf, this.index);
-		
-		bool visible = !TR_DidHit(trace);
-		traceEnt = TR_GetEntityIndex(trace);
-		delete trace;
-		if (!visible && traceEnt == target)
-		{
-			visible = true;
-		}
-		
-		return visible;
-	}
-	*/
 }
 
 void SentryBuster_OnMapStart()
@@ -340,6 +297,49 @@ void CalculateMeleeDamageForce(float damage, const float vecMeleeDir[3], float s
 	CopyVectors(vecForce, buffer);
 }
 
+// Starts after grace period
+public Action Timer_BusterSpawnWave(Handle timer)
+{
+	if (!g_bRoundActive || IsStageCleared())
+		return Plugin_Stop;
+	
+	if (IsSentryBusterActive())
+		return Plugin_Continue;
+	
+	bool sentryActive;
+	int entity = MaxClients+1;
+	int owner;
+	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)
+	{
+		owner = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
+		if (IsValidClient(owner) && IsPlayerSurvivor(owner))
+		{
+			// don't count disposable sentries because we don't care about them
+			if (IsSentryDisposable(entity))
+				continue;
+			
+			sentryActive = true;
+			break;
+		}
+	}
+	
+	if (sentryActive)
+	{
+		g_flBusterSpawnTime -= 1.0;
+		if (g_flBusterSpawnTime <= 0.0)
+		{
+			DoSentryBusterWave();
+			g_flBusterSpawnTime = g_cvBusterSpawnInterval.FloatValue;
+		}
+	}
+	else
+	{
+		g_flBusterSpawnTime = fmin(g_flBusterSpawnTime+8.0, g_cvBusterSpawnInterval.FloatValue);
+	}
+
+	return Plugin_Continue;
+}
+
 void DoSentryBusterWave()
 {
 	ArrayList sentryList = new ArrayList();
@@ -355,7 +355,7 @@ void DoSentryBusterWave()
 		if (builder <= 0)
 			continue;
 		
-		if (IsSentryDisposable(entity)) // Don't count disposable sentries
+		if (IsSentryDisposable(entity))
 			continue;
 		
 		sentryList.Push(entity);
