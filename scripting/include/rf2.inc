@@ -106,6 +106,8 @@ enum
 	ItemStrange_ModestHat = 89,
 	ItemCommunity_MercMedal = 90,
 	Item_AlienParasite = 91,
+	Item_CheatersLament = 92,
+	Item_CheatersLament_Recharging = 93,
 	Item_MaxValid,
 };
 

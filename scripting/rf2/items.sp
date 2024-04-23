@@ -23,6 +23,7 @@ char g_szItemDesc[MAX_ITEMS][512];
 char g_szItemUnusualEffectName[MAX_ITEMS][64];
 
 bool g_bItemInDropPool[MAX_ITEMS];
+bool g_bItemCanBeDropped[MAX_ITEMS] = {true, ...};
 bool g_bLaserHitDetected[MAX_EDICTS];
 
 // Unusual effects
@@ -108,16 +109,15 @@ void LoadItems()
 			// This value will correspond to the item's index in the plugin so we know what the item does.
 			item = itemKey.GetNum("item_type", Item_Null);
 			itemKey.GetString("name", g_szItemName[item], sizeof(g_szItemName[]), "Unnamed Item");
-			
 			itemKey.GetString("desc", g_szItemDesc[item], sizeof(g_szItemDesc[]), "(No description found...)");
 			CRemoveTags(g_szItemDesc[item], sizeof(g_szItemDesc[]));
 			char dummy[1];
 			dummy[0] = 10;
 			ReplaceString(g_szItemDesc[item], sizeof(g_szItemDesc[]), "\\n", dummy, false);
-			
 			itemKey.GetString("equip_regions", g_szItemEquipRegion[item], sizeof(g_szItemEquipRegion[]), "none");
 			itemKey.GetString("sprite", g_szItemSprite[item], sizeof(g_szItemSprite[]), MAT_DEBUGEMPTY);
 			g_bItemInDropPool[item] = asBool(itemKey.GetNum("in_item_pool", true));
+			g_bItemCanBeDropped[item] = asBool(itemKey.GetNum("can_be_dropped", true));
 			if (item == ItemScout_LongFallBoots)
 			{
 				g_bItemInDropPool[item] = IsGoombaAvailable();
@@ -2358,6 +2358,7 @@ bool IsHauntedItem(int item)
 }
 
 static int g_iLastShownItem[MAXTF2PLAYERS];
+Handle g_hPlayerItemDescTimer[MAXTF2PLAYERS];
 void ShowItemDesc(int client, int item)
 {
 	if (g_iLastShownItem[client] == item)
@@ -2386,6 +2387,14 @@ void ShowItemDesc(int client, int item)
 	{
 		PrintKeyHintText(client, fullString);
 	}
+	
+	g_bPlayerViewingItemDesc[client] = true;
+	if (g_hPlayerItemDescTimer[client])
+	{
+		delete g_hPlayerItemDescTimer[client];
+	}
+	
+	g_hPlayerItemDescTimer[client] = CreateTimer(16.0, Timer_PlayerViewingItemDesc, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Action Timer_SecondDesc(Handle timer, DataPack pack)
@@ -2403,5 +2412,15 @@ public Action Timer_SecondDesc(Handle timer, DataPack pack)
 	pack.ReadString(buffer, sizeof(buffer));
 	PrintKeyHintText(client, buffer);
 	g_iLastShownItem[client] = Item_Null;
+	return Plugin_Continue;
+}
+
+public Action Timer_PlayerViewingItemDesc(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Continue;
+	
+	g_hPlayerItemDescTimer[client] = null;
+	g_bPlayerViewingItemDesc[client] = false;
 	return Plugin_Continue;
 }

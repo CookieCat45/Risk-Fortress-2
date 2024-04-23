@@ -176,8 +176,8 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 				{
 					if (victim.index <= MaxClients && IsPlayerSurvivor(victim.index) && !IsPlayerMinion(victim.index))
 					{
-						// don't instantly kill Survivors, instead do 80% max hp
-						damage = float(RF2_GetCalculatedMaxHealth(victim.index)) * 0.8;
+						// don't instantly kill Survivors, instead do 90% max hp
+						damage = float(RF2_GetCalculatedMaxHealth(victim.index)) * 0.9;
 					}
 					else
 					{

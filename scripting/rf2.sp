@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.10.3b"
+#define PLUGIN_VERSION "0.11b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -126,6 +126,8 @@ bool g_bPlayerRifleAutoFire[MAXTF2PLAYERS];
 bool g_bPlayerToggledAutoFire[MAXTF2PLAYERS];
 bool g_bPlayerOpenedHelpMenu[MAXTF2PLAYERS];
 bool g_bPlayerHealOnHitCooldown[MAXTF2PLAYERS];
+bool g_bPlayerViewingItemDesc[MAXTF2PLAYERS];
+bool g_bPlayerReviveActivated[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -783,10 +785,16 @@ public void OnMapStart()
 		LoadAssets();
 		if (!g_bLateLoad)
 		{
-			//AutoExecConfig(true, "RiskFortress2");
+			AutoExecConfig(true, "RiskFortress2");
 		}
 		
 		ConVar maxSpeed = FindConVar("sm_tf2_maxspeed");
+		if (!maxSpeed)
+		{
+			// There are two plugins that uncap max speed - try the other one
+			maxSpeed = FindConVar("tf_maxspeed_limit");
+		}
+		
 		if (maxSpeed)
 		{
 			maxSpeed.FloatValue = 900.0;
@@ -799,7 +807,6 @@ public void OnMapStart()
 		FindConVar("tf_use_fixed_weaponspreads").SetBool(true);
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
-		FindConVar("tf_bot_force_class").SetString("scout"); // prevent console spam
 		FindConVar("sv_tags").Flags = 0;
 		
 		// Why is this a development only ConVar Valve?
@@ -913,19 +920,25 @@ public void OnConfigsExecuted()
 			}
 		}
 		
-		// For some reason, FindConVar() with sv_pure returns NULL
-		// So we will use this as a workaround. Custom servers should have sv_pure 0 anyways.
+		// sv_pure is a command -.-
 		InsertServerCommand("sv_pure 0");
+		int reservedSlots = GetReservedSlots();
+		if (reservedSlots > 0 && FindConVar("sm_reserve_type").IntValue != 0)
+		{
+			LogMessage("[WARNING] sm_reserve_type 0 is recommended for Risk Fortress 2!");
+		}
 		
 		// TFBots
-		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxSurvivors.IntValue);
+		char class[32];
+		GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
+		FindConVar("tf_bot_force_class").SetString(class);
+		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxSurvivors.IntValue-reservedSlots);
 		FindConVar("tf_bot_quota_mode").SetString("fill");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
 		FindConVar("tf_bot_taunt_victim_chance").SetInt(0);
 		FindConVar("tf_bot_join_after_player").SetBool(true);
 		FindConVar("tf_bot_auto_vacate").SetBool(true);
-		
 		ConVar botConsiderClass = FindConVar("tf_bot_reevaluate_class_in_spawnroom");
 		botConsiderClass.Flags = botConsiderClass.Flags & ~FCVAR_CHEAT;
 		botConsiderClass.SetBool(false);
@@ -1178,11 +1191,6 @@ public bool OnClientConnect(int client, char[] rejectmsg, int maxlen)
 	if (RF2_IsEnabled())
 	{
 		UpdateGameDescription();
-		if (GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue+1)
-		{
-			FormatEx(rejectmsg, maxlen, "Max human player limit of %i has been reached", g_cvMaxHumanPlayers.IntValue);
-			return false;
-		}
 	}
 	
 	return true;
@@ -1192,7 +1200,7 @@ public void OnClientConnected(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false)-1 >= g_cvMaxHumanPlayers.IntValue));
+		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false)-1 >= GetPlayerCap()));
 		UpdateGameDescription();
 		UpdateBotQuota();
 	}
@@ -1234,6 +1242,15 @@ public void OnClientPostAdminCheck(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
+		if (GetTotalHumans(false) > GetPlayerCap())
+		{
+			if (!IsAdminReserved(client) || GetTotalHumans(false) >= GetPlayerCap(true))
+			{
+				KickClient(client, "Max player limit has been reached");
+				return;
+			}
+		}
+		
 		char auth[MAX_AUTHID_LENGTH];
 		if (GetClientAuthId(client, AuthId_Steam2, auth, sizeof(auth)))
 		{
@@ -1354,6 +1371,8 @@ public void OnClientDisconnect_Post(int client)
 	g_bPlayerSpawningAsMinion[client] = false;
 	g_bPlayerToggledAutoFire[client] = false;
 	g_bHauntedKeyDrop[client] = false;
+	g_bPlayerReviveActivated[client] = false;
+	g_hPlayerItemDescTimer[client] = null;
 	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client, true);
 	ResetAFKTime(client, false);
@@ -3375,7 +3394,7 @@ public Action Timer_PlayerTimer(Handle timer)
 	{
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_ENEMY)
+			if (!g_bPlayerViewingItemDesc[i] && IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_ENEMY)
 			{
 				PrintKeyHintText(i, "Players who are lacking items:\n%s", names);
 			}
@@ -3550,7 +3569,7 @@ Action OnCallForMedic(int client)
 		TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID, RayType_EndPoint, TraceFilter_DontHitSelf, client);
 		TR_GetEndPosition(endPos);
 		RF2_Object_Base obj = RF2_Object_Base(GetNearestEntity(endPos, "rf2_object*"));
-		if (obj.IsValid())
+		if (obj.IsValid() && obj.OnInteractForward)
 		{
 			float pos[3];
 			obj.GetAbsOrigin(pos);
@@ -3565,7 +3584,7 @@ Action OnCallForMedic(int client)
 			}
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -3577,7 +3596,7 @@ public Action OnChangeClass(int client, const char[] command, int args)
 	char arg1[32];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	TFClassType desiredClass = TF2_GetClass(arg1);
-
+	
 	if (g_bRoundActive && !g_bGracePeriod || GetClientTeam(client) == TEAM_ENEMY)
 	{
 		// don't nag dead players for trying to change class
@@ -4662,10 +4681,21 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (victimIsClient)
 	{
-		// because there's no fall damage, red team takes increased self blast damage, although it is capped at 15% max hp due to damage scaling
-		if (selfDamage && rangedDamage && IsPlayerSurvivor(victim))
+		// Self blast damage is base 15% of max health (20% for stickies)
+		if (selfDamage && rangedDamage && (validWeapon || strcmp2(inflictorClassname, "tf_projectile_sentryrocket")) && IsPlayerSurvivor(victim))
 		{
-			damage *= 1.3;
+			if (strcmp2(inflictorClassname, "tf_projectile_pipe_remote"))
+			{
+				damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.2;
+			}
+			else if (GetEntItemProc(inflictor) != Item_Law && strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
+			{
+				damage *= 1.25;
+			}
+			else
+			{
+				damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.15;
+			}
 		}
 		
 		if (PlayerHasItem(victim, Item_Goalkeeper))
@@ -5033,7 +5063,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			{
 				damage *= 1.0 + CalcItemMod(attacker, Item_MisfortuneFedora, 1);
 			}
-
+			
 			if (damageType & DMG_MELEE)
 			{
 				// Eye Catcher and Saxton Hat increase melee damage
@@ -5129,7 +5159,12 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				return Plugin_Changed;
 			}
 			
-			damage *= GetEnemyDamageMult();
+			// don't scale sentry buster damage vs Survivors
+			if (!victimIsClient || !RF2_SentryBuster(attacker).IsValid() || IsPlayerMinion(victim) || !IsPlayerSurvivor(victim))
+			{
+				damage *= GetEnemyDamageMult();
+			}
+			
 			if (monoculus && victimIsClient && IsPlayerSurvivor(victim))
 			{
 				damage *= 0.75;
@@ -5169,10 +5204,17 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 	}
 	
-	// Self damage is capped at 20% max health
-	if (victimIsClient && selfDamage && validWeapon && IsPlayerSurvivor(victim))
+	// Self blast damage is capped at 15% max health (20% for stickies)
+	if (victimIsClient && selfDamage && rangedDamage && validWeapon && !inflictorIsBuilding && IsPlayerSurvivor(victim))
 	{
-		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.2);
+		if (strcmp2(inflictorClassname, "tf_projectile_pipe_remote"))
+		{
+			damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.2);
+		}
+		else
+		{
+			damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.15);
+		}
 	}
 	
 	g_flDamageProc = proc; // carry over
@@ -5236,6 +5278,16 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			{
 				TF2_MakeBleed(victim, attacker, GetItemMod(Item_Antlers, 1));
 			}
+		}
+		
+		if (PlayerHasItem(victim, Item_CheatersLament) && GetClientHealth(victim) <= 0)
+		{
+			SetEntityHealth(victim, RF2_GetCalculatedMaxHealth(victim));
+			TF2_SetPlayerPowerPlay(victim, true);
+			g_bPlayerReviveActivated[victim] = true;
+			CreateTimer(GetItemMod(Item_CheatersLament, 0), Timer_PowerPlayExpire, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
+			GiveItem(victim, Item_CheatersLament, -1);
+			GiveItem(victim, Item_CheatersLament_Recharging);
 		}
 	}
 	else if (IsTank(victim))
@@ -5642,6 +5694,15 @@ public Action Timer_HealOnHitCooldown(Handle timer, int client)
 		return Plugin_Continue;
 	
 	g_bPlayerHealOnHitCooldown[client] = false;
+	return Plugin_Continue;
+}
+
+public Action Timer_PowerPlayExpire(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Continue;
+	
+	TF2_SetPlayerPowerPlay(client, false);
 	return Plugin_Continue;
 }
 

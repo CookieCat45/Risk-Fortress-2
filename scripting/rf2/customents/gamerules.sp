@@ -293,20 +293,25 @@ int SpawnObjects()
 		}
 	}
 	
-	PrintToServer("[RF2] Object Spawn Counts\nCrates: %i (Bonus: %i)\nOther: %i", minCrates+bonusCrates, bonusCrates, spawnCount-minCrates);
-	int scrapperCount;
+	PrintToServer("[RF2] Object Spawn Counts\nCrates: %i (Bonus: %i)\nOther: %i", minCrates+bonusCrates, bonusCrates, spawnCount-minCrates-bonusCrates);
+	int scrapperCount, strangeCrates;
+	int strangeCrateLimit = imax(imin(RoundToCeil(float(minCrates)*0.08), survivorCount), 4);
 	bool graveStoneSpawn;
-	while (spawns < spawnCount+bonusCrates && attempts < 1000)
+	RF2_Object_Crate crate;
+	while (spawns < spawnCount+bonusCrates)
 	{
 		GetSpawnPoint(worldCenter, spawnPos, 0.0, distance, _, true);
-		nearestObject = GetNearestEntity(spawnPos, "rf2_object*");
-		if (nearestObject != INVALID_ENT)
+		if (attempts < 1000)
 		{
-			GetEntPos(nearestObject, nearestPos);
-			if (GetVectorDistance(spawnPos, nearestPos, true) <= sq(spreadDistance)) // Too close to another object.
+			nearestObject = GetNearestEntity(spawnPos, "rf2_object*");
+			if (nearestObject != INVALID_ENT)
 			{
-				attempts++;
-				continue;
+				GetEntPos(nearestObject, nearestPos);
+				if (GetVectorDistance(spawnPos, nearestPos, true) <= sq(spreadDistance)) // Too close to another object.
+				{
+					attempts++;
+					continue;
+				}
 			}
 		}
 		
@@ -334,7 +339,22 @@ int SpawnObjects()
 		}
 		else
 		{
-			SpawnCrate(crateArray.Get(GetRandomInt(0, crateArray.Length-1)), spawnPos, spawns > minCrates);
+			crate = SpawnCrate(crateArray.Get(GetRandomInt(0, crateArray.Length-1)), spawnPos, spawns > minCrates);
+			if (crate.Type == Crate_Strange)
+			{
+				strangeCrates++;
+				if (strangeCrates >= strangeCrateLimit)
+				{
+					for (int i = 0; i < crateArray.Length; i++)
+					{
+						if (crateArray.Get(i) == Crate_Strange)
+						{
+							crateArray.Erase(i);
+							i--;
+						}
+					}
+				}
+			}
 		}
 		
 		spawns++;

@@ -62,6 +62,17 @@
 		"en"		"Middle Mouse Button/ATTACK3: Ping Objects"
 	}
 	
+	"ReviveItemCharged"
+	{
+		"en"		"Your {unusual}Cheater's Lament{default} has {yellow}recharged."
+	}
+	
+	"AdminReservePenalty"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"You are an admin who is currently holding a reserved slot. You are not allowed to join RED. {yellow}({1}/{2})"
+	}
+	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// AFK PHRASES
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

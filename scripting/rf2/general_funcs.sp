@@ -426,8 +426,7 @@ void UpdateGameDescription()
 // It does not matter if the .mdl extension is included in the path or not.
 void AddModelToDownloadsTable(const char[] file, bool precache=true)
 {
-	char buffer[PLATFORM_MAX_PATH];
-	char extension[16];
+	char buffer[PLATFORM_MAX_PATH], extension[16];
 	strcopy(buffer, sizeof(buffer), file);
 	ReplaceStringEx(buffer, sizeof(buffer), ".mdl", "");
 	

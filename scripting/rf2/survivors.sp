@@ -87,6 +87,14 @@ bool CreateSurvivors()
 			}
 		}
 		
+		if (IsAdminReserved(i))
+		{
+			RF2_PrintToChat(i, "%t", "AdminReservePenalty", GetTotalHumans(false), GetPlayerCap());
+			SilentlyKillPlayer(i);
+			ChangeClientTeam(i, 1);
+			continue;
+		}
+		
 		if (GetClientTeam(i) != TEAM_ENEMY)
 		{
 			if (IsPlayerAlive(i))
@@ -466,6 +474,7 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	}
 	
 	int entity = INVALID_ENT;
+	RF2_Object_Crate crate;
 	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
 		if (entity > 0 && entity <= MaxClients && IsPlayerSurvivor(entity))
@@ -473,7 +482,8 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 		
 		if (!recalculate)
 		{
-			if (RF2_Object_Crate(entity).IsValid() && !RF2_Object_Crate(entity).IsBonus)
+			crate = RF2_Object_Crate(entity);
+			if (crate.IsValid() && !crate.IsBonus && crate.Type != Crate_Strange && crate.Type != Crate_Haunted)
 			{
 				objectCount++;
 			}

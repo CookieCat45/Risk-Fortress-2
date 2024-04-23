@@ -54,7 +54,6 @@ void LoadCommandsAndCvars()
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
 	g_cvMaxSurvivors = CreateConVar("rf2_max_survivors", buffer, "Max number of Survivors that can be in the game.", FCVAR_NOTIFY, true, 1.0, true, float(MAX_SURVIVORS));
 	g_cvMaxHumanPlayers = CreateConVar("rf2_human_player_limit", "8", "Max number of human players allowed in the server.", FCVAR_NOTIFY, true, 1.0, true, float(MaxClients));
-	
 	g_cvGameResetTime = CreateConVar("rf2_max_wait_time", "600", "If the game has already began, amount of time in seconds to wait for players to join before restarting. 0 to disable.", FCVAR_NOTIFY);
 	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvEnableAFKManager = CreateConVar("rf2_afk_manager_enabled", "0", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -1637,7 +1636,7 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 			{
 				int item = StringToInt(info);
 				ShowItemDesc(param1, item);
-				if (GetItemQuality(item) != Quality_Community)
+				if (g_bItemCanBeDropped[item] && GetItemQuality(item) != Quality_Community)
 				{
 					ShowItemDropMenu(param1, item);
 				}
@@ -1669,7 +1668,6 @@ void ShowItemDropMenu(int client, int item)
 {
 	Menu menu = new Menu(Menu_ItemDrop);
 	char info[64], itemName[MAX_NAME_LENGTH], clientName[MAX_NAME_LENGTH];
-	
 	GetItemName(item, itemName, sizeof(itemName));
 	menu.SetTitle("Drop for who? (%s [%i])", itemName, GetPlayerItemCount(client, item, true));
 	FormatEx(info, sizeof(info), "%i_0", item);
@@ -1706,14 +1704,12 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 			float pos[3];
 			GetEntPos(param1, pos);
 			pos[2] += 25.0;
-			
 			GetMenuItem(menu, param2, info, sizeof(info));
 			SplitString(info, "_", itemIndex, sizeof(itemIndex));
 			ReplaceStringEx(info, sizeof(info), itemIndex, ""); // Client userid
 			ReplaceStringEx(info, sizeof(info), "_", ""); // Item index
 			ReplaceStringEx(itemIndex, sizeof(itemIndex), "_", ""); // Item index
 			int item = StringToInt(itemIndex); 
-			
 			if (StringToInt(info) == 0) // 0 means we don't care
 			{
 				DropItem(param1, item, pos);

@@ -25,6 +25,7 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerViewingItemMenu[client] = false;
 	g_bPlayerIsTeleporterBoss[client] = false;
 	g_bPlayerOpenedHelpMenu[client] = false;
+	g_bPlayerViewingItemDesc[client] = false;
 	g_bPlayerHealOnHitCooldown[client] = false;
 	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;
@@ -1470,6 +1471,34 @@ int GetSpectateTarget(int client)
 bool IsInspectButtonPressed(int client)
 {
 	return GetEntPropFloat(client, Prop_Send, "m_flInspectTime") > 0.0;
+}
+
+int GetPlayerCap(bool admins=false)
+{
+	int cap = g_cvMaxHumanPlayers.IntValue;
+	if (admins)
+	{
+		cap += GetReservedSlots();
+	}
+	
+	return cap;
+}
+
+int GetReservedSlots()
+{
+	if (!FindPluginByFile("reservedslots.smx"))
+		return 0;
+	
+	return FindConVar("sm_reserved_slots").IntValue;
+}
+
+bool IsAdminReserved(int client)
+{
+	if (GetUserAdmin(client) == INVALID_ADMIN_ID || !(GetUserFlagBits(client) & ADMFLAG_RESERVATION))
+		return false;
+	
+	// If total players is greater than non-admin player cap, this admin is holding a reserved slot.
+	return GetTotalHumans(false) > GetPlayerCap();
 }
 
 /*

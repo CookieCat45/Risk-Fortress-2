@@ -115,42 +115,17 @@ void BeginTankDestructionMode()
 
 void EndTankDestructionMode()
 {
-	RF2_PrintToChatAll("%t", "AllTanksDestroyed");
-	CreateTimer(30.0, Timer_CommandReminder, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	RF2_Object_Teleporter.ToggleObjectsStatic(true);
-	
-	int randomItem;
-	char name[MAX_NAME_LENGTH], quality[32];
-	bool collector;
+	RF2_Object_Teleporter.EventCompletion();
+	char text[256];
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
 			continue;
 		
-		collector = (!IsSingleplayer(false) && !g_bPlayerTookCollectorItem[i] && g_iLoopCount == 0 || GetRandomInt(1, 10) <= 2);
-		randomItem = collector ? GetRandomCollectorItem(TF2_GetPlayerClass(i)) : GetRandomItemEx(Quality_Genuine);
-		GiveItem(i, randomItem, _, true);
-		GetItemName(randomItem, name, sizeof(name));
-		GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
-		RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
-		PrintHintText(i, "%t", "GotItemReward", name);
-		TriggerAchievement(i, ACHIEVEMENT_TELEPORTER);
-		
-		char text[256];
 		FormatEx(text, sizeof(text), "%T", "EndLevelCommandReminder", i);
 		CRemoveTags(text, sizeof(text));
 		PrintCenterText(i, text);
-	}
-	
-	StunRadioWave();
-	int entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
-	{
-		if (GetEntTeam(entity) == TEAM_ENEMY)
-		{
-			SetEntityHealth(entity, 1);
-			RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
-		}
 	}
 	
 	RF2_GameRules gamerules = GetRF2GameRules();
@@ -158,6 +133,9 @@ void EndTankDestructionMode()
 	{
 		gamerules.FireOutput("OnTankDestructionComplete");
 	}
+
+	RF2_PrintToChatAll("%t", "AllTanksDestroyed");
+	CreateTimer(30.0, Timer_CommandReminder, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Action Timer_CommandReminder(Handle timer)

@@ -326,7 +326,6 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	
 	public void End()
 	{
-		bool wasSharingEnabled = IsItemSharingEnabled();
 		this.ToggleObjects(true);
 		this.EventState = TELE_EVENT_COMPLETE;
 		this.Effects = EF_ITEM_BLINK;
@@ -335,67 +334,14 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		RemoveEntity2(this.Bubble.index);
 		EmitSoundToAll(SND_TELEPORTER_CHARGED);
 		StopMusicTrackAll();
-		StunRadioWave();
-		int entity = MaxClients+1;
-		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
-		{
-			if (GetEntTeam(entity) == TEAM_ENEMY)
-			{
-				SetEntityHealth(entity, 1);
-				RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
-			}
-		}
-		
-		int randomItem;
-		bool collector;
-		char name[MAX_NAME_LENGTH], quality[32];
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
-				continue;
-			
-			collector = (!IsSingleplayer(false) && !g_bPlayerTookCollectorItem[i] && g_iLoopCount == 0 || GetRandomInt(1, 10) <= 2);
-			randomItem = collector ? GetRandomCollectorItem(TF2_GetPlayerClass(i)) : GetRandomItemEx(Quality_Genuine);
-			GiveItem(i, randomItem, _, true);
-			GetItemName(randomItem, name, sizeof(name));
-			GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
-			RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
-			PrintHintText(i, "%t", "GotItemReward", name);
-			if (wasSharingEnabled && !IsItemSharingEnabled())
-			{
-				PrintKeyHintText(i, "%t", "ItemSharingDisabled");
-			}
-			
-			TriggerAchievement(i, ACHIEVEMENT_TELEPORTER);
-		}
-		
+		RF2_Object_Teleporter.EventCompletion();
 		RF2_PrintToChatAll("%t", "TeleporterComplete");
 		Call_StartForward(g_fwTeleEventEnd);
 		Call_Finish();
-		
 		RF2_GameRules gamerules = GetRF2GameRules();
 		if (gamerules.IsValid())
 		{
 			gamerules.FireOutput("OnTeleporterEventComplete");
-		}
-		
-		int boss = MaxClients+1;
-		while ((boss = FindEntityByClassname(boss, "headless_hatman")) != INVALID_ENT)
-		{
-			// HHH team number is 0, set to something else so he actually takes damage and dies
-			SetEntProp(boss, Prop_Data, "m_iTeamNum", 1);
-			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
-			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
-		}
-		
-		boss = MaxClients+1;
-		while ((boss = FindEntityByClassname(boss, "eyeball_boss")) != INVALID_ENT)
-		{
-			if (GetEntTeam(boss) != 5)
-				continue;
-			
-			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
-			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
 		}
 	}
 	
@@ -447,6 +393,69 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 				GetEntityRenderColor(entity, r, g, b, a);
 				SetEntityRenderColor(entity, r, g, b, 255);
 			}
+		}
+	}
+	
+	public static void EventCompletion()
+	{
+		StunRadioWave();
+		int entity = MaxClients+1;
+		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
+		{
+			if (GetEntTeam(entity) == TEAM_ENEMY)
+			{
+				SetEntityHealth(entity, 1);
+				RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
+			}
+		}
+		
+		int randomItem;
+		bool collector;
+		bool wasSharingEnabled = IsItemSharingEnabled();
+		char name[MAX_NAME_LENGTH], quality[32];
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+				continue;
+			
+			TriggerAchievement(i, ACHIEVEMENT_TELEPORTER);
+			collector = (!IsSingleplayer(false) && !g_bPlayerTookCollectorItem[i] && g_iLoopCount == 0 || GetRandomInt(1, 10) <= 2);
+			randomItem = collector ? GetRandomCollectorItem(TF2_GetPlayerClass(i)) : GetRandomItemEx(Quality_Genuine);
+			GiveItem(i, randomItem, _, true);
+			GetItemName(randomItem, name, sizeof(name));
+			GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
+			RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
+			PrintHintText(i, "%t", "GotItemReward", name);
+			if (wasSharingEnabled && !IsItemSharingEnabled())
+			{
+				PrintKeyHintText(i, "%t", "ItemSharingDisabled");
+			}
+			
+			if (PlayerHasItem(i, Item_CheatersLament_Recharging) && !g_bPlayerReviveActivated[i])
+			{
+				GiveItem(i, Item_CheatersLament);
+				GiveItem(i, Item_CheatersLament_Recharging, -1);
+				RF2_PrintToChat(i, "%t", "ReviveItemCharged");
+			}
+		}
+		
+		int boss = MaxClients+1;
+		while ((boss = FindEntityByClassname(boss, "headless_hatman")) != INVALID_ENT)
+		{
+			// HHH team number is 0, set to something else so he actually takes damage and dies
+			SetEntProp(boss, Prop_Data, "m_iTeamNum", 1);
+			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
+			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
+		}
+		
+		boss = MaxClients+1;
+		while ((boss = FindEntityByClassname(boss, "eyeball_boss")) != INVALID_ENT)
+		{
+			if (GetEntTeam(boss) != 5)
+				continue;
+			
+			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
+			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
 		}
 	}
 }
