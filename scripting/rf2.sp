@@ -28,7 +28,7 @@ public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
 	author		=	"CookieCat",
-	description	=	"TF2 endless roguelike adventure gamemode inspired by hit indie game Risk of Rain 2.",
+	description	=	"TF2 endless roguelike adventure game mode inspired by and based on Risk of Rain 2.",
 	version		=	PLUGIN_VERSION,
 	url			=	"",
 };
