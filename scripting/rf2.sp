@@ -5283,6 +5283,12 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		if (PlayerHasItem(victim, Item_CheatersLament) && GetClientHealth(victim) <= 0)
 		{
 			SetEntityHealth(victim, RF2_GetCalculatedMaxHealth(victim));
+			TF2_AddCondition(victim, TFCond_UberchargedCanteen);
+			TF2_AddCondition(victim, TFCond_UberBulletResist);
+			TF2_AddCondition(victim, TFCond_UberBlastResist);
+			TF2_AddCondition(victim, TFCond_UberFireResist);
+			TF2_AddCondition(victim, TFCond_MegaHeal);
+			TF2_AddCondition(victim, TFCond_CritOnFirstBlood);
 			TF2_SetPlayerPowerPlay(victim, true);
 			g_bPlayerReviveActivated[victim] = true;
 			CreateTimer(GetItemMod(Item_CheatersLament, 0), Timer_PowerPlayExpire, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
@@ -5702,6 +5708,12 @@ public Action Timer_PowerPlayExpire(Handle timer, int client)
 	if (!(client = GetClientOfUserId(client)))
 		return Plugin_Continue;
 	
+	TF2_RemoveCondition(client, TFCond_UberchargedCanteen);
+	TF2_RemoveCondition(client, TFCond_UberBulletResist);
+	TF2_RemoveCondition(client, TFCond_UberBlastResist);
+	TF2_RemoveCondition(client, TFCond_UberFireResist);
+	TF2_RemoveCondition(client, TFCond_MegaHeal);
+	TF2_RemoveCondition(client, TFCond_CritOnFirstBlood);
 	TF2_SetPlayerPowerPlay(client, false);
 	return Plugin_Continue;
 }

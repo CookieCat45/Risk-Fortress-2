@@ -1577,7 +1577,7 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 void UpdateBotQuota()
 {
 	ConVar quota = FindConVar("tf_bot_quota");
-	quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue)+GetTotalHumans(false), MaxClients);
+	quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue-GetReservedSlots())+GetTotalHumans(false), MaxClients);
 }
 
 // -1 = let bot decide

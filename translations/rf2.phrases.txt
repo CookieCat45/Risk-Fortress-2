@@ -70,7 +70,7 @@
 	"AdminReservePenalty"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"You are an admin who is currently holding a reserved slot. You are not allowed to join RED. {yellow}({1}/{2})"
+		"en"		"{red}*** {yellow}You are an admin who is currently holding a reserved slot. You are not allowed to play as a Survivor. ({1}/{2}) {red}***"
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

@@ -24,6 +24,7 @@ char g_szItemUnusualEffectName[MAX_ITEMS][64];
 
 bool g_bItemInDropPool[MAX_ITEMS];
 bool g_bItemCanBeDropped[MAX_ITEMS] = {true, ...};
+bool g_bItemForceShowInInventory[MAX_ITEMS];
 bool g_bLaserHitDetected[MAX_EDICTS];
 
 // Unusual effects
@@ -118,6 +119,7 @@ void LoadItems()
 			itemKey.GetString("sprite", g_szItemSprite[item], sizeof(g_szItemSprite[]), MAT_DEBUGEMPTY);
 			g_bItemInDropPool[item] = asBool(itemKey.GetNum("in_item_pool", true));
 			g_bItemCanBeDropped[item] = asBool(itemKey.GetNum("can_be_dropped", true));
+			g_bItemForceShowInInventory[item] = asBool(itemKey.GetNum("force_show_inv", false));
 			if (item == ItemScout_LongFallBoots)
 			{
 				g_bItemInDropPool[item] = IsGoombaAvailable();
@@ -2165,11 +2167,14 @@ ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true, bool allo
 	ArrayList items = new ArrayList();
 	for (int i = 1; i <= GetTotalItems(); i++)
 	{
-		if (poolOnly && !g_bItemInDropPool[i] && !IsScrapItem(i) && (!allowCommunity || GetItemQuality(i) != Quality_Community))
-			continue;
+		if (!g_bItemForceShowInInventory[i])
+		{
+			if (poolOnly && !g_bItemInDropPool[i] && !IsScrapItem(i) && (!allowCommunity || GetItemQuality(i) != Quality_Community))
+				continue;
 		
-		if (!allowMetals && IsScrapItem(i))
-			continue;
+			if (!allowMetals && IsScrapItem(i))
+				continue;
+		}
 		
 		items.Push(i);
 	}
