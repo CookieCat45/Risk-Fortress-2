@@ -232,6 +232,14 @@ methodmap RF2_Item < CBaseEntity
 		}
 	}
 	
+	public bool BelongsToPlayer(int client, bool strict=false)
+	{
+		if (!strict && (!IsValidClient(this.Owner) || !IsPlayerSurvivor(this.Owner)))
+			return true;
+		
+		return IsPlayerSurvivor(client) && (client == this.Owner || client == this.OriginalOwner || client == this.Subject);
+	}
+	
 	public bool CanBeShuffledBy(int client)
 	{
 		return !this.Dropped && !this.Shuffled && (this.Owner == INVALID_ENT || this.Owner == client || this.Subject == client);
@@ -241,6 +249,7 @@ methodmap RF2_Item < CBaseEntity
 static void OnCreate(RF2_Item item)
 {
 	item.Owner = INVALID_ENT;
+	item.OriginalOwner = INVALID_ENT;
 	item.Subject = INVALID_ENT;
 	item.WorldText = INVALID_ENT;
 	item.KeyValue("rendermode", "9");
@@ -406,9 +415,6 @@ bool PickupItem(int client)
 		bool itemShare = IsItemSharingEnabled();
 		int survivorIndex = RF2_GetSurvivorIndex(client);
 		int type = item.Type;
-		int owner = item.Owner;
-		int subject = item.Subject;
-		int originalOwner = item.OriginalOwner;
 		int quality = GetItemQuality(item.Type);
 		bool dropped = item.Dropped;
 		
@@ -419,22 +425,21 @@ bool PickupItem(int client)
 		}
 		
 		// Strange items do not count towards the limit.
-		if (itemShare && g_iItemLimit[survivorIndex] > 0 && !IsEquipmentItem(type) && !dropped && g_iItemsTaken[survivorIndex] >= g_iItemLimit[survivorIndex]
-			&& ((owner == client || originalOwner == client) || !IsValidClient(owner) || !IsPlayerSurvivor(owner)))
+		if (itemShare && g_iItemLimit[survivorIndex] > 0 && (!dropped || !item.BelongsToPlayer(client, true))
+			&& g_iItemsTaken[survivorIndex] >= g_iItemLimit[survivorIndex] && !IsEquipmentItem(type))
 		{
 			EmitSoundToClient(client, SND_NOPE);
 			PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[survivorIndex]);
 			return true;
 		}
 		
-		if (IsValidClient(owner) && IsPlayerSurvivor(owner) 
-			&& client != owner && client != subject)
+		if (!item.BelongsToPlayer(client))
 		{
 			EmitSoundToClient(client, SND_NOPE);
 			PrintCenterText(client, "%t", "NotForYou");
 			return true;
 		}
-
+		
 		if (quality == Quality_Collectors)
 		{
 			g_bPlayerTookCollectorItem[client] = true;
@@ -469,7 +474,7 @@ bool PickupItem(int client)
 		}
 		
 		EmitSoundToAll(SND_ITEM_PICKUP, client);
-		if (!dropped || owner == client || originalOwner == client)
+		if (!dropped || item.BelongsToPlayer(client) && client != item.Subject)
 		{
 			if (!dropped)
 				g_iTotalItemsFound++;
@@ -506,8 +511,6 @@ bool PickupItem(int client)
 		
 		g_bItemPickupCooldown[client] = true;
 		CreateTimer(0.2, Timer_ItemPickupCooldown, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-		
-
 		return true;
 	}
 	

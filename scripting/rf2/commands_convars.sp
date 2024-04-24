@@ -1715,7 +1715,8 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 			int item = StringToInt(itemIndex); 
 			if (StringToInt(info) == 0) // 0 means we don't care
 			{
-				DropItem(param1, item, pos);
+				RF2_Item itemEnt = DropItem(param1, item, pos);
+				itemEnt.Owner = INVALID_ENT;
 			}
 			else
 			{
