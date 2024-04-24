@@ -201,7 +201,7 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 	float enemyPos[3];
 	float distance, falloffMultiplier, calculatedDamage;
 	int attackerTeam = GetEntTeam(attacker);
-	int entity = -1;
+	int entity = INVALID_ENT;
 	ArrayList hitEnts;
 	if (returnHitEnts)
 	{

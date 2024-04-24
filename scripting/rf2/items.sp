@@ -1152,7 +1152,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 				{
 					item = Item_ScrapMetal;
 				}
-
+				
 				float pos[3];
 				GetEntPos(victim, pos);
 				pos[2] += 30.0;

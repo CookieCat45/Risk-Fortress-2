@@ -356,7 +356,7 @@
 	
 	"AllHumansDisconnected"
 	{
-		"en"		"[RF2] All human players have disconnected from the server. Restarting the game..."
+		"en"		"All human players have disconnected from the server. Restarting the game..."
 	}
 
 	"On"

@@ -840,6 +840,10 @@ bool IsItemSharingEnabled()
 
 bool DoesPlayerHaveEnoughItems(int client)
 {
+	// don't bother with AFK players
+	if (IsPlayerAFK(client))
+		return true;
+
 	int index = RF2_GetSurvivorIndex(client);
 	float itemPct = float(g_iItemsTaken[index]) / float(g_iItemLimit[index]);
 	return itemPct >= g_cvItemShareDisableThreshold.FloatValue;

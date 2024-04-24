@@ -49,6 +49,8 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_discord", Command_Discord, "Show link to the Risk Fortress 2 Discord server.");
 	RegConsoleCmd("rf2_helpmenu", Command_HelpMenu, "Shows the help menu.");
 	RegConsoleCmd("rf2_help", Command_HelpMenu, "Shows the help menu.");
+	RegConsoleCmd("rf2_menu", Command_HelpMenu, "Shows the help menu.");
+	RegConsoleCmd("rf2", Command_HelpMenu, "Shows the help menu.");
 	
 	char buffer[8];
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
@@ -114,6 +116,7 @@ void LoadCommandsAndCvars()
 	g_cvTimeBeforeRestart = CreateConVar("rf2_time_before_restart", "18000", "Time in seconds before the server will restart after a run ends, to clear server memory. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvHiddenServerStartTime = CreateConVar("rf2_server_start_time", "0", _, FCVAR_HIDDEN);
 	g_cvWaitExtendTime = CreateConVar("rf2_wait_extend_time", "600", "If the vote to extend Waiting for Players passes, extend the wait time to this in seconds. 0 to disable extending.", FCVAR_NOTIFY, true, 0.0);
+	g_cvPluginVersion = CreateConVar("rf2_plugin_version", PLUGIN_VERSION, "Plugin version. Don't touch this please.", FCVAR_NOTIFY);
 	
 	// Debug
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");

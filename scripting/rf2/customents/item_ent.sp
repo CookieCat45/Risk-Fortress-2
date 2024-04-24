@@ -388,6 +388,8 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, f
 		{
 			g_iItemsTaken[index]--;
 		}
+		
+		g_iItemsTaken[index] = imax(0, g_iItemsTaken[index]);
 	}
 	
 	return item;
@@ -417,9 +419,8 @@ bool PickupItem(int client)
 		}
 		
 		// Strange items do not count towards the limit.
-		if (itemShare && g_iItemLimit[survivorIndex] > 0 && !IsEquipmentItem(type) && subject != client
-		&& ((owner == client || originalOwner == client) || !IsValidClient(owner) 
-			|| !IsPlayerSurvivor(owner)) && g_iItemsTaken[survivorIndex] >= g_iItemLimit[survivorIndex])
+		if (itemShare && g_iItemLimit[survivorIndex] > 0 && !IsEquipmentItem(type) && !dropped && g_iItemsTaken[survivorIndex] >= g_iItemLimit[survivorIndex]
+			&& ((owner == client || originalOwner == client) || !IsValidClient(owner) || !IsPlayerSurvivor(owner)))
 		{
 			EmitSoundToClient(client, SND_NOPE);
 			PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[survivorIndex]);

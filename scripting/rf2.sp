@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.11b"
+#define PLUGIN_VERSION "0.11.1b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -323,6 +323,7 @@ ConVar g_cvDebugDontEndGame;
 ConVar g_cvDebugShowObjectSpawns;
 ConVar g_cvDebugUseAltMapSettings;
 ConVar g_cvDebugDisableEnemySpawning;
+ConVar g_cvPluginVersion;
 
 // Cookies
 Cookie g_coMusicEnabled;
@@ -786,6 +787,13 @@ public void OnMapStart()
 		if (!g_bLateLoad)
 		{
 			AutoExecConfig(true, "RiskFortress2");
+			char version[64];
+			g_cvPluginVersion.GetString(version, sizeof(version));
+			if (!strcmp2(version, PLUGIN_VERSION))
+			{
+				// version changed, ask to delete old cfg file
+				LogMessage("The plugin version has changed. You can use the rf2_delete_config command to automatically generate a new config file if there are new convars.");
+			}
 		}
 		
 		ConVar maxSpeed = FindConVar("sm_tf2_maxspeed");
@@ -888,7 +896,7 @@ public void OnConfigsExecuted()
 {
 	if (RF2_IsEnabled() && !g_bPluginReloading)
 	{
-		if (!FindConVar("sm_tf2_maxspeed"))
+		if (!FindConVar("sm_tf2_maxspeed") && !FindConVar("tf_maxspeed_limit"))
 		{
 			LogMessage("TF2 Move Speed Unlocker plugin not found. It is not required, but is recommended to install.");
 		}
@@ -1244,7 +1252,7 @@ public void OnClientPostAdminCheck(int client)
 	{
 		if (GetTotalHumans(false) > GetPlayerCap())
 		{
-			if (!IsAdminReserved(client) || GetTotalHumans(false) >= GetPlayerCap(true))
+			if (!IsAdminReserved(client) || GetTotalHumans(false) > GetPlayerCap(true))
 			{
 				KickClient(client, "Max player limit has been reached");
 				return;
@@ -3481,7 +3489,7 @@ public Action Timer_AFKManager(Handle timer)
 			continue;
 		
 		g_flPlayerAFKTime[i] += 1.0;
-		if (g_flPlayerAFKTime[i] >= afkKickTime * time)
+		if (g_flPlayerAFKTime[i] >= time)
 		{
 			if (!IsPlayerAlive(i) && GetClientTeam(i) > 1)
 			{
