@@ -97,9 +97,9 @@ void LoadCommandsAndCvars()
 	g_cvObjectSpreadDistance = CreateConVar("rf2_object_spread_distance", "80.0", "The minimum distance that spawned objects must be spread apart from eachother.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "12", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCost = CreateConVar("rf2_object_base_cost", "50.0", "The base cost to use objects such as crates. Scales with the difficulty.", FCVAR_NOTIFY, true, 0.0);
-	g_cvItemShareEnabled = CreateConVar("rf2_item_share_enabled", "1", "Whether or not to enable item sharing. This prevents Survivors from hogging items in multiplayer.\n0 = Always disabled, 1 = Disable after stage is cleared OR after looping at least once OR if only 1 player is on RED, 2 = Disable only if 1 player is on RED.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvItemShareDisableLoopCount = CreateConVar("rf2_item_share_disable_loop_count", "2", "Disable item sharing after this many loops if rf2_item_share_enabled is set to 1.", FCVAR_NOTIFY, true, 0.0);
-	g_cvItemShareDisableThreshold = CreateConVar("rf2_item_share_disable_threshold", "0.7", "If item sharing is enabled, disable after all players have filled at least this much of their item cap. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvItemShareEnabled = CreateConVar("rf2_item_share_enabled", "1", "Whether or not to enable the item sharing system. This system is designed to prevent players from hogging items in multiplayer.\n0 = Always disabled, 1 = Disable under certain conditions only, 2 = Disable only if 1 player is on RED.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvItemShareDisableLoopCount = CreateConVar("rf2_item_share_disable_loop_count", "0", "Disable item sharing after this many loops if rf2_item_share_enabled is set to 1. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
+	g_cvItemShareDisableThreshold = CreateConVar("rf2_item_share_disable_threshold", "0.7", "If rf2_item_share_enabled is set to 1, disable after all players have filled at least this much of their item cap. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "6000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
 	g_cvTankHealthScale = CreateConVar("rf2_tank_health_scale", "0.1", "How much a Tank's health will scale per enemy level, in decimal percentage.");
 	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "75.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);
@@ -599,9 +599,7 @@ public Action Command_VoteSkipWait(int client, int args)
 		}
 		else
 		{
-			int totalHumans = GetTotalHumans(false);
-			int inGameHumans = GetTotalHumans(true);
-			if (inGameHumans >= totalHumans)
+			if (!ArePlayersConnecting())
 			{
 				Menu vote = new Menu(Menu_SkipWaitVote);
 				vote.SetTitle("Skip waiting for players? (%N)", client);
@@ -1459,40 +1457,40 @@ public Action Command_ClientSettings(int client, int args)
 
 void ShowClientSettingsMenu(int client)
 {
+	char buffer[128], off[8], on[8];
 	Menu menu = new Menu(Menu_ClientSettings);
-	char buffer[128];
+	SetGlobalTransTarget(client);
 	menu.SetTitle("Risk Fortress 2 Settings");
-	int lang = GetClientLanguage(client);
-	char off[8], on[8];
-	FormatEx(off, sizeof(off), "%T", "Off", lang);
-	FormatEx(on, sizeof(on), "%T", "On", lang);
-	
-	FormatEx(buffer, sizeof(buffer), "%T", "ToggleSurvivor", lang, GetCookieBool(client, g_coBecomeSurvivor) ? on : off);
+	FormatEx(off, sizeof(off), "%t", "Off");
+	FormatEx(on, sizeof(on), "%t", "On");
+	FormatEx(buffer, sizeof(buffer), "%t", "ToggleSurvivor", GetCookieBool(client, g_coBecomeSurvivor) ? on : off);
 	menu.AddItem("rf2_become_survivor", buffer);
-	
 	if (g_cvAllowHumansInBlue.BoolValue)
 	{
-		FormatEx(buffer, sizeof(buffer), "%T", "ToggleEnemy", lang, GetCookieBool(client, g_coBecomeEnemy) ? on : off);
+		FormatEx(buffer, sizeof(buffer), "%t", "ToggleEnemy", GetCookieBool(client, g_coBecomeEnemy) ? on : off);
 		menu.AddItem("rf2_become_enemy", buffer);
 		
-		FormatEx(buffer, sizeof(buffer), "%T", "ToggleTeleBoss", lang, GetCookieBool(client, g_coBecomeBoss) ? on : off);
+		FormatEx(buffer, sizeof(buffer), "%t", "ToggleTeleBoss", GetCookieBool(client, g_coBecomeBoss) ? on : off);
 		menu.AddItem("rf2_become_boss", buffer);
 	}
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "SpecOnDeath", lang, GetCookieBool(client, g_coSpecOnDeath) ? on : off);
+	FormatEx(buffer, sizeof(buffer), "%t", "SpecOnDeath", GetCookieBool(client, g_coSpecOnDeath) ? on : off);
 	menu.AddItem("rf2_spec_on_death", buffer);
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "StayInSpec", lang, GetCookieBool(client, g_coStayInSpecOnJoin) ? on : off);
+	FormatEx(buffer, sizeof(buffer), "%t", "StayInSpec", GetCookieBool(client, g_coStayInSpecOnJoin) ? on : off);
 	menu.AddItem("rf2_stay_in_spec", buffer);
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "ToggleMusic", lang, GetCookieBool(client, g_coMusicEnabled) ? on : off);
+	FormatEx(buffer, sizeof(buffer), "%t", "ToggleMusic", GetCookieBool(client, g_coMusicEnabled) ? on : off);
 	menu.AddItem("rf2_music_enabled", buffer);
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "ToggleItemMsg", lang, !GetCookieBool(client, g_coDisableItemMessages) ? on : off);
+	FormatEx(buffer, sizeof(buffer), "%t", "ToggleItemMsg", !GetCookieBool(client, g_coDisableItemMessages) ? on : off);
 	menu.AddItem("rf2_disable_item_msg", buffer);
 	
-	FormatEx(buffer, sizeof(buffer), "%T", "ToggleItemHats", lang, GetCookieBool(client, g_coDisableItemCosmetics) ? on : off);
+	FormatEx(buffer, sizeof(buffer), "%t", "ToggleItemHats", GetCookieBool(client, g_coDisableItemCosmetics) ? on : off);
 	menu.AddItem("rf2_disable_item_cosmetics", buffer);
+	
+	FormatEx(buffer, sizeof(buffer), "%t", "ToggleItemCountDisplay", GetCookieBool(client, g_coAlwaysShowItemCounts) ? on : off);
+	menu.AddItem("rf2_always_show_item_counts", buffer);
 	
 	menu.Display(client, MENU_TIME_FOREVER);
 }
@@ -1564,22 +1562,21 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 	Menu menu = new Menu(Menu_Items);
 	char buffer[128], info[16], itemName[MAX_NAME_LENGTH];
 	int itemCount;
-	int lang = GetClientLanguage(client);
-	
+	SetGlobalTransTarget(client);
 	if (IsItemSharingEnabled() && target != inspectTarget)
 	{
 		int index = RF2_GetSurvivorIndex(target);
-		menu.SetTitle("%T", "YourItemsShareEnabled", lang, g_iItemsTaken[index], g_iItemLimit[index]);
+		menu.SetTitle("%t", "YourItemsShareEnabled", g_iItemsTaken[index], g_iItemLimit[index]);
 	}
 	else
 	{
 		if (client == target)
 		{
-			menu.SetTitle("%T", "YourItems", lang);
+			menu.SetTitle("%t", "YourItems");
 		}
 		else
 		{
-			menu.SetTitle("%T", "InspectTargetItems", lang, target);
+			menu.SetTitle("%t", "InspectTargetItems", target);
 		}
 	}
 	
@@ -1614,7 +1611,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 	if (itemCount == 0)
 	{
 		char noItems[64];
-		FormatEx(noItems, sizeof(noItems), "%t", "NoItems", lang);
+		FormatEx(noItems, sizeof(noItems), "%t", "NoItems");
 		menu.AddItem("no_items", noItems, flags);
 	}
 	
@@ -1715,8 +1712,7 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 			int item = StringToInt(itemIndex); 
 			if (StringToInt(info) == 0) // 0 means we don't care
 			{
-				RF2_Item itemEnt = DropItem(param1, item, pos);
-				itemEnt.Owner = INVALID_ENT;
+				DropItem(param1, item, pos);
 			}
 			else
 			{

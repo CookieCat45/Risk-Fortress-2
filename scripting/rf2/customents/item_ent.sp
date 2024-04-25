@@ -506,7 +506,8 @@ bool PickupItem(int client)
 		if (!GetCookieBool(client, g_coTutorialItemPickup))
 		{
 			PrintKeyHintText(client, "%t", "ItemPickupTutorial2");
-			SetCookieBool(client, g_coTutorialItemPickup, true);
+			CreateTimer(13.0, Timer_ItemPickupTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+			
 		}
 		
 		g_bItemPickupCooldown[client] = true;
@@ -515,6 +516,15 @@ bool PickupItem(int client)
 	}
 	
 	return false;
+}
+
+public Action Timer_ItemPickupTutorial(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return Plugin_Continue;
+
+	SetCookieBool(client, g_coTutorialItemPickup, true);
+	return Plugin_Continue;
 }
 
 RF2_Item GetItemInPickupRange(int client)

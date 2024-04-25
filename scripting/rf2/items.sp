@@ -2376,8 +2376,10 @@ void ShowItemDesc(int client, int item)
 	GetQualityName(quality, qualityName, sizeof(qualityName));
 	char fullString[512], partialString[200];
 	int chars = FormatEx(fullString, sizeof(fullString), "%s (%s)\n%s", g_szItemName[item], qualityName, g_szItemDesc[item]);
+	bool split;
 	if (chars >= 248)
 	{
+		split = true;
 		strcopy(partialString, sizeof(partialString), fullString);
 		ReplaceStringEx(fullString, sizeof(fullString), partialString, "-");
 		PrintKeyHintText(client, "%s-", partialString);
@@ -2399,7 +2401,7 @@ void ShowItemDesc(int client, int item)
 		delete g_hPlayerItemDescTimer[client];
 	}
 	
-	g_hPlayerItemDescTimer[client] = CreateTimer(16.0, Timer_PlayerViewingItemDesc, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	g_hPlayerItemDescTimer[client] = CreateTimer(split ? 17.0 : 13.0, Timer_PlayerViewingItemDesc, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Action Timer_SecondDesc(Handle timer, DataPack pack)

@@ -331,7 +331,10 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		this.Effects = EF_ITEM_BLINK;
 		this.TextSize = 6.0;
 		this.SetWorldText("Call for Medic to go to the next stage!");
-		RemoveEntity2(this.Bubble.index);
+		
+		if (IsValidEntity2(this.Bubble.index))
+			RemoveEntity2(this.Bubble.index);
+		
 		EmitSoundToAll(SND_TELEPORTER_CHARGED);
 		StopMusicTrackAll();
 		RF2_Object_Teleporter.EventCompletion();
@@ -428,7 +431,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			PrintHintText(i, "%t", "GotItemReward", name);
 			if (wasSharingEnabled && !IsItemSharingEnabled())
 			{
-				PrintKeyHintText(i, "%t", "ItemSharingDisabled");
+				PrintCenterText(i, "%t", "ItemSharingDisabled");
 			}
 			
 			if (PlayerHasItem(i, Item_CheatersLament_Recharging) && !g_bPlayerReviveActivated[i])

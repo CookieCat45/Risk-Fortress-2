@@ -141,7 +141,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 		TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1, 9)));
 	}
 	
-	ResetAFKTime(client, false);
+	ResetAFKTime(client);
 	SetVariantString("");
 	AcceptEntityInput(client, "SetCustomModel"); // In case this was from the command or otherwise, clear our custom model
 	TFClassType class = TF2_GetPlayerClass(client);
@@ -332,6 +332,16 @@ public Action Timer_SurvivorTutorial2(Handle timer, int client)
 		return Plugin_Continue;
 	
 	PrintKeyHintText(client, "%t", "SurvivorTutorial2");
+	CreateTimer(13.0, Timer_SurvivorTutorial3, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	
+	return Plugin_Continue;
+}
+
+public Action Timer_SurvivorTutorial3(Handle timer, int client)
+{
+	if ((client = GetClientOfUserId(client)) == 0)
+		return Plugin_Continue;
+	
 	SetClientCookie(client, g_coTutorialSurvivor, "1");
 	return Plugin_Continue;
 }
@@ -814,7 +824,8 @@ bool IsItemSharingEnabled()
 	if (!g_cvItemShareEnabled.BoolValue)
 		return false;
 	
-	if (g_iLoopCount >= g_cvItemShareDisableLoopCount.IntValue && g_cvItemShareEnabled.IntValue == 1)
+	int loopCount = g_cvItemShareDisableLoopCount.IntValue;
+	if (loopCount > 0 && g_iLoopCount >= loopCount && g_cvItemShareEnabled.IntValue == 1)
 		return false;
 	
 	if (g_cvItemShareDisableThreshold.FloatValue > 0.0 && !IsSingleplayer(false))
@@ -828,8 +839,8 @@ bool IsItemSharingEnabled()
 		}
 	}
 	
-	if (IsStageCleared() && g_cvItemShareEnabled.IntValue == 1)
-		return false;
+	//if (IsStageCleared() && g_cvItemShareEnabled.IntValue == 1)
+	//	return false;
 	
 	// count bots for debugging purposes
 	if (GetPlayersOnTeam(TEAM_SURVIVOR, true, false) <= 1)
@@ -843,7 +854,7 @@ bool DoesPlayerHaveEnoughItems(int client)
 	// don't bother with AFK players
 	if (IsPlayerAFK(client))
 		return true;
-
+	
 	int index = RF2_GetSurvivorIndex(client);
 	float itemPct = float(g_iItemsTaken[index]) / float(g_iItemLimit[index]);
 	return itemPct >= g_cvItemShareDisableThreshold.FloatValue;

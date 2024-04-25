@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.11.1b"
+#define PLUGIN_VERSION "0.11.2b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -342,6 +342,7 @@ Cookie g_coDisableItemMessages;
 Cookie g_coDisableItemCosmetics;
 Cookie g_coEarnedAllAchievements;
 Cookie g_coPingObjectsHint;
+Cookie g_coAlwaysShowItemCounts;
 
 // TFBots
 TFBot g_TFBot[MAXTF2PLAYERS];
@@ -444,14 +445,6 @@ public void OnPluginEnd()
 	
 	for (int i = 0; i < MAXTF2PLAYERS; i++)
 	{
-		/*
-		if (TFBot(i).Follower)
-		{
-			TFBot(i).Follower.Destroy();
-			TFBot(i).Follower = view_as<PathFollower>(0);
-		}
-		*/
-		
 		if (RF2_IsEnabled() && IsValidClient(i))
 		{
 			SetClientName(i, g_szPlayerOriginalName[i]);
@@ -791,8 +784,10 @@ public void OnMapStart()
 			g_cvPluginVersion.GetString(version, sizeof(version));
 			if (!strcmp2(version, PLUGIN_VERSION))
 			{
-				// version changed, ask to delete old cfg file
-				LogMessage("The plugin version has changed. You can use the rf2_delete_config command to automatically generate a new config file if there are new convars.");
+				DeleteFile("cfg/sourcemod/RiskFortress2-OLD.cfg");
+				RenameFile("cfg/sourcemod/RiskFortress2.cfg", "cfg/sourcemod/RiskFortress2-OLD.cfg");
+				AutoExecConfig(true, "RiskFortress2");
+				LogMessage("The plugin version has changed (%s -> %s). The old config file has been backed up and a new one created.", version, PLUGIN_VERSION);
 			}
 		}
 		
@@ -896,11 +891,6 @@ public void OnConfigsExecuted()
 {
 	if (RF2_IsEnabled() && !g_bPluginReloading)
 	{
-		if (!FindConVar("sm_tf2_maxspeed") && !FindConVar("tf_maxspeed_limit"))
-		{
-			LogMessage("TF2 Move Speed Unlocker plugin not found. It is not required, but is recommended to install.");
-		}
-		
 		// Here are ConVars that we don't want changed by configs
 		FindConVar("sv_quota_stringcmdspersecond").SetInt(5000); // So Engie bots don't get kicked
 		FindConVar("mp_teams_unbalance_limit").SetInt(0);
@@ -1383,7 +1373,7 @@ public void OnClientDisconnect_Post(int client)
 	g_hPlayerItemDescTimer[client] = null;
 	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client, true);
-	ResetAFKTime(client, false);
+	ResetAFKTime(client);
 	FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
 	UpdateGameDescription();
 	UpdateBotQuota();
@@ -3234,7 +3224,7 @@ public Action Timer_PlayerTimer(Handle timer)
 			continue;
 		}
 		
-		if (stageCleared && itemShare && IsPlayerSurvivor(i))
+		if (itemShare && IsPlayerSurvivor(i))
 		{
 			if (!DoesPlayerHaveEnoughItems(i))
 			{
@@ -3261,8 +3251,12 @@ public Action Timer_PlayerTimer(Handle timer)
 			if (RF2_Object_Base(target).IsValid())
 			{
 				static char classname[128];
-				GetEntityClassname(weapon, classname, sizeof(classname));
-				if (StrContains(classname, "tf_weapon_sniperrifle") == -1)
+				if (weapon != INVALID_ENT)
+				{
+					GetEntityClassname(weapon, classname, sizeof(classname));
+				}
+				
+				if (weapon == INVALID_ENT || StrContains(classname, "tf_weapon_sniperrifle") == -1)
 				{
 					PrintHintText(i, "%t", "PingObjectsHint");
 					timeSincePingHint[i] = GetTickedTime();
@@ -3398,13 +3392,22 @@ public Action Timer_PlayerTimer(Handle timer)
 		}
 	}
 	
-	if (missingItems)
+	if (!IsSingleplayer(false))
 	{
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!g_bPlayerViewingItemDesc[i] && IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_ENEMY)
+			if (!g_bPlayerViewingItemDesc[i] && IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_ENEMY 
+				&& (stageCleared || (GetCookieBool(i, g_coTutorialSurvivor) && GetCookieBool(i, g_coTutorialItemPickup)))
+				&& (stageCleared || GetCookieBool(i, g_coAlwaysShowItemCounts)))
 			{
-				PrintKeyHintText(i, "Players who are lacking items:\n%s", names);
+				if (missingItems)
+				{
+					PrintKeyHintText(i, "Players who are lacking items:\n%s", names);
+				}
+				else
+				{
+					PrintKeyHintText(i, "%t", "ItemSharingDisabled");
+				}
 			}
 		}
 	}

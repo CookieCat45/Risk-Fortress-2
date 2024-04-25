@@ -1332,15 +1332,10 @@ bool IsPlayerAFK(int client)
 	return g_bPlayerIsAFK[client];
 }
 
-void ResetAFKTime(int client, bool message=true)
+void ResetAFKTime(int client)
 {
 	if (IsClientInGame(client) && IsPlayerAFK(client))
 	{
-		if (message && g_cvEnableAFKManager.BoolValue)
-		{
-			PrintCenterText(client, "%t", "NoLongerAFK");
-		}
-		
 		if (g_bWaitingForPlayers && !GetCookieBool(client, g_coStayInSpecOnJoin))
 		{
 			ChangeClientTeam(client, GetRandomInt(TEAM_SURVIVOR, TEAM_ENEMY));
@@ -1358,6 +1353,11 @@ void OnPlayerEnterAFK(int client)
 	{
 		ChangeClientTeam(client, 1);
 	}
+}
+
+bool ArePlayersConnecting()
+{
+	return GetTotalHumans(false) > GetTotalHumans(true);
 }
 
 bool IsValidClient(int client)

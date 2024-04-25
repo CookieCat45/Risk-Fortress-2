@@ -26,6 +26,7 @@ void BakeCookies()
 	g_coDisableItemCosmetics = RegClientCookie("rf2_disable_item_cosmetics", "Disable items being attached to player as cosmetics.", CookieAccess_Protected);
 	g_coEarnedAllAchievements = RegClientCookie("rf2_all_achievements", "All Achievements Earned", CookieAccess_Protected);
 	g_coPingObjectsHint = RegClientCookie("rf2_ping_objects_hint", "Ping objects hint", CookieAccess_Public);
+	g_coAlwaysShowItemCounts = RegClientCookie("rf2_always_show_item_counts", "Always show player item counts", CookieAccess_Protected);
 	
 	char name[64];
 	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
@@ -108,6 +109,13 @@ public void OnClientCookiesCached(int client)
 	if (!buffer[0])
 	{
 		SetCookieBool(client, g_coDisableItemCosmetics, false);
+	}
+	
+	// Item Count Display Preference
+	GetClientCookie(client, g_coAlwaysShowItemCounts, buffer, sizeof(buffer));
+	if (!buffer[0])
+	{
+		SetCookieBool(client, g_coAlwaysShowItemCounts, true);
 	}
 	
 	// Survivor Points

@@ -191,7 +191,7 @@ static int SpawnTanks()
 
 public Action Timer_CreateTankBoss(Handle timer, bool badass)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive || !g_bTankBossMode)
+	if (!g_bRoundActive || !g_bTankBossMode)
 		return Plugin_Continue;
 		
 	CreateTankBoss(badass);
@@ -343,7 +343,6 @@ public void Output_OnTankKilled(const char[] output, int caller, int activator, 
 	float totalCash = TANK_BASE_CASH_DROP * (1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvEnemyCashDropScale.FloatValue));
 	float pos[3], ang[3], vel[3];
 	GetEntPos(caller, pos);
-	
 	for (int i = 1; i <= 10; i++)
 	{
 		ang[0] = GetRandomFloat(-60.0, -90.0);
@@ -356,23 +355,11 @@ public void Output_OnTankKilled(const char[] output, int caller, int activator, 
 	
 	if (IsStageCleared())
 		return;
-
-	bool wasSharingEnabled = IsItemSharingEnabled();
+	
 	g_iTanksKilledObjective++;
 	g_iTotalTanksKilled++;
 	if (g_iTanksKilledObjective >= g_iTankKillRequirement)
 	{
-		if (wasSharingEnabled && !IsItemSharingEnabled())
-		{
-			for (int i = 1; i <= MaxClients; i++)
-			{
-				if (IsClientInGame(i) && IsPlayerSurvivor(i))
-				{
-					PrintKeyHintText(i, "%t", "ItemSharingDisabled");
-				}
-			}
-		}
-		
 		EndTankDestructionMode();
 	}
 }

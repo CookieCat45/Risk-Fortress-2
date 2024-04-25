@@ -746,6 +746,12 @@
 		"en"		"Toggle item chat messages ({1})"
 	}
 
+	"ToggleItemCountDisplay"
+	{
+		"#format"	"{1:s}"
+		"en"		"Always show player item counts ({1})"
+	}
+
 	"ToggleItemHats"
 	{
 		"#format"	"{1:s}"
