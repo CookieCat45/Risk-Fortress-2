@@ -116,7 +116,7 @@ void LoadCommandsAndCvars()
 	g_cvTimeBeforeRestart = CreateConVar("rf2_time_before_restart", "18000", "Time in seconds before the server will restart after a run ends, to clear server memory. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvHiddenServerStartTime = CreateConVar("rf2_server_start_time", "0", _, FCVAR_HIDDEN);
 	g_cvWaitExtendTime = CreateConVar("rf2_wait_extend_time", "600", "If the vote to extend Waiting for Players passes, extend the wait time to this in seconds. 0 to disable extending.", FCVAR_NOTIFY, true, 0.0);
-	g_cvPluginVersion = CreateConVar("rf2_plugin_version", PLUGIN_VERSION, "Plugin version. Don't touch this please.", FCVAR_NOTIFY);
+	CreateConVar("rf2_plugin_version", PLUGIN_VERSION, "Plugin version. Don't touch this please.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	
 	// Debug
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");

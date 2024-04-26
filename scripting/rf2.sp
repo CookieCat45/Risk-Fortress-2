@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.11.2b"
+#define PLUGIN_VERSION "0.11.3b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -323,7 +323,6 @@ ConVar g_cvDebugDontEndGame;
 ConVar g_cvDebugShowObjectSpawns;
 ConVar g_cvDebugUseAltMapSettings;
 ConVar g_cvDebugDisableEnemySpawning;
-ConVar g_cvPluginVersion;
 
 // Cookies
 Cookie g_coMusicEnabled;
@@ -779,16 +778,7 @@ public void OnMapStart()
 		LoadAssets();
 		if (!g_bLateLoad)
 		{
-			AutoExecConfig(true, "RiskFortress2");
-			char version[64];
-			g_cvPluginVersion.GetString(version, sizeof(version));
-			if (!strcmp2(version, PLUGIN_VERSION))
-			{
-				DeleteFile("cfg/sourcemod/RiskFortress2-OLD.cfg");
-				RenameFile("cfg/sourcemod/RiskFortress2.cfg", "cfg/sourcemod/RiskFortress2-OLD.cfg");
-				AutoExecConfig(true, "RiskFortress2");
-				LogMessage("The plugin version has changed (%s -> %s). The old config file has been backed up and a new one created.", version, PLUGIN_VERSION);
-			}
+			//AutoExecConfig(true, "RiskFortress2");
 		}
 		
 		ConVar maxSpeed = FindConVar("sm_tf2_maxspeed");
