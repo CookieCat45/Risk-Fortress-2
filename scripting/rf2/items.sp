@@ -1011,7 +1011,7 @@ bool RandChanceFloatEx(int client, float min, float max, float goal, float &resu
 	return success;
 }
 
-void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, CritType critType=CritType_None)
+void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, CritType critType=CritType_None, int assister=INVALID_ENT)
 {
 	if (damageType & DMG_MELEE)
 	{
@@ -1128,16 +1128,26 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 	
 	if (GetClientTeam(victim) == TEAM_ENEMY)
 	{
-		if (PlayerHasItem(attacker, Item_PillarOfHats) && g_iMetalItemsDropped < CalcItemModInt(attacker, Item_PillarOfHats, 4))
+		int pillarOfHatsOwner = INVALID_ENT;
+		if (PlayerHasItem(attacker, Item_PillarOfHats))
 		{
-			float scrapChance = CalcItemMod(attacker, Item_PillarOfHats, 0);
-			float recChance = CalcItemMod(attacker, Item_PillarOfHats, 1);
-			float refChance = CalcItemMod(attacker, Item_PillarOfHats, 2);
+			pillarOfHatsOwner = attacker;
+		}
+		else if (IsValidClient(assister) && PlayerHasItem(assister, Item_PillarOfHats))
+		{
+			pillarOfHatsOwner = assister;
+		}
+
+		if (IsValidClient(pillarOfHatsOwner) && g_iMetalItemsDropped < CalcItemModInt(pillarOfHatsOwner, Item_PillarOfHats, 4))
+		{
+			float scrapChance = CalcItemMod(pillarOfHatsOwner, Item_PillarOfHats, 0);
+			float recChance = CalcItemMod(pillarOfHatsOwner, Item_PillarOfHats, 1);
+			float refChance = CalcItemMod(pillarOfHatsOwner, Item_PillarOfHats, 2);
 			float totalChance = scrapChance + recChance + refChance;
 			totalChance = fmin(totalChance, 1.0);
 			float result;
 			
-			if (RandChanceFloatEx(attacker, 0.0, 1.0, totalChance, result))
+			if (RandChanceFloatEx(pillarOfHatsOwner, 0.0, 1.0, totalChance, result))
 			{
 				int item;
 				if (result <= refChance)
@@ -1156,7 +1166,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 				float pos[3];
 				GetEntPos(victim, pos);
 				pos[2] += 30.0;
-				SpawnItem(item, pos, attacker, 6.0);
+				SpawnItem(item, pos, pillarOfHatsOwner, 6.0);
 				g_iMetalItemsDropped++;
 			}
 		}

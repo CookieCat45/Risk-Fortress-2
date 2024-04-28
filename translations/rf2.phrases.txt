@@ -20,12 +20,6 @@
 	{
 		"en"		"Grace period has ended. Death on RED will now result in elimination."
 	}
-	
-	"HauntedKeyDrop" // No color tags
-	{
-		"#format"	"{1:N}"
-		"en"		"{1} dropped a Gargoyle Key!"
-	}
 
 	"NoChangeClass"
 	{
@@ -52,19 +46,9 @@
 		"en"		"You can't build a Teleporter entrance. You only need to build an exit!"
 	}
 	
-	"ItemSharingDisabled" // No color tags
-	{
-		"en"		"Item Sharing has been disabled, feel free to loot the map"
-	}
-	
 	"PingObjectsHint"
 	{
 		"en"		"Middle Mouse Button/ATTACK3: Ping Objects"
-	}
-	
-	"ReviveItemCharged"
-	{
-		"en"		"Your {unusual}Cheater's Lament{default} has {yellow}recharged."
 	}
 	
 	"AdminReservePenalty"
@@ -109,6 +93,11 @@
 		"en"		"You've reached your item share limit of {1}.\nLet others have some, too!"
 	}
 	
+	"ItemSharingDisabled" // No color tags
+	{
+		"en"		"Item Sharing has been disabled, feel free to loot the map"
+	}
+	
 	"YourItemsShareEnabled" // No color tags
 	{
 		"#format"	"{1:d},{2:d}"
@@ -148,6 +137,17 @@
 		"en"		"That item is not for you!"
 	}
 	
+	"ReviveItemCharged"
+	{
+		"en"		"Your {unusual}Cheater's Lament{default} has {yellow}recharged."
+	}
+	
+	"HauntedKeyDrop" // No color tags
+	{
+		"#format"	"{1:N}"
+		"en"		"{1} dropped a Gargoyle Key!"
+	}
+	
 	"ExtraSentryHint" // No color tags
 	{
 		"en"		"Press ATTACK3 (Middle Mouse Button) to destroy your disposable Sentry Guns."
@@ -162,6 +162,11 @@
 	{
 		"#format" 	"{1:s}"
 		"en"		"You were rewarded with one {1}."
+	}
+	
+	"StartPickingShitUpAlreadyDumbass"
+	{
+		"en"		"You need to start picking up items! Other players are waiting on you.\nYou can open crates by attacking them with your melee weapon.\nCall for Medic to pick up the items they drop."
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

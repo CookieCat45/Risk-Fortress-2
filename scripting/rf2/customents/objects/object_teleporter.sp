@@ -440,6 +440,8 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 				GiveItem(i, Item_CheatersLament_Recharging, -1);
 				RF2_PrintToChat(i, "%t", "ReviveItemCharged");
 			}
+			
+			g_flPlayerTimeSinceLastItemPickup[i] = GetTickedTime(); // so players aren't instantly penalized for not picking up items
 		}
 		
 		int boss = MaxClients+1;

@@ -113,7 +113,6 @@ bool g_bPlayerExtraSentryHint[MAXTF2PLAYERS];
 bool g_bPlayerInSpawnQueue[MAXTF2PLAYERS];
 bool g_bPlayerHasVampireSapper[MAXTF2PLAYERS];
 bool g_bEquipmentCooldownActive[MAXTF2PLAYERS];
-bool g_bItemPickupCooldown[MAXTF2PLAYERS];
 bool g_bPlayerLawCooldown[MAXTF2PLAYERS];
 bool g_bPlayerTookCollectorItem[MAXTF2PLAYERS];
 bool g_bPlayerSpawnedByTeleporter[MAXTF2PLAYERS];
@@ -151,6 +150,7 @@ float g_flPlayerKnifeStunCooldown[MAXTF2PLAYERS];
 float g_flPlayerRifleHeadshotBonusTime[MAXTF2PLAYERS];
 float g_flPlayerGravityJumpBonusTime[MAXTF2PLAYERS];
 float g_flPlayerTimeSinceLastPing[MAXTF2PLAYERS];
+float g_flPlayerTimeSinceLastItemPickup[MAXTF2PLAYERS];
 
 int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
@@ -1895,6 +1895,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int weaponId = event.GetInt("weaponid");
 	int damageType = event.GetInt("damagebits");
 	//int customkill = event.GetInt("customkill");
+	int assister = GetClientOfUserId(event.GetInt("assister"));
 	CritType critType = view_as<CritType>(event.GetInt("crit_type"));
 	
 	// No dominations
@@ -1905,7 +1906,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int itemProc = g_iEntLastHitItemProc[victim];
 	if (attacker > 0)
 	{
-		DoItemKillEffects(attacker, victim, damageType, critType);
+		DoItemKillEffects(attacker, victim, damageType, critType, assister);
 		switch (itemProc)
 		{
 			case ItemDemo_ConjurersCowl, ItemMedic_WeatherMaster: event.SetString("weapon", "spellbook_lightning");
@@ -3209,7 +3210,7 @@ public Action Timer_PlayerTimer(Handle timer)
 			continue;
 		}
 		
-		if (itemShare && IsPlayerSurvivor(i))
+		if (itemShare && IsPlayerSurvivor(i, false))
 		{
 			if (!DoesPlayerHaveEnoughItems(i))
 			{
@@ -3470,7 +3471,7 @@ public Action Timer_AFKManager(Handle timer)
 		}
 	}
 	
-	float time = g_bWaitingForPlayers ? afkKickTime * 0.35 : afkKickTime * 0.5;
+	float time = afkKickTime * 0.5;
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || IsFakeClient(i))

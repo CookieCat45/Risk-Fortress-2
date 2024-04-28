@@ -406,7 +406,7 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, f
 
 bool PickupItem(int client)
 {
-	if (g_bItemPickupCooldown[client])
+	if (g_flPlayerTimeSinceLastItemPickup[client]+0.2 > GetTickedTime())
 		return false;
 	
 	RF2_Item item = GetItemInPickupRange(client);
@@ -510,8 +510,7 @@ bool PickupItem(int client)
 			
 		}
 		
-		g_bItemPickupCooldown[client] = true;
-		CreateTimer(0.2, Timer_ItemPickupCooldown, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		g_flPlayerTimeSinceLastItemPickup[client] = GetTickedTime();
 		return true;
 	}
 	
@@ -556,15 +555,6 @@ RF2_Item GetItemInPickupRange(int client)
 	}
 	
 	return RF2_Item(INVALID_ENT);
-}
-
-public Action Timer_ItemPickupCooldown(Handle timer, int client)
-{
-	if ((client = GetClientOfUserId(client)) == 0)
-		return Plugin_Continue;
-
-	g_bItemPickupCooldown[client] = false;
-	return Plugin_Continue;
 }
 
 public Action Timer_ClearItemOwner(Handle timer, int entity)

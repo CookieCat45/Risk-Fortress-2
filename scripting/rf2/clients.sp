@@ -38,11 +38,11 @@ void RefreshClient(int client, bool force=false)
 	g_flPlayerRegenBuffTime[client] = 0.0;
 	g_flPlayerRifleHeadshotBonusTime[client] = 0.0;
 	g_flPlayerGravityJumpBonusTime[client] = 0.0;
+	g_flPlayerTimeSinceLastItemPickup[client] = 0.0;
 	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
 	g_bEquipmentCooldownActive[client] = false;
-	g_bItemPickupCooldown[client] = false;
 	g_bPlayerLawCooldown[client] = false;
 	g_bPlayerTookCollectorItem[client] = false;
 	g_bExecutionerBleedCooldown[client] = false;
@@ -1354,10 +1354,6 @@ void ResetAFKTime(int client)
 void OnPlayerEnterAFK(int client)
 {
 	SetClientName(client, g_szPlayerOriginalName[client]);
-	if (g_bWaitingForPlayers)
-	{
-		ChangeClientTeam(client, 1);
-	}
 }
 
 bool ArePlayersConnecting()

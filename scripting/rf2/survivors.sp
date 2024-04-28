@@ -490,7 +490,7 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	RF2_Object_Crate crate;
 	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
-		if (entity > 0 && entity <= MaxClients && IsPlayerSurvivor(entity))
+		if (entity > 0 && entity <= MaxClients && IsPlayerSurvivor(entity, false))
 			survivorCount++;
 		
 		if (!recalculate)
@@ -522,7 +522,7 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && IsPlayerSurvivor(i))
+		if (IsClientInGame(i) && IsPlayerSurvivor(i, false))
 		{
 			g_iItemLimit[RF2_GetSurvivorIndex(i)] += GetPlayerCrateBonus(i);
 		}
@@ -588,9 +588,9 @@ void PlayerLevelUp(int client)
 	RF2_PrintToChat(client, "%t", "YouLevelUp", oldLevel, g_iPlayerLevel[client]);
 }
 
-bool IsPlayerSurvivor(int client)
+bool IsPlayerSurvivor(int client, bool aliveOnly=true)
 {
-	return RF2_GetSurvivorIndex(client) >= 0 && IsPlayerAlive(client) && GetClientTeam(client) == TEAM_SURVIVOR;
+	return RF2_GetSurvivorIndex(client) >= 0 && (!aliveOnly || IsPlayerAlive(client)) && GetClientTeam(client) == TEAM_SURVIVOR;
 }
 
 bool IsSingleplayer(bool fullCheck=true)
@@ -859,17 +859,36 @@ bool IsItemSharingEnabled(bool liveCheck=true)
 
 bool DoesPlayerHaveEnoughItems(int client)
 {
+	if (g_iItemsTaken[RF2_GetSurvivorIndex(client)] >= GetPlayerRequiredItems(client))
+		return true;
+	
 	// don't bother with AFK players
 	if (IsPlayerAFK(client))
 		return true;
 	
-	// players who don't have enough money to purchase a small crate at the end of the stage also don't count
-	if (IsStageCleared() && GetPlayerCash(client) < g_cvObjectBaseCost.FloatValue * g_flCurrentCostMult)
+	if (IsStageCleared())
 	{
-		return true;
+		// don't count players who have been taking too long to pick up any items
+		if (GetTickedTime() > g_flPlayerTimeSinceLastItemPickup[client]+50.0)
+		{
+			if (GetTickedTime() > g_flPlayerTimeSinceLastItemPickup[client]+70.0)
+			{
+				// If they're really taking their time, notify them to pick up the pace
+				PrintCenterText(client, "%t", "StartPickingShitUpAlreadyDumbass");
+			}
+
+			return true;
+		}
+		
+		// players who don't have enough money to purchase a small crate at the end of the stage also don't count
+		if (GetPlayerCash(client) < g_cvObjectBaseCost.FloatValue * g_flCurrentCostMult)
+		{
+			return true;
+		}
+		
 	}
 	
-	return g_iItemsTaken[RF2_GetSurvivorIndex(client)] >= GetPlayerRequiredItems(client);
+	return false;
 }
 
 int GetPlayerRequiredItems(int client)
