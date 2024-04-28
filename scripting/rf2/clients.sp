@@ -542,6 +542,11 @@ void CalculatePlayerMiscStats(int client)
 		
 		TF2Attrib_SetByDefIndex(client, 252, kbRes); // "damage force reduction"
 	}
+	
+	if (IsPlayerSurvivor(client))
+	{
+		SetClassAttributes(client);
+	}
 }
 
 void UpdatePlayerGravity(int client)

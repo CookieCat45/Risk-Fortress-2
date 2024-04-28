@@ -99,7 +99,7 @@ void LoadCommandsAndCvars()
 	g_cvObjectBaseCost = CreateConVar("rf2_object_base_cost", "50.0", "The base cost to use objects such as crates. Scales with the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvItemShareEnabled = CreateConVar("rf2_item_share_enabled", "1", "Whether or not to enable the item sharing system. This system is designed to prevent players from hogging items in multiplayer.\n0 = Always disabled, 1 = Disable under certain conditions only, 2 = Disable only if 1 player is on RED.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvItemShareDisableLoopCount = CreateConVar("rf2_item_share_disable_loop_count", "0", "Disable item sharing after this many loops if rf2_item_share_enabled is set to 1. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
-	g_cvItemShareDisableThreshold = CreateConVar("rf2_item_share_disable_threshold", "0.7", "If rf2_item_share_enabled is set to 1, disable after all players have filled at least this much of their item cap. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvItemShareDisableThreshold = CreateConVar("rf2_item_share_disable_threshold", "0.6", "If rf2_item_share_enabled is set to 1, disable item sharing after all players have filled at least this much of their item cap. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "6000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
 	g_cvTankHealthScale = CreateConVar("rf2_tank_health_scale", "0.1", "How much a Tank's health will scale per enemy level, in decimal percentage.");
 	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "75.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);

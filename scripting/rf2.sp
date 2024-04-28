@@ -23,7 +23,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "0.11.3b"
+#define PLUGIN_VERSION "0.11.4b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -54,6 +54,7 @@ float g_flWaitRestartTime;
 int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
 float g_flAutoReloadTime;
+float g_flCurrentCostMult;
 bool g_bChangeDetected;
 bool g_bHauntedKeyDrop[MAXTF2PLAYERS];
 bool g_bServerRestarting;
@@ -920,7 +921,7 @@ public void OnConfigsExecuted()
 		char class[32];
 		GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
 		FindConVar("tf_bot_force_class").SetString(class);
-		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxSurvivors.IntValue-reservedSlots);
+		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxSurvivors.IntValue-reservedSlots-(reservedSlots > 0 ? 3 : 0));
 		FindConVar("tf_bot_quota_mode").SetString("fill");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
@@ -1326,11 +1327,12 @@ public void OnClientDisconnect(int client)
 		if (IsPlayerSurvivor(client))
 		{
 			SaveSurvivorInventory(client, g_iPlayerInventoryIndex[client]);
-			// We need to deal with survivors who disconnect during the grace period
 			if (g_bGracePeriod)
 			{
 				ReshuffleSurvivor(client, -1);
 			}
+
+			CalculateSurvivorItemShare();
 		}
 	}
 
@@ -1509,6 +1511,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 		return Plugin_Continue;
 	}
 	
+	UpdateBotQuota();
 	if (!g_bGameInitialized)
 	{
 		CreateTimer(2.0, Timer_DifficultyVote, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -1529,8 +1532,9 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	SetVariantInt(9999);
 	AcceptEntityInput(gamerules, "SetBlueTeamRespawnWaveTime");
 	SpawnObjects();
+	g_flCurrentCostMult = RF2_Object_Base.GetCostMultiplier();
 	
-	// fix map-spawned objects having no collision
+	// fix map-spawned objects having no collision(?)
 	RF2_Object_Base obj;
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "rf2_object*")) != INVALID_ENT)
@@ -1660,7 +1664,7 @@ public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int par
 		}
 		case MenuAction_VoteCancel:
 		{
-			if (!g_bPluginReloading) // Causes an error when the plugin is reloading for some reason. I dunno why.
+			if (!g_bPluginReloading) // Causes an error when the plugin is reloading for some reason
 			{
 				g_iDifficultyLevel = GetRandomInt(DIFFICULTY_SCRAP, DIFFICULTY_STEEL);
 				char difficultyName[64];
@@ -1736,21 +1740,9 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	
 	if (g_bWaitingForPlayers)
 	{
-		/*
-		if (g_bGameInitialized)
-		{
-			int invIndex = PickInventoryIndex(client);
-			if (invIndex != -1 && g_iPlayerInventoryIndex[client] != invIndex)
-			{
-				g_iPlayerInventoryIndex[client] = invIndex;
-				LoadSurvivorInventory(client, invIndex);
-			}
-		}
-		*/
-		
 		CreateTimer(1.0, Timer_SkipWaitHint, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
-
+	
 	if (!g_bRoundActive)
 		return Plugin_Continue;
 	
@@ -1794,8 +1786,8 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 			}
 		}
 	}
-
-	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+	
+	if (TF2_GetPlayerClass(client) == TFClass_Engineer && (!IsPlayerSurvivor(client) || !g_bGracePeriod))
 	{
 		int entity = MaxClients+1;
 		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
@@ -2393,12 +2385,15 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 			CreateTimer(0.1, Timer_DispenserShieldThink, EntIndexToEntRef(shield.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
-	else if (GetClientTeam(client) == TEAM_ENEMY && type == TFObject_Teleporter)
+	else if (type == TFObject_Teleporter)
 	{
-		if (g_flTeleporterNextSpawnTime[building] < 0.0)
-			g_flTeleporterNextSpawnTime[building] = GetTickedTime()+(36.0/float(GetEntProp(building, Prop_Send, "m_iUpgradeLevel")));
+		if (GetClientTeam(client) == TEAM_ENEMY)
+		{
+			if (g_flTeleporterNextSpawnTime[building] < 0.0)
+				g_flTeleporterNextSpawnTime[building] = GetTickedTime()+(36.0/float(GetEntProp(building, Prop_Send, "m_iUpgradeLevel")));
 		
-		RequestFrame(RF_TeleporterThink, EntIndexToEntRef(building));
+			RequestFrame(RF_TeleporterThink, EntIndexToEntRef(building));
+		}
 	}
 	
 	if (!carryDeploy && GameRules_GetProp("m_bInSetup"))
@@ -3220,7 +3215,7 @@ public Action Timer_PlayerTimer(Handle timer)
 			{
 				missingItems = true;
 				index = RF2_GetSurvivorIndex(i);
-				Format(names, sizeof(names), "%s- %N (%i/%i)\n", names, i, g_iItemsTaken[index], g_iItemLimit[index]);
+				Format(names, sizeof(names), "%s- %N (%i/%i)\n", names, i, g_iItemsTaken[index], GetPlayerRequiredItems(i));
 			}
 		}
 		

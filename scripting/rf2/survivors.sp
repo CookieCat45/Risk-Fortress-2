@@ -148,41 +148,8 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	g_iPlayerSurvivorIndex[client] = index;
 	g_iPlayerBaseHealth[client] = g_iSurvivorBaseHealth[class];
 	g_flPlayerMaxSpeed[client] = g_flSurvivorMaxSpeed[class];
-	
 	TF2Attrib_RemoveAll(client);
-	if (g_szSurvivorAttributes[class][0])
-	{
-		char buffer[MAX_ATTRIBUTE_STRING_LENGTH];
-		strcopy(buffer, sizeof(buffer), g_szSurvivorAttributes[class]);
-		ReplaceString(buffer, sizeof(buffer), " ; ", " = ");
-		char attrs[32][32];
-		int count = ExplodeString(buffer, " = ", attrs, 32, 32, true);
-		
-		int attrib, totalAttribs;
-		float val;
-		for (int n = 0; n <= count+1; n+=2)
-		{
-			attrib = StringToInt(attrs[n]);
-			if (IsAttributeBlacklisted(attrib) || attrib <= 0)
-				continue;
-			
-			val = StringToFloat(attrs[n+1]);
-			
-			totalAttribs++;
-			if (totalAttribs > MAX_ATTRIBUTES)
-				break;
-				
-			TF2Attrib_SetByDefIndex(client, attrib, val);
-		}
-		
-		if (totalAttribs > MAX_ATTRIBUTES)
-		{
-			char tfClassName[16];
-			GetClassString(class, tfClassName, sizeof(tfClassName));
-			LogError("[MakeSurvivor] Survivor class %i (%s) reached attribute limit of %i", view_as<int>(class), tfClassName, MAX_ATTRIBUTES);
-		}
-	}
-	
+	SetClassAttributes(client);
 	ChangeClientTeam(client, TEAM_SURVIVOR);
 	TF2_RemoveAllWeapons(client);
 	TF2_RemoveAllWearables(client);
@@ -266,6 +233,42 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	if (!IsFakeClient(client) && !GetCookieBool(client, g_coTutorialSurvivor))
 	{
 		CreateTimer(1.0, Timer_SurvivorTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	}
+}
+
+void SetClassAttributes(int client)
+{
+	TFClassType class = TF2_GetPlayerClass(client);
+	if (g_szSurvivorAttributes[class][0])
+	{
+		char buffer[MAX_ATTRIBUTE_STRING_LENGTH];
+		strcopy(buffer, sizeof(buffer), g_szSurvivorAttributes[class]);
+		ReplaceString(buffer, sizeof(buffer), " ; ", " = ");
+		char attrs[32][32];
+		int count = ExplodeString(buffer, " = ", attrs, 32, 32, true);
+		
+		int attrib, totalAttribs;
+		float val;
+		for (int n = 0; n <= count+1; n+=2)
+		{
+			attrib = StringToInt(attrs[n]);
+			if (IsAttributeBlacklisted(attrib) || attrib <= 0)
+				continue;
+			
+			val = StringToFloat(attrs[n+1]);
+			totalAttribs++;
+			if (totalAttribs > MAX_ATTRIBUTES)
+				break;
+				
+			TF2Attrib_SetByDefIndex(client, attrib, val);
+		}
+		
+		if (totalAttribs > MAX_ATTRIBUTES)
+		{
+			char tfClassName[16];
+			GetClassString(class, tfClassName, sizeof(tfClassName));
+			LogError("[SetClassAttributes] Survivor class %i (%s) reached attribute limit of %i", view_as<int>(class), tfClassName, MAX_ATTRIBUTES);
+		}
 	}
 }
 
@@ -819,34 +822,39 @@ int GetPlayerCrateBonus(int client)
 	return 0;
 }
 
-bool IsItemSharingEnabled()
+bool IsItemSharingEnabled(bool liveCheck=true)
 {
 	if (!g_cvItemShareEnabled.BoolValue)
+		return false;
+	
+	// count bots for debugging purposes
+	if (GetPlayersOnTeam(TEAM_SURVIVOR, true, false) <= 1)
 		return false;
 	
 	int loopCount = g_cvItemShareDisableLoopCount.IntValue;
 	if (loopCount > 0 && g_iLoopCount >= loopCount && g_cvItemShareEnabled.IntValue == 1)
 		return false;
 	
-	if (g_cvItemShareDisableThreshold.FloatValue > 0.0 && !IsSingleplayer(false))
+	if (!liveCheck)
+		return true;
+
+	bool playersNeedItems;
+	if (g_cvItemShareEnabled.IntValue == 1 && g_cvItemShareDisableThreshold.FloatValue > 0.0 && !IsSingleplayer(false))
 	{
 		for (int i = 1; i <= MaxClients; i++)
 		{
 			if (IsClientInGame(i) && IsPlayerSurvivor(i) && !DoesPlayerHaveEnoughItems(i))
 			{
-				return true; // not all players have enough items yet, stay enabled
+				playersNeedItems = true;
+				break;
 			}
 		}
 	}
 	
-	//if (IsStageCleared() && g_cvItemShareEnabled.IntValue == 1)
-	//	return false;
-	
-	// count bots for debugging purposes
-	if (GetPlayersOnTeam(TEAM_SURVIVOR, true, false) <= 1)
+	if (IsStageCleared() && g_cvItemShareEnabled.IntValue == 1 && !playersNeedItems)
 		return false;
 	
-	return true;
+	return playersNeedItems;
 }
 
 bool DoesPlayerHaveEnoughItems(int client)
@@ -855,9 +863,18 @@ bool DoesPlayerHaveEnoughItems(int client)
 	if (IsPlayerAFK(client))
 		return true;
 	
-	int index = RF2_GetSurvivorIndex(client);
-	float itemPct = float(g_iItemsTaken[index]) / float(g_iItemLimit[index]);
-	return itemPct >= g_cvItemShareDisableThreshold.FloatValue;
+	// players who don't have enough money to purchase a small crate at the end of the stage also don't count
+	if (IsStageCleared() && GetPlayerCash(client) < g_cvObjectBaseCost.FloatValue * g_flCurrentCostMult)
+	{
+		return true;
+	}
+	
+	return g_iItemsTaken[RF2_GetSurvivorIndex(client)] >= GetPlayerRequiredItems(client);
+}
+
+int GetPlayerRequiredItems(int client)
+{
+	return RoundFloat(float(g_iItemLimit[RF2_GetSurvivorIndex(client)]) * g_cvItemShareDisableThreshold.FloatValue);
 }
 
 bool AreAnyPlayersLackingItems()

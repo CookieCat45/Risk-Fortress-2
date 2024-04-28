@@ -360,7 +360,7 @@ int SpawnObjects()
 		spawns++;
 	}
 	
-	if (IsItemSharingEnabled())
+	if (IsItemSharingEnabled(false))
 	{
 		CalculateSurvivorItemShare(false);	
 	}

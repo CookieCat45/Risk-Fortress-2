@@ -369,6 +369,12 @@ void TFBot_Think(TFBot bot)
 	if (known != NULL_KNOWN_ENTITY)
 	{
 		threat = known.GetEntity();
+		if (IsBuilding(threat) && TF2_GetObjectType2(threat) == TFObject_Teleporter)
+		{
+			// ignore teleporters
+			bot.GetVision().ForgetEntity(threat);
+			threat = INVALID_ENT;
+		}
 	}
 	
 	float botPos[3];
@@ -1577,7 +1583,16 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 void UpdateBotQuota()
 {
 	ConVar quota = FindConVar("tf_bot_quota");
-	quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue-GetReservedSlots())+GetTotalHumans(false), MaxClients);
+	int reservedSlots = GetReservedSlots();
+	if (!g_bRoundActive && reservedSlots > 0)
+	{
+		// If we have reserved slots, add 3 less bots while waiting so people don't get kicked for reserve slot while joining
+		quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue-reservedSlots-3)+GetTotalHumans(false), MaxClients);
+	}
+	else
+	{
+		quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue)+GetTotalHumans(false), MaxClients);
+	}
 }
 
 // -1 = let bot decide
