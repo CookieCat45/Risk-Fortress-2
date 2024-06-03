@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.11.5b"
+#define PLUGIN_VERSION "0.12b"
 #endif
 
 #include <rf2>

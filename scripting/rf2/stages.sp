@@ -302,11 +302,7 @@ bool IsInUnderworld()
 
 bool DoesUnderworldExist()
 {
-	#if defined PRERELEASE
 	return g_szUnderworldMap[0] && RF2_IsMapValid(g_szUnderworldMap);
-	#else
-	return false;
-	#endif
 }
 
 public Action Timer_PlayMusicDelay(Handle timer)
