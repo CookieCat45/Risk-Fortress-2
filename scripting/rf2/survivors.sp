@@ -156,6 +156,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	TF2_RespawnPlayer(client);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 5.0);
 	SetEntProp(client, Prop_Send, "m_bGlowEnabled", true);
+	g_flPlayerTimeSinceLastItemPickup[client] = GetTickedTime();
 	if (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == INVALID_ENT)
 	{
 		//LogError("Caught A-Pose bug on %N, attempting to fix", client);
@@ -543,6 +544,17 @@ bool IsSurvivorIndexValid(int index)
 	return false;
 }
 
+int GetFreeSurvivorIndex()
+{
+	for (int i = 0; i < MAX_SURVIVORS; i++)
+	{
+		if (!IsSurvivorIndexValid(i))
+			return i;
+	}
+
+	return -1;
+}
+
 void UpdatePlayerXP(int client, float xpAmount=0.0)
 {
 	if (IsSingleplayer(false))
@@ -753,6 +765,14 @@ void SpawnMinion(int client)
 	TF2Attrib_SetByDefIndex(client, 62, 0.25); // "dmg taken from crit reduced"
 	TF2Attrib_SetByDefIndex(client, 252, 0.25); // "damage force reduction"
 	CBaseEntity(client).AddFlag(FL_NOTARGET);
+	if (g_iLoopCount >= 1)
+	{
+		TF2_AddCondition(client, TFCond_DefenseBuffed);
+		TF2_AddCondition(client, TFCond_RuneStrength);
+		TF2_AddCondition(client, TFCond_SpeedBuffAlly);
+		TF2Attrib_SetByDefIndex(client, 326, 2.0);
+		TF2Attrib_SetByDefIndex(client, 610, 2.0);
+	}
 }
 
 int PickInventoryIndex(int client)
@@ -822,9 +842,13 @@ int GetPlayerCrateBonus(int client)
 	return 0;
 }
 
+// live check means we are checking this during gameplay, not during initialization or when round is starting etc.
 bool IsItemSharingEnabled(bool liveCheck=true)
 {
 	if (!g_cvItemShareEnabled.BoolValue)
+		return false;
+	
+	if (GetRF2GameRules().DisableItemSharing)
 		return false;
 	
 	// count bots for debugging purposes
@@ -835,9 +859,16 @@ bool IsItemSharingEnabled(bool liveCheck=true)
 	if (loopCount > 0 && g_iLoopCount >= loopCount && g_cvItemShareEnabled.IntValue == 1)
 		return false;
 	
+	if (IsInUnderworld())
+		return false;
+	
+	// anything below this will only be checked during gameplay
 	if (!liveCheck)
 		return true;
-
+	
+	if (g_bItemSharingDisabledForMap)
+		return false;
+	
 	bool playersNeedItems;
 	if (g_cvItemShareEnabled.IntValue == 1 && g_cvItemShareDisableThreshold.FloatValue > 0.0 && !IsSingleplayer(false))
 	{
@@ -859,7 +890,17 @@ bool IsItemSharingEnabled(bool liveCheck=true)
 
 bool DoesPlayerHaveEnoughItems(int client)
 {
-	if (g_iItemsTaken[RF2_GetSurvivorIndex(client)] >= GetPlayerRequiredItems(client))
+	if (GetCookieInt(client, g_coItemShareKarma) <= -2) // bad karma, don't take this player into consideration
+		return true;
+	
+	// player is taking too long to pick stuff up
+	if (!IsBossEventActive() || g_iTanksKilledObjective >= g_iTankKillRequirement)
+	{
+		if (g_flPlayerTimeSinceLastItemPickup[client]+50.0 < GetTickedTime())
+			return true;
+	}
+	
+	if (g_cvItemShareDisableThreshold.FloatValue <= 0.0 || g_iItemsTaken[RF2_GetSurvivorIndex(client)] >= GetPlayerRequiredItems(client))
 		return true;
 	
 	// don't bother with AFK players
@@ -868,24 +909,11 @@ bool DoesPlayerHaveEnoughItems(int client)
 	
 	if (IsStageCleared())
 	{
-		// don't count players who have been taking too long to pick up any items
-		if (GetTickedTime() > g_flPlayerTimeSinceLastItemPickup[client]+50.0)
-		{
-			if (GetTickedTime() > g_flPlayerTimeSinceLastItemPickup[client]+70.0)
-			{
-				// If they're really taking their time, notify them to pick up the pace
-				PrintCenterText(client, "%t", "StartPickingShitUpAlreadyDumbass");
-			}
-
-			return true;
-		}
-		
 		// players who don't have enough money to purchase a small crate at the end of the stage also don't count
 		if (GetPlayerCash(client) < g_cvObjectBaseCost.FloatValue * g_flCurrentCostMult)
 		{
 			return true;
 		}
-		
 	}
 	
 	return false;
@@ -900,7 +928,7 @@ bool AreAnyPlayersLackingItems()
 {
 	if (!IsItemSharingEnabled())
 		return false;
-
+	
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (IsClientInGame(i) && IsPlayerSurvivor(i) && !DoesPlayerHaveEnoughItems(i))

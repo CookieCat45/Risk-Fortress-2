@@ -302,8 +302,14 @@ static void OnSpawn(int entity)
 
 public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, float damageForce[3], float damagePosition[3], int damageCustom)
 {
-	if (!IsValidClient(attacker) || !IsPlayerSurvivor(attacker) || !(damageType & DMG_MELEE))
+	if (!IsValidClient(attacker) || !(damageType & DMG_MELEE))
 		return Plugin_Continue;
+	
+	if (!IsPlayerSurvivor(attacker))
+	{
+		EmitSoundToClient(attacker, SND_NOPE);
+		PrintCenterText(attacker, "Wait until the next map.");
+	}
 	
 	SetEntProp(attacker, Prop_Send, "m_iKillCountSinceLastDeploy", 1); // Remove honorbound
 	g_bMeleeMiss[attacker] = false;

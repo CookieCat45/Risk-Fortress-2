@@ -55,6 +55,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 			.DefineIntField("m_runSequence")
 			.DefineIntField("m_airSequence")
 			.DefineIntField("m_iRepathAttempts")
+			.DefineEntityField("m_hDispenser")
 		.EndDataMapDesc();
 		g_Factory.Install();
 		
@@ -67,9 +68,24 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 	public static RF2_SentryBuster Create(int target)
 	{
 		RF2_SentryBuster buster = RF2_SentryBuster(CreateEntityByName("rf2_npc_sentry_buster"));
+		buster.Dispenser = INVALID_ENT;
 		buster.Target = target;
 		float targetPos[3], pos[3], mins[3], maxs[3];
 		GetEntPos(target, targetPos);
+		if (IsBuilding(target))
+		{
+			int builder = GetEntPropEnt(target, Prop_Send, "m_hBuilder");
+			if (IsValidClient(builder))
+			{
+				ShowAnnotation(builder, _, "Sentry Buster's Target", 8.0, target);
+				int dispenser = GetBuiltObject(builder, TFObject_Dispenser);
+				if (IsValidEntity2(dispenser))
+				{
+					buster.Dispenser = dispenser;
+				}
+			}
+		}
+		
 		buster.BaseNpc.GetBodyMins(mins);
 		buster.BaseNpc.GetBodyMaxs(maxs);
 		bool success;
@@ -115,6 +131,19 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		public set (int value)
 		{
 			this.SetProp(Prop_Data, "m_iRepathAttempts", value);
+		}
+	}
+
+	property int Dispenser
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hDispenser");
+		}
+
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hDispenser", value);
 		}
 	}
 	

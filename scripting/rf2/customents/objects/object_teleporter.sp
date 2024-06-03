@@ -3,6 +3,7 @@
 
 #define MODEL_TELEPORTER "models/rf2/objects/teleporter.mdl"
 #define MODEL_TELEPORTER_RADIUS "models/rf2/objects/teleporter_radius.mdl"
+#define TELEPORTER_RADIUS 1500.0
 
 static CEntityFactory g_Factory;
 enum
@@ -119,11 +120,13 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		return strcopy(buffer, size, MODEL_TELEPORTER);
 	}
 	
-	public static void StartVote(int client, bool nextStageVote=false)
+	public static void StartVote(int client=INVALID_ENT, bool nextStageVote=false)
 	{
 		if (IsVoteInProgress())
 		{
-			RF2_PrintToChat(client, "%t", "VoteInProgress");
+			if (client > 0)
+				RF2_PrintToChat(client, "%t", "VoteInProgress");
+			
 			return;
 		}
 		
@@ -149,12 +152,20 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		Menu vote = new Menu(Menu_TeleporterVote);
 		if (nextStageVote)
 		{
-			vote.SetTitle("Depart now? (%N)", client);
+			if (client > 0)
+				vote.SetTitle("Depart now? (%N)", client);
+			else
+				vote.SetTitle("Depart now?");
+			
 			vote.VoteResultCallback = OnNextStageVoteFinish;
 		}
 		else
 		{
-			vote.SetTitle("Start the Teleporter event? (%N)", client);
+			if (client > 0)
+				vote.SetTitle("Start the Teleporter event? (%N)", client);
+			else
+				vote.SetTitle("Start the Teleporter event?");
+
 			vote.VoteResultCallback = OnTeleporterVoteFinish;
 		}
 		
@@ -289,7 +300,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			{
 				for (int i = 1; i <= MaxClients; i++)
 				{
-					if (!IsClientInGame(i) || IsFakeClient(i) || !IsPlayerSurvivor(i) && !IsPlayerMinion(i))
+					if (!IsClientInGame(i) || IsFakeClient(i) || !IsPlayerSurvivor(i, false) && !IsPlayerMinion(i))
 						continue;
 					
 					TriggerAchievement(i, ACHIEVEMENT_HALLOWEENBOSSES);
@@ -418,7 +429,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		char name[MAX_NAME_LENGTH], quality[32];
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+			if (!IsClientInGame(i) || !IsPlayerSurvivor(i, false))
 				continue;
 			
 			TriggerAchievement(i, ACHIEVEMENT_TELEPORTER);

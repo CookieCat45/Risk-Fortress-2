@@ -30,8 +30,11 @@ enum
 	ACHIEVEMENT_KILL100K = 24,
 	ACHIEVEMENT_GOOMBACHAIN = 25,
 	ACHIEVEMENT_RECYCLER = 26,
+	ACHIEVEMENT_HITMERASMUS = 27,
+	ACHIEVEMENT_GARGOYLE = 28,
+	ACHIEVEMENT_OBLITERATE = 29,
 	
-	// * * * INSERT NEW ACHIEVEMENTS DIRECTLY ABOVE THIS COMMENT ONLY! * * *
+	// * * * INSERT NEW ACHIEVEMENTS DIRECTLY ABOVE THIS COMMENT ONLY! DO NOT REMOVE ANY ACHIEVEMENTS FROM THE ENUM! * * *
 	MAX_ACHIEVEMENTS,
 }
 
@@ -151,6 +154,11 @@ bool IsAchievementHidden(int achievement)
 		return !IsGoombaAvailable();
 	}
 	
+	if (achievement == ACHIEVEMENT_HITMERASMUS || achievement == ACHIEVEMENT_GARGOYLE || achievement == ACHIEVEMENT_OBLITERATE)
+	{
+		return !DoesUnderworldExist();
+	}
+	
 	return achievement == ACHIEVEMENT_DANCE || achievement == ACHIEVEMENT_BADMAGIC || achievement == ACHIEVEMENT_AIRJUMPS;
 }
 
@@ -210,6 +218,9 @@ int GetAchievementInternalName(int achievement, char[] buffer, int size)
 		case ACHIEVEMENT_KILL100K: return strcopy(buffer, size, "ACHIEVEMENT_KILL100K");
 		case ACHIEVEMENT_GOOMBACHAIN: return strcopy(buffer, size, "ACHIEVEMENT_GOOMBACHAIN");
 		case ACHIEVEMENT_RECYCLER: return strcopy(buffer, size, "ACHIEVEMENT_RECYCLER");
+		case ACHIEVEMENT_HITMERASMUS: return strcopy(buffer, size, "ACHIEVEMENT_HITMERASMUS");
+		case ACHIEVEMENT_GARGOYLE: return strcopy(buffer, size, "ACHIEVEMENT_GARGOYLE");
+		case ACHIEVEMENT_OBLITERATE: return strcopy(buffer, size, "ACHIEVEMENT_OBLITERATE");
 	}
 	
 	if (!buffer[0])

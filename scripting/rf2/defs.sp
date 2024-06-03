@@ -1,269 +1,32 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-// General -------------------------------------------------------------------------------------------------------------------------------------
 #define MAXTF2PLAYERS 36
 #define MAX_EDICTS 2048
-#define MAX_COOKIE_LENGTH 100
-#define MAX_MAP_SIZE 32768.0
-#define MAX_DAMAGE 32767.0 // Maximum possible single-instance damage in TF2
-#define WAIT_TIME_DEFAULT 120 // Waiting For Players time
-#define TF_CLASSES 9+1 // because arrays
-#define DMG_MELEE DMG_BLAST_SURFACE
-#define WORLD_CENTER "rf2_world_center" // An info_target used to determine where the "center" of the world is, according to the map designer
-#define INVALID_ENT INVALID_ENT_REFERENCE
-#define MAX_PATH_FOLLOWERS 60
-#define MAX_INVENTORIES 64
-#define PING_COOLDOWN 1.2
-
-// Configs -------------------------------------------------------------------------------------------------------------------------------------
-#define ConfigPath "configs/rf2"
-#define ItemConfig "items.cfg"
-#define SurvivorConfig "survivors.cfg"
-#define WeaponConfig "weapons.cfg"
-#define MapConfig "maps.cfg"
-
-
-// Models/Sprites -------------------------------------------------------------------------------------------------------------------------------------
-#define MODEL_ERROR "models/error.mdl"
-#define MODEL_INVISIBLE "models/empty.mdl"
-#define MODEL_CASH_BOMB "models/props_c17/cashregister01a.mdl"
-#define MODEL_MERASMUS "models/bots/merasmus/merasmus.mdl"
-#define MODEL_MEDISHIELD "models/props_mvm/mvm_player_shield2.mdl"
-
-#define MAT_DEBUGEMPTY "debug/debugempty.vmt"
-#define MAT_BEAM "materials/sprites/laser.vmt"
-
-#define MODEL_BOT_SCOUT "models/rf2/bots/bot_scout.mdl"
-#define MODEL_BOT_SOLDIER "models/rf2/bots/bot_soldier.mdl"
-#define MODEL_BOT_PYRO "models/rf2/bots/bot_pyro.mdl"
-#define MODEL_BOT_DEMO "models/rf2/bots/bot_demo_fix1.mdl"
-#define MODEL_BOT_HEAVY "models/rf2/bots/bot_heavy.mdl"
-#define MODEL_BOT_ENGINEER "models/rf2/bots/bot_engineer.mdl"
-#define MODEL_BOT_MEDIC "models/rf2/bots/bot_medic.mdl"
-#define MODEL_BOT_SNIPER "models/rf2/bots/bot_sniper.mdl"
-#define MODEL_BOT_SPY "models/rf2/bots/bot_spy.mdl"
-#define MODEL_GIANT_SCOUT "models/rf2/boss_bots/bot_scout_boss.mdl"
-#define MODEL_GIANT_SOLDIER "models/rf2/boss_bots/bot_soldier_boss.mdl"
-#define MODEL_GIANT_PYRO "models/rf2/boss_bots/bot_pyro_boss.mdl"
-#define MODEL_GIANT_DEMO "models/rf2/boss_bots/bot_demo_boss_fix1.mdl"
-#define MODEL_GIANT_HEAVY "models/rf2/boss_bots/bot_heavy_boss.mdl"
-
-// Sounds -------------------------------------------------------------------------------------------------------------------------------------
-#define SND_ITEM_PICKUP "ui/item_default_pickup.wav"
-#define SND_GAME_OVER "music/mvm_lost_wave.wav"
-#define SND_EVIL_LAUGH "rf2/sfx/evil_laugh.wav"
-#define SND_LASTMAN "mvm/mvm_warning.wav"
-#define SND_MONEY_PICKUP "mvm/mvm_money_pickup.wav"
-#define SND_USE_WORKBENCH "ui/item_metal_scrap_pickup.wav"
-#define SND_USE_SCRAPPER "ui/item_metal_scrap_drop.wav"
-#define SND_DROP_DEFAULT "ui/itemcrate_smash_rare.wav"
-#define SND_DROP_HAUNTED "misc/halloween/spell_skeleton_horde_cast.wav"
-#define SND_DROP_UNUSUAL "ui/itemcrate_smash_ultrarare_fireworks.wav"
-#define SND_CASH "mvm/mvm_bought_upgrade.wav"
-#define SND_NOPE "vo/engineer_no01.mp3"
-#define SND_MERASMUS_APPEAR "misc/halloween/merasmus_appear.wav"
-#define SND_MERASMUS_DISAPPEAR "misc/halloween/merasmus_disappear.wav"
-#define SND_MERASMUS_DANCE1 "vo/halloween_merasmus/sf12_wheel_dance03.mp3"
-#define SND_MERASMUS_DANCE2 "vo/halloween_merasmus/sf12_wheel_dance04.mp3"
-#define SND_MERASMUS_DANCE3 "vo/halloween_merasmus/sf12_wheel_dance05.mp3"
-#define SND_BOSS_SPAWN "mvm/mvm_tank_start.wav"
-#define SND_SENTRYBUSTER_BOOM "mvm/sentrybuster/mvm_sentrybuster_explode.wav"
-#define SND_ENEMY_STUN "mvm/mvm_robo_stun.wav"
-#define SND_TELEPORTER_CHARGED "mvm/mvm_bought_in.wav"
-#define SND_TANK_SPEED_UP "misc/cp_harbor_red_whistle.wav"
-#define SND_BELL "misc/halloween/strongman_bell_01.wav"
-#define SND_SHIELD "weapons/medi_shield_deploy.wav"
-#define SND_LAW_FIRE "weapons/sentry_rocket.wav"
-#define SND_LASER "rf2/sfx/laser.mp3"
-#define SND_MEDISHIELD "weapons/medi_shield_deploy.wav"
-#define SND_THUNDER "ambient/halloween/thunder_08.wav"
-#define SND_WEAPON_CRIT "rf2/sfx/crit_clean.mp3"
-#define SND_BLEED_EXPLOSION "physics/body/body_medium_impact_soft6.wav"
-#define SND_SAPPER_PLANT "weapons/sapper_plant.wav"
-#define SND_SAPPER_DRAIN "weapons/sapper_timer.wav"
-#define SND_SPELL_FIREBALL "misc/halloween/spell_fireball_cast.wav"
-#define SND_SPELL_LIGHTNING "misc/halloween/spell_lightning_ball_cast.wav"
-#define SND_SPELL_METEOR "misc/halloween/spell_meteor_cast.wav"
-#define SND_SPELL_BATS "misc/halloween/spell_bat_cast.wav"
-#define SND_SPELL_OVERHEAL "misc/halloween/spell_overheal.wav"
-#define SND_SPELL_JUMP "misc/halloween/spell_blast_jump.wav"
-#define SND_SPELL_STEALTH "misc/halloween/spell_stealth.wav"
-#define SND_SPELL_TELEPORT "misc/halloween/spell_teleport.wav"
-#define SND_RUNE_AGILITY "items/powerup_pickup_agility.wav"
-#define SND_RUNE_HASTE "items/powerup_pickup_haste.wav"
-#define SND_RUNE_KNOCKOUT "items/powerup_pickup_knockout.wav"
-#define SND_RUNE_PRECISION "items/powerup_pickup_precision.wav"
-#define SND_RUNE_WARLOCK "items/powerup_pickup_reflect.wav"
-#define SND_RUNE_REGEN "items/powerup_pickup_regeneration.wav"
-#define SND_RUNE_RESIST "items/powerup_pickup_resistance.wav"
-#define SND_RUNE_STRENGTH "items/powerup_pickup_strength.wav"
-#define SND_RUNE_VAMPIRE "items/powerup_pickup_vampire.wav"
-#define SND_RUNE_KING "items/powerup_pickup_king.wav"
-#define SND_THROW "weapons/cleaver_throw.wav"
-#define SND_TELEPORTER_BLU "mvm/mvm_tele_deliver.wav"
-#define SND_ARTIFACT_ROLL "ui/buttonclick.wav"
-#define SND_ARTIFACT_SELECT "items/spawn_item.wav"
-#define SND_DOOMSDAY_EXPLODE "misc/doomsday_missile_explosion.wav"
-#define SND_ACHIEVEMENT "misc/achievement_earned.wav"
-#define SND_DRAGONBORN "rf2/sfx/fus_ro_dah.wav"
-#define SND_DRAGONBORN2 "misc/halloween/spell_mirv_explode_secondary.wav"
-#define SND_AUTOFIRE_TOGGLE "buttons/button3.wav"
-#define SND_AUTOFIRE_SHOOT "weapons/smg1/smg1_fire1.wav"
-#define SND_STUN "player/pl_impact_stun.wav"
-#define SND_PARACHUTE "items/para_open.wav"
-#define SND_1UP "rf2/sfx/1up.wav"
-#define SND_HINT "ui/hint.wav"
-#define NULL "misc/null.wav"
-
-// Game sounds
-#define GSND_CRIT "TFPlayer.CritHit"
-#define GSND_MINICRIT "TFPlayer.CritHitMini"
-#define GSND_SNIPER_STOCK "Weapon_SniperRifle.Single"
-#define GSND_HEATMAKER "Weapon_ProSniperRifle.Single"
-#define GSND_CLASSIC "Weapon_ClassicSniperRifle.Single"
-#define GSND_SYDNEY "Weapon_SydneySleeper.Single"
-#define GSND_BAZAAR "Weapon_Bazaar_Bargain.Single"
-#define GSND_MACHINA "Weapon_SniperRailgun.Single"
-#define GSND_SHOOTINGSTAR "Weapon_ShootingStar.Single"
-#define GSND_AWP "Weapon_AWP.Single"
-
-// Players ---------------------------------------------------------------------------------------------------------------------------------------
 #define PLAYER_MINS {-24.0, -24.0, 0.0}
 #define PLAYER_MAXS {24.0, 24.0, 82.0}
-
-enum
-{
-	PLAYERANIMEVENT_ATTACK_PRIMARY,
-	PLAYERANIMEVENT_ATTACK_SECONDARY,
-	PLAYERANIMEVENT_ATTACK_GRENADE,
-	PLAYERANIMEVENT_RELOAD,
-	PLAYERANIMEVENT_RELOAD_LOOP,
-	PLAYERANIMEVENT_RELOAD_END,
-	PLAYERANIMEVENT_JUMP,
-	PLAYERANIMEVENT_SWIM,
-	PLAYERANIMEVENT_DIE,
-	PLAYERANIMEVENT_FLINCH_CHEST,
-	PLAYERANIMEVENT_FLINCH_HEAD,
-	PLAYERANIMEVENT_FLINCH_LEFTARM,
-	PLAYERANIMEVENT_FLINCH_RIGHTARM,
-	PLAYERANIMEVENT_FLINCH_LEFTLEG,
-	PLAYERANIMEVENT_FLINCH_RIGHTLEG,
-	PLAYERANIMEVENT_DOUBLEJUMP,
-	
-	// Cancel.
-	PLAYERANIMEVENT_CANCEL,
-	PLAYERANIMEVENT_SPAWN,
-	
-	// Snap to current yaw exactly
-	PLAYERANIMEVENT_SNAP_YAW,
-
-	PLAYERANIMEVENT_CUSTOM,				// Used to play specific activities
-	PLAYERANIMEVENT_CUSTOM_GESTURE,
-	PLAYERANIMEVENT_CUSTOM_SEQUENCE,	// Used to play specific sequences
-	PLAYERANIMEVENT_CUSTOM_GESTURE_SEQUENCE,
-
-	// TF Specific. Here until there's a derived game solution to this.
-	PLAYERANIMEVENT_ATTACK_PRE,
-	PLAYERANIMEVENT_ATTACK_POST,
-	PLAYERANIMEVENT_GRENADE1_DRAW,
-	PLAYERANIMEVENT_GRENADE2_DRAW,
-	PLAYERANIMEVENT_GRENADE1_THROW,
-	PLAYERANIMEVENT_GRENADE2_THROW,
-	PLAYERANIMEVENT_VOICE_COMMAND_GESTURE,
-	PLAYERANIMEVENT_DOUBLEJUMP_CROUCH,
-	PLAYERANIMEVENT_STUN_BEGIN,
-	PLAYERANIMEVENT_STUN_MIDDLE,
-	PLAYERANIMEVENT_STUN_END,
-	PLAYERANIMEVENT_PASSTIME_THROW_BEGIN,
-	PLAYERANIMEVENT_PASSTIME_THROW_MIDDLE,
-	PLAYERANIMEVENT_PASSTIME_THROW_END,
-	PLAYERANIMEVENT_PASSTIME_THROW_CANCEL,
-	
-	PLAYERANIMEVENT_ATTACK_PRIMARY_SUPER,
-	
-	PLAYERANIMEVENT_COUNT
-};
-
-// TFBots -------------------------------------------------------------------------------------------------------------------------------------
-enum
-{
-	TFBotSkill_Easy,
-	TFBotSkill_Normal,
-	TFBotSkill_Hard,
-	TFBotSkill_Expert,
-};
-
-#define TFBOTFLAG_AGGRESSIVE (1 << 0) // Bot should always act aggressive (relentlessly chase target)
-#define TFBOTFLAG_ROCKETJUMP (1 << 1) // Bot should rocket jump
-#define TFBOTFLAG_STRAFING (1 << 2) // Bot is currently strafing
-#define TFBOTFLAG_HOLDFIRE (1 << 3) // Hold fire until fully reloaded
-#define TFBOTFLAG_SPAMJUMP (1 << 4) // Constantly jump around
-#define TFBOTFLAG_ALWAYSATTACK (1 << 5) // Always hold IN_ATTACK
-
-// Enemies/Bosses -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_ENEMIES 32
-#define MAX_WEARABLES 6
-#define BOSS_BASE_BACKSTAB_DAMAGE 750.0
-
-enum
-{
-	StabDamageType_Raw,
-	StabDamageType_Percentage,
-};
-
-enum
-{
-	VoiceType_Robot,
-	VoiceType_Human,
-	VoiceType_Silent,
-};
-
-enum
-{
-	FootstepType_Robot,
-	FootstepType_GiantRobot,
-	FootstepType_Normal,
-	FootstepType_Silent,
-};
-
-
-// Weapons -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_WEAPONS 256
-#define TF_WEAPON_SLOTS 10
-#define MAX_ATTRIBUTES 16
-#define MAX_ATTRIBUTE_STRING_LENGTH 512
-#define TFObjectMode_Disposable TFObjectMode_Exit
-
-enum
-{
-	WeaponSlot_Primary,
-	WeaponSlot_Secondary,
-	WeaponSlot_Melee,
-	WeaponSlot_PDA,
-	WeaponSlot_PDA2,
-	WeaponSlot_Builder,
-	WeaponSlot_Action = 9, // Action item, e.g. Spellbook Magazine or Grappling Hook (The rest of the slots are for wearables and taunts)
-	
-	WeaponSlot_DisguiseKit = WeaponSlot_PDA,
-	WeaponSlot_InvisWatch = WeaponSlot_PDA2,
-};
-
-enum
-{
-	TFAmmoType_None = -1,
-	TFAmmoType_Primary = 1,
-	TFAmmoType_Secondary,
-	TFAmmoType_Metal,
-	TFAmmoType_Jarate,
-	TFAmmoType_MadMilk,
-	//TFAmmoType_Grenades3,	- Unused
-};
-
-
-// Items -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_ITEMS 150
-#define MAX_ITEM_MODIFIERS 16
+#define MAX_COOKIE_LENGTH 100
+#define TF_CLASSES 9+1 // because arrays
+#define DMG_MELEE DMG_BLAST_SURFACE
+#define INVALID_ENT INVALID_ENT_REFERENCE
+#define SF_NORESPAWN (1 << 30)
+#define MAX_PATH_FOLLOWERS 60
+#define MAX_INVENTORIES 64
+#define MAX_MAP_SIZE 32768.0
+#define MAX_DAMAGE 32767.0 // Maximum possible single-instance damage in TF2
+#define WAIT_TIME_DEFAULT 150 // Default Waiting For Players time
+#define PING_COOLDOWN 1.2
+#define OFF_THE_MAP 		{-16384.0, -16384.0, -16384.0}
+#define FFADE_IN			0x0001		// Just here so we don't pass 0 into the function
+#define FFADE_OUT			0x0002		// Fade out (not in)
+#define FFADE_MODULATE		0x0004		// Modulate (don't blend)
+#define FFADE_STAYOUT		0x0008		// ignores the duration, stays faded out until new ScreenFade message received
+#define FFADE_PURGE			0x0010		// Purges all other fades, replacing them with this one
+#define SCREENFADE_FRACBITS	9
+#define	DifficultyFactor_Scrap 0.8
+#define	DifficultyFactor_Iron 1.0
+#define	DifficultyFactor_Steel 1.5
+#define DifficultyFactor_Titanium 2.0
 
 enum
 {
@@ -284,27 +47,6 @@ enum
 	TF2Quality_Collectors,
 	TF2Quality_Decorated,
 };
-
-
-// Objects -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_TELEPORTERS 16
-#define MAX_ALTARS 8
-#define TELEPORTER_RADIUS 1500.0
-
-
-// Stages -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_STAGE_MAPS 16
-#define MAX_STAGES 32
-
-
-// Other -----------------------------------------------------------------------------------------------------------------------------------------
-#define OFF_THE_MAP 		{-16384.0, -16384.0, -16384.0}
-#define FFADE_IN			0x0001		// Just here so we don't pass 0 into the function
-#define FFADE_OUT			0x0002		// Fade out (not in)
-#define FFADE_MODULATE		0x0004		// Modulate (don't blend)
-#define FFADE_STAYOUT		0x0008		// ignores the duration, stays faded out until new ScreenFade message received
-#define FFADE_PURGE			0x0010		// Purges all other fades, replacing them with this one
-#define SCREENFADE_FRACBITS	9
 
 enum
 {
@@ -452,4 +194,182 @@ enum // Move collide types
 	MOVECOLLIDE_FLY_SLIDE // Entity slides along surfaces (no bounce) - applies friciton (adjusts velocity)
 };
 
-#define SF_NORESPAWN (1 << 30)
+
+// Configs --------------------------------------------------------------------------------------------------------------------------------------------
+#define ConfigPath "configs/rf2"
+#define ItemConfig "items.cfg"
+#define SurvivorConfig "survivors.cfg"
+#define WeaponConfig "weapons.cfg"
+#define MapConfig "maps.cfg"
+
+
+// Models/Sprites -------------------------------------------------------------------------------------------------------------------------------------
+#define MODEL_ERROR "models/error.mdl"
+#define MODEL_INVISIBLE "models/empty.mdl"
+#define MODEL_CASH_BOMB "models/props_c17/cashregister01a.mdl"
+#define MODEL_MERASMUS "models/bots/merasmus/merasmus.mdl"
+#define MODEL_MEDISHIELD "models/props_mvm/mvm_player_shield2.mdl"
+
+#define MAT_DEBUGEMPTY "debug/debugempty.vmt"
+#define MAT_BEAM "materials/sprites/laser.vmt"
+
+#define MODEL_BOT_SCOUT "models/rf2/bots/bot_scout.mdl"
+#define MODEL_BOT_SOLDIER "models/rf2/bots/bot_soldier.mdl"
+#define MODEL_BOT_PYRO "models/rf2/bots/bot_pyro.mdl"
+#define MODEL_BOT_DEMO "models/rf2/bots/bot_demo_fix1.mdl"
+#define MODEL_BOT_HEAVY "models/rf2/bots/bot_heavy.mdl"
+#define MODEL_BOT_ENGINEER "models/rf2/bots/bot_engineer.mdl"
+#define MODEL_BOT_MEDIC "models/rf2/bots/bot_medic.mdl"
+#define MODEL_BOT_SNIPER "models/rf2/bots/bot_sniper.mdl"
+#define MODEL_BOT_SPY "models/rf2/bots/bot_spy.mdl"
+#define MODEL_GIANT_SCOUT "models/rf2/boss_bots/bot_scout_boss.mdl"
+#define MODEL_GIANT_SOLDIER "models/rf2/boss_bots/bot_soldier_boss.mdl"
+#define MODEL_GIANT_PYRO "models/rf2/boss_bots/bot_pyro_boss.mdl"
+#define MODEL_GIANT_DEMO "models/rf2/boss_bots/bot_demo_boss_fix1.mdl"
+#define MODEL_GIANT_HEAVY "models/rf2/boss_bots/bot_heavy_boss.mdl"
+
+// Sounds -------------------------------------------------------------------------------------------------------------------------------------
+#define SND_ITEM_PICKUP "ui/item_default_pickup.wav"
+#define SND_GAME_OVER "music/mvm_lost_wave.wav"
+#define SND_EVIL_LAUGH "rf2/sfx/evil_laugh.wav"
+#define SND_LASTMAN "mvm/mvm_warning.wav"
+#define SND_MONEY_PICKUP "mvm/mvm_money_pickup.wav"
+#define SND_USE_WORKBENCH "ui/item_metal_scrap_pickup.wav"
+#define SND_USE_SCRAPPER "ui/item_metal_scrap_drop.wav"
+#define SND_DROP_DEFAULT "ui/itemcrate_smash_rare.wav"
+#define SND_DROP_HAUNTED "misc/halloween/spell_skeleton_horde_cast.wav"
+#define SND_DROP_UNUSUAL "ui/itemcrate_smash_ultrarare_fireworks.wav"
+#define SND_ENTER_HELL "misc/halloween/gotohell.wav"
+#define SND_CASH "mvm/mvm_bought_upgrade.wav"
+#define SND_NOPE "vo/engineer_no01.mp3"
+#define SND_MERASMUS_APPEAR "misc/halloween/merasmus_appear.wav"
+#define SND_MERASMUS_DISAPPEAR "misc/halloween/merasmus_disappear.wav"
+#define SND_MERASMUS_DANCE1 "vo/halloween_merasmus/sf12_wheel_dance03.mp3"
+#define SND_MERASMUS_DANCE2 "vo/halloween_merasmus/sf12_wheel_dance04.mp3"
+#define SND_MERASMUS_DANCE3 "vo/halloween_merasmus/sf12_wheel_dance05.mp3"
+#define SND_BOSS_SPAWN "mvm/mvm_tank_start.wav"
+#define SND_SENTRYBUSTER_BOOM "mvm/sentrybuster/mvm_sentrybuster_explode.wav"
+#define SND_ENEMY_STUN "mvm/mvm_robo_stun.wav"
+#define SND_TELEPORTER_CHARGED "mvm/mvm_bought_in.wav"
+#define SND_TANK_SPEED_UP "misc/cp_harbor_red_whistle.wav"
+#define SND_BELL "misc/halloween/strongman_bell_01.wav"
+#define SND_SHIELD "weapons/medi_shield_deploy.wav"
+#define SND_LAW_FIRE "weapons/sentry_rocket.wav"
+#define SND_LASER "rf2/sfx/laser.mp3"
+#define SND_MEDISHIELD "weapons/medi_shield_deploy.wav"
+#define SND_THUNDER "ambient/halloween/thunder_08.wav"
+#define SND_WEAPON_CRIT "rf2/sfx/crit_clean.mp3"
+#define SND_BLEED_EXPLOSION "physics/body/body_medium_impact_soft6.wav"
+#define SND_SAPPER_PLANT "weapons/sapper_plant.wav"
+#define SND_SAPPER_DRAIN "weapons/sapper_timer.wav"
+#define SND_SPELL_FIREBALL "misc/halloween/spell_fireball_cast.wav"
+#define SND_SPELL_LIGHTNING "misc/halloween/spell_lightning_ball_cast.wav"
+#define SND_SPELL_METEOR "misc/halloween/spell_meteor_cast.wav"
+#define SND_SPELL_BATS "misc/halloween/spell_bat_cast.wav"
+#define SND_SPELL_OVERHEAL "misc/halloween/spell_overheal.wav"
+#define SND_SPELL_JUMP "misc/halloween/spell_blast_jump.wav"
+#define SND_SPELL_STEALTH "misc/halloween/spell_stealth.wav"
+#define SND_SPELL_TELEPORT "misc/halloween/spell_teleport.wav"
+#define SND_RUNE_AGILITY "items/powerup_pickup_agility.wav"
+#define SND_RUNE_HASTE "items/powerup_pickup_haste.wav"
+#define SND_RUNE_KNOCKOUT "items/powerup_pickup_knockout.wav"
+#define SND_RUNE_PRECISION "items/powerup_pickup_precision.wav"
+#define SND_RUNE_WARLOCK "items/powerup_pickup_reflect.wav"
+#define SND_RUNE_REGEN "items/powerup_pickup_regeneration.wav"
+#define SND_RUNE_RESIST "items/powerup_pickup_resistance.wav"
+#define SND_RUNE_STRENGTH "items/powerup_pickup_strength.wav"
+#define SND_RUNE_VAMPIRE "items/powerup_pickup_vampire.wav"
+#define SND_RUNE_KING "items/powerup_pickup_king.wav"
+#define SND_THROW "weapons/cleaver_throw.wav"
+#define SND_TELEPORTER_BLU "mvm/mvm_tele_deliver.wav"
+#define SND_ARTIFACT_ROLL "ui/buttonclick.wav"
+#define SND_ARTIFACT_SELECT "items/spawn_item.wav"
+#define SND_DOOMSDAY_EXPLODE "misc/doomsday_missile_explosion.wav"
+#define SND_ACHIEVEMENT "misc/achievement_earned.wav"
+#define SND_DRAGONBORN "rf2/sfx/fus_ro_dah.wav"
+#define SND_DRAGONBORN2 "misc/halloween/spell_mirv_explode_secondary.wav"
+#define SND_AUTOFIRE_TOGGLE "buttons/button3.wav"
+#define SND_AUTOFIRE_SHOOT "weapons/smg1/smg1_fire1.wav"
+#define SND_STUN "player/pl_impact_stun.wav"
+#define SND_PARACHUTE "items/para_open.wav"
+#define SND_1UP "rf2/sfx/1up.wav"
+#define SND_HINT "ui/hint.wav"
+#define NULL "misc/null.wav"
+
+// Game sounds
+#define GSND_CRIT "TFPlayer.CritHit"
+#define GSND_MINICRIT "TFPlayer.CritHitMini"
+#define GSND_SNIPER_STOCK "Weapon_SniperRifle.Single"
+#define GSND_HEATMAKER "Weapon_ProSniperRifle.Single"
+#define GSND_CLASSIC "Weapon_ClassicSniperRifle.Single"
+#define GSND_SYDNEY "Weapon_SydneySleeper.Single"
+#define GSND_BAZAAR "Weapon_Bazaar_Bargain.Single"
+#define GSND_MACHINA "Weapon_SniperRailgun.Single"
+#define GSND_SHOOTINGSTAR "Weapon_ShootingStar.Single"
+#define GSND_AWP "Weapon_AWP.Single"
+
+// TFBots -------------------------------------------------------------------------------------------------------------------------------------
+enum
+{
+	TFBotSkill_Easy,
+	TFBotSkill_Normal,
+	TFBotSkill_Hard,
+	TFBotSkill_Expert,
+};
+
+#define TFBOTFLAG_AGGRESSIVE (1 << 0) // Bot should always act aggressive (relentlessly chase target)
+#define TFBOTFLAG_ROCKETJUMP (1 << 1) // Bot should rocket jump
+#define TFBOTFLAG_STRAFING (1 << 2) // Bot is currently strafing
+#define TFBOTFLAG_HOLDFIRE (1 << 3) // Hold fire until fully reloaded
+#define TFBOTFLAG_SPAMJUMP (1 << 4) // Constantly jump around
+#define TFBOTFLAG_ALWAYSATTACK (1 << 5) // Always hold IN_ATTACK
+
+// Enemies/Bosses -------------------------------------------------------------------------------------------------------------------------------------
+enum
+{
+	VoiceType_Robot,
+	VoiceType_Human,
+	VoiceType_Silent,
+};
+
+enum
+{
+	FootstepType_Robot,
+	FootstepType_GiantRobot,
+	FootstepType_Normal,
+	FootstepType_Silent,
+};
+
+
+// Weapons -------------------------------------------------------------------------------------------------------------------------------------
+#define MAX_STRING_ATTRIBUTES 8
+#define MAX_WEAPONS 256
+#define TF_WEAPON_SLOTS 10
+#define MAX_ATTRIBUTES 16
+#define MAX_ATTRIBUTE_STRING_LENGTH 512
+#define TFObjectMode_Disposable TFObjectMode_Exit
+
+enum
+{
+	WeaponSlot_Primary,
+	WeaponSlot_Secondary,
+	WeaponSlot_Melee,
+	WeaponSlot_PDA,
+	WeaponSlot_PDA2,
+	WeaponSlot_Builder,
+	WeaponSlot_Action = 9, // Action item, e.g. Spellbook Magazine or Grappling Hook (The rest of the slots are for wearables and taunts)
+	
+	WeaponSlot_DisguiseKit = WeaponSlot_PDA,
+	WeaponSlot_InvisWatch = WeaponSlot_PDA2,
+};
+
+enum
+{
+	TFAmmoType_None = -1,
+	TFAmmoType_Primary = 1,
+	TFAmmoType_Secondary,
+	TFAmmoType_Metal,
+	TFAmmoType_Jarate,
+	TFAmmoType_MadMilk,
+	//TFAmmoType_Grenades3,	- Unused
+};

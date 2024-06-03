@@ -129,7 +129,7 @@ public Action Timer_ResetModel(Handle timer, int client)
 {
 	if ((client = GetClientOfUserId(client)) == 0 || IsPlayerAlive(client))
 		return Plugin_Continue;
-
+	
 	SetVariantString("");
 	AcceptEntityInput(client, "SetCustomModel");
 	return Plugin_Continue;
@@ -138,6 +138,7 @@ public Action Timer_ResetModel(Handle timer, int client)
 void SilentlyKillPlayer(int client)
 {
 	TF2_RemoveAllWearables(client);
+	TF2_RemoveAllWeapons(client);
 	RefreshClient(client);
 	int team = GetClientTeam(client);
 	ChangeClientTeam(client, 0);
@@ -518,6 +519,11 @@ float CalculatePlayerMaxSpeed(int client)
 		speed *= 1.0 + CalcItemMod(client, ItemSpy_StealthyScarf, 0);
 	}
 	
+	if (IsBoss(client) && GetEntProp(client, Prop_Send, "m_bDucked"))
+	{
+		speed *= 3.0; // bosses move at normal speed while crouched to avoid getting stuck
+	}
+	
 	float mult = speed / classMaxSpeed;
 	TF2Attrib_RemoveByDefIndex(client, 107);
 	
@@ -585,11 +591,13 @@ float GetPlayerCash(int client)
 void SetPlayerCash(int client, float amount)
 {
 	g_flPlayerCash[client] = amount;
+	SetEntProp(client, Prop_Send, "m_nCurrency", RoundToFloor(g_flPlayerCash[client]));
 }
 
 void AddPlayerCash(int client, float amount)
 {
 	g_flPlayerCash[client] += amount;
+	SetEntProp(client, Prop_Send, "m_nCurrency", RoundToFloor(g_flPlayerCash[client]));
 }
 
 // This is for items, it has nothing to do with the attribute
@@ -788,7 +796,7 @@ bool PingObjects(int client)
 	return false;
 }
 
-void ShowAnnotation(int client, float pos[3], const char[] text, float duration=8.0, int parent=INVALID_ENT, int id=-1, const char[] sound=SND_HINT)
+void ShowAnnotation(int client, float pos[3]=NULL_VECTOR, const char[] text, float duration=8.0, int parent=INVALID_ENT, int id=-1, const char[] sound=SND_HINT)
 {
 	if (id >= 0)
 	{
@@ -812,7 +820,7 @@ void ShowAnnotation(int client, float pos[3], const char[] text, float duration=
 	delete event;
 }
 
-void ShowAnnotationToAll(float pos[3], const char[] text, float duration=8.0, int parent=INVALID_ENT, int id=-1, const char[] sound=SND_HINT)
+void ShowAnnotationToAll(float pos[3]=NULL_VECTOR, const char[] text, float duration=8.0, int parent=INVALID_ENT, int id=-1, const char[] sound=SND_HINT)
 {
 	if (id >= 0)
 	{
@@ -1069,6 +1077,24 @@ void GetClassString(TFClassType class, char[] buffer, int size, bool underScore=
 	}
 }
 
+int GetClassMenuIndex(TFClassType class)
+{
+	switch (class)
+	{
+		case TFClass_Scout: return 1;
+		case TFClass_Soldier: return 2;
+		case TFClass_Pyro: return 3;
+		case TFClass_DemoMan: return 4;
+		case TFClass_Heavy: return 5;
+		case TFClass_Engineer: return 6;
+		case TFClass_Medic: return 7;
+		case TFClass_Sniper: return 8;
+		case TFClass_Spy: return 9;
+	}
+
+	return 0;
+}
+
 int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-1), bool allowDisposable=true)
 {
 	int count;
@@ -1239,6 +1265,27 @@ public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam
 	return MRES_Ignored;
 }
 
+public MRESReturn DHook_ForceRespawn(int client)
+{
+	if (!g_bRoundActive)
+		return MRES_Ignored;
+	
+	int team = GetClientTeam(client);
+	if (team == TEAM_ENEMY && (g_bGracePeriod || !IsEnemy(client)))
+	{
+		// Block spawn because grace period is active or no enemy index
+		return MRES_Supercede;
+	}
+	else if (team == TEAM_SURVIVOR && !IsPlayerSurvivor(client, false) && !IsPlayerMinion(client))
+	{
+		// Block spawn because client is not a Survivor nor a minion
+		ChangeClientTeam(client, TEAM_ENEMY);
+		return MRES_Supercede;
+	}
+	
+	return MRES_Ignored;
+}
+
 public MRESReturn Detour_ApplyPunchImpulse(int client, DHookReturn returnVal, DHookParam params)
 {
 	if (!RF2_IsEnabled())
@@ -1346,7 +1393,7 @@ void ResetAFKTime(int client)
 			ChangeClientTeam(client, GetRandomInt(TEAM_SURVIVOR, TEAM_ENEMY));
 		}
 	}
-
+	
 	g_flPlayerAFKTime[client] = 0.0;
 	g_bPlayerIsAFK[client] = false;
 }

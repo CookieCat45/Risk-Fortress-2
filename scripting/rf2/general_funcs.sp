@@ -36,6 +36,9 @@ void ForceTeamWin(int team)
 
 void GameOver()
 {
+	if (g_bGameWon)
+		return;
+	
 	g_bGameOver = true;
 	int fog = CreateEntityByName("env_fog_controller");
 	DispatchKeyValue(fog, "spawnflags", "1");
@@ -59,7 +62,6 @@ void GameOver()
 	EmitSoundToAll(SND_GAME_OVER);
 	ForceTeamWin(TEAM_ENEMY);
 	CreateTimer(11.0, Timer_GameOver, _, TIMER_FLAG_NO_MAPCHANGE);
-	
 	if (IsServerAutoRestartEnabled())
 	{
 		if (GetTimeSinceServerStart() >= g_cvTimeBeforeRestart.FloatValue)
@@ -67,6 +69,51 @@ void GameOver()
 			g_bServerRestarting = true;
 		}
 	}
+}
+
+void CreateSteelVictoryFlag()
+{
+	if (DoesSteelVictoryFlagExist())
+		return;
+	
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "data/rf2");
+	CreateDirectory(path, 511);
+	if (DirExists(path))
+	{
+		StrCat(path, sizeof(path), "/steel_win.rf2");
+		File file = OpenFile(path, "a+");
+		WriteFileLine(file, "");
+		delete file;
+	}
+	else
+	{
+		LogError("[WARNING] Failed to create directory %s", path);
+	}
+}
+
+void RemoveSteelVictoryFlag()
+{
+	if (!DoesSteelVictoryFlagExist())
+		return;
+	
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "data/rf2");
+	StrCat(path, sizeof(path), "/steel_win.rf2");
+	DeleteFile(path);
+}
+
+bool DoesSteelVictoryFlagExist()
+{
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "data/rf2");
+	if (DirExists(path))
+	{
+		StrCat(path, sizeof(path), "/steel_win.rf2");
+		return FileExists(path);
+	}
+
+	return false;
 }
 
 public Action Timer_GameOver(Handle timer)
@@ -118,10 +165,9 @@ void ReloadPlugin(bool changeMap=true)
 	}
 	
 	g_bPluginReloading = true;
-	
 	if (changeMap)
 	{
-		SetNextStage(0);
+		SetNextStage(1);
 	}
 	else
 	{
@@ -130,7 +176,10 @@ void ReloadPlugin(bool changeMap=true)
 			InsertServerCommand("mp_restartgame_immediate 1");
 		}
 		
-		InsertServerCommand("sm plugins load_unlock; sm plugins reload rf2; sm_reload_translations");
+		char fileName[32];
+		GetPluginFilename(INVALID_HANDLE, fileName, sizeof(fileName));
+		ReplaceStringEx(fileName, sizeof(fileName), ".smx", "");
+		InsertServerCommand("sm plugins load_unlock; sm plugins reload %s; sm_reload_translations", fileName);
 	}
 }
 
@@ -545,7 +594,11 @@ int GetPluginModifiedTime()
 	static char path[PLATFORM_MAX_PATH];
 	if (!path[0])
 	{
-		BuildPath(Path_SM, path, sizeof(path), "plugins/rf2.smx");
+		static char fileName[32];
+		if (!fileName[0])
+			GetPluginFilename(INVALID_HANDLE, fileName, sizeof(fileName));
+			
+		BuildPath(Path_SM, path, sizeof(path), "plugins/%s", fileName);
 	}
 	
 	return GetFileTime(path, FileTime_LastChange);

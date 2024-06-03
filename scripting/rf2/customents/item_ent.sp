@@ -270,8 +270,6 @@ static void OnSpawn(int entity)
 		pos[2] += 25.0;
 		TE_TFParticle(g_szUnusualEffectName[g_iItemSpriteUnusualEffect[type]], pos, item.index, PATTACH_ABSORIGIN);
 	}
-	
-	CreateTimer(0.1, Timer_UpdateItem, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
 RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float ownTime=0.0)
@@ -295,47 +293,60 @@ RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float 
 	return item;
 }
 
-static Action Timer_UpdateItem(Handle timer, int entity)
+// this timer had to be optimized severely because massive amounts of dropped items at once were causing huge lag
+public Action Timer_UpdateItems(Handle timer)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+	if (!RF2_IsEnabled())
+	{
+		g_hItemTimer = null;
 		return Plugin_Stop;
+	}
 	
-	RF2_Item item = RF2_Item(entity);
-	bool glow;
-	for (int i = 1; i <= MaxClients; i++)
+	int entity = MaxClients+1;
+	bool validItem[MAX_EDICTS];
+	int i;
+	RF2_Item item;
+	for (i = 1; i <= MaxClients; i++)
 	{
 		if (IsClientInGame(i) && IsPlayerSurvivor(i))
 		{
-			if (GetItemInPickupRange(i) == item)
+			item = GetItemInPickupRange(i);
+			if (item.IsValid())
 			{
-				glow = true;
-				break;
+				validItem[item.index] = true;
 			}
 		}
 	}
 	
 	int color[4];
-	GetEntityRenderColor(item.index, color[0], color[1], color[2], color[3]);
-	if (glow)
+	while ((entity = FindEntityByClassname(entity, "rf2_item")) != INVALID_ENT)
 	{
-		item.SetRenderColor(color[0], color[1], color[2], 255);
-		if (!IsValidEntity2(item.WorldText))
+		item = RF2_Item(entity);
+		if (validItem[item.index])
 		{
-			item.CreateWorldText();
+			GetEntityRenderColor(item.index, color[0], color[1], color[2], color[3]);
+			item.SetRenderColor(color[0], color[1], color[2], 255);
+			if (!IsValidEntity2(item.WorldText))
+			{
+				item.CreateWorldText();
+			}
+			
+			item.UpdateWorldText();
 		}
-		
-		item.UpdateWorldText();
-	}
-	else
-	{
-		item.SetRenderColor(color[0], color[1], color[2], 100);
-		if (IsValidEntity2(item.WorldText))
+		else
 		{
-			RemoveEntity2(item.WorldText);
-			item.WorldText = INVALID_ENT;
+			if (IsValidEntity2(item.WorldText))
+			{
+				RemoveEntity2(item.WorldText);
+				item.WorldText = INVALID_ENT;
+			}
+			
+			GetEntityRenderColor(item.index, color[0], color[1], color[2], color[3]);
+			if (color[3] != 100)
+				item.SetRenderColor(color[0], color[1], color[2], 100);
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -540,7 +551,6 @@ RF2_Item GetItemInPickupRange(int client)
 	endPos[2] += direction[2] * range;
 	TR_TraceRayFilter(eyePos, endPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_DontHitSelf, client);
 	TR_GetEndPosition(endPos);
-	
 	RF2_Item item = RF2_Item(GetNearestEntity(endPos, "rf2_item"));
 	if (!item.IsValid())
 	{
@@ -555,6 +565,21 @@ RF2_Item GetItemInPickupRange(int client)
 	}
 	
 	return RF2_Item(INVALID_ENT);
+}
+
+int GetPlayerDroppedItemCount(int client)
+{
+	int count;
+	int entity = MaxClients+1;
+	RF2_Item item;
+	while ((entity = FindEntityByClassname(entity, "rf2_item")) != INVALID_ENT)
+	{
+		item = RF2_Item(entity);
+		if (item.OriginalOwner == client)
+			count++;
+	}
+	
+	return count;
 }
 
 public Action Timer_ClearItemOwner(Handle timer, int entity)

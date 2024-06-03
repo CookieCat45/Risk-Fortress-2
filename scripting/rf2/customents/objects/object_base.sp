@@ -42,6 +42,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 			.DefineStringField("m_szWorldText")
 			.DefineFloatField("m_flTextZOffset")
 			.DefineFloatField("m_flTextSize")
+			.DefineFloatField("m_flTextDist")
 			.DefineColorField("m_TextColor")
 			.DefineStringField("m_szObjectName")
 			.DefineIntField("m_OnInteractForward")
@@ -178,6 +179,19 @@ methodmap RF2_Object_Base < CBaseAnimating
 				SetVariantFloat(value);
 				CBaseEntity(this.WorldText).AcceptInput("SetTextSize");
 			}
+		}
+	}
+	
+	property float TextDist
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flTextDist");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flTextDist", value);
 		}
 	}
 	
@@ -357,6 +371,7 @@ static void OnCreate(RF2_Object_Base obj)
 	obj.MapPlaced = true; // Assume this object is map placed, set to false in CreateObject()
 	obj.TextZOffset = 50.0;
 	obj.TextSize = 6.0;
+	obj.TextDist = 500.0;
 	obj.SetTextColor({255, 255, 100, 255});
 	if (!RF2_Object_Teleporter(obj.index).IsValid())
 	{
@@ -382,12 +397,7 @@ static void OnSpawnPost(int entity)
 		PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
 	}
 	
-	static char worldText[512];
-	obj.GetWorldText(worldText, sizeof(worldText));
-	if (worldText[0])
-	{
-		CreateTimer(0.5, Timer_WorldText, EntIndexToEntRef(obj.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-	}
+	CreateTimer(0.5, Timer_WorldText, EntIndexToEntRef(obj.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
 static Action Timer_WorldText(Handle timer, int entity)
@@ -408,7 +418,7 @@ static Action Timer_WorldText(Handle timer, int entity)
 	
 	float pos[3];
 	obj.GetAbsOrigin(pos);
-	int nearestPlayer = GetNearestPlayer(pos, _, 500.0, TEAM_SURVIVOR, _, true);
+	int nearestPlayer = GetNearestPlayer(pos, _, obj.TextDist, TEAM_SURVIVOR, _, true);
 	if (nearestPlayer != INVALID_ENT && IsPlayerSurvivor(nearestPlayer))
 	{
 		if (!IsValidEntity2(obj.WorldText))
@@ -464,6 +474,12 @@ static Action ObjectBase_OnInteract(int client, RF2_Object_Base obj)
 {
 	if (!obj.Active)
 		return Plugin_Stop;
+	
+	if (GetClientTeam(client) == TEAM_SURVIVOR && !IsPlayerSurvivor(client))
+	{
+		EmitSoundToClient(client, SND_NOPE);
+		PrintCenterText(client, "Wait until the next map!");
+	}
 	
 	return Plugin_Continue;
 }

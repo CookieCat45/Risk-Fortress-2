@@ -6,12 +6,14 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-// Players -------------------------------------------------------------------------------------------------------------------------------------
+#define MAX_SURVIVORS 8
 #define TEAM_SURVIVOR view_as<int>(TFTeam_Red)
 #define TEAM_ENEMY view_as<int>(TFTeam_Blue)
-#define MAX_SURVIVORS 8
 
 // Items -------------------------------------------------------------------------------------------------------------------------------------
+#define MAX_ITEMS 150
+#define MAX_ITEM_MODIFIERS 16
+
 enum
 {
 	Item_Null = 0,
@@ -134,11 +136,6 @@ enum
 	DIFFICULTY_TITANIUM,
 	DIFFICULTY_MAX,
 };
-
-#define	DifficultyFactor_Scrap 0.8
-#define	DifficultyFactor_Iron 1.0
-#define	DifficultyFactor_Steel 1.5
-#define DifficultyFactor_Titanium 2.0
 
 enum
 {
@@ -360,6 +357,7 @@ stock void RF2_ReplyToCommand(int client, const char[] message, any ...)
 	CReplyToCommand(client, "{lightseagreen}[RF2] {default}%s", buffer);
 }
 
+#if !defined PRERELEASE
 public SharedPlugin __pl_RF2 =
 {
 	name = "Risk Fortress 2",
@@ -370,6 +368,7 @@ public SharedPlugin __pl_RF2 =
 		required = 0,
 	#endif
 };
+#endif
 
 #if !defined REQUIRE_PLUGIN
 public void __pl_RF2_SetNTVOptional()

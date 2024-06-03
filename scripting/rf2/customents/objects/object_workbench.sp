@@ -130,55 +130,7 @@ static void OnCreate(RF2_Object_Workbench bench)
 {
 	bench.SetModel(MODEL_WORKBENCH);
 	bench.HookInteract(Workbench_OnInteract);
-	
-	// choose a random item quality if mapper doesn't force a specific one
-	if (bench.ItemQuality == Quality_None)
-	{
-		int result;
-		if (RandChanceInt(1, 100, 65, result))
-		{
-			bench.ItemQuality = Quality_Normal;
-		}
-		else if (result <= 99)
-		{
-			bench.ItemQuality = Quality_Genuine;
-		}
-		else
-		{
-			bench.ItemQuality = Quality_Unusual;
-		}
-	}
-	
-	// use item quality as trade quality if mapper doesn't force a specific one
-	bool forcedTradeQuality;
-	if (bench.TradeQuality == Quality_None)
-	{
-		bench.TradeQuality = bench.ItemQuality;
-	}
-	else
-	{
-		forcedTradeQuality = true;
-	}
-	
-	// choose a random item if mapper doesn't force a specific one
-	if (bench.Item == Item_Null)
-	{
-		bench.Item = GetRandomItemEx(forcedTradeQuality ? bench.TradeQuality : bench.ItemQuality);
-	}
-	
 	SDKHook(bench.index, SDKHook_SpawnPost, OnSpawnPost);
-	char text[256], qualityName[32];
-	GetQualityName(bench.ItemQuality, qualityName, sizeof(qualityName));
-	bench.Cost = bench.CustomItemCost > 1 ? bench.CustomItemCost : 1;
-	
-	FormatEx(text, sizeof(text), "Call for Medic to trade for 1 %s! (Requires %i %s %s)", 
-		g_szItemName[bench.Item], bench.Cost, qualityName, bench.Cost > 1 ? "items" : "item");
-	
-	bench.SetWorldText(text);
-	bench.TextZOffset = 90.0;
-	char name[256];
-	FormatEx(name, sizeof(name), "Workbench (%s)", g_szItemName[bench.Item]);
-	bench.SetObjectName(name);
 }
 
 static void OnSpawnPost(int entity)
@@ -186,6 +138,53 @@ static void OnSpawnPost(int entity)
 	RF2_Object_Workbench bench = RF2_Object_Workbench(entity);
 	if (IsMapRunning())
 	{
+		// choose a random item quality if mapper doesn't force a specific one
+		if (bench.ItemQuality == Quality_None)
+		{
+			int result;
+			if (RandChanceInt(1, 100, 65, result))
+			{
+				bench.ItemQuality = Quality_Normal;
+			}
+			else if (result <= 99)
+			{
+				bench.ItemQuality = Quality_Genuine;
+			}
+			else
+			{
+				bench.ItemQuality = Quality_Unusual;
+			}
+		}
+		
+		// use item quality as trade quality if mapper doesn't force a specific one
+		bool forcedTradeQuality;
+		if (bench.TradeQuality == Quality_None)
+		{
+			bench.TradeQuality = bench.ItemQuality;
+		}
+		else
+		{
+			forcedTradeQuality = true;
+		}
+		
+		// choose a random item if mapper doesn't force a specific one
+		if (bench.Item == Item_Null)
+		{
+			bench.Item = GetRandomItemEx(forcedTradeQuality ? bench.TradeQuality : bench.ItemQuality);
+		}
+		
+		char text[256], qualityName[32];
+		GetQualityName(bench.TradeQuality, qualityName, sizeof(qualityName));
+		bench.Cost = bench.CustomItemCost > 1 ? bench.CustomItemCost : 1;
+		
+		FormatEx(text, sizeof(text), "Call for Medic to trade for 1 %s! (Requires %i %s %s)", 
+			g_szItemName[bench.Item], bench.Cost, qualityName, bench.Cost > 1 ? "items" : "item");
+		
+		bench.SetWorldText(text);
+		bench.TextZOffset = 90.0;
+		char name[256];
+		FormatEx(name, sizeof(name), "Workbench (%s)", g_szItemName[bench.Item]);
+		bench.SetObjectName(name);
 		CBaseEntity sprite = CBaseEntity(CreateEntityByName("env_sprite"));
 		bench.Sprite = sprite;
 		sprite.KeyValue("model", g_szItemSprite[bench.Item]);
@@ -193,7 +192,7 @@ static void OnSpawnPost(int entity)
 		sprite.KeyValue("rendermode", "9"); // mfw no CBaseEntity.KeyValueInt
 		float pos[3];
 		bench.GetAbsOrigin(pos);
-		pos[2] += 35.0;
+		pos[2] += bench.MapPlaced ? 60.0 : 35.0;
 		sprite.Teleport(pos);
 		sprite.Spawn();
 		switch (GetItemQuality(bench.Item))
@@ -206,7 +205,6 @@ static void OnSpawnPost(int entity)
 				Quality_HauntedStrange:	sprite.SetRenderColor(125, 255, 255);
 		}
 	}
-	
 }
 
 static void OnRemove(RF2_Object_Workbench bench)
@@ -220,10 +218,11 @@ static void OnRemove(RF2_Object_Workbench bench)
 static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 {
 	ArrayList itemArray = new ArrayList();
+	ArrayList itemsToTrade = new ArrayList();
 	int quality = bench.TradeQuality;
 	int benchItem = bench.Item;
 	int cost = bench.Cost;
-	int item;
+	int scrapItem;
 	
 	for (int i = 1; i <= GetTotalItems(); i++)
 	{
@@ -231,35 +230,82 @@ static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 		{
 			if (IsScrapItem(i)) // priority
 			{
-				item = i;
-				break;
+				scrapItem = i;
+				continue;
 			}
 			
 			itemArray.Push(i);
 		}
 	}
 	
-	if (itemArray.Length > 0 && item <= Item_Null)
+	if (scrapItem != Item_Null)
 	{
-		item = itemArray.Get(GetRandomInt(0, itemArray.Length-1));
+		int scrapCount = GetPlayerItemCount(client, scrapItem, true);
+		do 
+		{
+			itemsToTrade.Push(scrapItem);
+		}
+		while (itemsToTrade.Length < scrapCount && itemsToTrade.Length < cost);
 	}
 	
+	if (itemsToTrade.Length < cost && itemArray.Length > 0)
+	{
+		int item, index;
+		int itemCounts[MAX_ITEMS];
+		do
+		{
+			index = GetRandomInt(0, itemArray.Length-1);
+			item = itemArray.Get(index);
+			if (itemCounts[item] < GetPlayerItemCount(client, item, true))
+			{
+				itemsToTrade.Push(item);
+				itemCounts[item]++;
+			}
+			else
+			{
+				itemArray.Erase(index);
+			}
+		}
+		while (itemArray.Length > 0 && itemsToTrade.Length < cost);
+	}
+	
+	delete itemArray;
 	char qualityName[32];
 	GetQualityName(quality, qualityName, sizeof(qualityName));
-	delete itemArray;
-	if (item > Item_Null && GetPlayerItemCount(client, item, true) >= cost)
+	if (itemsToTrade.Length >= cost)
 	{
-		GiveItem(client, item, -cost);
+		int item, lastItem;
+		bool oneItem = true;
+		for (int i = 0; i < itemsToTrade.Length; i++)
+		{
+			item = itemsToTrade.Get(i);
+			if (lastItem != Item_Null && item != lastItem)
+			{
+				oneItem = false;
+			}
+			
+			GiveItem(client, item, -1, false);
+			lastItem = item;
+		}
+		
 		GiveItem(client, benchItem, 1, true);
 		EmitSoundToAll(SND_USE_WORKBENCH, client);
-		PrintCenterText(client, "%t", "UsedWorkbench", cost, g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item, true), g_szItemName[item]);
 		ShowItemDesc(client, benchItem);
+		if (oneItem)
+		{
+			PrintCenterText(client, "%t", "UsedWorkbench", cost, g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item, true), g_szItemName[item]);
+		}
+		else
+		{
+			PrintCenterText(client, "%t", "UsedWorkbenchMulti", cost, qualityName, g_szItemName[benchItem]);
+		}
 	}
 	else
 	{
-		EmitSoundToClient(client, SND_NOPE);
 		PrintCenterText(client, "%t", "NoExchange", cost, qualityName);
+		EmitSoundToClient(client, SND_NOPE);
 	}
 	
+	delete itemsToTrade;
 	return Plugin_Handled;
 }

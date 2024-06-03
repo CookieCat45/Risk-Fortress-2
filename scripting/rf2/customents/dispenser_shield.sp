@@ -31,6 +31,7 @@ methodmap RF2_DispenserShield < CBaseEntity
 			.DefineEntityField("m_hDispenser")
 			.DefineBoolField("m_bEnabled")
 			.DefineIntField("m_iLevel")
+			.DefineFloatField("m_flNextModelUpdateTime")
 		.EndDataMapDesc();
 		g_Factory.Install();
 		HookMapStart(DispenserShield_OnMapStart);
@@ -72,6 +73,19 @@ methodmap RF2_DispenserShield < CBaseEntity
 		public set(bool value)
 		{
 			this.SetProp(Prop_Data, "m_bEnabled", value);
+		}
+	}
+
+	property float NextModelUpdateTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flNextModelUpdateTime");
+		}
+
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flNextModelUpdateTime", value);
 		}
 	}
 	

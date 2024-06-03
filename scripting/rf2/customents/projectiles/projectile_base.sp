@@ -629,8 +629,14 @@ public void OnVPhysicsUpdate(int entity)
 		proj.GetAbsOrigin(pos);
 		proj.GetHitboxMins(mins);
 		proj.GetHitboxMaxs(maxs);
-		TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID|MASK_NPCSOLID, TraceFilter_Projectile, proj);
+		TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID|MASK_NPCSOLID, TraceFilter_Projectile, proj, TRACE_ENTITIES_ONLY);
 		int hitEntity = TR_GetEntityIndex();
+		if (hitEntity <= 0)
+		{
+			TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID|MASK_NPCSOLID, TraceFilter_DispenserShield, _, TRACE_ENTITIES_ONLY);
+			hitEntity = TR_GetEntityIndex();
+		}
+
 		if (hitEntity > 0)
 		{
 			// the dhook doesn't seem to work properly on players/npcs, so pretend we're colliding with them
@@ -703,7 +709,7 @@ public void Projectile_OnCollide(RF2_Projectile_Base proj, int other)
 			proj.PlaySound(SoundType_WorldImpact);
 		}
 		
-		if (IsCombatChar(other))
+		if (IsCombatChar(other) && !RF2_DispenserShield(other).IsValid())
 		{
 			// hit character/building
 			proj.HasHit = true;
@@ -714,8 +720,12 @@ public void Projectile_OnCollide(RF2_Projectile_Base proj, int other)
 		}
 		else 
 		{
-			// hit world
-			if (proj.DeactivateOnHit)
+			// hit world or shield
+			if (RF2_DispenserShield(other).IsValid())
+			{
+				proj.Remove();
+			}
+			else if (proj.DeactivateOnHit)
 			{
 				proj.Deactivate();
 			}
@@ -731,5 +741,10 @@ public bool TraceFilter_Projectile(int entity, int mask, RF2_Projectile_Base sel
 	if (self.Team == GetEntTeam(entity) || self.Owner == entity)
 		return false;
 	
+	if (RF2_DispenserShield(entity).IsValid())
+	{
+		return true;
+	}
+
 	return true;
 }

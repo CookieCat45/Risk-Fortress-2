@@ -48,13 +48,33 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	int target = actor.Target;
 	if (!IsValidEntity2(target))
 	{
-		actor.Target = GetNearestEntity(worldSpace, "obj_sentrygun", _, _, TEAM_SURVIVOR);
-		if (!IsValidEntity2(target))
+		// target the Engineer's dispenser instead, if available
+		if (IsValidEntity2(actor.Dispenser))
 		{
-			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "No sentry what?");
+			actor.Target = actor.Dispenser;
 		}
-
+		else
+		{
+			actor.Target = GetNearestEntity(worldSpace, "obj_sentrygun", _, _, TEAM_SURVIVOR);
+			if (!IsValidEntity2(target))
+			{
+				actor.Target = GetNearestEntity(worldSpace, "obj_dispenser", _, _, TEAM_SURVIVOR);
+				if (!IsValidEntity2(target))
+				{
+					return action.ChangeTo(RF2_SentryBusterDetonateAction(), "No sentry what?");
+				}
+			}
+		}
+		
 		target = actor.Target;
+		if (IsValidEntity2(target))
+		{
+			int builder = GetEntPropEnt(target, Prop_Send, "m_hBuilder");
+			if (IsValidClient(builder))
+			{
+				ShowAnnotation(builder, _, "Sentry Buster's Target", 8.0, target);
+			}
+		}
 	}
 	
 	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(actor.index);

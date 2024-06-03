@@ -27,11 +27,16 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineStringField("m_szTeleporterModel", _, "teleporter_model")
 			.DefineBoolField("m_bTimerPaused", _, "timer_paused")
 			.DefineBoolField("m_bAllowEnemySpawning", _, "allow_enemy_spawning")
+			.DefineBoolField("m_bDisableDeath", _, "disable_death")
+			.DefineBoolField("m_bDisableObjectSpawning", _, "disable_object_spawning")
+			.DefineBoolField("m_bDisableItemSharing", _, "disable_item_sharing")
 			.DefineInputFunc("ForceStartTeleporter", InputFuncValueType_Void, Input_ForceStartTeleporter)
 			.DefineInputFunc("TriggerWin", InputFuncValueType_Void, Input_TriggerWin)
 			.DefineInputFunc("GameOver", InputFuncValueType_Void, Input_GameOver)
 			.DefineInputFunc("EnableEnemySpawning", InputFuncValueType_Void, Input_EnableEnemySpawning)
 			.DefineInputFunc("DisableEnemySpawning", InputFuncValueType_Void, Input_DisableEnemySpawning)
+			.DefineInputFunc("EnableDeath", InputFuncValueType_Void, Input_EnableDeath)
+			.DefineInputFunc("DisableDeath", InputFuncValueType_Void, Input_DisableDeath)
 			.DefineInputFunc("TriggerAchievement", InputFuncValueType_Integer, Input_TriggerAchievement)
 			.DefineOutput("OnTeleporterEventStart")
 			.DefineOutput("OnTeleporterEventComplete")
@@ -70,7 +75,7 @@ methodmap RF2_GameRules < CBaseEntity
 			this.SetProp(Prop_Data, "m_bTimerPaused", value);
 		}
 	}
-
+	
 	property bool AllowEnemySpawning
 	{
 		public get()
@@ -81,6 +86,45 @@ methodmap RF2_GameRules < CBaseEntity
 		public set(bool value)
 		{
 			this.SetProp(Prop_Data, "m_bAllowEnemySpawning", value);
+		}
+	}
+
+	property bool DisableDeath
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bDisableDeath"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bDisableDeath", value);
+		}
+	}
+
+	property bool DisableObjectSpawning
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bDisableObjectSpawning"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bDisableObjectSpawning", value);
+		}
+	}
+
+	property bool DisableItemSharing
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bDisableItemSharing"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bDisableItemSharing", value);
 		}
 	}
 }
@@ -107,7 +151,7 @@ RF2_GameRules GetRF2GameRules()
 	int gameRules = EntRefToEntIndex(g_iRF2GameRulesEntRef);
 	if (gameRules == INVALID_ENT)
 	{
-		LogError("Warning! Failed to find rf2_gamerules entity");
+		LogError("Warning! Failed to find rf2_gamerules entity!!");
 	}
 	
 	return RF2_GameRules(gameRules);
@@ -158,6 +202,16 @@ public void Input_DisableEnemySpawning(int entity, int activator, int caller, in
 	RF2_GameRules(entity).AllowEnemySpawning = false;
 }
 
+public void Input_EnableDeath(int entity, int activator, int caller, int value)
+{
+	RF2_GameRules(entity).DisableDeath = false;
+}
+
+public void Input_DisableDeath(int entity, int activator, int caller, int value)
+{
+	RF2_GameRules(entity).DisableDeath = true;
+}
+
 public void Input_TriggerAchievement(int entity, int activator, int caller, int value)
 {
 	if (IsValidClient(activator))
@@ -166,13 +220,16 @@ public void Input_TriggerAchievement(int entity, int activator, int caller, int 
 
 int SpawnObjects()
 {
+	if (GetRF2GameRules().DisableObjectSpawning)
+		return 0;
+	
 	// Make sure everything is gone first
 	DespawnObjects();
 	int entity = MaxClients+1;
 	if (!g_bTankBossMode)
 	{
-		ArrayList teleporterSpawns = CreateArray();
 		// Find our teleporter spawnpoints
+		ArrayList teleporterSpawns = new ArrayList();
 		entity = MaxClients+1;
 		while ((entity = FindEntityByClassname(entity, "rf2_teleporter_spawn")) != INVALID_ENT)
 		{
@@ -192,14 +249,33 @@ int SpawnObjects()
 			g_iTeleporterEntRef = EntIndexToEntRef(teleporter.index);
 			FireEntityOutput(spawnPoint, "OnChosen");
 		}
-		else
-		{
-			char mapName[256];
-			GetCurrentMap(mapName, sizeof(mapName));
-			LogError("Map %s has no rf2_teleporter_spawn entities!!", mapName);
-		}
 		
 		delete teleporterSpawns;
+	}
+	
+	RF2_Object_Altar altar;
+	if (DoesUnderworldExist() && !IsInUnderworld())
+	{
+		ArrayList altarSpawns = new ArrayList();
+		entity = MaxClients+1;
+		while ((entity = FindEntityByClassname(entity, "rf2_altar_spawn")) != INVALID_ENT)
+		{
+			altarSpawns.Push(entity);
+		}
+		
+		if (altarSpawns.Length > 0)
+		{
+			int spawnPoint = altarSpawns.Get(GetRandomInt(0, altarSpawns.Length-1));
+			altar = RF2_Object_Altar(CreateEntityByName("rf2_object_altar"));
+			float pos[3], angles[3];
+			GetEntPos(spawnPoint, pos);
+			GetEntPropVector(spawnPoint, Prop_Send, "m_angRotation", angles);
+			altar.Teleport(pos, angles);
+			altar.Spawn();
+			FireEntityOutput(spawnPoint, "OnChosen");
+		}
+		
+		delete altarSpawns;
 	}
 	
 	// now spawn regular objects
@@ -219,11 +295,17 @@ int SpawnObjects()
 	float length = FloatAbs(worldMins[0]) + FloatAbs(worldMaxs[0]);
 	float width = FloatAbs(worldMins[1]) + FloatAbs(worldMaxs[1]);
 	float distance = SquareRoot(length * width);
-	GetWorldCenter(worldCenter);
+	int worldCenterEnt = GetWorldCenter(worldCenter);
+	if (worldCenterEnt == INVALID_ENT)
+	{
+		char mapName[256];
+		GetCurrentMap(mapName, sizeof(mapName));
+		// minor issue, so only LogMessage
+		LogMessage("Warning! Map %s has no rf2_world_center entity!!", mapName);
+	}
 	
 	ArrayList objectArray = new ArrayList(128);
 	ArrayList crateArray = new ArrayList();
-	
 	int crateWeight = 50;
 	int largeWeight = 8;
 	int strangeWeight = 8;
@@ -234,6 +316,12 @@ int SpawnObjects()
 	int workbenchWeight = 16;
 	int scrapperWeight = 12;
 	int graveWeight = 8;
+	int pumpkinWeight = 2;
+	
+	if (!altar.IsValid())
+	{
+		pumpkinWeight = 0;
+	}
 	
 	if (g_iStagesCompleted <= 0)
 	{
@@ -242,12 +330,15 @@ int SpawnObjects()
 	
 	char name[64];
 	int count;
-	const int objectCount = 9;
+	const int objectCount = 10;
 	for (int i = 1; i <= objectCount; i++)
 	{
 		switch (i-1)
 		{
-			// Don't forget to increment objectCount when adding new objects here
+			/*
+			* Don't forget to increment objectCount when adding new objects here!!!
+			*/
+
 			case Crate_Normal: count = crateWeight;
 			case Crate_Large: count = largeWeight;
 			case Crate_Strange: count = strangeWeight;
@@ -259,6 +350,7 @@ int SpawnObjects()
 			case CrateType_Max: strcopy(name, sizeof(name), "rf2_object_workbench"), count = workbenchWeight;
 			case CrateType_Max+1: strcopy(name, sizeof(name), "rf2_object_scrapper"), count = scrapperWeight;
 			case CrateType_Max+2: strcopy(name, sizeof(name), "rf2_object_gravestone"), count = graveWeight;
+			case CrateType_Max+3: strcopy(name, sizeof(name), "rf2_object_pumpkin"), count = pumpkinWeight;
 		}
 		
 		for (int j = 1; j <= count; j++)
@@ -296,7 +388,7 @@ int SpawnObjects()
 	PrintToServer("[RF2] Object Spawn Counts\nCrates: %i (Bonus: %i)\nOther: %i", minCrates+bonusCrates, bonusCrates, spawnCount-minCrates-bonusCrates);
 	int scrapperCount, strangeCrates;
 	int strangeCrateLimit = imax(imin(RoundToCeil(float(minCrates)*0.08), survivorCount), 4);
-	bool graveStoneSpawn;
+	bool graveStoneSpawn, pumpkinSpawn;
 	RF2_Object_Crate crate;
 	while (spawns < spawnCount+bonusCrates)
 	{
@@ -333,6 +425,14 @@ int SpawnObjects()
 					continue;
 				
 				graveStoneSpawn = true;
+			}
+			else if (strcmp2(name, "rf2_object_pumpkin"))
+			{
+				// Only one pumpkin
+				if (pumpkinSpawn)
+					continue;
+				
+				pumpkinSpawn = true;
 			}
 			
 			CreateObject(name, spawnPos);
@@ -384,35 +484,5 @@ void DespawnObjects(bool force=false)
 		{
 			RemoveEntity2(entity);
 		}
-	}
-}
-
-void GetWorldCenter(float vec[3])
-{
-	if (EntRefToEntIndex(g_iWorldCenterEntity) != INVALID_ENT)
-	{
-		GetEntPos(EntRefToEntIndex(g_iWorldCenterEntity), vec);
-		return;
-	}
-	
-	int entity = MaxClients+1;
-	char targetName[128];
-	bool found;
-	
-	while ((entity = FindEntityByClassname(entity, "info_target")) != INVALID_ENT)
-	{
-		GetEntPropString(entity, Prop_Data, "m_iName", targetName, sizeof(targetName));
-		if (strcmp2(targetName, WORLD_CENTER))
-		{
-			GetEntPos(entity, vec);
-			found = true;
-			g_iWorldCenterEntity = EntIndexToEntRef(entity);
-			break;
-		}
-	}
-
-	if (!found) // last resort. 0 0 0 is not always the center of the map, but sometimes it is
-	{
-		CopyVectors(NULL_VECTOR, vec);
 	}
 }

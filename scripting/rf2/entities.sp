@@ -221,27 +221,31 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 		
 		if (attackerTeam == GetEntTeam(entity) && (entity != attacker || entity == attacker && !allowSelfDamage))
 			continue;
-
+		
 		GetEntPos(entity, enemyPos);
 		enemyPos[2] += 30.0;
 		
 		if ((distance = GetVectorDistance(pos, enemyPos)) <= radius)
 		{
 			TR_TraceRayFilter(pos, enemyPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
-
 			if (!TR_DidHit())
 			{
-				falloffMultiplier = 1.0 - distance / radius;
-				if (falloffMultiplier < minFalloffMult)
+				// check for shields as well
+				TR_TraceRayFilter(pos, enemyPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(attacker), TRACE_ENTITIES_ONLY);
+				if (!TR_DidHit())
 				{
-					falloffMultiplier = minFalloffMult;
-				}
-				
-				calculatedDamage = baseDamage * falloffMultiplier;
-				RF_TakeDamage(entity, inflictor, attacker, calculatedDamage, damageFlags, item);
-				if (returnHitEnts)
-				{
-					hitEnts.Push(entity);
+					falloffMultiplier = 1.0 - distance / radius;
+					if (falloffMultiplier < minFalloffMult)
+					{
+						falloffMultiplier = minFalloffMult;
+					}
+					
+					calculatedDamage = baseDamage * falloffMultiplier;
+					RF_TakeDamage(entity, inflictor, attacker, calculatedDamage, damageFlags, item);
+					if (returnHitEnts)
+					{
+						hitEnts.Push(entity);
+					}
 				}
 			}
 		}

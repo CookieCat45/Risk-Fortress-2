@@ -393,6 +393,19 @@ void TFBot_Think(TFBot bot)
 	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer && !IsValidEntity2(bot.BuildingTarget))
 	{
 		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
+		if (!aggressiveMode && threat > 0 && IsBoss(bot.Client) && bot.GetSkillLevel() > TFBotSkill_Easy)
+		{
+			float eyePos[3], targetPos[3];
+			GetClientEyePosition(bot.Client, eyePos);
+			CBaseEntity(threat).WorldSpaceCenter(targetPos);
+			TR_TraceRayFilter(eyePos, targetPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(bot.Client), TRACE_ENTITIES_ONLY);
+			if (TR_DidHit() && RF2_DispenserShield(TR_GetEntityIndex()).IsValid())
+			{
+				// If we're a boss and our target is behind a bubble shield, approach the shield
+				aggressiveMode = true;
+			}
+		}
+
 		// Aggressive AI, relentlessly pursues target and strafes on higher difficulties. Mostly for melee.
 		if (aggressiveMode)
 		{
@@ -750,7 +763,7 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 			
 			case ItemStrange_Dragonborn:
 			{
-				return DistBetween(bot.Client, threat, true) <= 250000.0;
+				return threat > 0 && DistBetween(bot.Client, threat, true) <= 250000.0;
 			}
 			
 			case ItemStrange_DarkHunter, ItemStrange_NastyNorsemann:
@@ -1151,6 +1164,17 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		threat = known.GetEntity();
 	}
 	
+	if (IsBoss(client))
+	{
+		static bool ducking[MAXTF2PLAYERS];
+		bool oldDuckState = ducking[client];
+		ducking[client] = asBool(GetEntProp(client, Prop_Send, "m_bDucked"));
+		if (oldDuckState != ducking[client])
+		{
+			CalculatePlayerMaxSpeed(client);
+		}
+	}
+
 	if (!reloading[client] && (buttons & IN_ATTACK || buttons & IN_ATTACK2))
 	{
 		int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
@@ -1574,7 +1598,6 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 	GetClientEyeAngles(client, angles);
 	angles[0] = 90.0;
 	TeleportEntity(client, _, angles); // look directly down
-	
 	TFBot(client).AddButtonFlag(IN_ATTACK);
 	CreateTimer(0.25, Timer_TFBotStopForceAttack, client, TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Continue;

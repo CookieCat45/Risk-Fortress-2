@@ -1137,7 +1137,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 		{
 			pillarOfHatsOwner = assister;
 		}
-
+		
 		if (IsValidClient(pillarOfHatsOwner) && g_iMetalItemsDropped < CalcItemModInt(pillarOfHatsOwner, Item_PillarOfHats, 4))
 		{
 			float scrapChance = CalcItemMod(pillarOfHatsOwner, Item_PillarOfHats, 0);
@@ -2210,16 +2210,30 @@ public int SortItemList(int index1, int index2, ArrayList array, Handle hndl)
 	int quality1 = GetItemQuality(item1);
 	int quality2 = GetItemQuality(item2);
 	
-	if (quality1 == quality2)
-		return 0;
-	
 	if (quality1 == Quality_Community)
 		return 1;
-	
 	if (quality2 == Quality_Community)
 		return -1;
-
-	return quality1 > quality2 ? -1 : 1;
+	
+	if (quality1 > quality2)
+		return 1;
+	if (quality1 < quality2)
+		return -1;
+	
+	if (quality1 == Quality_Collectors && quality2 == Quality_Collectors)
+	{
+		int classIndex1 = GetClassMenuIndex(GetCollectorItemClass(item1));
+		int classIndex2 = GetClassMenuIndex(GetCollectorItemClass(item2));
+		if (classIndex1 > classIndex2)
+			return 1;
+		if (classIndex1 < classIndex2)
+			return -1;
+	}
+	
+	static char name1[128], name2[128];
+	GetItemName(item1, name1, sizeof(name1), false);
+	GetItemName(item2, name2, sizeof(name2), false);
+	return strcmp(name1, name2);
 }
 
 bool PlayerHasItem(int client, int item, bool allowMinions=false)

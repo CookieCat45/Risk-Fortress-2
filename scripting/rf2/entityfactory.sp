@@ -7,12 +7,18 @@ void InstallEnts()
 	RF2_GameRules.Init();
 	RF2_Item.Init();
 	RF2_HealthText.Init();
+	RF2_WorldCenter.Init();
 	RF2_Object_Base.Init();
 	RF2_Object_Crate.Init();
 	RF2_Object_Teleporter.Init();
 	RF2_Object_Workbench.Init();
 	RF2_Object_Scrapper.Init();
 	RF2_Object_Gravestone.Init();
+	RF2_Object_Altar.Init();
+	RF2_Object_Pumpkin.Init();
+	RF2_Object_Statue.Init();
+	RF2_Object_Tree.Init();
+	RF2_Trigger_Exit.Init();
 	RF2_Projectile_Base.Init();
 	RF2_Projectile_Shuriken.Init();
 	RF2_Projectile_Bomb.Init();

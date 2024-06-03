@@ -6,10 +6,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-bool g_bForceNextMapCommand;
-char g_szForcedMap[256];
-char g_szMapForcerName[MAX_NAME_LENGTH];
-
 void LoadCommandsAndCvars()
 {
 	RegAdminCmd("rf2_reload", Command_ReloadRF2, ADMFLAG_ROOT, "Reloads the plugin and restarts the game (without changing the map).");
@@ -32,6 +28,7 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_make_survivor", Command_MakeSurvivor, ADMFLAG_SLAY, "Force a player to become a Survivor.\nWill not work if the maximum survivor count has been reached.");
 	RegAdminCmd("rf2_addseconds", Command_AddSeconds, ADMFLAG_SLAY, "Add seconds to the difficulty timer. /rf2_addseconds <seconds>");
 	RegAdminCmd("rf2_particle_test", Command_ParticleTest, ADMFLAG_SLAY, "For testing particle effects.\n/rf2_particle_test <effect name> <method>.\n0 = Spawn via TE, 1 = Spawn via info_particle system, 2 = Spawn via trigger_particle.");
+	RegAdminCmd("rf2_tp_to_altar", Command_AltarTeleport, ADMFLAG_SLAY, "Teleports to an altar if one exists");
 	
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
@@ -58,10 +55,9 @@ void LoadCommandsAndCvars()
 	g_cvMaxHumanPlayers = CreateConVar("rf2_human_player_limit", "8", "Max number of human players allowed in the server.", FCVAR_NOTIFY, true, 1.0, true, float(MaxClients));
 	g_cvGameResetTime = CreateConVar("rf2_max_wait_time", "600", "If the game has already began, amount of time in seconds to wait for players to join before restarting. 0 to disable.", FCVAR_NOTIFY);
 	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvEnableAFKManager = CreateConVar("rf2_afk_manager_enabled", "0", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "200.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
-	g_cvAFKLimit = CreateConVar("rf2_afk_limit", "2", "How many players must be AFK before the AFK manager starts kicking.", FCVAR_NOTIFY, true, 0.0);
-	g_cvAFKMinHumans = CreateConVar("rf2_afk_min_humans", "8", "How many human players must be present in the server for the AFK manager to start kicking.", FCVAR_NOTIFY, true, 0.0);
+	g_cvEnableAFKManager = CreateConVar("rf2_afk_manager_enabled", "1", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvAFKOnlyKickSurvivors = CreateConVar("rf2_afk_kick_survivors_only", "1", "If nonzero, AFK manager will kick only Survivors", FCVAR_NOTIFY);
+	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "300.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
 	g_cvAFKKickAdmins = CreateConVar("rf2_afk_kick_admins", "0", "Whether or not administrators of the server should be kicked by the AFK manager.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvSubDifficultyIncrement = CreateConVar("rf2_difficulty_sub_increment", "50.0", "When the difficulty coefficient reaches a multiple of this value, the sub difficulty increases.", FCVAR_NOTIFY);
 	g_cvDifficultyScaleMultiplier = CreateConVar("rf2_difficulty_scale_multiplier", "1.0", "Accelerate difficulty scaling by this value.", FCVAR_NOTIFY);
@@ -116,6 +112,7 @@ void LoadCommandsAndCvars()
 	g_cvTimeBeforeRestart = CreateConVar("rf2_time_before_restart", "18000", "Time in seconds before the server will restart after a run ends, to clear server memory. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvHiddenServerStartTime = CreateConVar("rf2_server_start_time", "0", _, FCVAR_HIDDEN);
 	g_cvWaitExtendTime = CreateConVar("rf2_wait_extend_time", "600", "If the vote to extend Waiting for Players passes, extend the wait time to this in seconds. 0 to disable extending.", FCVAR_NOTIFY, true, 0.0);
+	g_cvRequiredStagesForStatue = CreateConVar("rf2_statue_required_stages", "10", "How many stages need to be completed before being able to interact with the statue in the Underworld", FCVAR_NOTIFY, true, 0.0);
 	CreateConVar("rf2_plugin_version", PLUGIN_VERSION, "Plugin version. Don't touch this please.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	
 	// Debug
@@ -457,14 +454,12 @@ public Action Command_ForceMap(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	g_bForceNextMapCommand = true;
 	char arg1[256];
 	GetCmdArg(1, arg1, sizeof(arg1));
-	
 	if (!arg1[0])
 	{
 		RF2_PrintToChatAll("%t", "NextMapCancel", client);
-		g_bForceNextMapCommand = false;
+		g_szForcedMap = "";
 		return Plugin_Handled;
 	}
 	else
@@ -1591,7 +1586,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 		if (GetPlayerItemCount(target, item, true) > 0 || IsEquipmentItem(item) && GetPlayerEquipmentItem(target) == item)
 		{
 			itemCount++;
-			GetItemName(item, itemName, sizeof(itemName));
+			GetItemName(item, itemName, sizeof(itemName), false);
 			IntToString(item, info, sizeof(info));
 			
 			if (IsEquipmentItem(item))
@@ -1698,7 +1693,6 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 		case MenuAction_Select:
 		{
 			g_iPlayerLastDropMenuItem[param1] = GetMenuSelectionPosition();
-			
 			char info[64];
 			char itemIndex[8];
 			float pos[3];
@@ -1709,8 +1703,14 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 			ReplaceStringEx(info, sizeof(info), itemIndex, ""); // Client userid
 			ReplaceStringEx(info, sizeof(info), "_", ""); // Item index
 			ReplaceStringEx(itemIndex, sizeof(itemIndex), "_", ""); // Item index
-			int item = StringToInt(itemIndex); 
-			if (StringToInt(info) == 0) // 0 means we don't care
+			int item = StringToInt(itemIndex);
+			
+			if (GetPlayerDroppedItemCount(param1) >= 100)
+			{
+				EmitSoundToClient(param1, SND_NOPE);
+				PrintCenterText(param1, "You've dropped too many items at once!");
+			}
+			else if (StringToInt(info) == 0) // 0 means we don't care
 			{
 				DropItem(param1, item, pos);
 			}
@@ -2033,6 +2033,37 @@ public int Menu_Tutorial(Menu menu, MenuAction action, int param1, int param2)
 	}
 
 	return 0;
+}
+
+public Action Command_AltarTeleport(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	if (!g_bRoundActive)
+	{
+		RF2_ReplyToCommand(client, "%t", "WaitForRoundStart");
+		return Plugin_Handled;
+	}
+
+	RF2_Object_Altar altar = RF2_Object_Altar(FindEntityByClassname(INVALID_ENT, "rf2_object_altar"));
+	if (altar.IsValid())
+	{
+		float pos[3];
+		altar.WorldSpaceCenter(pos);
+		TeleportEntity(client, pos);
+	}
+
+	return Plugin_Handled;
 }
 
 public Action Command_SimulateCrash(int client, int args)

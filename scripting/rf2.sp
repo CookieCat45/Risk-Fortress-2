@@ -4,7 +4,17 @@
 #include <tf2_stocks>
 #include <dhooks>
 
-// external dependencies
+#pragma semicolon 1
+#pragma newdecls required
+
+#if defined PRERELEASE
+#define PLUGIN_VERSION "PRERELEASE"
+#else
+#define PLUGIN_VERSION "0.11.5b"
+#endif
+
+#include <rf2>
+#include "rf2/defs.sp"
 #include <cbasenpc>
 #include <cbasenpc/tf/nav>
 #include <tf2attributes>
@@ -20,10 +30,6 @@
 #tryinclude <goomba>
 #define REQUIRE_PLUGIN
 
-#pragma semicolon 1
-#pragma newdecls required
-
-#define PLUGIN_VERSION "0.11.4b"
 public Plugin myinfo =
 {
 	name		=	"Risk Fortress 2",
@@ -33,9 +39,6 @@ public Plugin myinfo =
 	url			=	"",
 };
 
-#include "rf2/defs.sp"
-#include <rf2>
-
 // General
 bool g_bPluginEnabled;
 bool g_bLateLoad;
@@ -44,12 +47,14 @@ bool g_bWaitingForPlayers;
 bool g_bRoundActive;
 bool g_bGracePeriod;
 bool g_bGameOver;
+bool g_bGameWon;
 bool g_bMapChanging;
 bool g_bConVarsModified;
 bool g_bPluginReloading;
 bool g_bTankBossMode;
 bool g_bGoombaAvailable;
 bool g_bRoundEnding;
+bool g_bInUnderworld;
 float g_flWaitRestartTime;
 int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
@@ -61,6 +66,10 @@ bool g_bServerRestarting;
 bool g_bForceRifleSound;
 bool g_bMapRunning;
 bool g_bRingCashBonus;
+bool g_bEnteringUnderworld;
+bool g_bItemSharingDisabledForMap;
+char g_szForcedMap[256];
+char g_szMapForcerName[MAX_NAME_LENGTH];
 
 int g_iTotalEnemiesKilled;
 int g_iTotalBossesKilled;
@@ -84,6 +93,7 @@ int g_iMinutesPassed;
 int g_iDifficultyLevel = DIFFICULTY_SCRAP;
 int g_iSubDifficulty = SubDifficulty_Easy;
 int g_iStagesCompleted;
+int g_iCurrentStage = 1;
 int g_iLoopCount;
 int g_iEnemyLevel = 1;
 int g_iRespawnWavesCompleted;
@@ -216,6 +226,7 @@ Handle g_hEntityGlowResetTimer[MAX_EDICTS];
 Handle g_hPlayerTimer;
 Handle g_hHudTimer;
 Handle g_hDifficultyTimer;
+Handle g_hItemTimer;
 
 // Gamedata handles
 Handle g_hSDKEquipWearable;
@@ -243,6 +254,7 @@ DynamicHook g_hHookRiflePostFrame;
 DynamicHook g_hHookIterateAttributes;
 DynamicHook g_hHookIsCombatItem;
 DynamicHook g_hHookMeleeSmack;
+DynamicHook g_hHookForceRespawn;
 int g_iEconItem;
 int g_iOnlyIterateItemViewAttributes;
 int g_iIterateAttributesHookId[MAX_EDICTS];
@@ -261,10 +273,9 @@ ConVar g_cvMaxSurvivors;
 ConVar g_cvGameResetTime;
 ConVar g_cvAlwaysSkipWait;
 ConVar g_cvEnableAFKManager;
+ConVar g_cvAFKOnlyKickSurvivors;
 ConVar g_cvAFKManagerKickTime;
-ConVar g_cvAFKLimit;
 ConVar g_cvAFKKickAdmins;
-ConVar g_cvAFKMinHumans;
 ConVar g_cvBotsCanBeSurvivor;
 ConVar g_cvBotWanderRecomputeDist;
 ConVar g_cvBotWanderTime;
@@ -318,6 +329,7 @@ ConVar g_cvHiddenServerStartTime;
 ConVar g_cvWaitExtendTime;
 ConVar g_cvItemShareDisableThreshold;
 ConVar g_cvItemShareDisableLoopCount;
+ConVar g_cvRequiredStagesForStatue;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -343,6 +355,7 @@ Cookie g_coDisableItemCosmetics;
 Cookie g_coEarnedAllAchievements;
 Cookie g_coPingObjectsHint;
 Cookie g_coAlwaysShowItemCounts;
+Cookie g_coItemShareKarma;
 
 // TFBots
 TFBot g_TFBot[MAXTF2PLAYERS];
@@ -364,6 +377,8 @@ int g_iThrillerRepeatCount;
 #include "rf2/customents/item_ent.sp"
 #include "rf2/customents/healthtext.sp"
 #include "rf2/customents/dispenser_shield.sp"
+#include "rf2/customents/world_center.sp"
+#include "rf2/customents/trigger_exit.sp"
 
 #include "rf2/customents/objects/object_base.sp"
 #include "rf2/customents/objects/object_teleporter.sp"
@@ -371,6 +386,10 @@ int g_iThrillerRepeatCount;
 #include "rf2/customents/objects/object_workbench.sp"
 #include "rf2/customents/objects/object_scrapper.sp"
 #include "rf2/customents/objects/object_gravestone.sp"
+#include "rf2/customents/objects/object_altar.sp"
+#include "rf2/customents/objects/object_pumpkin.sp"
+#include "rf2/customents/objects/object_statue.sp"
+#include "rf2/customents/objects/object_tree.sp"
 
 #include "rf2/customents/projectiles/projectile_base.sp"
 #include "rf2/customents/projectiles/projectile_shuriken.sp"
@@ -719,11 +738,18 @@ void LoadGameData()
 	}
 	
 	delete gamedata;
+	gamedata = new GameData("sm-tf2.games");
+	g_hHookForceRespawn = new DynamicHook(gamedata.GetOffset("ForceRespawn"), HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
+	if (!g_hHookForceRespawn)
+	{
+		LogError("[DHooks] Failed to create virtual hook for ForceRespawn");
+	}
+	
+	delete gamedata;
 }
 
 public void OnMapStart()
 {
-	// Reset our ConVars if we've changed them
 	if (g_bConVarsModified)
 	{
 		ResetConVars();
@@ -733,7 +759,10 @@ public void OnMapStart()
 	// This was a reload map change
 	if (g_bPluginReloading)
 	{
-		InsertServerCommand("sm plugins load_unlock; sm plugins reload rf2");
+		char fileName[32];
+		GetPluginFilename(INVALID_HANDLE, fileName, sizeof(fileName));
+		ReplaceStringEx(fileName, sizeof(fileName), ".smx", "");
+		InsertServerCommand("sm plugins load_unlock; sm plugins reload %s", fileName);
 		return;
 	}
 	
@@ -745,7 +774,7 @@ public void OnMapStart()
 	SplitString(mapName, "_", buffer, sizeof(buffer));
 	if (strcmp2(buffer, "rf2", false))
 	{
-		g_bPluginEnabled = true;
+		g_bPluginEnabled = true;	
 		g_bWaitingForPlayers = asBool(GameRules_GetProp("m_bInWaitingForPlayers"));
 		if (g_bLateLoad)
 		{
@@ -756,7 +785,7 @@ public void OnMapStart()
 					OnClientConnected(i);
 					OnClientCookiesCached(i);
 				}
-
+				
 				if (IsClientInGame(i))
 				{
 					OnClientPutInServer(i);
@@ -765,9 +794,9 @@ public void OnMapStart()
 			}
 		}
 		
-		if (GetMaxHumanPlayers() < 32)
+		if (MaxClients < 32)
 		{
-			LogMessage("This server has only %i maxplayers. 32 maxplayers is recommended for Risk Fortress 2.", GetMaxHumanPlayers());
+			LogMessage("This server has only %i maxplayers. 32 maxplayers is recommended for Risk Fortress 2.", MaxClients);
 		}
 		
 		if (!TheNavMesh.IsLoaded())
@@ -794,19 +823,23 @@ public void OnMapStart()
 			maxSpeed.FloatValue = 900.0;
 		}
 		
-		GameRules_SetProp("m_nForceUpgrades", 2);
-		// These are ConVars we're OK with being set by server.cfg, but we'll set our personal defaults.
-		// If configs wish to change these, they will be overridden by them later.
-		FindConVar("sv_alltalk").SetBool(true);
-		FindConVar("tf_use_fixed_weaponspreads").SetBool(true);
-		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
-		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
-		FindConVar("sv_tags").Flags = 0;
+		GameRules_SetProp("m_nForceUpgrades", 2); // force some MvM specific mechanics
 		
-		// Why is this a development only ConVar Valve?
-		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
-		waitTime.Flags &= ~FCVAR_DEVELOPMENTONLY;
-		waitTime.SetInt(WAIT_TIME_DEFAULT);
+		if (!g_bLateLoad)
+		{
+			// These are ConVars we're OK with being set by server.cfg, but we'll set our personal defaults.
+			// If configs wish to change these, they will be overridden by them later.
+			FindConVar("sv_alltalk").SetBool(true);
+			FindConVar("tf_use_fixed_weaponspreads").SetBool(true);
+			FindConVar("tf_avoidteammates_pushaway").SetBool(false);
+			FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
+			FindConVar("sv_tags").Flags = 0;
+
+			// Why is this a development only ConVar Valve?
+			ConVar waitTime = FindConVar("mp_waitingforplayers_time");
+			waitTime.Flags &= ~FCVAR_DEVELOPMENTONLY;
+			waitTime.SetInt(WAIT_TIME_DEFAULT);
+		}
 		
 		// Round events
 		HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Pre);
@@ -835,6 +868,7 @@ public void OnMapStart()
 		AddCommandListener(OnChangeSpec, "spec_prev");
 		AddCommandListener(OnBuildCommand, "build");
 		
+		// Everything else
 		HookEntityOutput("tank_boss", "OnKilled", Output_OnTankKilled);
 		HookEntityOutput("rf2_tank_boss_badass", "OnKilled", Output_OnTankKilled);
 		HookUserMessage(GetUserMessageId("SayText2"), UserMessageHook_SayText2, true);
@@ -856,6 +890,9 @@ public void OnMapStart()
 		{
 			DespawnObjects();
 		}
+		
+		if (g_szUnderworldMap[0])
+			g_bInUnderworld = StrContains(g_szUnderworldMap, mapName, false) == 0;
 		
 		if (g_bGameInitialized)
 		{
@@ -897,8 +934,6 @@ public void OnConfigsExecuted()
 		FindConVar("tf_player_movement_restart_freeze").SetBool(false);
 		FindConVar("sm_vote_progress_hintbox").SetBool(true);
 		FindConVar("mp_humans_must_join_team").SetString(g_cvAllowHumansInBlue.BoolValue ? "any" : "red");
-		
-		// no SourceTV
 		FindConVar("tv_enable").SetBool(false);
 		for (int i = 1; i <= MaxClients; i++)
 		{
@@ -912,12 +947,6 @@ public void OnConfigsExecuted()
 		// sv_pure is a command -.-
 		InsertServerCommand("sv_pure 0");
 		int reservedSlots = GetReservedSlots();
-		if (reservedSlots > 0 && FindConVar("sm_reserve_type").IntValue != 0)
-		{
-			LogMessage("[WARNING] sm_reserve_type 0 is recommended for Risk Fortress 2!");
-		}
-		
-		// TFBots
 		char class[32];
 		GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
 		FindConVar("tf_bot_force_class").SetString(class);
@@ -939,12 +968,17 @@ public void OnMapEnd()
 {
 	g_bMapChanging = true;
 	g_bMapRunning = false;
-
 	if (RF2_IsEnabled())
 	{
-		if (!g_bGameOver)
+		if (!g_bGameOver && !IsInUnderworld())
 		{
 			g_iStagesCompleted++;
+		}
+		
+		if (g_bGameWon && g_iDifficultyLevel >= DIFFICULTY_STEEL)
+		{
+			// Create a file as a flag saying that we won on a high difficulty setting. We shouldn't use a cvar as that will get reset if the server restarts.
+			CreateSteelVictoryFlag();
 		}
 		
 		CleanUp();
@@ -964,7 +998,6 @@ void CleanUp()
 	UnhookEvent("player_connect_client", OnPlayerConnect, EventHookMode_Pre);
 	UnhookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
 	UnhookEvent("player_healonhit", OnPlayerHealOnHit, EventHookMode_Pre);
-	
 	RemoveCommandListener(OnVoiceCommand, "voicemenu");
 	RemoveCommandListener(OnChangeClass, "joinclass");
 	RemoveCommandListener(OnChangeTeam, "jointeam");
@@ -975,7 +1008,6 @@ void CleanUp()
 	RemoveCommandListener(OnChangeSpec, "spec_next");
 	RemoveCommandListener(OnChangeSpec, "spec_prev");
 	RemoveCommandListener(OnBuildCommand, "build");
-	
 	UnhookEntityOutput("tank_boss", "OnKilled", Output_OnTankKilled);
 	UnhookEntityOutput("rf2_tank_boss_badass", "OnKilled", Output_OnTankKilled);
 	UnhookUserMessage(GetUserMessageId("SayText2"), UserMessageHook_SayText2, true);
@@ -986,11 +1018,15 @@ void CleanUp()
 	g_bGracePeriod = false;
 	g_bWaitingForPlayers = false;
 	g_bRoundEnding = false;
+	g_bEnteringUnderworld = false;
+	g_bItemSharingDisabledForMap = false;
+	g_bInUnderworld = false;
 	g_flNextAutoReloadCheckTime = 0.0;
 	g_flAutoReloadTime = 0.0;
 	g_hPlayerTimer = null;
 	g_hHudTimer = null;
 	g_hDifficultyTimer = null;
+	g_hItemTimer = null;
 	g_iRespawnWavesCompleted = 0;
 	g_szEnemyPackName = "";
 	g_szBossPackName = "";
@@ -1007,7 +1043,6 @@ void CleanUp()
 	g_flWaitRestartTime = 0.0;
 	g_bTeleporterEventReminder = false;
 	g_bRingCashBonus = false;
-	
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
 	g_hCrashedPlayerSteamIDs.Clear();
@@ -1030,7 +1065,7 @@ void CleanUp()
 		}
 	}
 	
-	// Make sure these are all unhooked, or else shit breaks
+	// Make sure these are all unhooked, or else shit potentially breaks
 	for (int i = MaxClients+1; i < MAX_EDICTS; i++)
 	{
 		if (g_iIterateAttributesHookId[i])
@@ -1124,6 +1159,7 @@ void LoadAssets()
 	PrecacheSound2(SND_STUN, true);
 	PrecacheSound2(SND_PARACHUTE, true);
 	PrecacheSound2(SND_HINT, true);
+	PrecacheSound2(SND_ENTER_HELL, true);
 	PrecacheSound2("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack02.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack03.mp3", true);
@@ -1223,6 +1259,11 @@ public void OnClientPutInServer(int client)
 			g_hHookTakeHealth.HookEntity(Hook_Pre, client, DHook_TakeHealth);
 		}
 		
+		if (g_hHookForceRespawn)
+		{
+			g_hHookForceRespawn.HookEntity(Hook_Pre, client, DHook_ForceRespawn);
+		}
+		
 		g_hPlayerExtraSentryList[client] = new ArrayList();
 	}
 }
@@ -1316,7 +1357,7 @@ public void OnClientDisconnect(int client)
 	}
 	else if (!IsFakeClient(client))
 	{
-		if (g_bRoundActive && !g_bGameOver && !g_bMapChanging)
+		if (g_bRoundActive && !g_bGameOver && !g_bGameWon && !g_bMapChanging)
 		{
 			CheckRedTeam(client);
 		}
@@ -1341,6 +1382,9 @@ public void OnClientDisconnect(int client)
 
 public void OnClientDisconnect_Post(int client)
 {
+	if (!RF2_IsEnabled())
+		return;
+	
 	g_flLoopMusicAt[client] = -1.0;
 	if (g_hPlayerExtraSentryList[client])
 	{
@@ -1519,18 +1563,19 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	}
 	
 	g_flRoundStartSeconds = g_flSecondsPassed;
-	CreateTimer(0.5, Timer_KillEnemyTeam, _, TIMER_FLAG_NO_MAPCHANGE);
-	
 	int gamerules = FindEntityByClassname(-1, "tf_gamerules");
 	if (gamerules == INVALID_ENT)
 	{
 		gamerules = CreateEntityByName("tf_gamerules");
 	}
 	
+	GameRules_SetPropFloat("m_flNextRespawnWave", GetGameTime()+999999.0, 2);
+	GameRules_SetPropFloat("m_flNextRespawnWave", GetGameTime()+999999.0, 3);
 	SetVariantInt(9999);
 	AcceptEntityInput(gamerules, "SetRedTeamRespawnWaveTime");
 	SetVariantInt(9999);
 	AcceptEntityInput(gamerules, "SetBlueTeamRespawnWaveTime");
+	
 	SpawnObjects();
 	g_flCurrentCostMult = RF2_Object_Base.GetCostMultiplier();
 	
@@ -1551,46 +1596,54 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 		}
 	}
 	
-	entity = MaxClients+1;
-	while ((entity = FindEntityByClassname(entity, "tf_weapon_*")) != INVALID_ENT)
-	{
-		int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
-		if (!IsValidClient(owner) || IsFakeClient(owner) && !IsPlayerAlive(owner))
-		{
-			RemoveEntity(entity);
-		}
-	}
-	
 	if (g_hPlayerTimer)
 		delete g_hPlayerTimer;
 	
 	if (g_hHudTimer)
 		delete g_hHudTimer;
-
+	
 	if (g_hDifficultyTimer)
 		delete g_hDifficultyTimer;
+	
+	if (g_hItemTimer)
+		delete g_hItemTimer;
 	
 	g_hPlayerTimer = CreateTimer(0.1, Timer_PlayerTimer, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	g_hHudTimer = CreateTimer(0.1, Timer_PlayerHud, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	g_hDifficultyTimer = CreateTimer(1.0, Timer_Difficulty, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-	
+	g_hItemTimer = CreateTimer(0.1, Timer_UpdateItems, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	StopMusicTrackAll();
 	CreateTimer(0.25, Timer_PlayMusicDelay, _, TIMER_FLAG_NO_MAPCHANGE);
-
+	
 	// Begin grace period
-	int timer = CreateEntityByName("team_round_timer");
-	DispatchSpawn(timer);
-	SetEntProp(timer, Prop_Send, "m_nState", 0); // setup state
-	SetVariantFloat(g_flGracePeriodTime);
-	AcceptEntityInput(timer, "SetSetupTime");
-	SetVariantInt(1);
-	AcceptEntityInput(timer, "ShowInHUD");
-	AcceptEntityInput(timer, "Resume");
-	HookSingleEntityOutput(timer, "OnSetupFinished", Output_GraceTimerFinished, true);
-
-	if (g_bTankBossMode)
+	if (g_flGracePeriodTime >= 0.0)
 	{
-		RF2_PrintToChatAll("%t", "TanksWillArrive", g_flGracePeriodTime);
+		int timer = CreateEntityByName("team_round_timer");
+		DispatchSpawn(timer);
+		SetEntProp(timer, Prop_Send, "m_nState", 0); // setup state
+		SetVariantFloat(g_flGracePeriodTime);
+		AcceptEntityInput(timer, "SetSetupTime");
+		SetVariantInt(1);
+		AcceptEntityInput(timer, "ShowInHUD");
+		AcceptEntityInput(timer, "Resume");
+		HookSingleEntityOutput(timer, "OnSetupFinished", Output_GraceTimerFinished, true);
+		if (g_bTankBossMode)
+		{
+			RF2_PrintToChatAll("%t", "TanksWillArrive", g_flGracePeriodTime);
+		}
+	}
+	else
+	{
+		g_bGracePeriod = false;
+		entity = MaxClients+1;
+		while ((entity = FindEntityByClassname(entity, "team_round_timer")) != INVALID_ENT)
+		{
+			if (GetEntProp(entity, Prop_Send, "m_nState") == 0)
+			{
+				RemoveEntity2(entity);
+				break;
+			}
+		}
 	}
 	
 	Call_StartForward(g_fwGracePeriodStart);
@@ -1609,7 +1662,7 @@ public Action Timer_DifficultyVote(Handle timer)
 	{
 		CreateTimer(5.0, Timer_DifficultyVote, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -1620,12 +1673,12 @@ void StartDifficultyVote()
 	menu.AddItem("0", "Scrap (Easy)");
 	menu.AddItem("1", "Iron (Normal)");
 	menu.AddItem("2", "Steel (Hard)");
-	
-	if (GetRandomInt(1, 20) == 1)
+	if (GetRandomInt(1, 20) == 1 || DoesSteelVictoryFlagExist())
 	{
 		menu.AddItem("3", "Titanium (Expert)");
+		RemoveSteelVictoryFlag();
 	}
-
+	
 	int clients[MAXTF2PLAYERS] = {-1, ...};
 	int clientCount;
 	for (int i = 1; i <= MaxClients; i++)
@@ -1706,20 +1759,39 @@ public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 			
 			UpdatePlayerXP(i, GetPlayerCash(i)/3.0);
 			SetPlayerCash(i, 0.0);
+			if (!IsSingleplayer(false) && g_cvItemShareEnabled.BoolValue && g_cvItemShareDisableThreshold.FloatValue > 0.0)
+			{
+				int value = GetCookieInt(i, g_coItemShareKarma);
+				int items = g_iItemsTaken[RF2_GetSurvivorIndex(i)];
+				int required = GetPlayerRequiredItems(i);
+				if (items <= 0)
+				{
+					// very bad karma
+					value = imax(-2, value-2);
+				}
+				else if (items < required)
+				{
+					// bad karma
+					value = imax(-2, value-1);
+				}
+				else
+				{
+					value = imin(2, value+1); // good karma
+				}
+				
+				SetCookieInt(i, g_coItemShareKarma, value);
+			}
 		}
 		
-		int nextStage = RF2_GetCurrentStage();
-		if (nextStage >= RF2_GetMaxStages()-1)
+		if (g_bEnteringUnderworld)
 		{
-			g_iLoopCount++;
-			nextStage = 0;
+			CreateTimer(10.5, Timer_EnterUnderworldEffect, _, TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(14.0, Timer_EnterUnderworld, DetermineNextStage(), TIMER_FLAG_NO_MAPCHANGE);
 		}
 		else
 		{
-			nextStage++;
+			CreateTimer(14.0, Timer_SetNextStage, DetermineNextStage(), TIMER_FLAG_NO_MAPCHANGE);
 		}
-		
-		CreateTimer(14.0, Timer_SetNextStage, nextStage, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else if (winningTeam == TEAM_ENEMY)
 	{
@@ -1747,31 +1819,9 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		return Plugin_Continue;
 	
 	int team = GetClientTeam(client);
-	
-	// If we're an enemy and spawn during the grace period, or somehow don't have a type, die
-	if (team == TEAM_ENEMY)
+	if (team == TEAM_ENEMY) // Remove loadout wearables for enemies
 	{
-		if (g_bGracePeriod || !IsEnemy(client))
-		{
-			SilentlyKillPlayer(client);
-			return Plugin_Continue;
-		}
-	}
-	
-	if (team == TEAM_SURVIVOR)
-	{
-		// Gatekeeping
-		if (!IsPlayerSurvivor(client) && !IsPlayerMinion(client))
-		{
-			SilentlyKillPlayer(client);
-			ChangeClientTeam(client, TEAM_ENEMY);
-		}
-	}
-	else if (team == TEAM_ENEMY) // Remove loadout wearables for enemies
-	{
-		// TODO: Do something about voodoo-cursed (zombie) cosmetics causing player skin issues.
 		TF2_RemoveLoadoutWearables(client);
-		
 		if (IsFakeClient(client))
 		{
 			char name[MAX_NAME_LENGTH];
@@ -2040,9 +2090,13 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	{
 		if (!g_bGracePeriod)
 		{
+			CreateTimer(3.5, Timer_SurvivorDeath, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
+		}
+		
+		if (!g_bGracePeriod && !GetRF2GameRules().DisableDeath)
+		{
 			SaveSurvivorInventory(victim, g_iPlayerInventoryIndex[victim]);
 			PrintDeathMessage(victim, itemProc);
-			
 			int fog = CreateEntityByName("env_fog_controller");
 			DispatchKeyValue(fog, "spawnflags", "1");
 			DispatchKeyValueInt(fog, "fogenabled", 1);
@@ -2073,8 +2127,6 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			}
 			
 			CreateTimer(time, Timer_KillFog, EntIndexToEntRef(fog), TIMER_FLAG_NO_MAPCHANGE);
-			CreateTimer(2.5, Timer_SurvivorDeath, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
-			
 			int alive = 0;
 			int lastMan;
 			for (int i = 1; i <= MaxClients; i++)
@@ -2103,7 +2155,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			TriggerAchievement(victim, ACHIEVEMENT_DIE);
 			TriggerAchievement(victim, ACHIEVEMENT_DIE100);
 		}
-		else
+		else if (!GetRF2GameRules().DisableDeath)
 		{
 			float pos[3];
 			GetEntPos(victim, pos);
@@ -2144,10 +2196,14 @@ public Action Timer_RespawnPlayerPreRound(Handle timer, int client)
 
 public Action Timer_SurvivorDeath(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0)
+	if ((client = GetClientOfUserId(client)) == 0 || g_bGameWon || g_bGameOver)
 		return Plugin_Continue;
 	
-	if (GetCookieBool(client, g_coSpecOnDeath))
+	if (GetRF2GameRules().DisableDeath)
+	{
+		TF2_RespawnPlayer(client);
+	}
+	else if (GetCookieBool(client, g_coSpecOnDeath))
 	{
 		ChangeClientTeam(client, 1);
 	}
@@ -2181,7 +2237,6 @@ public Action Timer_KillFog(Handle timer, int fog)
 
 	AcceptEntityInput(fog, "TurnOff");
 	RemoveEntity2(fog);
-
 	return Plugin_Continue;
 }
 
@@ -2433,33 +2488,32 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 	{
 		shield.Toggle(false, true);
 	}
-	else
+	else if (GetGameTime() > shield.NextModelUpdateTime)
 	{
 		int dispLevel = GetEntProp(shield.Dispenser, Prop_Send, "m_iUpgradeLevel");
 		if (dispLevel != shield.Level && dispLevel > shield.Level)
 		{
 			shield.Level = dispLevel;
-			char model[PLATFORM_MAX_PATH];
 			switch (dispLevel)
 			{
 				case 1:
 				{
-					model = MODEL_DISPENSER_SHIELD_L1;
+					shield.SetModel(MODEL_DISPENSER_SHIELD_L1);
 				}
 				case 2:
 				{
-					model = MODEL_DISPENSER_SHIELD_L2;
+					shield.SetModel(MODEL_DISPENSER_SHIELD_L2);
 					EmitGameSoundToAll("WeaponMedigun_Vaccinator.Charged_tier_03", shield.index);
 				}
 				case 3:
 				{
-					model = MODEL_DISPENSER_SHIELD;
+					shield.SetModel(MODEL_DISPENSER_SHIELD);
 					EmitGameSoundToAll("WeaponMedigun_Vaccinator.Charged_tier_04", shield.index);
 				}
 			}
-			
-			shield.SetModel(model);
 		}
+		
+		shield.NextModelUpdateTime = GetGameTime()+0.12;
 	}
 	
 	return Plugin_Continue;
@@ -2488,10 +2542,10 @@ public void RF_TeleporterThink(int building)
 			
 			if (!IsFakeClient(i) && (!GetCookieBool(i, g_coBecomeEnemy) || !g_cvAllowHumansInBlue.BoolValue))
 				continue;
-
+			
 			enemies.Push(i);
 		}
-
+		
 		enemies.SortCustom(SortEnemySpawnArray);
 		int spawns, client;
 		float time;
@@ -2609,24 +2663,6 @@ public Action OnPlayerHealOnHit(Event event, const char[] name, bool dontBroadca
 	return Plugin_Changed;
 }
 
-public Action Timer_KillEnemyTeam(Handle timer)
-{
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!IsClientInGame(i) || IsPlayerSurvivor(i))
-			continue;
-		
-		SilentlyKillPlayer(i);
-		if (IsFakeClient(i))
-		{
-			// hotfix
-			TF2_SetPlayerClass(i, TFClass_Scout);
-		}
-	}
-	
-	return Plugin_Continue;
-}
-
 public Action Output_GraceTimerFinished(const char[] output, int caller, int activator, float delay)
 {
 	if (!g_bGracePeriod) // grace period was probably ended early by /rf2_skipgrace (which still calls this timer function)
@@ -2642,7 +2678,7 @@ void EndGracePeriod()
 	g_bGracePeriod = false;
 	int entity = MaxClients+1;
 	
-	// Have to do this or else bots will misbehave, thinking it's still setup time. They won't attack players and will randomly taunt.
+	// We have to do this or else bots will misbehave, thinking it's still setup time. They won't attack players and will randomly taunt.
 	while ((entity = FindEntityByClassname(entity, "team_round_timer")) != INVALID_ENT)
 	{
 		if (GetEntProp(entity, Prop_Send, "m_nState") == 0)
@@ -2660,7 +2696,6 @@ void EndGracePeriod()
 	CreateTimer(1.0, Timer_BusterSpawnWave, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	Call_StartForward(g_fwGracePeriodEnded);
 	Call_Finish();
-	
 	if (!g_bTankBossMode)
 	{
 		RF2_PrintToChatAll("%t", "GracePeriodEnded");
@@ -2676,8 +2711,7 @@ public Action UserMessageHook_SayText2(UserMsg msg, BfRead bf, const int[] clien
 	char message[128];
 	bf.ReadString(message, sizeof(message));
 	bf.ReadString(message, sizeof(message));
-	
-	if (StrContains(message, "Name_Change") != -1) // Hide name change messages, they really get spammy
+	if (StrContains(message, "Name_Change") != -1) // Hide name change messages, they really get spammy with bots.
 	{
 		return Plugin_Handled;
 	}
@@ -2688,7 +2722,7 @@ public Action UserMessageHook_SayText2(UserMsg msg, BfRead bf, const int[] clien
 int g_iEnemySpawnPoints[MAXTF2PLAYERS];
 public Action Timer_EnemySpawnWave(Handle timer)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive || IsStageCleared())
+	if (!RF2_IsEnabled() || !g_bRoundActive || g_iEnemyCount <= 0 || IsStageCleared())
 		return Plugin_Continue;
 	
 	int survivorCount = RF2_GetSurvivorCount();
@@ -2841,22 +2875,71 @@ public Action Timer_SpawnEnemy(Handle timer, int client)
 public Action Timer_SetNextStage(Handle timer, int stage)
 {
 	g_iCurrentStage = stage;
-
-	// rf2_setnextmap
-	if (g_bForceNextMapCommand)
+	// rf2_setnextmap or Tree of Fate
+	if (g_szForcedMap[0])
 	{
 		char reason[64];
-		FormatEx(reason, sizeof(reason), "%s forced the next map", g_szMapForcerName);
-
+		if (g_szMapForcerName[0])
+		{
+			FormatEx(reason, sizeof(reason), "%s forced the next map", g_szMapForcerName);
+			g_szMapForcerName = "";
+		}
+		else
+		{
+			reason = "Tree of Fate";
+		}
+		
 		g_bMapChanging = true;
 		ForceChangeLevel(g_szForcedMap, reason);
-		g_bForceNextMapCommand = false;
 	}
 	else
 	{
 		SetNextStage(stage);
 	}
+	
+	return Plugin_Continue;
+}
 
+public Action Timer_EnterUnderworldEffect(Handle timer)
+{
+	float pos[3];
+	GetWorldCenter(pos);
+	UTIL_ScreenShake(pos, 10.0, 10.0, 10.0, 9999999.0, SHAKE_START, true);
+	EmitSoundToAll(SND_ENTER_HELL);
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i))
+		{
+			UTIL_ScreenFade(i, {255, 255, 255, 255}, 2.5, 10.0, FFADE_PURGE|FFADE_OUT);
+		}
+	}
+	
+	return Plugin_Continue;
+}
+
+public Action Timer_EnterUnderworld(Handle timer, int stage)
+{
+	g_iCurrentStage = stage;
+	if (g_szForcedMap[0])
+	{
+		char reason[64];
+		if (g_szMapForcerName[0])
+		{
+			FormatEx(reason, sizeof(reason), "%s forced the next map", g_szMapForcerName);
+			g_szMapForcerName = "";
+		}
+		else
+		{
+			reason = "Tree of Fate";
+		}
+
+		ForceChangeLevel(g_szForcedMap, reason);
+	}
+	else
+	{
+		ForceChangeLevel(g_szUnderworldMap, "Entering the Underworld");
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -2878,7 +2961,7 @@ public Action Timer_PlayerHud(Handle timer)
 		if (!IsClientInGame(i) || IsFakeClient(i))
 			continue;
 
-		if (g_bGameOver)
+		if (g_bGameOver || g_bGameWon)
 		{
 			static bool scoreCalculated;
 			static int score;
@@ -2911,10 +2994,29 @@ public Action Timer_PlayerHud(Handle timer)
 				scoreCalculated = true;
 			}
 			
-			SetHudTextParams(-1.0, -1.3, 0.15, 255, 100, 100, 255);
+			static int color[4];
+			static char text[64];
+			if (g_bGameOver)
+			{
+				text = "GAME OVER";
+				color[0] = 255;
+				color[1] = 100;
+				color[2] = 100;
+				color[3] = 255;
+			}
+			else
+			{
+				text = "Fate Unknown...";
+				color[0] = 100;
+				color[1] = 100;
+				color[2] = 255;
+				color[3] = 255;
+			}
+			
+			SetHudTextParams(-1.0, -1.3, 0.15, color[0], color[1], color[2], color[3]);
 			ShowSyncHudText(i, g_hMainHudSync,
-				"\n\n\n\nGAME OVER\n\nEnemies slain: %i\nBosses slain: %i\nStages completed: %i\nItems found: %i\nTanks destroyed: %i\nTOTAL SCORE: %i points\nRANK: %s",
-				g_iTotalEnemiesKilled, g_iTotalBossesKilled, g_iStagesCompleted, g_iTotalItemsFound, g_iTotalTanksKilled, score, rank);
+				"\n\n\n\n%s\n\nEnemies slain: %i\nBosses slain: %i\nStages completed: %i\nItems found: %i\nTanks destroyed: %i\nTOTAL SCORE: %i points\nRANK: %s",
+				text, g_iTotalEnemiesKilled, g_iTotalBossesKilled, g_iStagesCompleted, g_iTotalItemsFound, g_iTotalTanksKilled, score, rank);
 			
 			return Plugin_Continue;
 		}
@@ -2984,7 +3086,7 @@ public Action Timer_PlayerHud(Handle timer)
 						name = "Tank";
 						maxHealth = GetEntProp(g_iPlayerLastAttackedTank[i], Prop_Data, "m_iMaxHealth");
 					}
-
+					
 					FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Tanks Destroyed: %i/%i\n%s Health: %i/%i",
 						g_iTanksKilledObjective, g_iTankKillRequirement, name, health, maxHealth);
 				}
@@ -3069,7 +3171,7 @@ public Action Timer_PlayerHud(Handle timer)
 			ShowSyncHudText(i, g_hObjectiveHudSync, g_szObjectiveHud[i]);
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -3182,18 +3284,47 @@ public Action Timer_PlayerTimer(Handle timer)
 	bool stageCleared = IsStageCleared();
 	bool itemShare = IsItemSharingEnabled();
 	bool missingItems;
+	bool canDisableSharing;
 	static float timeSincePingHint[MAXTF2PLAYERS];
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i))
 			continue;
 		
+		if (g_bRoundActive && itemShare && IsPlayerSurvivor(i, false))
+		{
+			canDisableSharing = true;
+			if (!DoesPlayerHaveEnoughItems(i))
+			{
+				missingItems = true;
+				index = RF2_GetSurvivorIndex(i);
+				Format(names, sizeof(names), "%s- %N (%i/%i)\n", names, i, g_iItemsTaken[index], GetPlayerRequiredItems(i));
+			}
+			
+			if (g_iItemsTaken[RF2_GetSurvivorIndex(i)] < GetPlayerRequiredItems(i))
+			{
+				canDisableSharing = false;
+			}
+		}
+		
 		if (g_bRoundActive && !IsPlayerAlive(i))
 		{
+			if (g_bGameWon || g_bGameOver)
+				continue;
+			
 			team = GetClientTeam(i);
-			if (team == TEAM_SURVIVOR)
+			if (team == TEAM_SURVIVOR && (g_cvBotsCanBeSurvivor.BoolValue || !IsFakeClient(i)))
 			{
-				if (!g_bPlayerSpawningAsMinion[i])
+				if (IsInUnderworld())
+				{
+					// Allow late spawns in the underworld
+					int freeIndex = GetFreeSurvivorIndex();
+					if (freeIndex != -1 && !IsPlayerSurvivor(i, false))
+					{
+						MakeSurvivor(i, freeIndex, false);
+					}
+				}
+				else if (!GetRF2GameRules().DisableDeath && !g_bPlayerSpawningAsMinion[i])
 				{
 					g_bPlayerSpawningAsMinion[i] = true;
 					CreateTimer(5.0, Timer_MinionSpawn, GetClientUserId(i), TIMER_FLAG_NO_MAPCHANGE);
@@ -3208,16 +3339,6 @@ public Action Timer_PlayerTimer(Handle timer)
 			}
 			
 			continue;
-		}
-		
-		if (itemShare && IsPlayerSurvivor(i, false))
-		{
-			if (!DoesPlayerHaveEnoughItems(i))
-			{
-				missingItems = true;
-				index = RF2_GetSurvivorIndex(i);
-				Format(names, sizeof(names), "%s- %N (%i/%i)\n", names, i, g_iItemsTaken[index], GetPlayerRequiredItems(i));
-			}
 		}
 		
 		// All players have infinite reserve ammo
@@ -3378,7 +3499,7 @@ public Action Timer_PlayerTimer(Handle timer)
 		}
 	}
 	
-	if (!IsSingleplayer(false))
+	if (!IsSingleplayer(false) && g_cvItemShareEnabled.BoolValue)
 	{
 		for (int i = 1; i <= MaxClients; i++)
 		{
@@ -3392,7 +3513,15 @@ public Action Timer_PlayerTimer(Handle timer)
 				}
 				else
 				{
-					PrintKeyHintText(i, "%t", "ItemSharingDisabled");
+					if (canDisableSharing)
+					{
+						g_bItemSharingDisabledForMap = true;
+					}
+					
+					if (g_bItemSharingDisabledForMap)
+						PrintKeyHintText(i, "%t", "ItemSharingDisabled");
+					else
+						PrintKeyHintText(i, "");
 				}
 			}
 		}
@@ -3442,36 +3571,14 @@ public Action Timer_AFKManager(Handle timer)
 {
 	if (!RF2_IsEnabled() || IsSingleplayer())
 		return Plugin_Continue;
-
-	int kickPriority[MAXTF2PLAYERS];
-	int highestKickPriority = -1;
-	int afkCount;
+	
 	int humanCount = GetTotalHumans();
-	int afkLimit = g_cvAFKLimit.IntValue;
-	int minHumans = g_cvAFKMinHumans.IntValue;
 	float afkKickTime = g_cvAFKManagerKickTime.FloatValue;
 	bool kickAdmins = g_cvAFKKickAdmins.BoolValue;
 	bool managerEnabled = g_cvEnableAFKManager.BoolValue;
-	
-	// first we need to count our AFKs to see if anyone needs kicking
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!IsClientInGame(i) || IsFakeClient(i))
-			continue;
-		
-		if (IsPlayerAFK(i) && managerEnabled)
-		{
-			kickPriority[i] += RoundToFloor(g_flPlayerAFKTime[i]); // kick whoever has been AFK the longest first
-			if (kickPriority[i] > highestKickPriority || highestKickPriority < 0)
-			{
-				highestKickPriority = kickPriority[i];
-			}
-			
-			afkCount++;
-		}
-	}
-	
+	bool survivorsOnly = g_cvAFKOnlyKickSurvivors.BoolValue;
 	float time = afkKickTime * 0.5;
+	
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || IsFakeClient(i))
@@ -3480,27 +3587,18 @@ public Action Timer_AFKManager(Handle timer)
 		g_flPlayerAFKTime[i] += 1.0;
 		if (g_flPlayerAFKTime[i] >= time)
 		{
-			if (!IsPlayerAlive(i) && GetClientTeam(i) > 1)
-			{
-				ChangeClientTeam(i, 1);
-			}
-			else if (IsPlayerSurvivor(i) && g_bGracePeriod)
-			{
-				ReshuffleSurvivor(i, 0);
-			}
-			
 			if (!g_bPlayerIsAFK[i])
 			{
 				g_bPlayerIsAFK[i] = true;
 				OnPlayerEnterAFK(i);
 			}
-			else if (managerEnabled)
+			else if (managerEnabled && GetClientTeam(i) > 1)
 			{
 				PrintCenterText(i, "%t", "AFKDetected");
 			}
 		}
 		
-		if (managerEnabled && afkCount >= afkLimit && g_flPlayerAFKTime[i] >= afkKickTime && kickPriority[i] >= highestKickPriority && humanCount >= minHumans)
+		if ((!survivorsOnly && IsPlayerSurvivor(i)) && g_bRoundActive && managerEnabled && !IsSingleplayer(false) && g_flPlayerAFKTime[i] >= afkKickTime && humanCount > 1)
 		{
 			if (kickAdmins || GetUserAdmin(i) == INVALID_ADMIN_ID)
 			{
@@ -3593,11 +3691,10 @@ public Action OnChangeClass(int client, const char[] command, int args)
 	char arg1[32];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	TFClassType desiredClass = TF2_GetClass(arg1);
-	
-	if (g_bRoundActive && !g_bGracePeriod || GetClientTeam(client) == TEAM_ENEMY)
+	if (IsFakeClient(client) || g_bRoundActive && !g_bGracePeriod && !GetRF2GameRules().DisableDeath || GetClientTeam(client) == TEAM_ENEMY)
 	{
 		// don't nag dead players for trying to change class
-		if (IsPlayerAlive(client) && !IsPlayerMinion(client))
+		if (!IsFakeClient(client) && IsPlayerAlive(client) && !IsPlayerMinion(client))
 		{
 			RF2_PrintToChat(client, "%t", "NoChangeClass");
 		}
@@ -3613,7 +3710,6 @@ public Action OnChangeClass(int client, const char[] command, int args)
 	{
 		float pos[3];
 		GetEntPos(client, pos);
-		
 		SilentlyKillPlayer(client);
 		TF2_SetPlayerClass(client, desiredClass); // so stats update properly
 		MakeSurvivor(client, RF2_GetSurvivorIndex(client), false, false);
@@ -3691,9 +3787,7 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 
 public Action OnChangeSpec(int client, const char[] command, int args)
 {
-	if (!IsSingleplayer(false))
-		ResetAFKTime(client);
-	
+	ResetAFKTime(client);
 	return Plugin_Continue;
 }
 
@@ -3717,7 +3811,7 @@ public Action OnBuildCommand(int client, const char[] command, int args)
 
 public Action OnSuicide(int client, const char[] command, int args)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive)
+	if (!RF2_IsEnabled() || !g_bRoundActive || GetRF2GameRules().DisableDeath)
 		return Plugin_Continue;
 	
 	if (IsPlayerSurvivor(client) && !g_bGracePeriod && !IsPlayerMinion(client)) // Only minions can suicide
@@ -4219,6 +4313,8 @@ public void TF2_OnWaitingForPlayersStart()
 	if (!RF2_IsEnabled())
 		return;
 	
+	GameRules_SetPropFloat("m_flNextRespawnWave", GetGameTime()+999999.0, 2);
+	GameRules_SetPropFloat("m_flNextRespawnWave", GetGameTime()+999999.0, 3);
 	if (g_cvAlwaysSkipWait.BoolValue)
 	{
 		InsertServerCommand("mp_restartgame_immediate 1");
@@ -4231,6 +4327,9 @@ public void TF2_OnWaitingForPlayersStart()
 
 public Action Timer_GameRulesOutputDelay(Handle timer)
 {
+	if (!g_bWaitingForPlayers)
+		return Plugin_Continue;
+
 	RF2_GameRules gameRules = GetRF2GameRules();
 	if (gameRules.IsValid())
 	{
@@ -4319,12 +4418,12 @@ public void OnEntityCreated(int entity, const char[] classname)
 	SetAllInArray(g_flLastHalloweenBossAttackTime[entity], sizeof(g_flLastHalloweenBossAttackTime[]), 0.0);
 	g_iIterateAttributesHookId[entity] = INVALID_HOOK_ID;
 	g_iIterateAttributesPostHookId[entity] = INVALID_HOOK_ID;
-	
 	if (StrContains(classname, "tf_projectile") == 0)
 	{
 		SDKHook(entity, SDKHook_SpawnPost, Hook_ProjectileSpawnPost);
 	}
-	else if (classname[0] == 'i' && StrContains(classname, "item_") == 0)
+
+	if (classname[0] == 'i' && StrContains(classname, "item_") == 0)
 	{
 		if (StrContains(classname, "item_currencypack") == 0)
 		{
@@ -4341,10 +4440,13 @@ public void OnEntityCreated(int entity, const char[] classname)
 			RemoveEntity2(entity);
 		}
 	}
-	else if (strcmp2(classname, "tf_projectile_balloffire"))
+	else if (strcmp2(classname, "tf_projectile_balloffire") || strcmp2(classname, "tf_projectile_energy_ring"))
 	{
 		// Dragon's Fury is stupid and doesn't fire CalcIsAttackCritical()
-		RequestFrame(RF_DragonFuryCritCheck, EntIndexToEntRef(entity));
+		if (strcmp2(classname, "tf_projectile_balloffire"))
+			RequestFrame(RF_DragonFuryCritCheck, EntIndexToEntRef(entity));
+		
+		RequestFrame(RF_CollideWithShields, EntIndexToEntRef(entity));
 	}
 	else if (g_hHookRiflePostFrame && StrContains(classname, "tf_weapon_sniperrifle") == 0)
 	{
@@ -4390,7 +4492,6 @@ public void OnEntityDestroyed(int entity)
 		float pos[3];
 		GetEntPos(entity, pos);
 		SpawnCashDrop(g_flCashBombAmount[entity], pos, g_iCashBombSize[entity]);
-
 		EmitAmbientSound(SND_CASH, pos);
 		TE_TFParticle("env_grinder_oilspray_cash", pos);
 		TE_TFParticle("mvm_cash_explosion", pos);
@@ -4431,6 +4532,25 @@ public void OnEntityDestroyed(int entity)
 	}
 }
 
+public void RF_CollideWithShields(int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+		return;
+	
+	float pos[3], mins[3], maxs[3];
+	GetEntPos(entity, pos);
+	GetEntPropVector(entity, Prop_Send, "m_vecMins", mins);
+	GetEntPropVector(entity, Prop_Send, "m_vecMaxs", maxs);
+	TR_TraceHullFilter(pos, pos, mins, maxs, MASK_SOLID, TraceFilter_DispenserShield, GetEntTeam(entity), TRACE_ENTITIES_ONLY);
+	if (TR_DidHit())
+	{
+		RemoveEntity2(entity);
+		return;
+	}
+	
+	RequestFrame(RF_CollideWithShields, EntIndexToEntRef(entity));
+}
+
 public void RF_DragonFuryCritCheck(int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
@@ -4446,7 +4566,7 @@ public void RF_DragonFuryCritCheck(int entity)
 			EmitSoundToAll(SND_WEAPON_CRIT, owner);
 		}
 		
-		int weapon = GetPlayerWeaponSlot(owner, 0);
+		int weapon = GetPlayerWeaponSlot(owner, WeaponSlot_Primary);
 		if (weapon > 0)
 		{
 			static char classname[64];
@@ -4678,14 +4798,10 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (victimIsClient)
 	{
-		// Self blast damage is base 15% of max health (20% for stickies)
+		// Self blast damage is base 15% of max health
 		if (selfDamage && rangedDamage && (validWeapon || strcmp2(inflictorClassname, "tf_projectile_sentryrocket")) && IsPlayerSurvivor(victim))
 		{
-			if (strcmp2(inflictorClassname, "tf_projectile_pipe_remote"))
-			{
-				damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.2;
-			}
-			else if (GetEntItemProc(inflictor) != Item_Law && strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
+			if (GetEntItemProc(inflictor) != Item_Law && strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
 			{
 				damage *= 1.25;
 			}
@@ -4706,15 +4822,24 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	}
 	else if (victimIsNpc)
 	{
-		static char classname[128];
-		GetEntityClassname(victim, classname, sizeof(classname));
-		
 		if (inflictorIsBuilding)
 		{
 			if (RF2_SentryBuster(victim).IsValid())
 			{
 				damage *= 0.25;
 				damage = fmax(damage, 1.0);
+			}
+		}
+		else if (IsTank(victim))
+		{
+			if (validWeapon)
+			{
+				static char classname[128];
+				GetEntityClassname(weapon, classname, sizeof(classname));
+				if (StrContains(classname, "tf_weapon_minigun") == 0)
+				{
+					damage *= 2.0; // Miniguns have a 75% damage penalty against Tanks, let's make that 50% instead.
+				}
 			}
 		}
 		else if (attackerIsClient && IsPlayerSurvivor(attacker) && g_iPlayerLastAttackedTank[attacker] != victim && IsTank(victim))
@@ -4890,7 +5015,9 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		if (!victimIsBuilding || GetEntTeam(victim) == TEAM_ENEMY)
 		{
 			if (!selfDamage || procItem != ItemStrange_DemonicDome && procItem != Item_HorrificHeadsplitter)
+			{
 				damage *= GetPlayerDamageMult(attacker);
+			}
 		}
 		
 		if (!selfDamage && inflictor > 0 && g_bFiredWhileRocketJumping[inflictor] 
@@ -4978,11 +5105,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				else if (IsBoss(victim))
 				{
 					int stabType = g_cvBossStabDamageType.IntValue;
-					if (stabType == StabDamageType_Raw)
+					if (stabType == 0)
 					{
 						damage = g_cvBossStabDamageAmount.FloatValue;
 					}
-					else if (stabType == StabDamageType_Percentage)
+					else if (stabType == 1)
 					{
 						damage = float(RF2_GetCalculatedMaxHealth(victim)) * g_cvBossStabDamagePercent.FloatValue;
 					}
@@ -5201,17 +5328,10 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 	}
 	
-	// Self blast damage is capped at 15% max health (20% for stickies)
+	// Self blast damage is capped at 15% max health
 	if (victimIsClient && selfDamage && rangedDamage && validWeapon && !inflictorIsBuilding && IsPlayerSurvivor(victim))
 	{
-		if (strcmp2(inflictorClassname, "tf_projectile_pipe_remote"))
-		{
-			damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.2);
-		}
-		else
-		{
-			damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.15);
-		}
+		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.15);
 	}
 	
 	g_flDamageProc = proc; // carry over
@@ -5255,7 +5375,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 
 		if (!invuln)
 		{
-			if (PlayerHasItem(victim, Item_PocketMedic))
+			if (PlayerHasItem(victim, Item_PocketMedic) && !GetRF2GameRules().DisableDeath)
 			{
 				// check after the damage is dealt
 				RequestFrame(RF_CheckHealthForPocketMedic, victim);
@@ -5277,7 +5397,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			}
 		}
 		
-		if (PlayerHasItem(victim, Item_CheatersLament) && GetClientHealth(victim) <= 0)
+		if (PlayerHasItem(victim, Item_CheatersLament) && GetClientHealth(victim) <= 0 && !GetRF2GameRules().DisableDeath)
 		{
 			SetEntityHealth(victim, RF2_GetCalculatedMaxHealth(victim));
 			TF2_AddCondition(victim, TFCond_UberchargedCanteen);
@@ -5807,7 +5927,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	bool bot = IsFakeClient(client);
 	if (!bot)
 	{
-		if (buttons && !IsSingleplayer(false))
+		if (buttons)
 		{
 			ResetAFKTime(client);
 		}
@@ -6212,4 +6332,9 @@ public bool TraceFilter_WallsOnly(int entity, int mask)
 public bool TraceFilter_DontHitSelf(int self, int mask, int other)
 {
 	return !(self == other);
+}
+
+public bool TraceFilter_DispenserShield(int entity, int mask, int team)
+{
+	return RF2_DispenserShield(entity).IsValid() && GetEntTeam(entity) != team;
 }

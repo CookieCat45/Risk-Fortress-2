@@ -115,3 +115,6 @@ scripting/include/cbasenpc/takedamageinfo.inc
 scripting/include/collisionhook.inc
 scripting/include/entitylump.inc
 scripting/spcomp64.exe
+scripting/ensurenav.sp
+scripting/listenhost.sp
+scripting/stringtable_stats.sp

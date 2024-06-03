@@ -1,10 +1,8 @@
-#if defined _RF2_enemies_included
- #endinput
-#endif
-#define _RF2_enemies_included
-
 #pragma semicolon 1
 #pragma newdecls required
+
+#define MAX_ENEMIES 32
+#define MAX_WEARABLES 6
 
 int g_iEnemyCount;
 char g_szLoadedEnemies[MAX_ENEMIES][64];

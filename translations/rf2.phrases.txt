@@ -290,6 +290,12 @@
 		"en"		"You traded {1} {2} for a {3}. You have {4} {5} left."
 	}
 	
+	"UsedWorkbenchMulti"
+	{
+		"#format"	"{1:d},{2:s},{3:s}"
+		"en"		"You traded {1} {2} items for a {3}."
+	}
+	
 	"NoExchange" // No color tags
 	{
 		"#format"	"{1:d},{2:s}"
@@ -328,6 +334,17 @@
 	{
 		"#format"	"{1:s}"
 		"en"		"You scrapped 1 {1} for 1 Gargoyle Key."
+	}
+	
+	// Altars
+	"AltarActivated"
+	{
+		"en"		"You feel as if you've committed an unforgivable sin..."
+	}
+	
+	"AltarNoKeys"
+	{
+		"en"		"You need a Gargoyle Key to use this!"
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

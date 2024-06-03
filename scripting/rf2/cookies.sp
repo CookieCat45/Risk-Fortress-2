@@ -27,6 +27,7 @@ void BakeCookies()
 	g_coEarnedAllAchievements = RegClientCookie("rf2_all_achievements", "All Achievements Earned", CookieAccess_Protected);
 	g_coPingObjectsHint = RegClientCookie("rf2_ping_objects_hint", "Ping objects hint", CookieAccess_Public);
 	g_coAlwaysShowItemCounts = RegClientCookie("rf2_always_show_item_counts", "Always show player item counts", CookieAccess_Protected);
+	g_coItemShareKarma = RegClientCookie("rf2_item_share_karma", "Item Share Karma", CookieAccess_Protected);
 	
 	char name[64];
 	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
@@ -148,6 +149,13 @@ public void OnClientCookiesCached(int client)
 		SetCookieBool(client, g_coPingObjectsHint, false);
 	}
 	
+	// start at -2 so new players are ignored by the item share system unless they actually start picking up items
+	GetClientCookie(client, g_coItemShareKarma, buffer, sizeof(buffer));
+	if (!buffer[0])
+	{
+		SetCookieInt(client, g_coItemShareKarma, -2);
+	}
+
 	if (!GetCookieBool(client, g_coNewPlayer))
 	{
 		//RF2_SetSurvivorPoints(client, RF2_GetSurvivorPoints(client)+99999);

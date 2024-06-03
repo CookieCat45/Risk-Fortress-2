@@ -112,6 +112,18 @@
 	{
 		"en"	"No Thanks"
 	}
+	"ACHIEVEMENT_GARGOYLE"
+	{
+		"en"	"We Need To Go Deeper"
+	}
+	"ACHIEVEMENT_HITMERASMUS"
+	{
+		"en"	"Never Bully a Wizard, Even Merasmus"
+	}
+	"ACHIEVEMENT_OBLITERATE"
+	{
+		"en"	"Fate Unknown"
+	}
 	
 	//
 	// Descriptions
@@ -224,5 +236,17 @@
 	"ACHIEVEMENT_RECYCLER_DESC"
 	{
 		"en"	"Shuffle 10 Unusual items using the Modest Pile of Hat."
+	}
+	"ACHIEVEMENT_GARGOYLE_DESC"
+	{
+		"en"	"Activate a Gargoyle Altar."
+	}
+	"ACHIEVEMENT_HITMERASMUS_DESC"
+	{
+		"en"	"Don't hit me, fool!"
+	}
+	"ACHIEVEMENT_OBLITERATE_DESC"
+	{
+		"en"	"Offer your power to the mysterious gravestone in the Underworld."
 	}
 }

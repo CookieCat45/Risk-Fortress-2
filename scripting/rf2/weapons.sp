@@ -1,9 +1,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define MAX_STRING_ATTRIBUTES 8
-#define AIRBLAST_HITBOX {128.0, 128.0, 64.0}
-
 int g_iWeaponCount[TF_CLASSES];
 
 // These are for Survivors, not enemies or bosses.
