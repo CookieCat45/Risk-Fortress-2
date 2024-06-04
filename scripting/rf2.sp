@@ -2007,7 +2007,6 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					g_iTotalBossesKilled++;
 					size = 3;
 					EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim, _, SNDLEVEL_SCREAMING);
-					EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim, _, SNDLEVEL_SCREAMING);
 					TE_TFParticle("fireSmokeExplosion", pos);
 					RequestFrame(RF_DeleteRagdoll, victim);
 				}
