@@ -393,7 +393,7 @@ void TFBot_Think(TFBot bot)
 	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer && !IsValidEntity2(bot.BuildingTarget))
 	{
 		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
-		if (!aggressiveMode && threat > 0 && IsBoss(bot.Client) && bot.GetSkillLevel() > TFBotSkill_Easy)
+		if (!aggressiveMode && threat > 0 && bot.GetSkillLevel() > TFBotSkill_Easy)
 		{
 			float eyePos[3], targetPos[3];
 			GetClientEyePosition(bot.Client, eyePos);
@@ -401,7 +401,7 @@ void TFBot_Think(TFBot bot)
 			TR_TraceRayFilter(eyePos, targetPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(bot.Client), TRACE_ENTITIES_ONLY);
 			if (TR_DidHit() && RF2_DispenserShield(TR_GetEntityIndex()).IsValid())
 			{
-				// If we're a boss and our target is behind a bubble shield, approach the shield
+				// If our target is behind a bubble shield, approach the shield
 				aggressiveMode = true;
 			}
 		}

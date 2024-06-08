@@ -37,6 +37,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 			.DefineFloatField("m_flCost", _, "cost")
 			.DefineBoolField("m_bActive", _, "active")
 			.DefineBoolField("m_bMapPlaced")
+			.DefineBoolField("m_bDisallowNonSurvivorMinions")
 			.DefineEntityField("m_hGlow")
 			.DefineEntityField("m_hWorldTextEnt")
 			.DefineStringField("m_szWorldText")
@@ -96,6 +97,19 @@ methodmap RF2_Object_Base < CBaseAnimating
 			}
 			
 			this.SetProp(Prop_Data, "m_bActive", value);
+		}
+	}
+	
+	property bool DisallowNonSurvivorMinions
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bDisallowNonSurvivorMinions"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bDisallowNonSurvivorMinions", value);
 		}
 	}
 	
@@ -472,13 +486,14 @@ static void RF_DeleteForward(PrivateForward fwd)
 // Return Plugin_Stop to stop the object from being interacted with entirely.
 static Action ObjectBase_OnInteract(int client, RF2_Object_Base obj)
 {
-	if (!obj.Active)
+	if (!obj.Active || GetClientTeam(client) == TEAM_ENEMY)
 		return Plugin_Stop;
 	
-	if (GetClientTeam(client) == TEAM_SURVIVOR && !IsPlayerSurvivor(client))
+	if (!IsPlayerSurvivor(client) && (obj.DisallowNonSurvivorMinions || !IsPlayerMinion(client)))
 	{
 		EmitSoundToClient(client, SND_NOPE);
-		PrintCenterText(client, "Wait until the next map!");
+		PrintCenterText(client, "Wait until the next map to use this!");
+		return Plugin_Stop;
 	}
 	
 	return Plugin_Continue;

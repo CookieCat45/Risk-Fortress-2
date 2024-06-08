@@ -48,6 +48,7 @@ void Tree_OnMapStart()
 
 static void OnCreate(RF2_Object_Tree tree)
 {
+	tree.DisallowNonSurvivorMinions = true;
 	tree.SetModel(MODEL_TREE);
 	tree.SetObjectName("Tree of Fate");
 	tree.TextZOffset = 100.0;
@@ -64,7 +65,7 @@ static void OnCreate(RF2_Object_Tree tree)
 	
 	delete mapList;
 	tree.HookInteract(Tree_OnInteract);
-	tree.SetWorldText("Determine your Fate (2 Gargoyle Keys)");
+	tree.SetWorldText("Determine your Fate (1 Gargoyle Key)");
 	tree.SetTextColor({0, 255, 255, 255});
 }
 
@@ -72,7 +73,7 @@ static int g_iVoteClient = INVALID_ENT;
 static int g_iVoteTree = INVALID_ENT;
 static Action Tree_OnInteract(int client, RF2_Object_Tree tree)
 {
-	if (GetPlayerItemCount(client, Item_HauntedKey, true) < 2)
+	if (GetPlayerItemCount(client, Item_HauntedKey, true) < 1)
 	{
 		EmitSoundToClient(client, SND_NOPE);
 		PrintCenterText(client, "%t", "AltarNoKeys");
@@ -137,8 +138,8 @@ public int Vote_SetNextMap(Menu menu, MenuAction action, int param1, int param2)
 			}
 			
 			g_szForcedMap = info;
-			RF2_PrintToChatAll("The next map has been set to {yellow}%s{default}. {yellow}%N {default}has paid {haunted}2 Gargoyle Keys.", info, voteClient);
-			GiveItem(voteClient, Item_HauntedKey, -2);
+			RF2_PrintToChatAll("The next map has been set to {yellow}%s{default}. {yellow}%N {default}has paid {haunted}1 Gargoyle Key.", info, voteClient);
+			GiveItem(voteClient, Item_HauntedKey, -1);
 			RF2_Object_Tree tree = RF2_Object_Tree(EntRefToEntIndex(g_iVoteTree));
 			if (tree.IsValid())
 			{

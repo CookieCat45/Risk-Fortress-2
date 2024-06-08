@@ -167,6 +167,11 @@ static Action Statue_OnInteract(int client, RF2_Object_Statue statue)
 		return Plugin_Handled;
 	}
 	
+	if (GameRules_GetRoundState() == RoundState_TeamWin)
+	{
+		return Plugin_Handled;
+	}
+	
 	if (GetGameTime() < statue.NextVoteTime)
 	{
 		RF2_PrintToChat(client, "Please wait %.0f seconds.", statue.NextVoteTime-GetGameTime());

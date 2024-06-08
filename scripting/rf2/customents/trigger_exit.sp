@@ -26,6 +26,7 @@ methodmap RF2_Trigger_Exit < CBaseEntity
 		g_Factory.BeginDataMapDesc()
 			.DefineIntField("m_hPlayersArray")
 			.DefineFloatField("m_flNextVoteTime")
+			.DefineFloatField("m_flMinTimeBeforeUse")
 			.DefineEntityField("m_hWorldText")
 		.EndDataMapDesc();
 		g_Factory.Install();
@@ -57,6 +58,19 @@ methodmap RF2_Trigger_Exit < CBaseEntity
 		}
 	}
 
+	property float MinTimeBeforeUse
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flMinTimeBeforeUse");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flMinTimeBeforeUse", value);
+		}
+	}
+
 	property int WorldText
 	{
 		public get()
@@ -75,7 +89,8 @@ methodmap RF2_Trigger_Exit < CBaseEntity
 		if (IsSingleplayer(false))
 			return 1;
 		
-		return imax(1, GetPlayersOnTeam(TEAM_SURVIVOR, false, true) / 2);
+		int players = GetPlayersOnTeam(TEAM_SURVIVOR, false, true);
+		return imax(1, RoundToFloor(float(players) * 0.67));
 	}
 	
 	public bool IsToucherValid(int entity)
@@ -123,7 +138,11 @@ methodmap RF2_Trigger_Exit < CBaseEntity
 	public void UpdateWorldText()
 	{
 		char msg[128];
-		if (GetGameTime() < this.NextVoteTime)
+		if (!IsSingleplayer(false) && GetGameTime() < this.MinTimeBeforeUse)
+		{
+			FormatEx(msg, sizeof(msg), "Please Wait... (%.0f)", this.MinTimeBeforeUse-GetGameTime());
+		}
+		else if (GetGameTime() < this.NextVoteTime)
 		{
 			FormatEx(msg, sizeof(msg), "Vote Failed, Please Wait... (%.0f)", this.NextVoteTime-GetGameTime());
 		}
@@ -139,10 +158,11 @@ methodmap RF2_Trigger_Exit < CBaseEntity
 
 static void OnCreate(RF2_Trigger_Exit trigger)
 {
-	if (!IsMapRunning())
+	if (!IsMapRunning() || g_bWaitingForPlayers)
 		return;
 	
 	trigger.PlayersArray = new ArrayList();
+	trigger.MinTimeBeforeUse = GetGameTime()+150.0;
 	SDKHook(trigger.index, SDKHook_StartTouchPost, Hook_ExitStartTouch);
 	SDKHook(trigger.index, SDKHook_EndTouchPost, Hook_ExitEndTouch);
 	CreateTimer(0.2, Timer_VoteCheck, EntIndexToEntRef(trigger.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -184,10 +204,16 @@ public Action Timer_VoteCheck(Handle timer, int entity)
 		return Plugin_Continue;
 	
 	RF2_Trigger_Exit trigger = RF2_Trigger_Exit(entity);
+	if (!IsSingleplayer(false) && GetGameTime() < trigger.MinTimeBeforeUse)
+	{
+		trigger.UpdateWorldText();
+		return Plugin_Continue;
+	}
+	
 	if (GetGameTime() >= trigger.NextVoteTime && trigger.GetPlayerCount() >= trigger.GetRequiredPlayers())
 	{
 		RF2_Object_Teleporter.StartVote(_, true);
-		float value = IsSingleplayer(false) ? 6.0 : 20.0;
+		float value = IsSingleplayer(false) ? 6.0 : 50.0;
 		trigger.NextVoteTime = GetGameTime() + value;
 	}
 	else

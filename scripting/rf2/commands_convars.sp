@@ -109,7 +109,7 @@ void LoadCommandsAndCvars()
 	g_cvEngiMetalRegenAmount = CreateConVar("rf2_engineer_metal_regen_amount", "30", "The base amount of metal an Engineer will regen per interval lapse", FCVAR_NOTIFY, true, 0.0);
 	g_cvHauntedKeyDropChanceMax = CreateConVar("rf2_haunted_key_drop_chance_max", "135", "1 in N chance for a Haunted Key to drop when an enemy is slain.", FCVAR_NOTIFY, true, 0.0);
 	g_cvAllowHumansInBlue = CreateConVar("rf2_blue_allow_humans", "0", "If nonzero, allow humans to spawn in BLU Team.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvTimeBeforeRestart = CreateConVar("rf2_time_before_restart", "18000", "Time in seconds before the server will restart after a run ends, to clear server memory. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
+	g_cvTimeBeforeRestart = CreateConVar("rf2_time_before_restart", "28800", "Time in seconds before the server will restart after a run ends, to clear server memory. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvHiddenServerStartTime = CreateConVar("rf2_server_start_time", "0", _, FCVAR_HIDDEN);
 	g_cvWaitExtendTime = CreateConVar("rf2_wait_extend_time", "600", "If the vote to extend Waiting for Players passes, extend the wait time to this in seconds. 0 to disable extending.", FCVAR_NOTIFY, true, 0.0);
 	g_cvRequiredStagesForStatue = CreateConVar("rf2_statue_required_stages", "10", "How many stages need to be completed before being able to interact with the statue in the Underworld", FCVAR_NOTIFY, true, 0.0);
@@ -826,7 +826,7 @@ void ShowItemLogbook(int client, int position=0)
 {
 	Menu logbook = new Menu(Menu_ItemLog);
 	char info[16], display[MAX_NAME_LENGTH], quality[32];
-	ArrayList items = GetSortedItemList();
+	ArrayList items = GetSortedItemList(_, _, _, true);
 	int item, count;
 	for (int i = 0; i < items.Length; i++)
 	{
@@ -1578,7 +1578,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 	int flags = target == inspectTarget ? ITEMDRAW_DISABLED : ITEMDRAW_DEFAULT;
 	char qualityName[32];
 	GetQualityName(Quality_Strange, qualityName, sizeof(qualityName));
-	ArrayList items = GetSortedItemList(_, _, true);
+	ArrayList items = GetSortedItemList(_, _, true, true);
 	int item;
 	for (int i = 0; i < items.Length; i++)
 	{

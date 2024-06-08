@@ -224,7 +224,7 @@ ArrayList GetMapsForStage(int stage)
 		if (mapKey.JumpToKey(mapId))
 		{
 			mapKey.GetString("name", mapName, sizeof(mapName));
-			if (!mapName[0] || !IsMapValid(mapName))
+			if (!mapName[0])
 			{
 				LogError("[GetMapsForStage] %s for stage %i (%s) is invalid!", mapId, stage, mapName);
 				continue;
@@ -406,7 +406,6 @@ int DetermineNextStage()
 	int nextStage = IsInUnderworld() ? g_iCurrentStage : g_iCurrentStage+1;
 	if (nextStage > RF2_GetMaxStages())
 	{
-		g_iLoopCount++;
 		nextStage = 1;
 	}
 	

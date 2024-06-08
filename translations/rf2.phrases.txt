@@ -344,7 +344,7 @@
 	
 	"AltarNoKeys"
 	{
-		"en"		"You need a Gargoyle Key to use this!"
+		"en"		"You don't have any Gargoyle Keys to use this!"
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

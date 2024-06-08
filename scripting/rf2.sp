@@ -824,22 +824,18 @@ public void OnMapStart()
 		}
 		
 		GameRules_SetProp("m_nForceUpgrades", 2); // force some MvM specific mechanics
+		// These are ConVars we're OK with being set by server.cfg, but we'll set our personal defaults.
+		// If configs wish to change these, they will be overridden by them later.
+		FindConVar("sv_alltalk").SetBool(true);
+		FindConVar("tf_use_fixed_weaponspreads").SetBool(true);
+		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
+		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
+		FindConVar("sv_tags").Flags = 0;
 		
-		if (!g_bLateLoad)
-		{
-			// These are ConVars we're OK with being set by server.cfg, but we'll set our personal defaults.
-			// If configs wish to change these, they will be overridden by them later.
-			FindConVar("sv_alltalk").SetBool(true);
-			FindConVar("tf_use_fixed_weaponspreads").SetBool(true);
-			FindConVar("tf_avoidteammates_pushaway").SetBool(false);
-			FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
-			FindConVar("sv_tags").Flags = 0;
-
-			// Why is this a development only ConVar Valve?
-			ConVar waitTime = FindConVar("mp_waitingforplayers_time");
-			waitTime.Flags &= ~FCVAR_DEVELOPMENTONLY;
-			waitTime.SetInt(WAIT_TIME_DEFAULT);
-		}
+		// Why is this a development only ConVar Valve?
+		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
+		waitTime.Flags &= ~FCVAR_DEVELOPMENTONLY;
+		waitTime.SetInt(WAIT_TIME_DEFAULT);
 		
 		// Round events
 		HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Pre);
@@ -968,6 +964,7 @@ public void OnMapEnd()
 {
 	g_bMapChanging = true;
 	g_bMapRunning = false;
+	g_szForcedMap = "";
 	if (RF2_IsEnabled())
 	{
 		if (!g_bGameOver && !IsInUnderworld())
@@ -2874,6 +2871,11 @@ public Action Timer_SpawnEnemy(Handle timer, int client)
 public Action Timer_SetNextStage(Handle timer, int stage)
 {
 	g_iCurrentStage = stage;
+	if (g_iCurrentStage == 1)
+	{
+		g_iLoopCount++;
+	}
+	
 	// rf2_setnextmap or Tree of Fate
 	if (g_szForcedMap[0])
 	{
@@ -3639,7 +3641,7 @@ Action OnCallForMedic(int client)
 		return Plugin_Continue;
 	}
 	
-	if (IsPlayerSurvivor(client))
+	if (IsPlayerSurvivor(client) || IsPlayerMinion(client))
 	{
 		if (GetClientButtons(client) & IN_SCORE)
 		{
@@ -3647,7 +3649,7 @@ Action OnCallForMedic(int client)
 			return Plugin_Handled;
 		}
 		
-		if (PickupItem(client))
+		if (IsPlayerSurvivor(client) && PickupItem(client))
 			return Plugin_Handled;
 		
 		float eyePos[3], eyeAng[3], endPos[3], direction[3];

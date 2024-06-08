@@ -124,7 +124,7 @@ public Action Timer_GameOver(Handle timer)
 		return Plugin_Continue;
 	}
 	
-	if (g_iStagesCompleted == 0)
+	if (g_iStagesCompleted == 0 && !IsInUnderworld())
 	{
 		InsertServerCommand("mp_waitingforplayers_restart 1");
 		CreateTimer(1.2, Timer_ReloadPluginNoMapChange, _, TIMER_FLAG_NO_MAPCHANGE);

@@ -721,10 +721,18 @@ public void OnNextStageVoteFinish(Menu menu, int numVotes, int numClients, const
 		
 		if (yesVotes > noVotes || numItems == 1 && yesVotes > 0)
 		{
-			if (!g_bIsConfirmation && AreAnyPlayersLackingItems())
+			if (!g_bIsConfirmation && (IsInUnderworld() || AreAnyPlayersLackingItems()))
 			{
 				Menu vote = new Menu(Menu_TeleporterVote);
-				vote.SetTitle("Are you sure you want to leave? There are still players who are lacking items!");
+				if (IsInUnderworld())
+				{
+					vote.SetTitle("Are you sure?");
+				}
+				else
+				{
+					vote.SetTitle("Are you sure you want to leave? There are still players who are lacking items!");
+				}
+				
 				vote.VoteResultCallback = OnNextStageVoteFinish;
 				vote.AddItem("Yes", "Yes");
 				vote.AddItem("No", "No");

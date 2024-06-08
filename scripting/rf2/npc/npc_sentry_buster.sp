@@ -89,7 +89,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		buster.BaseNpc.GetBodyMins(mins);
 		buster.BaseNpc.GetBodyMaxs(maxs);
 		bool success;
-		if (GetSpawnPoint(targetPos, pos, 1750.0, 20000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID_BRUSHONLY, 50.0, true))
+		if (GetSpawnPoint(targetPos, pos, 2500.0, 25000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID_BRUSHONLY, 50.0, true))
 		{
 			buster.Teleport(pos);
 			success = true;
@@ -286,7 +286,7 @@ static void OnCreate(RF2_SentryBuster buster)
 	npc.flJumpHeight = 150.0;
 	npc.flWalkSpeed = 440.0;
 	npc.flRunSpeed = 440.0;
-	npc.flDeathDropHeight = 2000.0;
+	npc.flDeathDropHeight = 99999999.0;
 	
 	buster.Spawn();
 	buster.Activate();

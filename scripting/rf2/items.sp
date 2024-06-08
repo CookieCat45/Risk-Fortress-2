@@ -2172,7 +2172,7 @@ float GetItemProcCoeff(int item)
 }
 
 // Returns a list of items sorted by quality
-ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true, bool allowCommunity=false)
+ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true, bool allowCommunity=false, bool byPriority=false)
 {
 	ArrayList items = new ArrayList();
 	for (int i = 1; i <= GetTotalItems(); i++)
@@ -2189,7 +2189,15 @@ ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true, bool allo
 		items.Push(i);
 	}
 	
-	items.SortCustom(SortItemList);
+	if (byPriority)
+	{
+		items.SortCustom(SortItemListByEquipPriority);
+	}
+	else
+	{
+		items.SortCustom(SortItemList);
+	}
+	
 	return items;
 }
 
@@ -2218,6 +2226,49 @@ public int SortItemList(int index1, int index2, ArrayList array, Handle hndl)
 	if (quality1 > quality2)
 		return 1;
 	if (quality1 < quality2)
+		return -1;
+	
+	if (quality1 == Quality_Collectors && quality2 == Quality_Collectors)
+	{
+		int classIndex1 = GetClassMenuIndex(GetCollectorItemClass(item1));
+		int classIndex2 = GetClassMenuIndex(GetCollectorItemClass(item2));
+		if (classIndex1 > classIndex2)
+			return 1;
+		if (classIndex1 < classIndex2)
+			return -1;
+	}
+	
+	static char name1[128], name2[128];
+	GetItemName(item1, name1, sizeof(name1), false);
+	GetItemName(item2, name2, sizeof(name2), false);
+	return strcmp(name1, name2);
+}
+
+public int SortItemListByEquipPriority(int index1, int index2, ArrayList array, Handle hndl)
+{
+	int item1 = array.Get(index1);
+	int item2 = array.Get(index2);
+	
+	if (IsScrapItem(item1) && !IsScrapItem(item2))
+	{
+		return -1;
+	}
+	else if (IsScrapItem(item2) && !IsScrapItem(item1))
+	{
+		return 1;
+	}
+	
+	int quality1 = GetItemQuality(item1);
+	int quality2 = GetItemQuality(item2);
+	
+	if (quality1 == Quality_Community)
+		return 1;
+	if (quality2 == Quality_Community)
+		return -1;
+	
+	if (GetQualityEquipPriority(quality1) < GetQualityEquipPriority(quality2))
+		return 1;
+	if (GetQualityEquipPriority(quality2) < GetQualityEquipPriority(quality1))
 		return -1;
 	
 	if (quality1 == Quality_Collectors && quality2 == Quality_Collectors)

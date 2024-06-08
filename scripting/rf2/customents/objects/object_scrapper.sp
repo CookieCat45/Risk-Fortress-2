@@ -85,6 +85,7 @@ void Scrapper_OnMapStart()
 
 static void OnCreate(RF2_Object_Scrapper scrapper)
 {
+	scrapper.DisallowNonSurvivorMinions = true;
 	scrapper.SetModel(MODEL_SCRAPPER);
 	scrapper.HookInteract(Scrapper_OnInteract);
 	scrapper.TextZOffset = 35.0;

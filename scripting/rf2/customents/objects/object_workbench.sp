@@ -128,6 +128,7 @@ void Workbench_OnMapStart()
 
 static void OnCreate(RF2_Object_Workbench bench)
 {
+	bench.DisallowNonSurvivorMinions = true;
 	bench.SetModel(MODEL_WORKBENCH);
 	bench.HookInteract(Workbench_OnInteract);
 	SDKHook(bench.index, SDKHook_SpawnPost, OnSpawnPost);

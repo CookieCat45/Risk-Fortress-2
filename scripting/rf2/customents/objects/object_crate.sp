@@ -308,7 +308,8 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	if (!IsPlayerSurvivor(attacker))
 	{
 		EmitSoundToClient(attacker, SND_NOPE);
-		PrintCenterText(attacker, "Wait until the next map.");
+		PrintCenterText(attacker, "Wait until the next map to use this!");
+		return Plugin_Continue;
 	}
 	
 	SetEntProp(attacker, Prop_Send, "m_iKillCountSinceLastDeploy", 1); // Remove honorbound
