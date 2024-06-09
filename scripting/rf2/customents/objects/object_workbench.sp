@@ -196,7 +196,7 @@ static void OnSpawnPost(int entity)
 		pos[2] += bench.MapPlaced ? 60.0 : 35.0;
 		sprite.Teleport(pos);
 		sprite.Spawn();
-		int color[4];
+		int color[4] = {255, 255, 255, 255};
 		switch (GetItemQuality(bench.Item))
 		{
 			case Quality_Genuine:		color = {125, 255, 125, 255};

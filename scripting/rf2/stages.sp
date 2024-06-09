@@ -175,13 +175,10 @@ int FindMaxStages()
 	
 	mapKey.Rewind();
 	mapKey.JumpToKey("special");
-	if (!g_szUnderworldMap[0])
+	if (mapKey.JumpToKey("underworld"))
 	{
-		if (mapKey.JumpToKey("underworld"))
-		{
-			mapKey.GetString("name", g_szUnderworldMap, sizeof(g_szUnderworldMap));
-			mapKey.GoBack();
-		}
+		mapKey.GetString("name", g_szUnderworldMap, sizeof(g_szUnderworldMap));
+		mapKey.GoBack();
 	}
 	
 	delete mapKey;
