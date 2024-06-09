@@ -162,7 +162,7 @@ static void OnCreate(RF2_Trigger_Exit trigger)
 		return;
 	
 	trigger.PlayersArray = new ArrayList();
-	trigger.MinTimeBeforeUse = GetGameTime()+150.0;
+	trigger.MinTimeBeforeUse = GetGameTime()+120.0;
 	SDKHook(trigger.index, SDKHook_StartTouchPost, Hook_ExitStartTouch);
 	SDKHook(trigger.index, SDKHook_EndTouchPost, Hook_ExitEndTouch);
 	CreateTimer(0.2, Timer_VoteCheck, EntIndexToEntRef(trigger.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);

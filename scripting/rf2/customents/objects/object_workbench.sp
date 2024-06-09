@@ -196,15 +196,19 @@ static void OnSpawnPost(int entity)
 		pos[2] += bench.MapPlaced ? 60.0 : 35.0;
 		sprite.Teleport(pos);
 		sprite.Spawn();
+		int color[4];
 		switch (GetItemQuality(bench.Item))
 		{
-			case Quality_Genuine:		sprite.SetRenderColor(125, 255, 125);
-			case Quality_Unusual: 		sprite.SetRenderColor(200, 125, 255);
-			case Quality_Strange:		sprite.SetRenderColor(200, 150, 0);
-			case Quality_Collectors:	sprite.SetRenderColor(255, 100, 100);
+			case Quality_Genuine:		color = {125, 255, 125, 255};
+			case Quality_Unusual: 		color = {200, 125, 255, 255};
+			case Quality_Strange:		color = {200, 150, 0, 255};
+			case Quality_Collectors:	color = {255, 100, 100, 255};
 			case Quality_Haunted, 
-				Quality_HauntedStrange:	sprite.SetRenderColor(125, 255, 255);
+				Quality_HauntedStrange:	color = {125, 255, 255, 255};
 		}
+		
+		sprite.SetRenderColor(color[0], color[1], color[2], color[3]);
+		bench.SetGlowColor(color);
 	}
 }
 

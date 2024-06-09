@@ -39,6 +39,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 			.DefineBoolField("m_bMapPlaced")
 			.DefineBoolField("m_bDisallowNonSurvivorMinions")
 			.DefineEntityField("m_hGlow")
+			.DefineColorField("m_GlowColor")
 			.DefineEntityField("m_hWorldTextEnt")
 			.DefineStringField("m_szWorldText")
 			.DefineFloatField("m_flTextZOffset")
@@ -292,10 +293,23 @@ methodmap RF2_Object_Base < CBaseAnimating
 	public void SetGlow(bool state)
 	{
 		this.GlowEnt = ToggleGlow(this.index, state);
+		if (state)
+		{
+			int color[4];
+			this.GetGlowColor(color);
+			SetVariantColor(color);
+			AcceptEntityInput(this.GlowEnt, "SetGlowColor");
+		}
+	}
+	
+	public void GetGlowColor(int buffer[4])
+	{
+		this.GetPropColor(Prop_Data, "m_GlowColor", buffer[0], buffer[1], buffer[2], buffer[3]);
 	}
 	
 	public void SetGlowColor(int color[4])
 	{
+		this.SetPropColor(Prop_Data, "m_GlowColor", color[0], color[1], color[2], color[3]);
 		if (IsValidEntity2(this.GlowEnt))
 		{
 			SetVariantColor(color);
@@ -313,11 +327,15 @@ methodmap RF2_Object_Base < CBaseAnimating
 		this.SetPropString(Prop_Data, "m_szObjectName", name);
 	}
 	
-	public void PingMe(const char[] text, float duration=8.0)
+	public void PingMe(const char[] text="", float duration=8.0)
 	{
-		float pos[3];
-		this.WorldSpaceCenter(pos);
-		ShowAnnotationToAll(pos, text, duration, this.index, this.index);
+		if (text[0])
+		{
+			float pos[3];
+			this.WorldSpaceCenter(pos);
+			ShowAnnotationToAll(pos, text, duration, this.index, this.index);
+		}
+
 		if (IsGlowing(this.index, true) || !IsGlowing(this.index, true) && !IsGlowing(this.index))
 		{
 			this.SetGlow(true);
@@ -387,6 +405,7 @@ static void OnCreate(RF2_Object_Base obj)
 	obj.TextSize = 6.0;
 	obj.TextDist = 500.0;
 	obj.SetTextColor({255, 255, 100, 255});
+	obj.SetGlowColor({255, 255, 255, 255});
 	if (!RF2_Object_Teleporter(obj.index).IsValid())
 	{
 		obj.SetProp(Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER_TOUCH_DEBRIS|FSOLID_TRIGGER|FSOLID_NOT_SOLID|FSOLID_CUSTOMBOXTEST);

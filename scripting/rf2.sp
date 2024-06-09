@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.12b"
+#define PLUGIN_VERSION "0.12.1b"
 #endif
 
 #include <rf2>
@@ -398,6 +398,7 @@ int g_iThrillerRepeatCount;
 #include "rf2/customents/projectiles/projectile_fireball.sp"
 #include "rf2/customents/projectiles/projectile_kunai.sp"
 #include "rf2/customents/projectiles/projectile_skull.sp"
+#include "rf2/customents/projectiles/projectile_homingrocket.sp"
 
 #include "rf2/cookies.sp"
 #include "rf2/weapons.sp"
@@ -1157,6 +1158,7 @@ void LoadAssets()
 	PrecacheSound2(SND_PARACHUTE, true);
 	PrecacheSound2(SND_HINT, true);
 	PrecacheSound2(SND_ENTER_HELL, true);
+	PrecacheSound2(SND_LONGWAVE_USE, true);
 	PrecacheSound2("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack02.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack03.mp3", true);
@@ -1893,6 +1895,10 @@ public void RF_InitStats(int client)
 		CalculatePlayerMaxHealth(client, false, true);
 		CalculatePlayerMaxSpeed(client);
 		CalculatePlayerMiscStats(client);
+		if (!IsPlayerMinion(client))
+		{
+			UpdateItemsForPlayer(client);
+		}
 		
 		if (g_bRoundActive && GetClientTeam(client) == TEAM_ENEMY)
 		{
@@ -1937,7 +1943,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		return Plugin_Continue;
 	
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
-	//int inflictor = event.GetInt("inflictor_entindex");
+	int inflictor = event.GetInt("inflictor_entindex");
 	int weaponIndex = event.GetInt("weapon_def_index");
 	int weaponId = event.GetInt("weaponid");
 	int damageType = event.GetInt("damagebits");
@@ -1953,18 +1959,24 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int itemProc = g_iEntLastHitItemProc[victim];
 	if (attacker > 0)
 	{
-		DoItemKillEffects(attacker, victim, damageType, critType, assister);
+		DoItemKillEffects(attacker, inflictor, victim, damageType, critType, assister);
 		switch (itemProc)
 		{
+			case ItemSoldier_WarPig: event.SetString("weapon", "obj_sentrygun3");
+			
 			case ItemDemo_ConjurersCowl, ItemMedic_WeatherMaster: event.SetString("weapon", "spellbook_lightning");
 			
-			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, ItemStrange_CroneDome: event.SetString("weapon", "pumpkindeath");
+			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, ItemStrange_CroneDome, ItemSpy_Showstopper: event.SetString("weapon", "pumpkindeath");
 			
 			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder, Item_RoBro: event.SetString("weapon", "merasmus_zap");
 			
-			case ItemStrange_LegendaryLid: event.SetString("weapon", "kunai");
+			case ItemStrange_LegendaryLid, ItemStrange_HandsomeDevil: event.SetString("weapon", "kunai");
 			
 			case ItemScout_FedFedora: event.SetString("weapon", "headshot");
+			
+			case ItemPyro_PyromancerMask: event.SetString("weapon", "spellbook_fireball");
+			
+			case ItemStrange_Dragonborn: event.SetString("weapon", "spellbook_teleport");
 		}
 	}
 	
@@ -4763,6 +4775,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		if (GetEntTeam(inflictor) == TEAM_ENEMY)
 			damageType |= DMG_PREVENT_PHYSICS_FORCE;
 		
+		// only applies to sentry bullets
 		if (victim == attacker)
 		{
 			damage *= 0.4;
@@ -4919,15 +4932,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					{
 						proc *= 0.5;
 					}
-					else if (StrContains(inflictorClassname, "tf_projectile_rocket") != -1
-							|| strcmp2(inflictorClassname, "tf_projectile_energy_ball"))
-					{
-						if ((victimIsClient || victimIsNpc) && PlayerHasItem(attacker, ItemSoldier_WarPig) && CanUseCollectorItem(attacker, ItemSoldier_WarPig))
-						{
-							if (!(GetEntityFlags(victim) & FL_ONGROUND))
-								damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_WarPig, 1);
-						}
-					}
 				}
 				else if (strcmp2(inflictorClassname, "tf_projectile_pipe"))
 				{
@@ -5012,7 +5016,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		// that buildings don't call OnTakeDamageAlive when they take damage. So as a result,
 		// buildings went for a very long time without being affected by ANY damage modifications.
 		// It's fixed now, but to avoid severely disrupting Engineer's balancing,
-		// RED Team buildings are not affected by enemy damage multipliers.
+		// RED Team buildings are not affected by enemy damage multipliers. They'd just get decimated instantly.
 		if (!victimIsBuilding || GetEntTeam(victim) == TEAM_ENEMY)
 		{
 			if (!selfDamage || procItem != ItemStrange_DemonicDome && procItem != Item_HorrificHeadsplitter)
@@ -5167,13 +5171,12 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				if (g_iPlayerFireRateStacks[attacker] < maxStacks)
 				{
 					g_iPlayerFireRateStacks[attacker]++;
-					
 					float duration = GetItemMod(Item_PointAndShoot, 2) * proc;
 					if (duration < 0.25)
 					{
 						duration = 0.25;
 					}
-
+					
 					CreateTimer(duration, Timer_DecayFireRateBuff, attacker, TIMER_FLAG_NO_MAPCHANGE);
 				}
 			}
@@ -5335,7 +5338,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.15);
 	}
 	
-	g_flDamageProc = proc; // carry over
+	g_flDamageProc = proc; // carry over to other damage hooks
 	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
 	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;
 }
@@ -5604,7 +5607,10 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	float proc = g_flDamageProc;
 	float originalDamage = damage;
 	int originalDamageType = damageType;
+	bool selfDamage = (attacker == victim || inflictor == victim);
+	bool rangedDamage = (damageType & DMG_BULLET || damageType & DMG_BLAST || damageType & DMG_IGNITE || damageType & DMG_SONIC);
 	bool validWeapon = weapon > 0 && !IsCombatChar(weapon); // Apparently the weapon can be the attacker??
+	bool inflictorIsBuilding = inflictor > 0 && IsBuilding(inflictor);
 	if (IsValidClient(attacker) && attacker != victim && IsValidEntity2(inflictor))
 	{
 		bool rolledCrit;
@@ -5785,6 +5791,12 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			dmgBonus *= CalcItemMod_HyperbolicInverted(victim, Item_MetalHelmet, 0);
 			damage = baseDmg+dmgBonus;
 		}
+	}
+	
+	// Self blast damage is capped at 15% max health
+	if (IsValidClient(victim) && selfDamage && rangedDamage && validWeapon && !inflictorIsBuilding && IsPlayerSurvivor(victim))
+	{
+		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.15);
 	}
 	
 	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)

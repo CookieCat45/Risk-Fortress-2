@@ -294,6 +294,7 @@ enum // Move collide types
 #define SND_PARACHUTE "items/para_open.wav"
 #define SND_1UP "rf2/sfx/1up.wav"
 #define SND_HINT "ui/hint.wav"
+#define SND_LONGWAVE_USE "ui/cyoa_node_activate.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds

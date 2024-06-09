@@ -45,6 +45,7 @@ void Pumpkin_OnMapStart()
 static void OnCreate(RF2_Object_Pumpkin pumpkin)
 {
 	pumpkin.SetModel(MODEL_PUMPKIN);
+	pumpkin.SetGlowColor({255, 255, 0, 255});
 	pumpkin.HookInteract(Pumpkin_OnInteract);
 	pumpkin.SetObjectName("Magical Pumpkin");
 	if (pumpkin.Cost <= 0.0)

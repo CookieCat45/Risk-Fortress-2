@@ -136,11 +136,10 @@ public Action Timer_InstantDeath(Handle timer, int client)
 		RemoveEntity(text);
 		ForcePlayerSuicide(client);
 		int inflictor = GetClientOfUserId(g_iDeathInflictor[client]);
-		
-		// manually trigger on kill items, we don't want to have the player dealing damage due to the damage cap
+		// manually trigger on kill items, we don't want to have the player dealing damage here
 		if (IsValidClient(inflictor) && IsPlayerAlive(inflictor))
 		{
-			DoItemKillEffects(inflictor, client);
+			DoItemKillEffects(inflictor, inflictor, client);
 		}
 		
 		SummonSkeleton(client);

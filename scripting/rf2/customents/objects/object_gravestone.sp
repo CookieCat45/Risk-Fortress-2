@@ -103,6 +103,7 @@ void Gravestone_OnMapStart()
 static void OnCreate(RF2_Object_Gravestone grave)
 {
 	grave.SetModel(MODEL_GRAVESTONE);
+	grave.SetGlowColor({0, 255, 255, 255});
 	grave.HookInteract(Gravestone_OnInteract);
 	if (grave.Cost <= 0.0)
 	{

@@ -315,8 +315,8 @@ int SpawnObjects()
 	// Non-crate object weights are separate
 	int workbenchWeight = 16;
 	int scrapperWeight = 12;
-	int graveWeight = 8;
-	int pumpkinWeight = 2;
+	int graveWeight = 4;
+	int pumpkinWeight = 1;
 	
 	if (!altar.IsValid())
 	{
@@ -328,7 +328,7 @@ int SpawnObjects()
 		hauntedWeight = 0;
 	}
 	
-	char name[64];
+	char name[128];
 	int count;
 	const int objectCount = 10;
 	for (int i = 1; i <= objectCount; i++)
@@ -388,8 +388,8 @@ int SpawnObjects()
 	PrintToServer("[RF2] Object Spawn Counts\nCrates: %i (Bonus: %i)\nOther: %i", minCrates+bonusCrates, bonusCrates, spawnCount-minCrates-bonusCrates);
 	int scrapperCount, strangeCrates;
 	int strangeCrateLimit = imax(imin(RoundToCeil(float(minCrates)*0.08), survivorCount), 4);
-	bool graveStoneSpawn, pumpkinSpawn;
 	RF2_Object_Crate crate;
+	bool remove;
 	while (spawns < spawnCount+bonusCrates)
 	{
 		GetSpawnPoint(worldCenter, spawnPos, 0.0, distance, _, true);
@@ -409,30 +409,33 @@ int SpawnObjects()
 		
 		if (spawns > minCrates+bonusCrates)
 		{
+			remove = false;
 			objectArray.GetString(GetRandomInt(0, objectArray.Length-1), name, sizeof(name));
 			if (strcmp2(name, "rf2_object_scrapper"))
 			{
-				// Only 2 scrappers
-				if (scrapperCount >= 2)
-					continue;
-				
 				scrapperCount++;
-			}
-			else if (strcmp2(name, "rf2_object_gravestone"))
-			{
-				// Only one gravestone
-				if (graveStoneSpawn)
-					continue;
+				// Only 3 scrappers
+				if (scrapperCount >= 3)
+					remove = true;
 				
-				graveStoneSpawn = true;
 			}
-			else if (strcmp2(name, "rf2_object_pumpkin"))
+			else if (strcmp2(name, "rf2_object_gravestone") || strcmp2(name, "rf2_object_pumpkin"))
 			{
-				// Only one pumpkin
-				if (pumpkinSpawn)
-					continue;
-				
-				pumpkinSpawn = true;
+				// Only one gravestone/pumpkin
+				remove = true;
+			}
+			
+			if (remove)
+			{
+				char name2[128];
+				for (int i = objectArray.Length-1; i >= 0; i--)
+				{
+					objectArray.GetString(i, name2, sizeof(name2));
+					if (strcmp2(name, name2))
+					{
+						objectArray.Erase(i);
+					}
+				}
 			}
 			
 			CreateObject(name, spawnPos);

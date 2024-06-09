@@ -221,19 +221,21 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	}
 	else // we should still update our items in case this is a respawn
 	{
-		for (int i = 1; i <= GetTotalItems(); i++)
-		{
-			if (PlayerHasItem(client, i))
-			{
-				UpdatePlayerItem(client, i);
-			}
-		}
+		UpdateItemsForPlayer(client);
 	}
 	
 	GiveCommunityItems(client);
 	if (!IsFakeClient(client) && !GetCookieBool(client, g_coTutorialSurvivor))
 	{
 		CreateTimer(1.0, Timer_SurvivorTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	}
+}
+
+void UpdateItemsForPlayer(int client)
+{
+	for (int i = 1; i <= GetTotalItems(); i++)
+	{
+		UpdatePlayerItem(client, i);
 	}
 }
 
@@ -362,14 +364,10 @@ void LoadSurvivorInventory(int client, int index)
 	
 	for (int i = 1; i <= GetTotalItems(); i++)
 	{
-		if (IsEquipmentItem(i))
-			continue;
-		
-		g_iPlayerItem[client][i] = g_iSavedItem[index][i];
-		if (PlayerHasItem(client, i))
-		{
-			UpdatePlayerItem(client, i);
-		}
+		if (!IsEquipmentItem(i))
+			g_iPlayerItem[client][i] = g_iSavedItem[index][i];
+			
+		UpdatePlayerItem(client, i);
 	}
 	
 	float cashBonus = 1.0 + (2.0 * float(g_iLoopCount));

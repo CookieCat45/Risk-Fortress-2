@@ -758,11 +758,25 @@ void UpdatePlayerItem(int client, int item)
 					if (PlayerHasItem(client, item))
 					{
 						float projSpeed = 1.0 + CalcItemMod(client, item, 0);
-						TF2Attrib_SetByDefIndex(launcher, 103, projSpeed); // "Projectile speed increased"
+						int index = GetEntProp(launcher, Prop_Send, "m_iItemDefinitionIndex");
+						if (index == 127) // Direct Hit
+						{
+							projSpeed = fmin(projSpeed, 1.5);
+						}
+						else if (index == 414) // Liberty Launcher
+						{
+							projSpeed = fmin(projSpeed, 1.9);
+						}
+						else
+						{
+							projSpeed = fmin(projSpeed, 2.7);
+						}
+						
+						TF2Attrib_SetByDefIndex(launcher, 475, projSpeed); // "Projectile speed increased HIDDEN"
 					}
 					else
 					{
-						TF2Attrib_RemoveByDefIndex(launcher, 103);
+						TF2Attrib_RemoveByDefIndex(launcher, 475);
 					}
 				}
 			}
@@ -908,6 +922,18 @@ void UpdatePlayerItem(int client, int item)
 				}
 			}
 		}
+		
+		case ItemSoldier_HawkWarrior:
+		{
+			if (PlayerHasItem(client, item))
+			{
+				TF2Attrib_SetByDefIndex(client, 812, 1.0+CalcItemMod(client, item, 3)); // mod_air_control_blast_jump
+			}
+			else
+			{
+				TF2Attrib_RemoveByDefIndex(client, 812);
+			}
+		}
 	}
 	
 	if (!PlayerHasItem(client, item) && !IsEquipmentItem(item) || IsEquipmentItem(item) && GetPlayerEquipmentItem(client) != item)
@@ -1011,7 +1037,7 @@ bool RandChanceFloatEx(int client, float min, float max, float goal, float &resu
 	return success;
 }
 
-void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, CritType critType=CritType_None, int assister=INVALID_ENT)
+void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=DMG_GENERIC, CritType critType=CritType_None, int assister=INVALID_ENT)
 {
 	if (damageType & DMG_MELEE)
 	{
@@ -1050,8 +1076,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 	{
 		float radius = GetItemMod(Item_Executioner, 2);
 		float victimPos[3], enemyPos[3];
-		GetEntPos(victim, victimPos);
-		victimPos[2] += 30.0;
+		GetEntPos(victim, victimPos, true);
 		EmitAmbientSound(SND_BLEED_EXPLOSION, victimPos, _, SNDLEVEL_TRAIN);
 		TE_TFParticle("env_sawblood", victimPos);
 		
@@ -1059,7 +1084,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 		{
 			if (i == victim || !IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(attacker) == GetClientTeam(i))
 				continue;
-
+			
 			GetEntPos(i, enemyPos);
 			TR_TraceRayFilter(victimPos, enemyPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
 			
@@ -1073,7 +1098,52 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 	if (PlayerHasItem(attacker, Item_BruiserBandana))
 	{
 		int heal = CalcItemModInt(attacker, Item_BruiserBandana, 0);
+		if (TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeath) || TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeathSilent))
+		{
+			heal = RoundFloat(float(heal) * GetItemMod(Item_BruiserBandana, 5));
+		}
+		
 		HealPlayer(attacker, heal);
+		if (RandChanceFloatEx(attacker, 0.0, 1.0, CalcItemMod(attacker, Item_BruiserBandana, 1)))
+		{
+			DataPack pack = new DataPack();
+			pack.WriteCell(attacker);
+			pack.WriteCell(victim);
+			RequestFrame(RF_BandanaExplosion, pack);
+		}
+	}
+	
+	if (PlayerHasItem(attacker, ItemSoldier_WarPig) && CanUseCollectorItem(attacker, ItemSoldier_WarPig) && IsValidEntity2(inflictor))
+	{
+		char inflictorClassname[64];
+		GetEntityClassname(inflictor, inflictorClassname, sizeof(inflictorClassname));
+		bool homingRocket = strcmp2(inflictorClassname, "rf2_projectile_homingrocket");
+		if (homingRocket || strcmp2(inflictorClassname, "tf_projectile_rocket") || strcmp2(inflictorClassname, "tf_projectile_energy_ball") 
+			|| strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
+		{
+			int enemy;
+			if (!homingRocket)
+			{
+				int offset = FindSendPropInfo("CTFProjectile_Rocket", "m_hLauncher") + 16;
+				enemy = GetEntDataEnt2(inflictor, offset); // m_hEnemy
+			}
+			else
+			{
+				enemy = RF2_Projectile_HomingRocket(inflictor).ImpactTarget;
+			}
+			
+			if (enemy == victim)
+			{
+				// direct rocket kill (do this on next frame because the rocket can proc into itself which can cause the server to potentially hang)
+				if (RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(ItemSoldier_WarPig, 1)))
+				{
+					DataPack pack = new DataPack();
+					pack.WriteCell(attacker);
+					pack.WriteCell(victim);
+					RequestFrame(RF_FireHomingRockets, pack);
+				}
+			}
+		}
 	}
 	
 	if (PlayerHasItem(attacker, Item_DapperTopper) && !g_bPlayerHealBurstCooldown[attacker])
@@ -1095,7 +1165,7 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 			
 			EmitSoundToAll(SND_SPELL_OVERHEAL, attacker);
 			g_bPlayerHealBurstCooldown[attacker] = true;
-			CreateTimer(0.5, Timer_HealBurstCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(GetItemMod(Item_DapperTopper, 6), Timer_HealBurstCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 	
@@ -1212,6 +1282,59 @@ void DoItemKillEffects(int attacker, int victim, int damageType=DMG_GENERIC, Cri
 	}
 }
 
+public void RF_BandanaExplosion(DataPack pack)
+{
+	pack.Reset();
+	int attacker = pack.ReadCell();
+	int victim = pack.ReadCell();
+	delete pack;
+	if (!IsValidClient(attacker) || !IsValidClient(victim))
+		return;
+		
+	float victimPos[3];
+	GetEntPos(victim, victimPos, true);
+	DoExplosionEffect(victimPos);
+	ArrayList hitEnts = DoRadiusDamage(attacker, attacker, victimPos, Item_BruiserBandana, 
+		GetItemMod(Item_BruiserBandana, 2), DMG_BLAST|DMG_PREVENT_PHYSICS_FORCE, GetItemMod(Item_BruiserBandana, 3), _, _, _, true);
+	
+	for (int i = 0; i < hitEnts.Length; i++)
+	{
+		int entity = hitEnts.Get(i);
+		if (entity != victim && IsValidClient(entity))
+		{
+			TF2_AddCondition(entity, TFCond_MarkedForDeathSilent, GetItemMod(Item_BruiserBandana, 4), attacker);
+		}
+	}
+
+	delete hitEnts;
+}
+
+public void RF_FireHomingRockets(DataPack pack)
+{
+	pack.Reset();
+	int attacker = pack.ReadCell();
+	int victim = pack.ReadCell();
+	delete pack;
+	if (!IsValidClient(attacker) || !IsValidClient(victim))
+		return;
+	
+	float victimPos[3], angles[3];
+	GetEntPos(victim, victimPos, true);
+	float damage = GetItemMod(ItemSoldier_WarPig, 2) + CalcItemMod(attacker, ItemSoldier_WarPig, 3, -1);
+	float speed = GetItemMod(ItemSoldier_WarPig, 4) + CalcItemMod(attacker, ItemSoldier_WarPig, 5, -1);
+	for (int i = 1; i <= GetItemMod(ItemSoldier_WarPig, 6); i++)
+	{
+		RF2_Projectile_HomingRocket rocket = RF2_Projectile_HomingRocket(ShootProjectile(attacker, "rf2_projectile_homingrocket", 
+			victimPos, angles, speed, damage));
+		
+		angles[1] += 135.0;
+		rocket.HomingSpeed = speed;
+		SetEntItemProc(rocket.index, ItemSoldier_WarPig);
+	}
+	
+	EmitAmbientSound(SND_LAW_FIRE, victimPos, _, _, _, 0.75);
+}
+
 public Action Timer_HealBurstCooldown(Handle timer, int client)
 {
 	if (!(client = GetClientOfUserId(client)))
@@ -1264,6 +1387,63 @@ bool ActivateStrangeItem(int client)
 		case ItemStrange_RobotChicken:
 		{
 			TF2_AddCondition(client, TFCond_CritOnFlagCapture, GetItemMod(ItemStrange_RobotChicken, 0));
+		}
+
+		case ItemStrange_Longwave:
+		{
+			bool teleFound;
+			RF2_Object_Teleporter teleporter = RF2_Object_Teleporter(FindEntityByClassname(MaxClients+1, "rf2_object_teleporter"));
+			if (teleporter.IsValid() && !IsGlowing(teleporter.index) && teleporter.EventState == TELE_EVENT_INACTIVE)
+			{
+				teleporter.SetGlow(true);
+				teleFound = true;
+			}
+			
+			int count;
+			RF2_Object_Crate crate;
+			int cap = GetItemModInt(ItemStrange_Longwave, 0);
+			float pos[3];
+			GetEntPos(client, pos, true);
+			ArrayList crateList = new ArrayList();
+			while (count < cap)
+			{
+				crate = RF2_Object_Crate(GetNearestEntity(pos, "rf2_object_crate", _, _, 0));
+				if (!crate.IsValid())
+					break;
+				
+				// this is silly and lazy, but we can change the crate's team temporarily if we've already set a glow on this crate for GetNearestEntity
+				crate.SetProp(Prop_Data, "m_iTeamNum", 1);
+				crateList.Push(crate);
+				if (IsGlowing(crate.index))
+					continue;
+				
+				count++;
+			}
+			
+			for (int i = crateList.Length-1; i >= 0; i--)
+			{
+				crate = crateList.Get(i);
+				crate.SetProp(Prop_Data, "m_iTeamNum", 0);
+			}
+			
+			if (count <= 0 && !teleFound)
+			{
+				EmitSoundToClient(client, SND_NOPE);
+				PrintCenterText(client, "No objects found!");
+				delete crateList;
+				return false;
+			}
+			
+			for (int i = crateList.Length-1; i >= 0; i--)
+			{
+				crate = crateList.Get(i);
+				crate.PingMe(_, GetItemMod(ItemStrange_Longwave, 1));
+			}
+			
+			EmitSoundToAll(SND_LONGWAVE_USE, client);
+			EmitSoundToAll(SND_LONGWAVE_USE, client);
+			TE_TFParticle("hammer_bell_ring_shockwave", pos);
+			delete crateList;
 		}
 		
 		case ItemStrange_HeartOfGold:

@@ -51,6 +51,7 @@ void Altar_OnMapStart()
 
 static void OnCreate(RF2_Object_Altar altar)
 {
+	altar.SetGlowColor({0, 255, 255, 255});
 	altar.DisallowNonSurvivorMinions = true;
 	altar.TextSize = 3.0;
 	altar.TextDist = 100.0;

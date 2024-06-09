@@ -287,6 +287,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		if (hhhSpawnCount > 0 || eyeSpawnCount > 0)
 		{
 			int boss;
+			bool monoculus;
 			float resultPos[3];
 			float mins[3] = PLAYER_MINS;
 			float maxs[3] = PLAYER_MAXS;
@@ -312,6 +313,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 				area = GetSpawnPoint(pos, resultPos, 0.0, this.Radius*1.5, -1, true, mins, maxs, MASK_NPCSOLID, zOffset);
 				if (area)
 				{
+					monoculus = false;
 					if (hhhSpawnCount > 0)
 					{
 						boss = CreateEntityByName("headless_hatman");
@@ -320,11 +322,26 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 					else if (eyeSpawnCount > 0)
 					{
 						boss = CreateEntityByName("eyeball_boss");
+						monoculus = true;
 						SetEntProp(boss, Prop_Data, "m_iTeamNum", 5);
 						eyeSpawnCount--;
 					}
 					
 					TeleportEntity(boss, resultPos);
+					if (monoculus)
+					{
+						// We need to attach an offset info_target to Monoculus otherwise he can get stuck in ceilings when he tries to teleport
+						// because it will raise his position by +75 Z regardless of whether he has a teleport point or not
+						int target = CreateEntityByName("info_target");
+						DispatchKeyValue(target, "targetname", "spawn_boss_alt");
+						float targetPos[3];
+						CopyVectors(resultPos, targetPos);
+						targetPos[2] -= 75.0;
+						TeleportEntity(target, targetPos);
+						DispatchSpawn(target);
+						ParentEntity(target, boss, _, true);
+					}
+					
 					// this is really just to prevent earrape, especially with Monoculus...
 					CreateTimer(time, Timer_DelayHalloweenBossSpawn, boss, TIMER_FLAG_NO_MAPCHANGE);
 					time += 0.3;
@@ -506,6 +523,7 @@ static void OnCreate(RF2_Object_Teleporter teleporter)
 	teleporter.SetWorldText("Call for Medic to start the Teleporter event!");
 	teleporter.TextZOffset = 70.0;
 	teleporter.SetObjectName("The Teleporter");
+	teleporter.SetGlowColor({150, 0, 150, 255});
 }
 
 static void OnRemove(RF2_Object_Teleporter teleporter)
