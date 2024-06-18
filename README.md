@@ -5,6 +5,7 @@ This assumes the following:
 - You have already set up a TF2 dedicated server.
 - You have MetaMod and SourceMod installed on your server.
 - You know how to install plugins and extensions for SourceMod on your server.
+[MetaMod+SourceMod Installation Guide](https://www.youtube.com/watch?v=QF7urRJIgrE)
 
 ### REQUIRED Plugins/Extensions
 [CBaseNPC](https://github.com/TF2-DMB/CBaseNPC/releases)   
