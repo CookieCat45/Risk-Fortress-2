@@ -70,6 +70,7 @@ bool g_bEnteringUnderworld;
 bool g_bItemSharingDisabledForMap;
 char g_szForcedMap[256];
 char g_szMapForcerName[MAX_NAME_LENGTH];
+char g_szCurrentEnemyGroup[64];
 
 int g_iTotalEnemiesKilled;
 int g_iTotalBossesKilled;
@@ -138,6 +139,7 @@ bool g_bPlayerOpenedHelpMenu[MAXTF2PLAYERS];
 bool g_bPlayerHealOnHitCooldown[MAXTF2PLAYERS];
 bool g_bPlayerViewingItemDesc[MAXTF2PLAYERS];
 bool g_bPlayerReviveActivated[MAXTF2PLAYERS];
+bool g_bPlayerItemShareExcluded[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -220,13 +222,13 @@ float g_flLastHalloweenBossAttackTime[MAX_EDICTS][MAXTF2PLAYERS];
 
 ArrayList g_hHHHTargets;
 ArrayList g_hMonoculusTargets;
-Handle g_hEntityGlowResetTimer[MAX_EDICTS];
 
 // Timers
 Handle g_hPlayerTimer;
 Handle g_hHudTimer;
 Handle g_hDifficultyTimer;
 Handle g_hItemTimer;
+Handle g_hEntityGlowResetTimer[MAX_EDICTS];
 
 // Gamedata handles
 Handle g_hSDKEquipWearable;
@@ -245,6 +247,7 @@ DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourSetReloadTimer;
 DynamicDetour g_hDetourApplyPunchImpulse;
 DynamicDetour g_hDetourEyeFindVictim;
+DynamicDetour g_hDetourEyePickSpot;
 DynamicDetour g_hDetourHHHChaseable;
 DynamicDetour g_hDetourOnWeaponFired;
 DynamicHook g_hHookTakeHealth;
@@ -390,6 +393,7 @@ int g_iThrillerRepeatCount;
 #include "rf2/customents/objects/object_pumpkin.sp"
 #include "rf2/customents/objects/object_statue.sp"
 #include "rf2/customents/objects/object_tree.sp"
+#include "rf2/customents/objects/object_fountain.sp"
 
 #include "rf2/customents/projectiles/projectile_base.sp"
 #include "rf2/customents/projectiles/projectile_shuriken.sp"
@@ -677,6 +681,13 @@ void LoadGameData()
 	if (!g_hDetourEyeFindVictim || !g_hDetourEyeFindVictim.Enable(Hook_Pre, Detour_EyeFindVictim) || !g_hDetourEyeFindVictim.Enable(Hook_Post, Detour_EyeFindVictimPost))
 	{
 		LogError("[DHooks] Failed to create detour for CEyeballBoss::FindClosestVisibleVictim");
+	}
+	
+	
+	g_hDetourEyePickSpot = DynamicDetour.FromConf(gamedata, "CEyeballBoss::PickNewSpawnSpot");
+	if (!g_hDetourEyePickSpot || !g_hDetourEyePickSpot.Enable(Hook_Pre, Detour_EyePickSpot))
+	{
+		LogError("[DHooks] Failed to create detour for CEyeballBoss::PickNewSpawnSpot");
 	}
 	
 	
@@ -1405,6 +1416,7 @@ public void OnClientDisconnect_Post(int client)
 	g_bPlayerToggledAutoFire[client] = false;
 	g_bHauntedKeyDrop[client] = false;
 	g_bPlayerReviveActivated[client] = false;
+	g_bPlayerItemShareExcluded[client] = false;
 	g_hPlayerItemDescTimer[client] = null;
 	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client, true);
@@ -1537,6 +1549,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	g_bRoundActive = true;
 	g_bGracePeriod = true;
 	g_bRoundEnding = false;
+	g_szCurrentEnemyGroup = "";
 	if (!CreateSurvivors())
 	{
 		g_bRoundActive = false;
@@ -1635,8 +1648,14 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	{
 		g_bGracePeriod = false;
 		entity = MaxClients+1;
+		char name[128];
 		while ((entity = FindEntityByClassname(entity, "team_round_timer")) != INVALID_ENT)
 		{
+			// make sure it doesn't have a name, to avoid messing with map logic
+			GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
+			if (name[0])
+				continue;
+
 			if (GetEntProp(entity, Prop_Send, "m_nState") == 0)
 			{
 				RemoveEntity2(entity);
@@ -1785,12 +1804,9 @@ public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 		if (g_bEnteringUnderworld)
 		{
 			CreateTimer(10.5, Timer_EnterUnderworldEffect, _, TIMER_FLAG_NO_MAPCHANGE);
-			CreateTimer(14.0, Timer_EnterUnderworld, DetermineNextStage(), TIMER_FLAG_NO_MAPCHANGE);
 		}
-		else
-		{
-			CreateTimer(14.0, Timer_SetNextStage, DetermineNextStage(), TIMER_FLAG_NO_MAPCHANGE);
-		}
+		
+		CreateTimer(14.0, Timer_SetNextStage, DetermineNextStage(), TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else if (winningTeam == TEAM_ENEMY)
 	{
@@ -2686,9 +2702,15 @@ void EndGracePeriod()
 	g_bGracePeriod = false;
 	int entity = MaxClients+1;
 	
+	char name[128];
 	// We have to do this or else bots will misbehave, thinking it's still setup time. They won't attack players and will randomly taunt.
 	while ((entity = FindEntityByClassname(entity, "team_round_timer")) != INVALID_ENT)
 	{
+		// make sure it doesn't have a name, to avoid messing with map logic
+		GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
+		if (name[0])
+			continue;
+
 		if (GetEntProp(entity, Prop_Send, "m_nState") == 0)
 		{
 			UnhookSingleEntityOutput(entity, "team_round_timer", Output_GraceTimerFinished);
@@ -2704,6 +2726,7 @@ void EndGracePeriod()
 	CreateTimer(1.0, Timer_BusterSpawnWave, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	Call_StartForward(g_fwGracePeriodEnded);
 	Call_Finish();
+	GetRF2GameRules().FireOutput("OnGracePeriodEnd");
 	if (!g_bTankBossMode)
 	{
 		RF2_PrintToChatAll("%t", "GracePeriodEnded");
@@ -2905,6 +2928,10 @@ public Action Timer_SetNextStage(Handle timer, int stage)
 		g_bMapChanging = true;
 		ForceChangeLevel(g_szForcedMap, reason);
 	}
+	else if (g_bEnteringUnderworld)
+	{
+		ForceChangeLevel(g_szUnderworldMap, "Entering the Underworld");
+	}
 	else
 	{
 		SetNextStage(stage);
@@ -2925,32 +2952,6 @@ public Action Timer_EnterUnderworldEffect(Handle timer)
 		{
 			UTIL_ScreenFade(i, {255, 255, 255, 255}, 2.5, 10.0, FFADE_PURGE|FFADE_OUT);
 		}
-	}
-	
-	return Plugin_Continue;
-}
-
-public Action Timer_EnterUnderworld(Handle timer, int stage)
-{
-	g_iCurrentStage = stage;
-	if (g_szForcedMap[0])
-	{
-		char reason[64];
-		if (g_szMapForcerName[0])
-		{
-			FormatEx(reason, sizeof(reason), "%s forced the next map", g_szMapForcerName);
-			g_szMapForcerName = "";
-		}
-		else
-		{
-			reason = "Tree of Fate";
-		}
-
-		ForceChangeLevel(g_szForcedMap, reason);
-	}
-	else
-	{
-		ForceChangeLevel(g_szUnderworldMap, "Entering the Underworld");
 	}
 	
 	return Plugin_Continue;
@@ -3003,7 +3004,7 @@ public Action Timer_PlayerHud(Handle timer)
 					rank = "E";
 				else
 					rank = "F";
-
+				
 				scoreCalculated = true;
 			}
 			
@@ -4600,8 +4601,8 @@ public void RF_DragonFuryCritCheck(int entity)
 bool IsEntityBlacklisted(const char[] classname)
 {
 	return (strcmp2(classname, "func_regenerate") || strcmp2(classname, "tf_ammo_pack")
-	|| strcmp2(classname, "halloween_souls_pack") || strcmp2(classname, "teleport_vortex")
-	|| strcmp2(classname, "func_respawnroom"));
+	|| strcmp2(classname, "halloween_souls_pack") || strcmp2(classname, "func_respawnroom")
+	|| strcmp2(classname, "teleport_vortex"));
 }
 
 public void Hook_ProjectileSpawnPost(int entity)

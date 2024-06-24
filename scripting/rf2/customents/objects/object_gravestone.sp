@@ -103,7 +103,7 @@ void Gravestone_OnMapStart()
 static void OnCreate(RF2_Object_Gravestone grave)
 {
 	grave.SetModel(MODEL_GRAVESTONE);
-	grave.SetGlowColor({0, 255, 255, 255});
+	grave.SetGlowColor(0, 255, 255, 255);
 	grave.HookInteract(Gravestone_OnInteract);
 	if (grave.Cost <= 0.0)
 	{
@@ -115,7 +115,7 @@ static void OnCreate(RF2_Object_Gravestone grave)
 	grave.SetWorldText(text);
 	grave.TextZOffset = 110.0;
 	grave.TextSize = 12.0;
-	grave.SetTextColor({75, 200, 200, 255});
+	grave.SetTextColor(75, 200, 200, 255);
 	grave.SetObjectName("Gravestone");
 }
 

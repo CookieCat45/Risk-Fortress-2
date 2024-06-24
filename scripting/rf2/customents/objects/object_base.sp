@@ -261,10 +261,20 @@ methodmap RF2_Object_Base < CBaseAnimating
 	{
 		this.GetPropColor(Prop_Data, "m_TextColor", buffer[0], buffer[1], buffer[2], buffer[3]);
 	}
-
-	public void SetTextColor(int color[4])
+	
+	public void SetTextColor(int r=255, int g=255, int b=255, int a=255)
 	{
-		this.SetPropColor(Prop_Data, "m_TextColor", color[0], color[1], color[2], color[3]);
+		this.SetPropColor(Prop_Data, "m_TextColor", r, g, b, a);
+		if (IsValidEntity2(this.WorldText))
+		{
+			int color[4];
+			color[0] = r;
+			color[1] = g;
+			color[2] = b;
+			color[3] = a;
+			SetVariantColor(color);
+			AcceptEntityInput(this.WorldText, "SetColor");
+		}
 	}
 	
 	property int GlowEnt
@@ -307,11 +317,16 @@ methodmap RF2_Object_Base < CBaseAnimating
 		this.GetPropColor(Prop_Data, "m_GlowColor", buffer[0], buffer[1], buffer[2], buffer[3]);
 	}
 	
-	public void SetGlowColor(int color[4])
+	public void SetGlowColor(int r=255, int g=255, int b=255, int a=255)
 	{
-		this.SetPropColor(Prop_Data, "m_GlowColor", color[0], color[1], color[2], color[3]);
+		this.SetPropColor(Prop_Data, "m_GlowColor", r, g, b, a);
 		if (IsValidEntity2(this.GlowEnt))
 		{
+			int color[4];
+			color[0] = r;
+			color[1] = g;
+			color[2] = b;
+			color[3] = a;
 			SetVariantColor(color);
 			AcceptEntityInput(this.GlowEnt, "SetGlowColor");
 		}
@@ -404,8 +419,8 @@ static void OnCreate(RF2_Object_Base obj)
 	obj.TextZOffset = 50.0;
 	obj.TextSize = 6.0;
 	obj.TextDist = 500.0;
-	obj.SetTextColor({255, 255, 100, 255});
-	obj.SetGlowColor({255, 255, 255, 255});
+	obj.SetTextColor(255, 255, 100, 255);
+	obj.SetGlowColor(255, 255, 255, 255);
 	if (!RF2_Object_Teleporter(obj.index).IsValid())
 	{
 		obj.SetProp(Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER_TOUCH_DEBRIS|FSOLID_TRIGGER|FSOLID_NOT_SOLID|FSOLID_CUSTOMBOXTEST);

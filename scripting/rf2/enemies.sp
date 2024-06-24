@@ -25,6 +25,7 @@ static bool g_bEnemyNoCrits[MAX_ENEMIES];
 
 static char g_szEnemyName[MAX_ENEMIES][MAX_NAME_LENGTH];
 static char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
+static char g_szEnemyGroup[MAX_ENEMIES][64];
 
 // TFBot
 static int g_iEnemyBotSkill[MAX_ENEMIES];
@@ -120,6 +121,16 @@ methodmap Enemy
 	public void SetName(const char[] name)
 	{
 		strcopy(g_szEnemyName[this.Index], sizeof(g_szEnemyName[]), name);
+	}
+
+	public int GetGroup(char[] buffer, int size)
+	{
+		return strcopy(buffer, size, g_szEnemyGroup[this.Index]);
+	}
+	
+	public void SetGroup(const char[] group)
+	{
+		strcopy(g_szEnemyGroup[this.Index], sizeof(g_szEnemyGroup[]), group);
 	}
 
 	property float ModelScale
@@ -466,6 +477,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		// name, model, description
 		enemyKey.GetString("name", g_szEnemyName[e], sizeof(g_szEnemyName[]), "unnamed");
 		enemyKey.GetString("model", g_szEnemyModel[e], sizeof(g_szEnemyModel[]), "models/player/soldier.mdl");
+		enemyKey.GetString("group", g_szEnemyGroup[e], sizeof(g_szEnemyGroup[]));
 		enemy.ModelScale = enemyKey.GetFloat("model_scale", enemy.IsBoss ? 1.75 : 1.0);
 		if (FileExists(g_szEnemyModel[e], true))
 		{
@@ -591,10 +603,15 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 {
 	ArrayList enemyList = new ArrayList();
 	int selected;
-	
+	char group[64];
 	for (int i = 0; i < g_iEnemyCount; i++)
 	{
 		if (EnemyByIndex(i).IsBoss || EnemyByIndex(i).TypeLimit > 0 && GetActiveEnemiesOfType(i) >= EnemyByIndex(i).TypeLimit)
+			continue;
+		
+		// Make sure this enemy matches our group if we have one
+		EnemyByIndex(i).GetGroup(group, sizeof(group));
+		if (group[0] && !strcmp2(group, g_szCurrentEnemyGroup))
 			continue;
 		
 		for (int j = 1; j <= EnemyByIndex(i).Weight; j++)
@@ -617,12 +634,17 @@ int GetRandomBoss(bool getName = false, char[] buffer="", int size=0)
 {
 	ArrayList bossList = new ArrayList();
 	int selected;
-	
+	char group[64];
 	for (int i = 0; i < g_iEnemyCount; i++)
 	{
 		if (!EnemyByIndex(i).IsBoss || EnemyByIndex(i).TypeLimit > 0 && GetActiveEnemiesOfType(i) >= EnemyByIndex(i).TypeLimit)
 			continue;
 		
+		// Make sure this enemy matches our group if we have one
+		EnemyByIndex(i).GetGroup(group, sizeof(group));
+		if (group[0] && !strcmp2(group, g_szCurrentEnemyGroup))
+			continue;
+
 		for (int j = 1; j <= EnemyByIndex(i).Weight; j++)
 			bossList.Push(i);
 	}
@@ -695,42 +717,47 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		}
 	}
 	
-	float checkPos[3];
-	bool player;
-	if (CompareVectors(pos, OFF_THE_MAP))
-	{
-		int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
-		if (IsValidClient(randomSurvivor))
-		{
-			GetEntPos(randomSurvivor, checkPos);
-			player = true;
-		}
-		else
-		{
-			checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
-			checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
-			checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
-		}
-	}
-	else
-	{
-		CopyVectors(pos, checkPos);
-	}
-	
 	float mins[3] = PLAYER_MINS;
 	float maxs[3] = PLAYER_MAXS;
 	ScaleVector(mins, enemy.ModelScale);
 	ScaleVector(maxs, enemy.ModelScale);
-	float zOffset = 30.0 * enemy.ModelScale;
+	CNavArea area;
 	float spawnPos[3];
-	// Engineers spawn further away from players
-	float extraDist = player && enemy.Class == TFClass_Engineer ? 3000.0 : 0.0;
-	float minSpawnDistance = minDist < 0.0 ? g_cvEnemyMinSpawnDistance.FloatValue : minDist;
-	float maxSpawnDistance = maxDist < 0.0 ? g_cvEnemyMaxSpawnDistance.FloatValue + extraDist : maxDist;
-	maxSpawnDistance += float(recurseCount) * 300.0;
-	CNavArea area = GetSpawnPoint(checkPos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
+	bool useSpawnPoints = !g_bPlayerSpawnedByTeleporter[client] && GetRF2GameRules().UseTeamSpawnForEnemies;
+	if (!useSpawnPoints)
+	{
+		float checkPos[3];
+		bool player;
+		if (CompareVectors(pos, OFF_THE_MAP))
+		{
+			int randomSurvivor = GetRandomPlayer(TEAM_SURVIVOR);
+			if (IsValidClient(randomSurvivor))
+			{
+				GetEntPos(randomSurvivor, checkPos);
+				player = true;
+			}
+			else
+			{
+				checkPos[0] = GetRandomFloat(-3000.0, 3000.0);
+				checkPos[1] = GetRandomFloat(-3000.0, 3000.0);
+				checkPos[2] = GetRandomFloat(-1500.0, 1500.0);
+			}
+		}
+		else
+		{
+			CopyVectors(pos, checkPos);
+		}
+		
+		float zOffset = 30.0 * enemy.ModelScale;
+		// Engineers spawn further away from players
+		float extraDist = player && enemy.Class == TFClass_Engineer ? 3000.0 : 0.0;
+		float minSpawnDistance = minDist < 0.0 ? g_cvEnemyMinSpawnDistance.FloatValue : minDist;
+		float maxSpawnDistance = maxDist < 0.0 ? g_cvEnemyMaxSpawnDistance.FloatValue + extraDist : maxDist;
+		maxSpawnDistance += float(recurseCount) * 300.0;
+		area = GetSpawnPoint(checkPos, spawnPos, minSpawnDistance, maxSpawnDistance, TEAM_SURVIVOR, true, mins, maxs, MASK_PLAYERSOLID, zOffset);
+	}
 	
-	if (!area)
+	if (!area && !useSpawnPoints)
 	{
 		if (recursive)
 		{
@@ -756,9 +783,14 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	g_flPlayerMaxSpeed[client] = enemy.BaseSpeed;
 	TF2_SetPlayerClass(client, enemy.Class);
 	TF2_RespawnPlayer(client);
-	TeleportEntity(client, spawnPos, NULL_VECTOR, NULL_VECTOR);
+	if (!useSpawnPoints)
+	{
+		TeleportEntity(client, spawnPos);
+	}
+	
 	SetEntPropFloat(client, Prop_Send, "m_flModelScale", g_flEnemyModelScale[type]);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 1.0);
+	TF2_AddCondition(client, TFCond_FreezeInput, 1.0);
 	
 	char model[PLATFORM_MAX_PATH];
 	enemy.GetModel(model, sizeof(model));
@@ -772,7 +804,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	
 	TF2_RemoveAllWeapons(client);
 	char name[128], attributes[MAX_ATTRIBUTE_STRING_LENGTH];
-	int activeWeapon = -1;
+	int activeWeapon = INVALID_ENT;
 	int weapon;
 	for (int i = 0; i < enemy.WeaponCount; i++)
 	{
@@ -785,7 +817,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		}
 	}
 	
-	if (activeWeapon != -1)
+	if (activeWeapon != INVALID_ENT)
 	{
 		for (int i = 0; i < TF_WEAPON_SLOTS; i++)
 		{
@@ -812,7 +844,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		enemy.GetWearableAttributes(i, attributes, sizeof(attributes));
 		wearable = CreateWearable(client, name, enemy.WearableIndex(i), attributes, enemy.WearableUseStaticAtts(i), enemy.WearableVisible(i));
 		
-		if (wearable > 0)
+		if (wearable != INVALID_ENT)
 			g_bDontRemoveWearable[wearable] = true;
 	}
 	

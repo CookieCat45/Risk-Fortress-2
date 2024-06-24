@@ -66,7 +66,7 @@ static void OnCreate(RF2_Object_Tree tree)
 	delete mapList;
 	tree.HookInteract(Tree_OnInteract);
 	tree.SetWorldText("Determine your Fate (1 Gargoyle Key)");
-	tree.SetTextColor({0, 255, 255, 255});
+	tree.SetTextColor(0, 255, 255, 255);
 }
 
 static int g_iVoteClient = INVALID_ENT;

@@ -71,7 +71,7 @@ void LoadCommandsAndCvars()
 	g_cvSurvivorBaseXpRequirement = CreateConVar("rf2_survivor_xp_base_requirement", "100.0", "Base XP requirement for a Survivor to level up.", FCVAR_NOTIFY, true, 1.0);
 	g_cvSurvivorXpRequirementScale = CreateConVar("rf2_survivor_xp_requirement_scale", "1.5", "How much the XP requirement for a Survivor to level up will scale per level, in decimal percentage.", FCVAR_NOTIFY, true, 1.0);
 	g_cvSurvivorLagBehindThreshold = CreateConVar("rf2_survivor_lag_behind_threshold", "0.6", "If any player has an item count lower than the player with the most items times this value, they will be considered 'lagging behind'. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvSurvivorMaxExtraCrates = CreateConVar("rf2_survivor_max_extra_crates", "6", "The highest number of catch-up crates to spawn for a player.", FCVAR_NOTIFY, true, 0.0);
+	g_cvSurvivorMaxExtraCrates = CreateConVar("rf2_survivor_max_extra_crates", "0", "The highest number of catch-up crates to spawn for a player.", FCVAR_NOTIFY, true, 0.0);
 	g_cvCashBurnTime = CreateConVar("rf2_enemy_cash_burn_time", "30.0", "Time in seconds that dropped cash will disappear after spawning.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyHealthScale = CreateConVar("rf2_enemy_level_health_scale", "0.08", "How much the enemy team's health will increase per level, in decimal percentage. Includes neutral enemies, such as Monoculus.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyDamageScale = CreateConVar("rf2_enemy_level_damage_scale", "0.04", "How much the enemy team's damage will increase per level, in decimal percentage. Includes neutral enemies, such as Monoculus.", FCVAR_NOTIFY, true, 0.0);

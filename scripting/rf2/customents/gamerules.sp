@@ -30,6 +30,7 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineBoolField("m_bDisableDeath", _, "disable_death")
 			.DefineBoolField("m_bDisableObjectSpawning", _, "disable_object_spawning")
 			.DefineBoolField("m_bDisableItemSharing", _, "disable_item_sharing")
+			.DefineBoolField("m_bUseTeamSpawnForEnemies", _, "enemies_teamspawn")
 			.DefineInputFunc("ForceStartTeleporter", InputFuncValueType_Void, Input_ForceStartTeleporter)
 			.DefineInputFunc("TriggerWin", InputFuncValueType_Void, Input_TriggerWin)
 			.DefineInputFunc("GameOver", InputFuncValueType_Void, Input_GameOver)
@@ -38,6 +39,7 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineInputFunc("EnableDeath", InputFuncValueType_Void, Input_EnableDeath)
 			.DefineInputFunc("DisableDeath", InputFuncValueType_Void, Input_DisableDeath)
 			.DefineInputFunc("TriggerAchievement", InputFuncValueType_Integer, Input_TriggerAchievement)
+			.DefineInputFunc("SetEnemyGroup", InputFuncValueType_String, Input_SetEnemyGroup)
 			.DefineOutput("OnTeleporterEventStart")
 			.DefineOutput("OnTeleporterEventComplete")
 			.DefineOutput("OnTankDestructionStart")
@@ -49,6 +51,7 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineOutput("OnWaitingForPlayers")
 			.DefineOutput("OnWaitingForPlayersPreLoop")
 			.DefineOutput("OnWaitingForPlayersPostLoop")
+			.DefineOutput("OnGracePeriodEnd")
 		.EndDataMapDesc();
 		g_Factory.Install();
 	}
@@ -86,6 +89,19 @@ methodmap RF2_GameRules < CBaseEntity
 		public set(bool value)
 		{
 			this.SetProp(Prop_Data, "m_bAllowEnemySpawning", value);
+		}
+	}
+
+	property bool UseTeamSpawnForEnemies
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bUseTeamSpawnForEnemies"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bUseTeamSpawnForEnemies", value);
 		}
 	}
 
@@ -218,6 +234,11 @@ public void Input_TriggerAchievement(int entity, int activator, int caller, int 
 		TriggerAchievement(activator, value);
 }
 
+public void Input_SetEnemyGroup(int entity, int activator, int caller, const char[] value)
+{
+	strcopy(g_szCurrentEnemyGroup, sizeof(g_szCurrentEnemyGroup), value);
+}
+
 int SpawnObjects()
 {
 	if (GetRF2GameRules().DisableObjectSpawning)
@@ -313,9 +334,9 @@ int SpawnObjects()
 	int collectorWeight = 8;
 	
 	// Non-crate object weights are separate
-	int workbenchWeight = 16;
+	int workbenchWeight = 20;
 	int scrapperWeight = 12;
-	int graveWeight = 4;
+	int graveWeight = 2;
 	int pumpkinWeight = 1;
 	
 	if (!altar.IsValid())

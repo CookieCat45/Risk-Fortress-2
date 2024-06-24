@@ -208,7 +208,7 @@ static void OnSpawnPost(int entity)
 		}
 		
 		sprite.SetRenderColor(color[0], color[1], color[2], color[3]);
-		bench.SetGlowColor(color);
+		bench.SetGlowColor(color[0], color[1], color[2], color[3]);
 	}
 }
 

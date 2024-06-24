@@ -12,6 +12,7 @@ char g_szClientBGM[MAXTF2PLAYERS][PLATFORM_MAX_PATH];
 char g_szStageBGM[PLATFORM_MAX_PATH];
 char g_szBossBGM[PLATFORM_MAX_PATH];
 char g_szUnderworldMap[PLATFORM_MAX_PATH];
+char g_szFinalMap[PLATFORM_MAX_PATH];
 
 float g_flGracePeriodTime = 30.0;
 float g_flLoopMusicAt[MAXTF2PLAYERS] = {-1.0, ...};
@@ -41,6 +42,18 @@ void LoadMapSettings(const char[] mapName)
 		else
 		{
 			LogError("Tried to load settings for underworld map (%s) but somehow, the section doesn't exist. Not good!", mapName);
+		}
+	}
+	else if (g_szFinalMap[0] && StrContains(g_szFinalMap, mapName, false) == 0)
+	{
+		if (mapKey.JumpToKey("special") && mapKey.JumpToKey("final"))
+		{
+			ReadMapKeys(mapKey);
+			found = true;
+		}
+		else
+		{
+			LogError("Tried to load settings for final map (%s) but somehow, the section doesn't exist. Not good!", mapName);
 		}
 	}
 	else
@@ -178,6 +191,12 @@ int FindMaxStages()
 	if (mapKey.JumpToKey("underworld"))
 	{
 		mapKey.GetString("name", g_szUnderworldMap, sizeof(g_szUnderworldMap));
+		mapKey.GoBack();
+	}
+
+	if (mapKey.JumpToKey("final"))
+	{
+		mapKey.GetString("name", g_szFinalMap, sizeof(g_szFinalMap));
 		mapKey.GoBack();
 	}
 	

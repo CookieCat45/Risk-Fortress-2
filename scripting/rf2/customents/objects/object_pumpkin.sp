@@ -45,7 +45,7 @@ void Pumpkin_OnMapStart()
 static void OnCreate(RF2_Object_Pumpkin pumpkin)
 {
 	pumpkin.SetModel(MODEL_PUMPKIN);
-	pumpkin.SetGlowColor({255, 255, 0, 255});
+	pumpkin.SetGlowColor(255, 255, 0, 255);
 	pumpkin.HookInteract(Pumpkin_OnInteract);
 	pumpkin.SetObjectName("Magical Pumpkin");
 	if (pumpkin.Cost <= 0.0)
@@ -56,7 +56,7 @@ static void OnCreate(RF2_Object_Pumpkin pumpkin)
 	char text[128];
 	FormatEx(text, sizeof(text), "($%.0f) Reveal Gargoyle Altar Location", pumpkin.Cost);
 	pumpkin.SetWorldText(text);
-	pumpkin.SetTextColor({200, 200, 0, 255});
+	pumpkin.SetTextColor(200, 200, 0, 255);
 	pumpkin.TextZOffset = 75.0;
 }
 

@@ -808,7 +808,7 @@ int GetPlayerCrateBonus(int client)
 {
 	if (g_iLoopCount > 0)
 		return 0;
-
+	
 	float lagBehindPercent = g_cvSurvivorLagBehindThreshold.FloatValue;
 	if (lagBehindPercent <= 0.0)
 		return 0;
@@ -891,11 +891,17 @@ bool DoesPlayerHaveEnoughItems(int client)
 	if (GetCookieInt(client, g_coItemShareKarma) <= -2) // bad karma, don't take this player into consideration
 		return true;
 	
+	if (g_bPlayerItemShareExcluded[client])
+		return true;
+
 	// player is taking too long to pick stuff up
 	if (!IsBossEventActive() || g_iTanksKilledObjective >= g_iTankKillRequirement)
 	{
 		if (g_flPlayerTimeSinceLastItemPickup[client]+50.0 < GetTickedTime())
+		{
+			g_bPlayerItemShareExcluded[client] = true;
 			return true;
+		}
 	}
 	
 	if (g_cvItemShareDisableThreshold.FloatValue <= 0.0 || g_iItemsTaken[RF2_GetSurvivorIndex(client)] >= GetPlayerRequiredItems(client))

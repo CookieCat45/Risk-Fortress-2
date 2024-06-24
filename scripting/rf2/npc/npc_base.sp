@@ -288,10 +288,15 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		this.GlowEnt = ToggleGlow(this.index, state);
 	}
 	
-	public void SetGlowColor(int color[4])
+	public void SetGlowColor(int r=255, int g=255, int b=255, int a=255)
 	{
 		if (IsValidEntity2(this.GlowEnt))
 		{
+			int color[4];
+			color[0] = r;
+			color[1] = g;
+			color[2] = b;
+			color[3] = a;
 			SetVariantColor(color);
 			AcceptEntityInput(this.GlowEnt, "SetGlowColor");
 		}

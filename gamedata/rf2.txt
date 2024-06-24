@@ -68,7 +68,6 @@
 				"linux"		"@_ZN11CBaseEntity10IntersectsEPS_"
 				"windows"	"\x55\x8B\xEC\x83\x2A\x18\x00\x56\x74\x6E\x8B\x75\x08\x83\x2A\x18\x00\x74\x65\x8B\x2A\x2A\x2A\x00\x00\x81\x2A\x2A\x2A\x00\x00\xD9\xEE\x57\x51"
 				"linux64"	"@_ZN11CBaseEntity10IntersectsEPS_"
-				
 				"windows64"	""
 			}
 			"CBaseEntity::ApplyAbsVelocityImpulse"
@@ -104,7 +103,6 @@
 				"linux"		"@_ZN9CTFPlayer11PlayGestureEPKc"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x34\x53\x56\x8B\x75\x08\x57"
 				"linux64"	"@_ZN9CTFPlayer11PlayGestureEPKc"
-				
 				"windows64"	""
 			}
 			"CTFPlayer::ApplyPunchImpulseX"
@@ -154,7 +152,6 @@
 				"linux"		"@_ZN7CZombie10SpawnAtPosERK6VectorfiP11CBaseEntityNS_14SkeletonType_tE"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x0C\x57\x6A\xFF"
 				"linux64"	"@_ZN7CZombie10SpawnAtPosERK6VectorfiP11CBaseEntityNS_14SkeletonType_tE"
-				
 				"windows64"	""
 			}
 			"CHeadlessHatmanAttack::IsPotentiallyChaseable"
@@ -162,7 +159,6 @@
 				"linux"		"@_ZN21CHeadlessHatmanAttack22IsPotentiallyChaseableEP15CHeadlessHatmanP9CTFPlayer"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x14\x53\x56\x8B\x75\x0C\x89\x4D\xFC"
 				"linux64"	"@_ZN21CHeadlessHatmanAttack22IsPotentiallyChaseableEP15CHeadlessHatmanP9CTFPlayer"
-				
 				"windows64"	""
 			}
 			"CEyeballBoss::FindClosestVisibleVictim"
@@ -171,6 +167,13 @@
 				"windows"	"\x55\x8B\xEC\x83\xEC\x2C\xF3\x0F\x10\x05\x2A\x2A\x2A\x2A\x53"
 				"linux64"	"@_ZN12CEyeballBoss24FindClosestVisibleVictimEv"
 				"windows64"	"\x48\x8B\xC4\x48\x89\x48\x08\x41\x54\x48\x81\xEC\x80\x00\x00\x00\x48\x89\x58\x20"
+			}
+			"CEyeballBoss::PickNewSpawnSpot"
+			{
+				"linux"		"@_ZNK12CEyeballBoss16PickNewSpawnSpotEv"
+				"windows"	"\xA1\x2A\x2A\x2A\x2A\x56\x8B\xF1\xA8\x01\x75\x2A\x83\xC8\x01\xA3\x2A\x2A\x2A\x2A\x8B\x86\x78\x09\x00\x00"
+				"linux64"	""
+				"windows64"	""
 			}
 		}
 		
@@ -269,6 +272,14 @@
 				"signature"	"CEyeballBoss::FindClosestVisibleVictim"
 				"callconv"	"thiscall"
 				"return"	"cbaseentity"
+				"this"		"entity"
+			}
+			
+			"CEyeballBoss::PickNewSpawnSpot"
+			{
+				"signature"	"CEyeballBoss::PickNewSpawnSpot"
+				"callconv"	"thiscall"
+				"return"	"vectorptr"
 				"this"		"entity"
 			}
 			

@@ -985,6 +985,20 @@ public MRESReturn Detour_EyeFindVictimPost(int monoculus, DHookReturn returnVal)
 	return MRES_Ignored;
 }
 
+public MRESReturn Detour_EyePickSpot(int monoculus, DHookReturn returnVal)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	// When Monoculus picks a teleport spot, he will move up 75 units even if he doesn't find a spot, which gets him stuck in ceilings. 
+	// Yes, this is dumb.
+	float pos[3];
+	GetEntPos(monoculus, pos);
+	pos[2] -= 75.0;
+	returnVal.SetVector(pos);
+	return MRES_Supercede;
+}
+
 bool IsValidHHHTarget(int hhh, int client)
 {
 	// did this guy attack us recently?

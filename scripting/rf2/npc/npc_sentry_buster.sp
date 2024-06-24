@@ -291,7 +291,7 @@ static void OnCreate(RF2_SentryBuster buster)
 	buster.Spawn();
 	buster.Activate();
 	buster.SetGlow(true);
-	buster.SetGlowColor({0, 100, 255, 255});
+	buster.SetGlowColor(0, 100, 255, 255);
 	npc.SetBodyMins(PLAYER_MINS);
 	npc.SetBodyMaxs(PLAYER_MAXS);
 	RF2_HealthText text = CreateHealthText(buster.index, 150.0, 20.0, "SENTRY BUSTER");
@@ -359,6 +359,16 @@ public Action Timer_BusterSpawnWave(Handle timer)
 		{
 			DoSentryBusterWave();
 			g_flBusterSpawnTime = g_cvBusterSpawnInterval.FloatValue;
+		}
+		else if (g_flBusterSpawnTime <= 10.0)
+		{
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (IsClientInGame(i) && IsPlayerSurvivor(i) && !IsPlayerMinion(i) && TF2_GetPlayerClass(i) == TFClass_Engineer)
+				{
+					PrintCenterText(i, "WARNING!\nA Sentry Buster will appear in %.0f seconds.", g_flBusterSpawnTime);
+				}
+			}
 		}
 	}
 	else

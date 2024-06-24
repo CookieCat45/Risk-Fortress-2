@@ -154,7 +154,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 					this.Item = GetRandomItem(_, 85, 15);
 
 				this.SetObjectName("Large Crate");
-				this.SetGlowColor({0, 255, 0, 255});
+				this.SetGlowColor(0, 255, 0, 255);
 			}
 			
 			case Crate_Strange:
@@ -166,7 +166,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 					this.Item = GetRandomItemEx(Quality_Strange);
 				
 				this.SetObjectName("Strange Barrel");
-				this.SetGlowColor({255, 150, 0, 255});
+				this.SetGlowColor(255, 150, 0, 255);
 			}
 			
 			case Crate_Collectors:
@@ -174,7 +174,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 				// our item is decided when we're opened
 				this.SetModel(MODEL_CRATE_COLLECTOR);
 				this.SetObjectName("Collector's Crate");
-				this.SetGlowColor({255, 0, 0, 255});
+				this.SetGlowColor(255, 0, 0, 255);
 
 				// hack to adjust position, since due to the model it'll be a bit sunk into the ground
 				if (!this.MapPlaced)
@@ -208,7 +208,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 				}
 				
 				this.SetObjectName("Haunted Case");
-				this.SetGlowColor({0, 255, 255, 255});
+				this.SetGlowColor(0, 255, 255, 255);
 				// hack to adjust position, since due to the model it'll be a bit sunk into the ground
 				if (!this.MapPlaced)
 				{
@@ -224,7 +224,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 				this.SetModel(MODEL_CRATE_UNUSUAL);
 				this.SetPropFloat(Prop_Send, "m_flModelScale", 1.2);
 				this.SetRenderColor(220, 100, 200);
-				this.SetGlowColor({255, 0, 255, 255});
+				this.SetGlowColor(255, 0, 255, 255);
 				if (this.Item == Item_Null)
 					this.Item = GetRandomItem(_, _, 1);
 				
