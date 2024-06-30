@@ -133,25 +133,25 @@ void EndTankDestructionMode()
 	{
 		gamerules.FireOutput("OnTankDestructionComplete");
 	}
-
+	
 	RF2_PrintToChatAll("%t", "AllTanksDestroyed");
-	CreateTimer(30.0, Timer_CommandReminder, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(3.0, Timer_CommandReminder, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Action Timer_CommandReminder(Handle timer)
 {
-	RF2_PrintToChatAll("%t", "EndLevelCommandReminder");
+	//RF2_PrintToChatAll("%t", "EndLevelCommandReminder");
 	char text[256];
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || !IsPlayerSurvivor(i) || IsFakeClient(i))
+		if (!IsClientInGame(i) || !IsPlayerSurvivor(i) && !IsPlayerMinion(i) || IsFakeClient(i))
 			continue;
 		
 		FormatEx(text, sizeof(text), "%T", "EndLevelCommandReminder", i);
 		CRemoveTags(text, sizeof(text));
 		PrintCenterText(i, text);
 	}
-
+	
 	return Plugin_Continue;
 }
 

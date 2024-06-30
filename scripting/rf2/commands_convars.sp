@@ -1853,7 +1853,7 @@ public Action Command_EndLevel(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	if (!IsPlayerSurvivor(client) || !g_bTankBossMode || !IsStageCleared() || GameRules_GetRoundState() == RoundState_TeamWin)
+	if (!IsPlayerSurvivor(client) && !IsPlayerMinion(client) || !g_bTankBossMode || !IsStageCleared() || GameRules_GetRoundState() == RoundState_TeamWin)
 	{
 		RF2_ReplyToCommand(client, "%t", "CannotBeUsed");
 		return Plugin_Handled;

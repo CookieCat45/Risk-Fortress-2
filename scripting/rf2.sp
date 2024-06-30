@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.12.1b"
+#define PLUGIN_VERSION "0.12.2b"
 #endif
 
 #include <rf2>
@@ -60,6 +60,7 @@ int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
 float g_flAutoReloadTime;
 float g_flCurrentCostMult;
+float g_flHeadshotDamage;
 bool g_bChangeDetected;
 bool g_bHauntedKeyDrop[MAXTF2PLAYERS];
 bool g_bServerRestarting;
@@ -79,7 +80,7 @@ int g_iTotalItemsFound;
 int g_iTanksKilledObjective;
 int g_iTankKillRequirement = 1;
 int g_iTanksSpawned;
-int g_iMetalItemsDropped;
+int g_iMetalItemsDropped[MAXTF2PLAYERS];
 int g_iWorldCenterEntity = INVALID_ENT;
 int g_iTeleporterEntRef = INVALID_ENT;
 int g_iRF2GameRulesEntRef = INVALID_ENT;
@@ -1048,7 +1049,6 @@ void CleanUp()
 	g_iTanksSpawned = 0;
 	g_bThrillerActive = false;
 	g_iThrillerRepeatCount = 0;
-	g_iMetalItemsDropped = 0;
 	g_flWaitRestartTime = 0.0;
 	g_bTeleporterEventReminder = false;
 	g_bRingCashBonus = false;
@@ -1412,6 +1412,7 @@ public void OnClientDisconnect_Post(int client)
 	g_iPlayerInventoryIndex[client] = -1;
 	g_iPlayerSurvivorIndex[client] = -1;
 	g_flPlayerCash[client] = 0.0;
+	g_iMetalItemsDropped[client] = 0;
 	g_bPlayerSpawningAsMinion[client] = false;
 	g_bPlayerToggledAutoFire[client] = false;
 	g_bHauntedKeyDrop[client] = false;
@@ -1963,7 +1964,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int weaponIndex = event.GetInt("weapon_def_index");
 	int weaponId = event.GetInt("weaponid");
 	int damageType = event.GetInt("damagebits");
-	//int customkill = event.GetInt("customkill");
+	int customkill = event.GetInt("customkill");
 	int assister = GetClientOfUserId(event.GetInt("assister"));
 	CritType critType = view_as<CritType>(event.GetInt("crit_type"));
 	
@@ -1975,7 +1976,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int itemProc = g_iEntLastHitItemProc[victim];
 	if (attacker > 0)
 	{
-		DoItemKillEffects(attacker, inflictor, victim, damageType, critType, assister);
+		DoItemKillEffects(attacker, inflictor, victim, damageType, critType, assister, customkill);
 		switch (itemProc)
 		{
 			case ItemSoldier_WarPig: event.SetString("weapon", "obj_sentrygun3");
@@ -2833,11 +2834,11 @@ public Action Timer_EnemySpawnWave(Handle timer)
 	float time = 0.1;
 	float bossChance;
 	const float max = 250.0;
-
+	
 	respawnArray.SortCustom(SortEnemySpawnArray);
 	if (respawnArray.Length > spawnCount)
 		respawnArray.Resize(spawnCount);
-
+	
 	for (int i = 0; i < respawnArray.Length; i++)
 	{
 		client = respawnArray.Get(i);
@@ -2860,7 +2861,7 @@ public Action Timer_EnemySpawnWave(Handle timer)
 		if (spawns >= spawnCount)
 			break;
 	}
-
+	
 	delete respawnArray;
 	g_iRespawnWavesCompleted++;
 	return Plugin_Continue;
@@ -4975,19 +4976,9 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				afterburn = true;
 				proc *= 0.0;
 			}
-			
-			case TF_CUSTOM_HEADSHOT, TF_CUSTOM_HEADSHOT_DECAPITATION:
-			{
-				DoHeadshotBonuses(attacker, victim, damage);
-			}
-			
+
 			case TF_CUSTOM_PENETRATE_ALL_PLAYERS, TF_CUSTOM_PENETRATE_HEADSHOT:
 			{
-				if (damageCustom == TF_CUSTOM_PENETRATE_HEADSHOT)
-				{
-					DoHeadshotBonuses(attacker, victim, damage);
-				}
-				
 				if (PlayerHasItem(attacker, Item_MaxHead))
 				{
 					damage *= 1.0 + CalcItemMod(attacker, Item_MaxHead, 1);
@@ -5801,6 +5792,17 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	}
 	
 	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
+	if (IsValidClient(attacker))
+	{
+		switch (damageCustom)
+		{
+			case TF_CUSTOM_HEADSHOT, TF_CUSTOM_HEADSHOT_DECAPITATION, TF_CUSTOM_PENETRATE_HEADSHOT:
+			{
+				g_flHeadshotDamage = damage;
+			}
+		}
+	}
+
 	return damage != originalDamage || originalDamageType != damageType || originalCritType != critType ? Plugin_Changed : Plugin_Continue;
 }
 

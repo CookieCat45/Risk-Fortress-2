@@ -1037,7 +1037,7 @@ bool RandChanceFloatEx(int client, float min, float max, float goal, float &resu
 	return success;
 }
 
-void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=DMG_GENERIC, CritType critType=CritType_None, int assister=INVALID_ENT)
+void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=DMG_GENERIC, CritType critType=CritType_None, int assister=INVALID_ENT, int damageCustom=0)
 {
 	if (damageType & DMG_MELEE)
 	{
@@ -1113,6 +1113,17 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 		}
 	}
 	
+	if (damageCustom == TF_CUSTOM_HEADSHOT || damageCustom == TF_CUSTOM_HEADSHOT_DECAPITATION || damageCustom == TF_CUSTOM_PENETRATE_HEADSHOT)
+	{
+		if (PlayerHasItem(attacker, ItemSniper_HolyHunter) && CanUseCollectorItem(attacker, ItemSniper_HolyHunter))
+		{
+			DataPack pack = new DataPack();
+			pack.WriteCell(attacker);
+			pack.WriteCell(victim);
+			RequestFrame(RF_DoExplosiveHeadshot, pack);
+		}
+	}
+
 	if (PlayerHasItem(attacker, ItemSoldier_WarPig) && CanUseCollectorItem(attacker, ItemSoldier_WarPig) && IsValidEntity2(inflictor))
 	{
 		char inflictorClassname[64];
@@ -1208,7 +1219,7 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 			pillarOfHatsOwner = assister;
 		}
 		
-		if (IsValidClient(pillarOfHatsOwner) && g_iMetalItemsDropped < CalcItemModInt(pillarOfHatsOwner, Item_PillarOfHats, 4))
+		if (IsValidClient(pillarOfHatsOwner) && g_iMetalItemsDropped[pillarOfHatsOwner] < CalcItemModInt(pillarOfHatsOwner, Item_PillarOfHats, 4))
 		{
 			float scrapChance = CalcItemMod(pillarOfHatsOwner, Item_PillarOfHats, 0);
 			float recChance = CalcItemMod(pillarOfHatsOwner, Item_PillarOfHats, 1);
@@ -1233,11 +1244,12 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 					item = Item_ScrapMetal;
 				}
 				
-				float pos[3];
-				GetEntPos(victim, pos);
-				pos[2] += 30.0;
-				SpawnItem(item, pos, pillarOfHatsOwner, 6.0);
-				g_iMetalItemsDropped++;
+				EmitSoundToClient(pillarOfHatsOwner, SND_USE_SCRAPPER);
+				GiveItem(pillarOfHatsOwner, item, 1, true);
+				char name[64];
+				GetItemName(item, name, sizeof(name));
+				PrintHintText(pillarOfHatsOwner, "You received 1 %s", name);
+				g_iMetalItemsDropped[pillarOfHatsOwner]++;
 			}
 		}
 		
@@ -1280,6 +1292,18 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 			}
 		}
 	}
+}
+
+public void RF_DoExplosiveHeadshot(DataPack pack)
+{
+	pack.Reset();
+	int attacker = pack.ReadCell();
+	int victim = pack.ReadCell();
+	delete pack;
+	if (!IsValidClient(attacker) || !IsValidClient(victim))
+		return;
+		
+	DoHeadshotBonuses(attacker, victim, g_flHeadshotDamage);
 }
 
 public void RF_BandanaExplosion(DataPack pack)

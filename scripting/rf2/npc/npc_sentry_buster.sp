@@ -266,7 +266,7 @@ static void OnCreate(RF2_SentryBuster buster)
 	// We robots, don't bleed
 	buster.SetProp(Prop_Data, "m_bloodColor", -1);
 	// For triggers
-	buster.AddFlag(FL_CLIENT);
+	//buster.AddFlag(FL_CLIENT);
 	
 	buster.SetModel(MODEL_BUSTER);
 	buster.SetProp(Prop_Data, "m_moveXPoseParameter", buster.LookupPoseParameter("move_x"));
