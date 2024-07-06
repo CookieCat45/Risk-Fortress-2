@@ -464,9 +464,7 @@ void UpdateGameDescription()
 	{
 		char desc[256], difficultyName[32];
 		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
-		FormatEx(desc, sizeof(desc), "Risk Fortress 2 (Stage %d - %s) %i/%i Players", g_iStagesCompleted+1, difficultyName, 
-				GetTotalHumans(false), g_cvMaxHumanPlayers.IntValue);
-		
+		FormatEx(desc, sizeof(desc), "Risk Fortress 2 (Stage %d - %s)", g_iStagesCompleted+1, difficultyName);
 		SteamWorks_SetGameDescription(desc);
 	}
 	#endif
@@ -602,6 +600,77 @@ int GetPluginModifiedTime()
 	}
 	
 	return GetFileTime(path, FileTime_LastChange);
+}
+
+static bool g_bPreventServerExit;
+public MRESReturn Detour_GCPreClientUpdate(Address gc)
+{
+	// Wait until we have a CVEngineServer pointer, or else the server will close if maxplayers <32
+	if (!RF2_IsEnabled() || !g_aEngineServer)
+		return MRES_Ignored;
+	
+	// Hijack MvM's method of reporting max player count
+	g_bPreventServerExit = true;
+	GameRules_SetProp("m_bPlayingMannVsMachine", true);
+	return MRES_Ignored;
+}
+
+public MRESReturn Detour_GCPreClientUpdatePost(Address gc)
+{
+	if (!RF2_IsEnabled() || !g_aEngineServer)
+		return MRES_Ignored;
+	
+	g_bPreventServerExit = false;
+	GameRules_SetProp("m_bPlayingMannVsMachine", false);
+	return MRES_Ignored;
+}
+
+public MRESReturn Detour_FindMap(Address thisPtr, DHookReturn returnVal, DHookParam params)
+{
+	// This will be called on plugin start, just so we can get the CVEngineServer address (this is a native SM function)
+	g_aEngineServer = thisPtr;
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	static bool hook;
+	if (!hook)
+	{
+		// We have the CVEngineServer address, now for our dynamic hook
+		if (g_hHookCreateFakeClientEx)
+		{
+			g_hHookCreateFakeClientEx.HookRaw(Hook_Pre, thisPtr, DHook_CreateFakeClientEx);
+		}
+		
+		if (g_hHookDedicatedServer)
+		{
+			g_hHookDedicatedServer.HookRaw(Hook_Pre, thisPtr, DHook_IsDedicatedServer);
+		}
+
+		hook = true;
+	}
+	
+	return MRES_Ignored;
+}
+
+public MRESReturn DHook_CreateFakeClientEx(Address thisPtr, DHookReturn returnVal, DHookParam params)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	// Don't show bots in the server browser
+	params.Set(2, false);
+	return MRES_ChangedHandled;
+}
+
+public MRESReturn DHook_IsDedicatedServer(Address thisPtr, DHookReturn returnVal)
+{
+	if (!g_bPreventServerExit)
+		return MRES_Ignored;
+	
+	// Return false to prevent the server from exiting if maxplayers <32
+	// This happens because the GC thinks that we're an MvM server
+	returnVal.Value = false;
+	return MRES_Supercede;
 }
 
 // StrContains(), but the string needs to be an exact match.

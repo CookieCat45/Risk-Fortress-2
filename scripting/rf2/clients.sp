@@ -238,7 +238,7 @@ int GetTotalHumans(bool inGameOnly=true)
 	{
 		if (!IsClientConnected(i) || IsFakeClient(i))
 			continue;
-
+		
 		if (!inGameOnly || IsClientInGame(i))
 		{
 			count++;
@@ -1521,32 +1521,29 @@ bool IsInspectButtonPressed(int client)
 	return GetEntPropFloat(client, Prop_Send, "m_flInspectTime") > 0.0;
 }
 
-int GetPlayerCap(bool admins=false)
+int GetDesiredPlayerCap()
 {
-	int cap = g_cvMaxHumanPlayers.IntValue;
-	if (admins)
-	{
-		cap += GetReservedSlots();
-	}
-	
-	return cap;
+	return g_cvMaxHumanPlayers.IntValue;
 }
 
-int GetReservedSlots()
+int GetActualPlayerCap()
 {
-	if (!FindPluginByFile("reservedslots.smx"))
-		return 0;
-	
-	return FindConVar("sm_reserved_slots").IntValue;
+	return FindConVar("tf_mvm_defenders_team_size").IntValue;
+}
+
+void SetPlayerCap(int value)
+{
+	FindConVar("tf_mvm_defenders_team_size").SetInt(value);
+	FindConVar("tf_mvm_max_connected_players").SetInt(value);
 }
 
 bool IsAdminReserved(int client)
 {
-	if (GetUserAdmin(client) == INVALID_ADMIN_ID || !(GetUserFlagBits(client) & ADMFLAG_RESERVATION))
+	if (GetUserAdmin(client) == INVALID_ADMIN_ID)
 		return false;
 	
 	// If total players is greater than non-admin player cap, this admin is holding a reserved slot.
-	return GetTotalHumans(false) > GetPlayerCap();
+	return GetTotalHumans(false) > GetDesiredPlayerCap();
 }
 
 /*

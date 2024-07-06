@@ -535,11 +535,16 @@ public void Hook_BadassTankThink(int entity)
 					
 					float playerPos[3], buildingPos[3];
 					float playerDist = -1.0;
-					if (nearestPlayer != -1)
+					if (nearestPlayer != INVALID_ENT)
 					{
-						GetEntPos(nearestPlayer, playerPos);
+						GetEntPos(nearestPlayer, playerPos, true);
 						playerDist = GetVectorDistance(pos, playerPos, true);
 						playerPos[2] += 30.0;
+					}
+
+					if (nearestBuilding != INVALID_ENT)
+					{
+						GetEntPos(nearestBuilding, buildingPos, true);
 					}
 					
 					int target;
@@ -548,7 +553,7 @@ public void Hook_BadassTankThink(int entity)
 					{
 						// should we target the player, or the building?
 						if (nearestPlayer != -1 && playerDist >= 0.0 && nearestBuilding <= 0 || 
-						(TF2_GetObjectType2(nearestBuilding) != TFObject_Sentry || GetEntProp(nearestBuilding, Prop_Send, "m_iUpgradeLevel") == 1))
+							(TF2_GetObjectType2(nearestBuilding) != TFObject_Sentry || GetEntProp(nearestBuilding, Prop_Send, "m_iUpgradeLevel") == 1))
 						{
 							target = nearestPlayer;
 						}

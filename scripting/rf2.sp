@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.12.2b"
+#define PLUGIN_VERSION "0.12.3b"
 #endif
 
 #include <rf2>
@@ -55,6 +55,7 @@ bool g_bTankBossMode;
 bool g_bGoombaAvailable;
 bool g_bRoundEnding;
 bool g_bInUnderworld;
+bool g_bExtraAdminSlot;
 float g_flWaitRestartTime;
 int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
@@ -72,6 +73,7 @@ bool g_bItemSharingDisabledForMap;
 char g_szForcedMap[256];
 char g_szMapForcerName[MAX_NAME_LENGTH];
 char g_szCurrentEnemyGroup[64];
+Address g_aEngineServer;
 
 int g_iTotalEnemiesKilled;
 int g_iTotalBossesKilled;
@@ -251,6 +253,8 @@ DynamicDetour g_hDetourEyeFindVictim;
 DynamicDetour g_hDetourEyePickSpot;
 DynamicDetour g_hDetourHHHChaseable;
 DynamicDetour g_hDetourOnWeaponFired;
+DynamicDetour g_hDetourGCPreClientUpdate;
+DynamicDetour g_hDetourFindMap;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookVPhysicsCollision;
@@ -259,6 +263,8 @@ DynamicHook g_hHookIterateAttributes;
 DynamicHook g_hHookIsCombatItem;
 DynamicHook g_hHookMeleeSmack;
 DynamicHook g_hHookForceRespawn;
+DynamicHook g_hHookCreateFakeClientEx;
+DynamicHook g_hHookDedicatedServer;
 int g_iEconItem;
 int g_iOnlyIterateItemViewAttributes;
 int g_iIterateAttributesHookId[MAX_EDICTS];
@@ -460,6 +466,13 @@ public void OnPluginStart()
 	if (g_cvHiddenServerStartTime.FloatValue == 0.0)
 	{
 		g_cvHiddenServerStartTime.FloatValue = GetEngineTime();
+	}
+	
+	if (g_hDetourFindMap)
+	{
+		// call the detoured function so we get a CVEngineServer address.
+		char dummy[256];
+		FindMap("thisisadummystring", dummy, 256);
 	}
 }
 
@@ -726,7 +739,39 @@ void LoadGameData()
 		LogError("[DHooks] Failed to create virtual hook for CEconItemView::IterateAttributes");
 	}
 	
-
+	
+	g_hDetourGCPreClientUpdate = DynamicDetour.FromConf(gamedata, "CTFGCServerSystem::PreClientUpdate");
+	if (!g_hDetourGCPreClientUpdate || !g_hDetourGCPreClientUpdate.Enable(Hook_Pre, Detour_GCPreClientUpdate) || !g_hDetourGCPreClientUpdate.Enable(Hook_Post, Detour_GCPreClientUpdatePost))
+	{
+		LogError("[DHooks] Failed to create detour for CTFGCServerSystem::PreClientUpdate");
+	}
+	
+	
+	g_hDetourFindMap = DynamicDetour.FromConf(gamedata, "CVEngineServer::FindMap");
+	if (!g_hDetourFindMap || !g_hDetourFindMap.Enable(Hook_Pre, Detour_FindMap))
+	{
+		LogError("[DHooks] Failed to create detour for CVEngineServer::FindMap");
+	}
+	
+	
+	g_hHookCreateFakeClientEx = new DynamicHook(gamedata.GetOffset("CVEngineServer::CreateFakeClientEx"), HookType_Raw, ReturnType_Edict, ThisPointer_Address);
+	if (g_hHookCreateFakeClientEx)
+	{
+		g_hHookCreateFakeClientEx.AddParam(HookParamType_CharPtr);
+		g_hHookCreateFakeClientEx.AddParam(HookParamType_Bool);
+	}
+	else
+	{
+		LogError("[DHooks] Failed to create dynamic hook for CVEngineServer::CreateFakeClientEx");
+	}
+	
+	
+	g_hHookDedicatedServer = new DynamicHook(gamedata.GetOffset("CVEngineServer::IsDedicatedServer"), HookType_Raw, ReturnType_Bool, ThisPointer_Address);
+	if (!g_hHookDedicatedServer)
+	{
+		LogError("[DHooks] Failed to create dynamic hook for CVEngineServer::IsDedicatedServer");
+	}
+	
 	delete gamedata;
 	gamedata = new GameData("sdkhooks.games");
 	StartPrepSDKCall(SDKCall_Player);
@@ -844,6 +889,7 @@ public void OnMapStart()
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("sv_tags").Flags = 0;
+		SetPlayerCap(g_bExtraAdminSlot ? GetDesiredPlayerCap()+1 : GetDesiredPlayerCap());
 		
 		// Why is this a development only ConVar Valve?
 		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
@@ -954,18 +1000,16 @@ public void OnConfigsExecuted()
 		}
 		
 		// sv_pure is a command -.-
-		InsertServerCommand("sv_pure 0");
-		int reservedSlots = GetReservedSlots();
 		char class[32];
 		GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
 		FindConVar("tf_bot_force_class").SetString(class);
-		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxSurvivors.IntValue-reservedSlots-(reservedSlots > 0 ? 3 : 0));
+		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxHumanPlayers.IntValue-1); // extra hidden slot for an admin to connect through console if needed
 		FindConVar("tf_bot_quota_mode").SetString("fill");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
 		FindConVar("tf_bot_taunt_victim_chance").SetInt(0);
 		FindConVar("tf_bot_join_after_player").SetBool(true);
-		FindConVar("tf_bot_auto_vacate").SetBool(true);
+		FindConVar("tf_bot_auto_vacate").SetBool(false);
 		ConVar botConsiderClass = FindConVar("tf_bot_reevaluate_class_in_spawnroom");
 		botConsiderClass.Flags = botConsiderClass.Flags & ~FCVAR_CHEAT;
 		botConsiderClass.SetBool(false);
@@ -1235,9 +1279,7 @@ public void OnClientConnected(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false)-1 >= GetPlayerCap()));
 		UpdateGameDescription();
-		UpdateBotQuota();
 	}
 }
 
@@ -1282,12 +1324,17 @@ public void OnClientPostAdminCheck(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		if (GetTotalHumans(false) > GetPlayerCap())
+		if (GetTotalHumans(false) > GetActualPlayerCap())
 		{
-			if (!IsAdminReserved(client) || GetTotalHumans(false) > GetPlayerCap(true))
+			if (!IsAdminReserved(client))
 			{
-				KickClient(client, "Max player limit has been reached");
+				KickClient(client, "Only administrators are allowed to connect to a full server via the console");
 				return;
+			}
+			else if (!g_bExtraAdminSlot)
+			{
+				g_bExtraAdminSlot = true;
+				SetPlayerCap(GetDesiredPlayerCap()+1);
 			}
 		}
 		
@@ -1341,6 +1388,16 @@ public void OnClientDisconnect(int client)
 	if (!RF2_IsEnabled())
 		return;
 	
+	if (!IsFakeClient(client))
+	{
+		if (!g_bMapChanging && g_bExtraAdminSlot && !ArePlayersConnecting())
+		{
+			// remove extra admin slot
+			SetPlayerCap(GetDesiredPlayerCap());
+			g_bExtraAdminSlot = false;
+		}
+	}
+
 	StopMusicTrack(client);
 	if (g_bPlayerTimingOut[client] && IsPlayerSurvivor(client) && !IsPlayerMinion(client))
 	{
@@ -1358,7 +1415,7 @@ public void OnClientDisconnect(int client)
 			DataPack pack;
 			g_hCrashedPlayerTimers[index] = CreateDataTimer(300.0, Timer_PlayerReconnect, pack, TIMER_FLAG_NO_MAPCHANGE);
 			pack.WriteString(authId);
-			if (IsSingleplayer(true))
+			if (IsSingleplayer())
 			{
 				FindConVar("tf_allow_server_hibernation").SetBool(false);
 				FindConVar("tf_bot_join_after_player").SetBool(false);
@@ -1386,7 +1443,7 @@ public void OnClientDisconnect(int client)
 			CalculateSurvivorItemShare();
 		}
 	}
-
+	
 	g_bPlayerTimingOut[client] = false;
 }
 
@@ -1394,7 +1451,7 @@ public void OnClientDisconnect_Post(int client)
 {
 	if (!RF2_IsEnabled())
 		return;
-	
+
 	g_flLoopMusicAt[client] = -1.0;
 	if (g_hPlayerExtraSentryList[client])
 	{
@@ -1422,9 +1479,9 @@ public void OnClientDisconnect_Post(int client)
 	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client, true);
 	ResetAFKTime(client);
-	FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
 	UpdateGameDescription();
-	UpdateBotQuota();
+	//FindConVar("tf_bot_auto_vacate").SetBool(!(GetTotalHumans(false) >= g_cvMaxHumanPlayers.IntValue));
+	//UpdateBotQuota();
 }
 
 public Action Timer_PlayerReconnect(Handle timer, DataPack pack)
@@ -1568,7 +1625,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 		return Plugin_Continue;
 	}
 	
-	UpdateBotQuota();
+	//UpdateBotQuota();
 	if (!g_bGameInitialized)
 	{
 		CreateTimer(2.0, Timer_DifficultyVote, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -1652,9 +1709,9 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 		char name[128];
 		while ((entity = FindEntityByClassname(entity, "team_round_timer")) != INVALID_ENT)
 		{
-			// make sure it doesn't have a name, to avoid messing with map logic
+			// make sure it doesn't have a name, to avoid messing with map logic (ones starting with zz_ are ones created by the game)
 			GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
-			if (name[0])
+			if (name[0] && StrContains(name, "zz_") != 0)
 				continue;
 
 			if (GetEntProp(entity, Prop_Send, "m_nState") == 0)
@@ -1892,7 +1949,6 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	// Calculate max speed on a timer again to fix a... weird issue with players spawning in and being REALLY slow.
 	// I don't know why it happens, but this fixes it, so, cool I guess?
 	CreateTimer(0.1, Timer_FixSpeedIssue, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-	
 	return Plugin_Continue;
 }
 
@@ -2707,11 +2763,11 @@ void EndGracePeriod()
 	// We have to do this or else bots will misbehave, thinking it's still setup time. They won't attack players and will randomly taunt.
 	while ((entity = FindEntityByClassname(entity, "team_round_timer")) != INVALID_ENT)
 	{
-		// make sure it doesn't have a name, to avoid messing with map logic
+		// make sure it doesn't have a name, to avoid messing with map logic (ones starting with zz_ are created by the game)
 		GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
-		if (name[0])
+		if (name[0] && StrContains(name, "zz_") != 0)
 			continue;
-
+		
 		if (GetEntProp(entity, Prop_Send, "m_nState") == 0)
 		{
 			UnhookSingleEntityOutput(entity, "team_round_timer", Output_GraceTimerFinished);
@@ -3286,6 +3342,13 @@ public Action Timer_PlayerTimer(Handle timer)
 		return Plugin_Stop;
 	}
 	
+	if (g_bExtraAdminSlot && GetTotalHumans(false) < GetDesiredPlayerCap()+1)
+	{
+		// remove extra admin slot
+		SetPlayerCap(GetDesiredPlayerCap());
+		g_bExtraAdminSlot = false;
+	}
+	
 	if (g_bServerRestarting)
 	{
 		PrintCenterTextAll("!!!SERVER IS RESTARTING!!!\nPlease rejoin shortly");
@@ -3524,7 +3587,7 @@ public Action Timer_PlayerTimer(Handle timer)
 			{
 				if (missingItems)
 				{
-					PrintKeyHintText(i, "Players who are lacking items:\n%s", names);
+					PrintKeyHintText(i, "Players who need to pick up items:\n%s", names);
 				}
 				else
 				{
@@ -3533,10 +3596,7 @@ public Action Timer_PlayerTimer(Handle timer)
 						g_bItemSharingDisabledForMap = true;
 					}
 					
-					if (g_bItemSharingDisabledForMap)
-						PrintKeyHintText(i, "%t", "ItemSharingDisabled");
-					else
-						PrintKeyHintText(i, "");
+					PrintKeyHintText(i, "");
 				}
 			}
 		}
@@ -3613,7 +3673,7 @@ public Action Timer_AFKManager(Handle timer)
 			}
 		}
 		
-		if ((!survivorsOnly && IsPlayerSurvivor(i)) && g_bRoundActive && managerEnabled && !IsSingleplayer(false) && g_flPlayerAFKTime[i] >= afkKickTime && humanCount > 1)
+		if ((!survivorsOnly || IsPlayerSurvivor(i, false)) && g_bRoundActive && managerEnabled && !IsSingleplayer(false) && g_flPlayerAFKTime[i] >= afkKickTime && humanCount > 1)
 		{
 			if (kickAdmins || GetUserAdmin(i) == INVALID_ADMIN_ID)
 			{

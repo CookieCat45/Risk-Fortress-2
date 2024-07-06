@@ -29,7 +29,8 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_addseconds", Command_AddSeconds, ADMFLAG_SLAY, "Add seconds to the difficulty timer. /rf2_addseconds <seconds>");
 	RegAdminCmd("rf2_particle_test", Command_ParticleTest, ADMFLAG_SLAY, "For testing particle effects.\n/rf2_particle_test <effect name> <method>.\n0 = Spawn via TE, 1 = Spawn via info_particle system, 2 = Spawn via trigger_particle.");
 	RegAdminCmd("rf2_tp_to_altar", Command_AltarTeleport, ADMFLAG_SLAY, "Teleports to an altar if one exists");
-	
+	RegAdminCmd("rf2_view_afk_times", Command_ViewAFKTimes, ADMFLAG_SLAY, "View player AFK times");
+
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
 	RegConsoleCmd("rf2_endlevel", Command_EndLevel, "Starts the vote to end the level in Tank Destruction mode.");
@@ -56,8 +57,8 @@ void LoadCommandsAndCvars()
 	g_cvGameResetTime = CreateConVar("rf2_max_wait_time", "600", "If the game has already began, amount of time in seconds to wait for players to join before restarting. 0 to disable.", FCVAR_NOTIFY);
 	g_cvAlwaysSkipWait = CreateConVar("rf2_always_skip_wait", "0", "If nonzero, always skip the Waiting For Players sequence. Great for singleplayer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvEnableAFKManager = CreateConVar("rf2_afk_manager_enabled", "1", "If nonzero, use RF2's AFK manager to kick AFK players.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvAFKOnlyKickSurvivors = CreateConVar("rf2_afk_kick_survivors_only", "1", "If nonzero, AFK manager will kick only Survivors", FCVAR_NOTIFY);
-	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "300.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
+	g_cvAFKOnlyKickSurvivors = CreateConVar("rf2_afk_kick_survivors_only", "0", "If nonzero, AFK manager will kick only Survivors", FCVAR_NOTIFY);
+	g_cvAFKManagerKickTime = CreateConVar("rf2_afk_kick_time", "210.0", "AFK manager kick time, in seconds.", FCVAR_NOTIFY);
 	g_cvAFKKickAdmins = CreateConVar("rf2_afk_kick_admins", "0", "Whether or not administrators of the server should be kicked by the AFK manager.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvSubDifficultyIncrement = CreateConVar("rf2_difficulty_sub_increment", "50.0", "When the difficulty coefficient reaches a multiple of this value, the sub difficulty increases.", FCVAR_NOTIFY);
 	g_cvDifficultyScaleMultiplier = CreateConVar("rf2_difficulty_scale_multiplier", "1.0", "Accelerate difficulty scaling by this value.", FCVAR_NOTIFY);
@@ -128,6 +129,7 @@ void LoadCommandsAndCvars()
 	g_cvDebugDisableEnemySpawning = CreateConVar("rf2_debug_disable_enemy_spawn", "0", "If nonzero, prevent enemies from spawning.", FCVAR_NOTIFY, true, 0.0);
 	
 	HookConVarChange(g_cvEnableAFKManager, ConVarHook_EnableAFKManager);
+	HookConVarChange(g_cvMaxHumanPlayers, ConVarHook_MaxHumanPlayers);
 }
 
 public Action Command_ReloadRF2(int client, int args)
@@ -2066,6 +2068,25 @@ public Action Command_AltarTeleport(int client, int args)
 	return Plugin_Handled;
 }
 
+public Action Command_ViewAFKTimes(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i))
+		{
+			RF2_ReplyToCommand(client, "%N AFK Time: %.1f", i, g_flPlayerAFKTime[i]);
+		}
+	}
+
+	return Plugin_Handled;
+}
+
 public Action Command_SimulateCrash(int client, int args)
 {
 	g_bPlayerTimingOut[client] = true;
@@ -2084,6 +2105,13 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 			g_bPlayerIsAFK[i] = false;
 		}
 	}
+}
+
+public void ConVarHook_MaxHumanPlayers(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	int newVal = StringToInt(newValue);
+	SetPlayerCap(g_bExtraAdminSlot ? newVal+1 : newVal);
+	FindConVar("tf_bot_quota").SetInt(MaxClients-newVal-1);
 }
 
 public Action Command_ParticleTest(int client, int args)

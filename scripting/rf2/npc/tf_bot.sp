@@ -1603,20 +1603,13 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 	return Plugin_Continue;
 }
 
+/*
 void UpdateBotQuota()
 {
 	ConVar quota = FindConVar("tf_bot_quota");
-	int reservedSlots = GetReservedSlots();
-	if (!g_bRoundActive && reservedSlots > 0)
-	{
-		// If we have reserved slots, add 3 less bots while waiting so people don't get kicked for reserve slot while joining
-		quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue-reservedSlots-3)+GetTotalHumans(false), MaxClients);
-	}
-	else
-	{
-		quota.IntValue = imin((MaxClients-g_cvMaxSurvivors.IntValue)+GetTotalHumans(false), MaxClients);
-	}
+	quota.IntValue = MaxClients-g_cvMaxHumanPlayers.IntValue;
 }
+*/
 
 // -1 = let bot decide
 int TFBot_GetDesiredWeapon(TFBot bot, int &slot=WeaponSlot_Primary)

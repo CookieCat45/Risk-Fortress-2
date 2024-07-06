@@ -89,7 +89,7 @@ bool CreateSurvivors()
 		
 		if (IsAdminReserved(i))
 		{
-			RF2_PrintToChat(i, "%t", "AdminReservePenalty", GetTotalHumans(false), GetPlayerCap());
+			RF2_PrintToChat(i, "%t", "AdminReservePenalty", GetTotalHumans(false), GetDesiredPlayerCap());
 			SilentlyKillPlayer(i);
 			ChangeClientTeam(i, 1);
 			continue;
@@ -893,11 +893,11 @@ bool DoesPlayerHaveEnoughItems(int client)
 	
 	if (g_bPlayerItemShareExcluded[client])
 		return true;
-
+	
 	// player is taking too long to pick stuff up
 	if (!IsBossEventActive() || g_iTanksKilledObjective >= g_iTankKillRequirement)
 	{
-		if (g_flPlayerTimeSinceLastItemPickup[client]+50.0 < GetTickedTime())
+		if (g_flPlayerTimeSinceLastItemPickup[client]+60.0 < GetTickedTime())
 		{
 			g_bPlayerItemShareExcluded[client] = true;
 			return true;

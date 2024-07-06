@@ -60,6 +60,16 @@
 				"linux64"	"477"
 				"windows64"	"470"
 			}
+			"CVEngineServer::CreateFakeClientEx"
+			{
+				"linux"		"115"
+				"windows"	"115"
+			}
+			"CVEngineServer::IsDedicatedServer"
+			{
+				"linux"		"2"
+				"windows"	"2"
+			}
 		}
 		"Signatures"
 		{
@@ -174,6 +184,17 @@
 				"windows"	"\xA1\x2A\x2A\x2A\x2A\x56\x8B\xF1\xA8\x01\x75\x2A\x83\xC8\x01\xA3\x2A\x2A\x2A\x2A\x8B\x86\x78\x09\x00\x00"
 				"linux64"	""
 				"windows64"	""
+			}
+			"CTFGCServerSystem::PreClientUpdate" // "Restoring sv_visiblemaxplayers to %d\n" 
+			{
+				"linux"		"@_ZN17CTFGCServerSystem15PreClientUpdateEv"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x28\x53\x56\x8B\xD9"
+			}
+			"CVEngineServer::FindMap" // This is just used to get a pointer to CVEngineServer
+			{
+				"library"	"engine"
+				"linux"		"@_ZN14CVEngineServer7FindMapEPci"
+				"windows"	"\x55\x8B\xEC\x81\xEC\x44\x02\x00\x00\x8D\x85\xBC\xFD\xFF\xFF"
 			}
 		}
 		
@@ -300,6 +321,35 @@
 					"weapon"
 					{
 						"type"	"cbaseentity"
+					}
+				}
+			}
+		
+			"CTFGCServerSystem::PreClientUpdate"
+			{
+				"signature"	"CTFGCServerSystem::PreClientUpdate"
+				"callconv"	"thiscall"
+				"return"	"void"
+				"this"		"address"
+			}
+			
+			"CVEngineServer::FindMap"
+			{
+				"signature"	"CVEngineServer::FindMap"
+				"callconv"	"thiscall"
+				"return"	"int"
+				"this"		"address"
+				
+				"arguments"
+				{
+					"mapName"
+					{
+						"type"	"charptr"
+					}
+					
+					"mapNameMax"
+					{
+						"type"	"int"
 					}
 				}
 			}

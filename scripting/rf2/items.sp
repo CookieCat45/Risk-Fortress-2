@@ -1176,7 +1176,7 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 			
 			EmitSoundToAll(SND_SPELL_OVERHEAL, attacker);
 			g_bPlayerHealBurstCooldown[attacker] = true;
-			CreateTimer(GetItemMod(Item_DapperTopper, 6), Timer_HealBurstCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(GetItemMod(Item_DapperTopper, 5), Timer_HealBurstCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 	
