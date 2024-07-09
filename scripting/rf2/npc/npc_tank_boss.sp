@@ -314,6 +314,7 @@ public void Hook_TankBossThink(int entity)
 				float speed = GetEntPropFloat(entity, Prop_Data, "m_speed");
 				SetEntPropFloat(entity, Prop_Data, "m_speed", speed * value);
 				EmitSoundToAll(SND_TANK_SPEED_UP, entity);
+				EmitSoundToAll(SND_TANK_SPEED_UP, entity);
 			}
 		}
 	}

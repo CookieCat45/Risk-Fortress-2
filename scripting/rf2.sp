@@ -105,6 +105,7 @@ int g_iRespawnWavesCompleted;
 // HUD
 Handle g_hMainHudSync;
 Handle g_hObjectiveHudSync;
+Handle g_hDispenserBatteryHudSync;
 int g_iMainHudR = 100;
 int g_iMainHudG = 255;
 int g_iMainHudB = 100;
@@ -257,6 +258,7 @@ DynamicDetour g_hDetourGCPreClientUpdate;
 DynamicDetour g_hDetourFindMap;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
+DynamicHook g_hHookOnWrenchHit;
 DynamicHook g_hHookVPhysicsCollision;
 DynamicHook g_hHookRiflePostFrame;
 DynamicHook g_hHookIterateAttributes;
@@ -652,6 +654,19 @@ void LoadGameData()
 	}
 	
 	
+	g_hHookOnWrenchHit = new DynamicHook(gamedata.GetOffset("CBaseObject::OnWrenchHit"), HookType_Entity, ReturnType_Bool, ThisPointer_CBaseEntity);
+	if (g_hHookOnWrenchHit)
+	{
+		g_hHookOnWrenchHit.AddParam(HookParamType_CBaseEntity); // player hitting the building
+		g_hHookOnWrenchHit.AddParam(HookParamType_CBaseEntity); // wrench hitting the building
+		g_hHookOnWrenchHit.AddParam(HookParamType_VectorPtr); // hit location
+	}
+	else
+	{
+		LogError("[DHooks] Failed to create virtual hook for CBaseObject::OnWrenchHit");
+	}
+	
+	
 	g_hDetourSentryAttack = DynamicDetour.FromConf(gamedata, "CObjectSentrygun::Attack");
 	if (!g_hDetourSentryAttack || !g_hDetourSentryAttack.Enable(Hook_Post, Detour_SentryGunAttack))
 	{
@@ -889,7 +904,7 @@ public void OnMapStart()
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("sv_tags").Flags = 0;
-		SetPlayerCap(g_bExtraAdminSlot ? GetDesiredPlayerCap()+1 : GetDesiredPlayerCap());
+		SetMVMPlayerCvar(g_bExtraAdminSlot ? GetDesiredPlayerCap() : GetDesiredPlayerCap()-1);
 		
 		// Why is this a development only ConVar Valve?
 		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
@@ -931,6 +946,7 @@ public void OnMapStart()
 		AddTempEntHook("TFBlood", TEHook_TFBlood);
 		g_hMainHudSync = CreateHudSynchronizer();
 		g_hObjectiveHudSync = CreateHudSynchronizer();
+		g_hDispenserBatteryHudSync = CreateHudSynchronizer();
 		g_iMaxStages = FindMaxStages();
 		LoadMapSettings(mapName);
 		g_bTropicsMapExists = RF2_IsMapValid("rf2_tropics"); // For ACHIEVEMENT_TEMPLESECRET - hide it if the map doesn't exist
@@ -1003,8 +1019,8 @@ public void OnConfigsExecuted()
 		char class[32];
 		GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
 		FindConVar("tf_bot_force_class").SetString(class);
-		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxHumanPlayers.IntValue-1); // extra hidden slot for an admin to connect through console if needed
-		FindConVar("tf_bot_quota_mode").SetString("fill");
+		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxHumanPlayers.IntValue-1); // extra hidden slot for an admin
+		FindConVar("tf_bot_quota_mode").SetString("normal");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
 		FindConVar("tf_bot_taunt_victim_chance").SetInt(0);
@@ -1098,6 +1114,7 @@ void CleanUp()
 	g_bRingCashBonus = false;
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
+	delete g_hDispenserBatteryHudSync;
 	g_hCrashedPlayerSteamIDs.Clear();
 	g_hHHHTargets.Clear();
 	g_hMonoculusTargets.Clear();
@@ -1295,7 +1312,14 @@ public void OnClientPutInServer(int client)
 			TFBot(client).FollowerIndex = GetFreePathFollowerIndex(client);
 			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_TFBotWeaponCanSwitch);
 		}
-		else if (g_bRoundActive)
+		else if (g_bExtraAdminSlot && GetTotalHumans(false) < GetDesiredPlayerCap()+1)
+		{
+			// remove extra admin slot
+			ToggleHiddenSlot(false);
+			g_bExtraAdminSlot = false;
+		}
+		
+		if (g_bRoundActive && !IsFakeClient(client) && !IsStageCleared())
 		{
 			PlayMusicTrack(client);
 		}
@@ -1324,7 +1348,7 @@ public void OnClientPostAdminCheck(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
-		if (GetTotalHumans(false) > GetActualPlayerCap())
+		if (GetTotalHumans(false) > GetDesiredPlayerCap() + (g_bExtraAdminSlot ? 1 : 0))
 		{
 			if (!IsAdminReserved(client))
 			{
@@ -1334,7 +1358,7 @@ public void OnClientPostAdminCheck(int client)
 			else if (!g_bExtraAdminSlot)
 			{
 				g_bExtraAdminSlot = true;
-				SetPlayerCap(GetDesiredPlayerCap()+1);
+				ToggleHiddenSlot(true);
 			}
 		}
 		
@@ -1393,7 +1417,7 @@ public void OnClientDisconnect(int client)
 		if (!g_bMapChanging && g_bExtraAdminSlot && !ArePlayersConnecting())
 		{
 			// remove extra admin slot
-			SetPlayerCap(GetDesiredPlayerCap());
+			ToggleHiddenSlot(false);
 			g_bExtraAdminSlot = false;
 		}
 	}
@@ -1713,7 +1737,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 			GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
 			if (name[0] && StrContains(name, "zz_") != 0)
 				continue;
-
+			
 			if (GetEntProp(entity, Prop_Send, "m_nState") == 0)
 			{
 				RemoveEntity2(entity);
@@ -2458,7 +2482,6 @@ public Action OnPlayerDropObject(Event event, const char[] name, bool dontBroadc
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	int building = event.GetInt("index");
-	
 	if (CanTeamQuickBuild(GetClientTeam(client)))
 	{
 		if (TF2_GetObjectType2(building) == TFObject_Dispenser) // must be delayed by a frame or else the screen will break
@@ -2470,7 +2493,16 @@ public Action OnPlayerDropObject(Event event, const char[] name, bool dontBroadc
 			SDK_DoQuickBuild(building);
 		}
 	}
-
+	
+	if (TF2_GetObjectType2(building) == TFObject_Dispenser)
+	{
+		RF2_DispenserShield shield = GetDispenserShield(building);
+		if (shield.IsValid())
+		{
+			shield.UpdateBatteryText();
+		}
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -2517,6 +2549,12 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 		RF2_DispenserShield shield = GetDispenserShield(building);
 		if (!shield.IsValid())
 		{
+			if (g_hHookOnWrenchHit)
+			{
+				g_hHookOnWrenchHit.HookEntity(Hook_Pre, building, DHook_OnWrenchHitDispenser);
+				//g_hHookOnWrenchHit.HookEntity(Hook_Post, building, DHook_OnWrenchHitDispenserPost);
+			}
+			
 			shield = CreateDispenserShield(GetEntTeam(client), building);
 			// shield will start inactive. Wait until the dispenser finishes building.
 			CreateTimer(0.1, Timer_DispenserShieldThink, EntIndexToEntRef(shield.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -2557,44 +2595,101 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 		return Plugin_Stop;
 	}
 	
-	bool active = !asBool(GetEntProp(shield.Dispenser, Prop_Send, "m_bBuilding")) && !asBool(GetEntProp(shield.Dispenser, Prop_Send, "m_bCarried"));
-	if (!shield.Enabled)
+	bool active = (shield.Battery > 0 && !shield.UserDisabled
+		&& !GetEntProp(shield.Dispenser, Prop_Send, "m_bBuilding")
+		&& !GetEntProp(shield.Dispenser, Prop_Send, "m_bCarried")
+		&& !GetEntProp(shield.Dispenser, Prop_Send, "m_bHasSapper"));
+	
+	if (!shield.Enabled && !shield.UserDisabled)
 	{
 		if (active)
 		{
 			shield.Toggle(true, true);
 		}
 	}
-	else if (!active)
+	else if (!active && !shield.UserDisabled)
 	{
 		shield.Toggle(false, true);
 	}
-	else if (GetGameTime() > shield.NextModelUpdateTime)
+	else
 	{
-		int dispLevel = GetEntProp(shield.Dispenser, Prop_Send, "m_iUpgradeLevel");
-		if (dispLevel != shield.Level && dispLevel > shield.Level)
+		if (GetGameTime() > shield.NextModelUpdateTime)
 		{
-			shield.Level = dispLevel;
-			switch (dispLevel)
+			int dispLevel = GetEntProp(shield.Dispenser, Prop_Send, "m_iUpgradeLevel");
+			if (dispLevel != shield.Level && dispLevel > shield.Level)
 			{
-				case 1:
+				shield.Level = dispLevel;
+				switch (dispLevel)
 				{
-					shield.SetModel(MODEL_DISPENSER_SHIELD_L1);
+					case 1:
+					{
+						shield.SetModel(MODEL_DISPENSER_SHIELD_L1);
+					}
+					case 2:
+					{
+						shield.SetModel(MODEL_DISPENSER_SHIELD_L2);
+						EmitGameSoundToAll("WeaponMedigun_Vaccinator.Charged_tier_03", shield.index);
+					}
+					case 3:
+					{
+						shield.SetModel(MODEL_DISPENSER_SHIELD);
+						EmitGameSoundToAll("WeaponMedigun_Vaccinator.Charged_tier_04", shield.index);
+					}
 				}
-				case 2:
+			}
+			
+			shield.NextModelUpdateTime = GetGameTime()+0.25;
+		}
+		
+		if (GetGameTime() > shield.NextBatteryDrainTime)
+		{
+			if (!shield.UserDisabled)
+			{
+				int battery = shield.Battery;
+				shield.Battery = imax(0, battery-1);
+				shield.UpdateBatteryText();
+			}
+			
+			shield.NextBatteryDrainTime = GetGameTime()+0.3;
+			int builder = GetEntPropEnt(shield.Dispenser, Prop_Send, "m_hBuilder");
+			if (IsValidClient(builder) && IsPlayerAlive(builder))
+			{
+				int r, g, b;
+				if (shield.Battery <= 25)
 				{
-					shield.SetModel(MODEL_DISPENSER_SHIELD_L2);
-					EmitGameSoundToAll("WeaponMedigun_Vaccinator.Charged_tier_03", shield.index);
+					r = 255;
+					g = 100;
+					b = 100;
 				}
-				case 3:
+				else if (shield.Battery <= 50)
 				{
-					shield.SetModel(MODEL_DISPENSER_SHIELD);
-					EmitGameSoundToAll("WeaponMedigun_Vaccinator.Charged_tier_04", shield.index);
+					r = 255;
+					g = 255;
+					b = 100;
+				}
+				else
+				{
+					r = 100;
+					g = 255;
+					b = 100;
+				}
+				
+				SetHudTextParams(-1.0, 0.7, 8.0, r, g, b, 255);
+				if (shield.UserDisabled)
+				{
+					ShowSyncHudText(builder, g_hDispenserBatteryHudSync, "***SHIELD DISABLED***\nSHIELD BATTERY: %i", shield.Battery);
+				}
+				else
+				{
+					ShowSyncHudText(builder, g_hDispenserBatteryHudSync, "SHIELD BATTERY: %i", shield.Battery);
 				}
 			}
 		}
-		
-		shield.NextModelUpdateTime = GetGameTime()+0.12;
+
+		if (GetEntProp(shield.Dispenser, Prop_Send, "m_bCarried"))
+		{
+			shield.UpdateBatteryText(); // lazy but it works
+		}
 	}
 	
 	return Plugin_Continue;
@@ -3031,13 +3126,13 @@ public Action Timer_PlayerHud(Handle timer)
 	{
 		if (!IsClientInGame(i) || IsFakeClient(i))
 			continue;
-
+		
 		if (g_bGameOver || g_bGameWon)
 		{
 			static bool scoreCalculated;
 			static int score;
 			static char rank[8];
-
+			
 			// Calculate our score and rank.
 			if (!scoreCalculated)
 			{
@@ -3046,7 +3141,7 @@ public Action Timer_PlayerHud(Handle timer)
 				score += g_iTotalTanksKilled * 500;
 				score += g_iTotalItemsFound * 75;
 				score += g_iStagesCompleted * 1500;
-
+				
 				if (score >= 100000)
 					rank = "S";
 				else if (score >= 50000)
@@ -3204,12 +3299,14 @@ public Action Timer_PlayerHud(Handle timer)
 					}
 				}
 			}
+			/*
 			else if (class == TFClass_Engineer && PlayerHasItem(i, ItemEngi_HeadOfDefense))
 			{
 				FormatEx(miscText, sizeof(miscText), 
 					"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n																													Disposable Sentries: %i/%i", 
 					g_hPlayerExtraSentryList[i].Length, CalcItemModInt(i, ItemEngi_HeadOfDefense, 0));
 			}
+			*/
 			
 			static char cashString[64];
 			FormatEx(cashString, sizeof(cashString), "$%.0f", g_flPlayerCash[i]);
@@ -3340,13 +3437,6 @@ public Action Timer_PlayerTimer(Handle timer)
 	{
 		g_hPlayerTimer = null;
 		return Plugin_Stop;
-	}
-	
-	if (g_bExtraAdminSlot && GetTotalHumans(false) < GetDesiredPlayerCap()+1)
-	{
-		// remove extra admin slot
-		SetPlayerCap(GetDesiredPlayerCap());
-		g_bExtraAdminSlot = false;
 	}
 	
 	if (g_bServerRestarting)
@@ -4528,6 +4618,14 @@ public void OnEntityCreated(int entity, const char[] classname)
 		g_hHookRiflePostFrame.HookEntity(Hook_Pre, entity, DHook_RiflePostFrame);
 		g_hHookRiflePostFrame.HookEntity(Hook_Post, entity, DHook_RiflePostFramePost);
 	}
+	else if (strcmp2(classname, "team_round_timer"))
+	{
+		if (IsInUnderworld())
+		{
+			// hotfix
+			RemoveEntity2(entity);
+		}
+	}
 	else if (IsBuilding(entity))
 	{
 		if (g_hHookStartUpgrading)
@@ -5095,7 +5193,9 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		
 		if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
 		{
-			if (victimIsClient && !afterburn && (damageType & DMG_MELEE || validWeapon && GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary) == weapon)
+			bool flare = strcmp2(inflictorClassname, "tf_projectile_flare");
+			if (victimIsClient && (flare || !afterburn) && (damageType & DMG_MELEE || flare 
+				|| validWeapon && GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary) == weapon)
 				&& (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro)))
 			{
 				TF2_AddCondition(victim, TFCond_MarkedForDeathSilent, CalcItemMod(attacker, ItemPyro_LastBreath, 0), attacker);
@@ -5374,7 +5474,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			// Resist while spun up
 			if (TF2_IsPlayerInCondition(victim, TFCond_Slowed))
 			{
-				damage *= CalcItemMod_HyperbolicInverted(victim, ItemHeavy_Pugilist, 0);
+				damage *= fmax(CalcItemMod_HyperbolicInverted(victim, ItemHeavy_Pugilist, 0), GetItemMod(ItemHeavy_Pugilist, 1));
 			}
 		}
 		
@@ -5826,7 +5926,12 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		{
 			damage *= CalcItemMod_HyperbolicInverted(victim, Item_MetalHelmet, 1);
 		}
-
+		
+		if (damageType & DMG_BLAST)
+		{
+			damage *= CalcItemMod_HyperbolicInverted(victim, Item_MetalHelmet, 2);
+		}
+		
 		if (critType != CritType_None)
 		{
 			float baseDmg;
@@ -6094,6 +6199,40 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 							{
 								SetVariantInt(GetEntProp(entity, Prop_Send, "m_iHealth")+9999);
 								AcceptEntityInput(entity, "RemoveHealth");
+							}
+						}
+					}
+					else
+					{
+						float eyePos[3], eyeAng[3];
+						GetClientEyePosition(client, eyePos);
+						GetClientEyeAngles(client, eyeAng);
+						TR_TraceRayFilter(eyePos, eyeAng, MASK_PLAYERSOLID, RayType_Infinite, TraceFilter_DontHitSelf, client);
+						int dispenser = TR_GetEntityIndex();
+						if (IsBuilding(dispenser) && TF2_GetObjectType(dispenser) == TFObject_Dispenser && GetEntPropEnt(dispenser, Prop_Send, "m_hBuilder") == client)
+						{
+							RF2_DispenserShield shield = GetDispenserShield(dispenser);
+							if (shield.IsValid())
+							{
+								canPing = false;
+								if (shield.Enabled)
+								{
+									shield.Toggle(false, true);
+									shield.UserDisabled = true;
+								}
+								else if (shield.UserDisabled)
+								{
+									if (shield.Battery > 0 
+										&& !GetEntProp(dispenser, Prop_Send, "m_bHasSapper") 
+										&& !GetEntProp(dispenser, Prop_Send, "m_bCarried")
+										&& !GetEntProp(dispenser, Prop_Send, "m_bBuilding"))
+									{
+										shield.UserDisabled = false;
+										shield.Toggle(true, true);
+									}
+								}
+								
+								shield.UpdateBatteryText();
 							}
 						}
 					}

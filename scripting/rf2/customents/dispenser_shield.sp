@@ -29,9 +29,13 @@ methodmap RF2_DispenserShield < CBaseEntity
 		g_Factory.DeriveFromClass("tf_taunt_prop"); // so bots and NPCs don't treat it as solid, since it's a CBaseCombatCharacter
 		g_Factory.BeginDataMapDesc()
 			.DefineEntityField("m_hDispenser")
+			.DefineEntityField("m_hBatteryText")
 			.DefineBoolField("m_bEnabled")
+			.DefineBoolField("m_bUserDisabled")
 			.DefineIntField("m_iLevel")
+			.DefineIntField("m_iBattery")
 			.DefineFloatField("m_flNextModelUpdateTime")
+			.DefineFloatField("m_flNextBatteryDrainTime")
 		.EndDataMapDesc();
 		g_Factory.Install();
 		HookMapStart(DispenserShield_OnMapStart);
@@ -62,6 +66,45 @@ methodmap RF2_DispenserShield < CBaseEntity
 			this.SetProp(Prop_Data, "m_iLevel", value);
 		}
 	}
+
+	property int Battery
+	{
+		public get()
+		{
+			return this.GetProp(Prop_Data, "m_iBattery");
+		}
+
+		public set(int value)
+		{
+			this.SetProp(Prop_Data, "m_iBattery", value);
+		}
+	}
+	
+	property float NextBatteryDrainTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flNextBatteryDrainTime");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flNextBatteryDrainTime", value);
+		}
+	}
+	
+	property int BatteryText
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hBatteryText");
+		}
+		
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hBatteryText", value);
+		}
+	}
 	
 	property bool Enabled
 	{
@@ -76,6 +119,19 @@ methodmap RF2_DispenserShield < CBaseEntity
 		}
 	}
 
+	property bool UserDisabled
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bUserDisabled"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bUserDisabled", value);
+		}
+	}
+	
 	property float NextModelUpdateTime
 	{
 		public get()
@@ -111,6 +167,53 @@ methodmap RF2_DispenserShield < CBaseEntity
 		}
 		
 		this.Enabled = state;
+		this.UpdateBatteryText();
+	}
+
+	public void UpdateBatteryText()
+	{
+		if (IsValidEntity2(this.BatteryText))
+		{
+			static char text[128];
+			if (GetEntProp(this.Dispenser, Prop_Send, "m_bCarried"))
+			{
+				SetVariantString("");
+			}
+			else if (this.UserDisabled)
+			{
+				FormatEx(text, sizeof(text), "***SHIELD DISABLED***\nSHIELD BATTERY: %i\nATTACK3 TO TOGGLE SHIELD", this.Battery);
+				SetVariantString(text);
+			}
+			else if (this.Enabled)
+			{
+				FormatEx(text, sizeof(text), "SHIELD BATTERY: %i\nATTACK3 TO TOGGLE SHIELD", this.Battery);
+				SetVariantString(text);
+			}
+			else
+			{
+				SetVariantString("");
+			}
+			
+			AcceptEntityInput(this.BatteryText, "SetText");
+			if (this.UserDisabled)
+			{
+				SetVariantColor({80, 80, 80, 255});
+			}
+			else if (this.Battery <= 25)
+			{
+				SetVariantColor({200, 100, 0, 255});
+			}
+			else if (this.Battery <= 50)
+			{
+				SetVariantColor({255, 255, 50, 255});
+			}
+			else
+			{
+				SetVariantColor({50, 255, 50, 255});
+			}
+			
+			AcceptEntityInput(this.BatteryText, "SetColor");
+		}
 	}
 }
 
@@ -134,6 +237,17 @@ RF2_DispenserShield CreateDispenserShield(int team, int dispenser=INVALID_ENT, f
 		shield.Teleport(center);
 		ParentEntity(shield.index, dispenser);
 		shield.Dispenser = dispenser;
+		shield.BatteryText = CreateEntityByName("point_worldtext");
+		DispatchKeyValueInt(shield.BatteryText, "orientation", 1);
+		DispatchKeyValueFloat(shield.BatteryText, "textsize", 10.0);
+		SetVariantColor({50, 255, 50, 255});
+		AcceptEntityInput(shield.BatteryText, "SetColor");
+		float textPos[3];
+		CopyVectors(center, textPos);
+		textPos[2] += 60.0;
+		TeleportEntity(shield.BatteryText, textPos);
+		DispatchSpawn(shield.BatteryText);
+		ParentEntity(shield.BatteryText, dispenser);
 		if (GameRules_GetProp("m_bInSetup"))
 		{
 			shield.Level = 3;
@@ -172,6 +286,7 @@ RF2_DispenserShield GetDispenserShield(int dispenser)
 static void OnCreate(RF2_DispenserShield shield)
 {
 	shield.Enabled = true;
+	shield.Battery = 100;
 	shield.SetModel(MODEL_DISPENSER_SHIELD);
 	shield.SetProp(Prop_Data, "m_takedamage", DAMAGE_EVENTS_ONLY);
 	shield.SetProp(Prop_Data, "m_bloodColor", -1);

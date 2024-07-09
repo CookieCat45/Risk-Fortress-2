@@ -18,6 +18,13 @@
 				"linux64"	"384"
 				"windows64"	"383"
 			}
+			"CBaseObject::OnWrenchHit"
+			{
+				"linux"		"366"
+				"windows"	"365"
+				"linux64"	"366"
+				"windows64"	"365"
+			}
 			"CBaseEntity::TakeHealth"
 			{
 				"linux"		"67"

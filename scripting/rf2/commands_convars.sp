@@ -117,6 +117,7 @@ void LoadCommandsAndCvars()
 	CreateConVar("rf2_plugin_version", PLUGIN_VERSION, "Plugin version. Don't touch this please.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	
 	// Debug
+	RegAdminCmd("rf2_hiddenslot_test", Command_TestHiddenSlot, ADMFLAG_ROOT);
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
 	RegAdminCmd("rf2_debug_entitycount", Command_EntityCount, ADMFLAG_SLAY, "Shows the total number of networked entities (edicts) in the server.");
 	RegAdminCmd("rf2_debug_thriller_test", Command_ThrillerTest, ADMFLAG_ROOT, "\"Darkness falls across the land, the dancing hour is close at hand...\"");
@@ -2110,7 +2111,7 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 public void ConVarHook_MaxHumanPlayers(ConVar convar, const char[] oldValue, const char[] newValue)
 {
 	int newVal = StringToInt(newValue);
-	SetPlayerCap(g_bExtraAdminSlot ? newVal+1 : newVal);
+	SetMVMPlayerCvar(g_bExtraAdminSlot ? newVal : newVal-1);
 	FindConVar("tf_bot_quota").SetInt(MaxClients-newVal-1);
 }
 
@@ -2155,5 +2156,18 @@ public Action Command_UnlockAllAchievements(int client, int args)
 		SetAchievementProgress(client, i, 999999999);
 	}
 
+	return Plugin_Handled;
+}
+
+public Action Command_TestHiddenSlot(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	bool state = asBool(GetCmdArgInt(1));
+	ToggleHiddenSlot(state);
 	return Plugin_Handled;
 }

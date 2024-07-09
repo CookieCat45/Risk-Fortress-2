@@ -897,7 +897,7 @@ bool DoesPlayerHaveEnoughItems(int client)
 	// player is taking too long to pick stuff up
 	if (!IsBossEventActive() || g_iTanksKilledObjective >= g_iTankKillRequirement)
 	{
-		if (g_flPlayerTimeSinceLastItemPickup[client]+60.0 < GetTickedTime())
+		if (g_flPlayerTimeSinceLastItemPickup[client]+50.0 < GetTickedTime())
 		{
 			g_bPlayerItemShareExcluded[client] = true;
 			return true;

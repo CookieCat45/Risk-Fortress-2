@@ -735,6 +735,12 @@ bool PingObjects(int client)
 		}
 		else
 		{
+			if (IsBuilding(entity) && TF2_GetObjectType(entity) == TFObject_Dispenser && GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
+			{
+				// don't ping our own dispenser, since this is the button used to toggle the shield
+				return false;
+			}
+			
 			char name[128];
 			GetEntityDisplayName(entity, name, sizeof(name));
 			FormatEx(text, sizeof(text), "%N %s%s", client, phrase, name);
@@ -1526,12 +1532,26 @@ int GetDesiredPlayerCap()
 	return g_cvMaxHumanPlayers.IntValue;
 }
 
+/*
 int GetActualPlayerCap()
 {
 	return FindConVar("tf_mvm_defenders_team_size").IntValue;
 }
+*/
 
-void SetPlayerCap(int value)
+void ToggleHiddenSlot(bool state)
+{
+	if (state)
+	{
+		SetMVMPlayerCvar(GetDesiredPlayerCap());
+	}
+	else
+	{
+		SetMVMPlayerCvar(GetDesiredPlayerCap()-1);
+	}
+}
+
+void SetMVMPlayerCvar(int value)
 {
 	FindConVar("tf_mvm_defenders_team_size").SetInt(value);
 	FindConVar("tf_mvm_max_connected_players").SetInt(value);
