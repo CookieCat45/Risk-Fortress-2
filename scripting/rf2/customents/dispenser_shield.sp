@@ -151,6 +151,7 @@ methodmap RF2_DispenserShield < CBaseEntity
 		{
 			this.SetRenderMode(RENDER_NORMAL);
 			this.SetProp(Prop_Send, "m_nSolidType", SOLID_VPHYSICS);
+			SetEntityCollisionGroup(this.index, TFCOLLISION_GROUP_COMBATOBJECT);
 			if (!this.Enabled && playSound)
 			{
 				EmitGameSoundToAll("WeaponMedi_Shield.Deploy", this.index);
@@ -160,6 +161,7 @@ methodmap RF2_DispenserShield < CBaseEntity
 		{
 			this.SetRenderMode(RENDER_NONE);
 			this.SetProp(Prop_Send, "m_nSolidType", SOLID_NONE);
+			SetEntityCollisionGroup(this.index, 0);
 			if (this.Enabled && playSound)
 			{
 				EmitGameSoundToAll("WeaponMedigun.HealingDetachTarget", this.index);

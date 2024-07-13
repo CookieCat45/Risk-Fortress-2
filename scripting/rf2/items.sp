@@ -1390,7 +1390,10 @@ bool ActivateStrangeItem(int client)
 	int equipment = GetPlayerEquipmentItem(client);
 	if (GetPercentInvisible(client) > 0.0 && equipment == ItemStrange_DarkHunter)
 		return false;
-
+	
+	if (IsPlayerStunned(client))
+		return false;
+	
 	if (equipment == ItemStrange_PartyHat)
 	{
 		ArrayList equipmentList = new ArrayList();

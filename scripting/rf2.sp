@@ -2685,10 +2685,18 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 				}
 			}
 		}
-
-		if (GetEntProp(shield.Dispenser, Prop_Send, "m_bCarried"))
+		
+		bool carried = asBool(GetEntProp(shield.Dispenser, Prop_Send, "m_bCarried"));
+		if (carried || !shield.Enabled)
 		{
-			shield.UpdateBatteryText(); // lazy but it works
+			// the collision of the shield seems to always reset to solid even when disabled, so I'm doing it this way to make sure it doesn't
+			shield.SetProp(Prop_Send, "m_nSolidType", SOLID_NONE);
+			SetEntityCollisionGroup(shield.index, 0);
+		}
+		
+		if (carried)
+		{
+			shield.UpdateBatteryText();
 		}
 	}
 	

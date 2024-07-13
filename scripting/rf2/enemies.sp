@@ -1138,6 +1138,7 @@ void StunRadioWave()
 	{
 		if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ENEMY)
 		{
+			TF2_RemoveCondition(i, TFCond_MegaHeal);
 			TF2_AddCondition(i, TFCond_MVMBotRadiowave, 20.0);
 			aliveEnemies = true;
 		}
