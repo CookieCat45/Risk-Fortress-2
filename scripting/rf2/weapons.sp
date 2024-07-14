@@ -635,31 +635,15 @@ void TF2_RemoveLoadoutWearables(int client)
 
 float GetWeaponProcCoefficient(int weapon)
 {
-	char classname[128];
+	static char classname[128];
 	GetEntityClassname(weapon, classname, sizeof(classname));
-	
-	if (strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_syringegun_medic"))
+	if (strcmp2(classname, "tf_weapon_flamethrower") || strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_syringegun_medic"))
 	{
 		return 0.2;
-	}
-	else if (strcmp2(classname, "tf_weapon_flamethrower"))
-	{
-		return 0.35;
 	}
 	else if (strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_smg"))
 	{
 		return 0.5;
-	}
-	
-	return 1.0;
-}
-
-float GetDamageCustomProcCoefficient(int damageCustom)
-{
-	switch (damageCustom)
-	{
-		case TF_CUSTOM_BLEEDING: return 0.2;
-		case TF_CUSTOM_BURNING, TF_CUSTOM_BURNING_ARROW, TF_CUSTOM_BURNING_FLARE: return 0.75;
 	}
 	
 	return 1.0;

@@ -111,6 +111,7 @@ enum
 	Item_CheatersLament = 92,
 	Item_CheatersLament_Recharging = 93,
 	ItemStrange_Longwave = 94,
+	ItemHeavy_GoneCommando = 95,
 	Item_MaxValid,
 };
 

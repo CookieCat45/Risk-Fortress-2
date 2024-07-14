@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.12.3b"
+#define PLUGIN_VERSION "0.13b"
 #endif
 
 #include <rf2>
@@ -412,6 +412,7 @@ int g_iThrillerRepeatCount;
 #include "rf2/customents/projectiles/projectile_kunai.sp"
 #include "rf2/customents/projectiles/projectile_skull.sp"
 #include "rf2/customents/projectiles/projectile_homingrocket.sp"
+#include "rf2/customents/projectiles/projectile_shrapnel.sp"
 
 #include "rf2/cookies.sp"
 #include "rf2/weapons.sp"
@@ -904,7 +905,7 @@ public void OnMapStart()
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("sv_tags").Flags = 0;
-		SetMVMPlayerCvar(g_bExtraAdminSlot ? GetDesiredPlayerCap() : GetDesiredPlayerCap()-1);
+		SetMVMPlayerCvar(g_bExtraAdminSlot ? GetDesiredPlayerCap()+1 : GetDesiredPlayerCap());
 		
 		// Why is this a development only ConVar Valve?
 		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
@@ -2063,7 +2064,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			
 			case ItemDemo_ConjurersCowl, ItemMedic_WeatherMaster: event.SetString("weapon", "spellbook_lightning");
 			
-			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, ItemStrange_CroneDome, ItemSpy_Showstopper: event.SetString("weapon", "pumpkindeath");
+			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, ItemStrange_CroneDome, ItemSpy_Showstopper, ItemHeavy_GoneCommando: event.SetString("weapon", "pumpkindeath");
 			
 			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder, Item_RoBro: event.SetString("weapon", "merasmus_zap");
 			
@@ -5042,7 +5043,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			CBaseEntity(attacker).RemoveFlag(FL_NOTARGET);
 		}
 		
-		proc *= GetDamageCustomProcCoefficient(damageCustom);
 		if (validWeapon)
 		{
 			proc *= GetWeaponProcCoefficient(weapon);
@@ -5137,12 +5137,15 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				}
 			}
 			
-			case TF_CUSTOM_BURNING, TF_CUSTOM_BURNING_FLARE, TF_CUSTOM_BURNING_ARROW, TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING:
+			case TF_CUSTOM_BURNING, TF_CUSTOM_BURNING_FLARE, TF_CUSTOM_BURNING_ARROW:
 			{
-				afterburn = true;
-				proc *= 0.0;
+				if (damageType & DMG_BURN)
+				{
+					afterburn = true;
+					proc *= 0.0;
+				}
 			}
-
+			
 			case TF_CUSTOM_PENETRATE_ALL_PLAYERS, TF_CUSTOM_PENETRATE_HEADSHOT:
 			{
 				if (PlayerHasItem(attacker, Item_MaxHead))
@@ -5619,20 +5622,42 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		g_iEntLastHitItemProc[victim] = procItem;
 		if (validWeapon)
 		{
-			static char wepClassname[64];
-			GetEntityClassname(weapon, wepClassname, sizeof(wepClassname));
-			if (strcmp2(wepClassname, "tf_weapon_flamethrower"))
+			if ((damageType & DMG_BULLET || damageType & DMG_BUCKSHOT) 
+				&& PlayerHasItem(attacker, ItemHeavy_GoneCommando) && CanUseCollectorItem(attacker, ItemHeavy_GoneCommando))
 			{
-				damage *= GetPlayerFireRateMod(attacker, weapon); // Fire rate increases flamethrower damage, at a reduced rate
-			}
-			if (strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball") 
-				&& (damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE || damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING))
-			{
-				float mult = GetPlayerFireRateMod(attacker, weapon)*1.5;
-				SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
-				if (0.8 / mult <= GetTickInterval())
+				float chance = GetItemMod(ItemHeavy_GoneCommando, 3) * proc;
+				if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
 				{
-					TriggerAchievement(attacker, ACHIEVEMENT_FIRERATECAP);
+					int count = GetItemModInt(ItemHeavy_GoneCommando, 2);
+					float pos[3], angles[3];
+					GetEntPos(victim, pos, true);
+					angles[1] = GetRandomFloat(-179.0, 179.0);
+					float dmg = GetItemMod(ItemHeavy_GoneCommando, 0) + CalcItemMod(attacker, ItemHeavy_GoneCommando, 1, -1);
+					for (int i = 1; i <= count; i++)
+					{
+						RF2_Projectile_Shrapnel shrapnel = RF2_Projectile_Shrapnel(ShootProjectile(attacker, "rf2_projectile_shrapnel", pos, angles, 1000.0, dmg));
+						shrapnel.AddIgnoredEnt(victim);
+						angles[1] = GetRandomFloat(-179.0, 179.0);
+					}
+				}
+			}
+			else
+			{
+				static char wepClassname[64];
+				GetEntityClassname(weapon, wepClassname, sizeof(wepClassname));
+				if (strcmp2(wepClassname, "tf_weapon_flamethrower"))
+				{
+					damage *= GetPlayerFireRateMod(attacker, weapon); // Fire rate increases flamethrower damage, at a reduced rate
+				}
+				else if ((damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE || damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING)
+						&& strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball"))
+				{
+					float mult = GetPlayerFireRateMod(attacker, weapon)*1.5;
+					SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
+					if (0.8 / mult <= GetTickInterval())
+					{
+						TriggerAchievement(attacker, ACHIEVEMENT_FIRERATECAP);
+					}
 				}
 			}
 		}
@@ -5643,8 +5668,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			{
 				float random = GetItemMod(Item_Law, 0);
 				random *= proc;
-				
-				if (RandChanceFloatEx(attacker, 0.001, 1.0, random))
+				if (RandChanceFloatEx(attacker, 0.0, 1.0, random))
 				{
 					const float rocketSpeed = 1200.0;
 					float angles[3], pos[3], enemyPos[3];
@@ -5672,7 +5696,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			if (PlayerHasItem(attacker, Item_RoBro) && procItem != Item_RoBro)
 			{
 				float chance = GetItemMod(Item_RoBro, 0) * proc;
-				if (RandChanceFloatEx(attacker, 0.001, 100.0, chance))
+				if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
 				{
 					int limit = GetItemModInt(Item_RoBro, 1) + CalcItemModInt(attacker, Item_RoBro, 6);
 					limit = imin(limit, GetItemModInt(Item_RoBro, 5));

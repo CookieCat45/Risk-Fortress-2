@@ -2111,7 +2111,7 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 public void ConVarHook_MaxHumanPlayers(ConVar convar, const char[] oldValue, const char[] newValue)
 {
 	int newVal = StringToInt(newValue);
-	SetMVMPlayerCvar(g_bExtraAdminSlot ? newVal : newVal-1);
+	SetMVMPlayerCvar(g_bExtraAdminSlot ? newVal+1 : newVal);
 	FindConVar("tf_bot_quota").SetInt(MaxClients-newVal-1);
 }
 

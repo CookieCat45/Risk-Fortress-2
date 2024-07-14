@@ -67,6 +67,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			.DefineEntityField("m_hProjectileOwner")
 			.DefineEntityField("m_hThruster")
 			.DefineIntField("m_OnCollide")
+			.DefineIntField("m_hIgnoredEnts")
 		.EndDataMapDesc();
 		g_Factory.Install();
 	}
@@ -146,6 +147,19 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		public set(bool value)
 		{
 			this.SetProp(Prop_Data, "m_bRemoveOnHit", value);
+		}
+	}
+
+	property ArrayList IgnoredEnts
+	{
+		public get()
+		{
+			return view_as<ArrayList>(this.GetProp(Prop_Data, "m_hIgnoredEnts"));
+		}
+		
+		public set(ArrayList value)
+		{
+			this.SetProp(Prop_Data, "m_hIgnoredEnts", value);
 		}
 	}
 	
@@ -541,10 +555,44 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			this.LastHomingTime = GetGameTime();
 		}
 	}
+
+	public void AddIgnoredEnt(int entity)
+	{
+		if (!this.IgnoredEnts)
+			this.IgnoredEnts = new ArrayList();
+		
+		int ref = EntIndexToEntRef(entity);
+		if (this.IgnoredEnts.FindValue(ref) != -1)
+			return;
+		
+		this.IgnoredEnts.Push(ref);
+	}
+
+	public void RemoveIgnoredEnt(int entity)
+	{
+		if (!this.IgnoredEnts)
+			this.IgnoredEnts = new ArrayList();
+		
+		int ref = EntIndexToEntRef(entity);
+		int index = this.IgnoredEnts.FindValue(ref);
+		if (index == -1)
+			return;
+		
+		this.IgnoredEnts.Erase(index);
+	}
+
+	public bool IsEntIgnored(int entity)
+	{
+		if (!this.IgnoredEnts)
+			this.IgnoredEnts = new ArrayList();
+
+		return this.IgnoredEnts.FindValue(EntIndexToEntRef(entity)) != -1;
+	}
 }
 
 static void OnCreate(RF2_Projectile_Base proj)
 {
+	proj.ImpactTarget = INVALID_ENT;
 	proj.RemoveOnHit = true;
 	proj.DeactivateOnHit = true;
 	proj.DeactivateTime = 6.0;
@@ -570,6 +618,12 @@ static void OnRemove(RF2_Projectile_Base proj)
 	{
 		RequestFrame(RF_DeleteForward, proj.OnCollide);
 		proj.OnCollide = null;
+	}
+
+	if (proj.IgnoredEnts)
+	{
+		delete proj.IgnoredEnts;
+		proj.IgnoredEnts = null;
 	}
 	
 	if (IsValidEntity2(proj.Thruster))
@@ -636,11 +690,11 @@ public void OnVPhysicsUpdate(int entity)
 			TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID|MASK_NPCSOLID, TraceFilter_DispenserShield, _, TRACE_ENTITIES_ONLY);
 			hitEntity = TR_GetEntityIndex();
 		}
-
+		
 		if (hitEntity > 0)
 		{
 			// the dhook doesn't seem to work properly on players/npcs, so pretend we're colliding with them
-			if (proj.OnCollide && !proj.HasHit)
+			if (proj.OnCollide && !proj.HasHit && (!proj.IgnoredEnts || !proj.IsEntIgnored(hitEntity)))
 			{
 				Call_StartForward(proj.OnCollide);
 				Call_PushCell(proj);
@@ -683,7 +737,7 @@ public MRESReturn DHook_ProjectileCollision(int entity, DHookParam params)
 	if (!proj.HasHit)
 	{
 		int hitEntity = params.GetObjectVar(2, 108, ObjectValueType_CBaseEntityPtr);
-		if (hitEntity >= 0 && !RF2_Projectile_Base(hitEntity).IsValid()) // don't collide with other projectiles
+		if (hitEntity >= 0 && !RF2_Projectile_Base(hitEntity).IsValid() && (!proj.IgnoredEnts || !proj.IsEntIgnored(hitEntity)))
 		{
 			Call_StartForward(proj.OnCollide);
 			Call_PushCell(proj);
@@ -698,7 +752,7 @@ public MRESReturn DHook_ProjectileCollision(int entity, DHookParam params)
 public void Projectile_OnCollide(RF2_Projectile_Base proj, int other)
 {
 	proj.ImpactTarget = other;
-	if (!proj.HasHit)
+	if (!proj.HasHit && (!proj.IgnoredEnts || !proj.IsEntIgnored(other)))
 	{
 		if (IsValidClient(other) || IsNPC(other))
 		{

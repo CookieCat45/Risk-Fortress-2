@@ -1547,7 +1547,7 @@ void ToggleHiddenSlot(bool state)
 	}
 	else
 	{
-		SetMVMPlayerCvar(GetDesiredPlayerCap()-1);
+		SetMVMPlayerCvar(GetDesiredPlayerCap()+1);
 	}
 }
 
