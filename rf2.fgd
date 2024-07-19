@@ -1,0 +1,317 @@
+@include "base.fgd"
+@include "tf.fgd"
+
+@PointClass base(Targetname) = rf2_world_center : 
+	"This entity defines the world center, which is used as a point to spawn objects from. You should always have a single instance of this entity in your map, placed in the very center of the playing area."
+[
+
+]
+
+@PointClass base(Targetname, Angles) studio("models/rf2/objects/teleporter.mdl") = rf2_teleporter_spawn : 
+	"A spawn point for the Teleporter. One will be selected at random on round start."
+[
+	output OnChosen(void) : "Sent when this spawn point is chosen as the Teleporter spawn point."
+]
+
+@PointClass base(Targetname, Angles) studio("models/props_halloween/gargoyle_backpack.mdl") = rf2_altar_spawn : 
+	"A spawn point for the Altar. Altars can be used to enter the Underworld."
+[
+	output OnChosen(void) : "Sent when this spawn point is chosen as the Altar spawn point."
+]
+
+@PointClass base(Targetname) = rf2_gamerules : 
+	"RF2 game rules entity."
+[
+	teleporter_model(string) : "Custom Teleporter Model" : "" : "If set, override the default Teleporter model with the model specified."
+	timer_paused(choices) : "Is Timer Paused?" : 0 : "Is the difficulty timer paused?" = 
+	[
+		0 : "No"
+		1 : "Yes"
+	]
+	
+	allow_enemy_spawning(choices) : "Allow Enemy Spawning?" : 1 : "Are enemies allowed to spawn?" = 
+	[
+		1 : "Yes"
+		0 : "No"
+	]
+	
+	disable_object_spawning(choices) : "Allow Object Spawning?" : 0 : "Are objects allowed to spawn?" = 
+	[
+		0 : "Yes"
+		1 : "No"
+	]
+	
+	disable_item_sharing(choices) : "Disable Item Sharing?" : 0 : "Should item sharing be disabled?" = 
+	[
+		1 : "Yes"
+		0 : "No"
+	]
+	
+	disable_death(choices) : "Prevent Death?" : 0 : "Prevent Survivors from dying?" = 
+	[
+		0 : "No"
+		1 : "Yes"
+	]
+	
+	enemies_teamspawn(choices) : "Use Spawn Points for Enemies?" : 0 : "Use info_player_teamspawn for spawning enemies?" =
+	[
+		0 : "No"
+		1 : "Yes"
+	]
+	
+	input EnableEnemySpawning(void) : "Allow enemies to spawn."
+	input DisableEnemySpawning(void) : "Prevent enemies from spawning."
+	input TriggerWin(void) : "Triggers a win for the Survivor team."
+	input GameOver(void) : "Triggers a Game Over."
+	input ForceStartTeleporter(void) : "Forces the Teleporter Event to start immediately."
+	input TriggerAchievement(integer) : "Triggers an achievement. The input value is the achievement ID, and the activator is the player to give the achievement to."
+	input SetEnemyGroup(string) : "Sets the enemy group name to use for spawning enemies."
+	output OnTeleporterEventStart(void) : "Sent when the Teleporter event begins."
+	output OnTeleporterEventComplete(void) : "Sent when the Teleporter event is completed successfully."
+	output OnTankDestructionStart(void) : "Sent when Tank Destruction Mode begins."
+	output OnTankDestructionComplete(void) : "Sent when Tank Destruction Mode is won."
+	output OnTankDestructionBombDeployed(void) : "Sent when the bomb is deployed by a Tank in Tank Destruction Mode."
+	
+	output OnRoundStart(void) : "Sent when the round begins."
+	output OnRoundStartPreLoop(void) : "Sent when the round begins in a run, but only if it hasn't been looped."
+	output OnRoundStartPostLoop(void) : "Sent when the round begins in a run, but only if it has been looped at least once."
+	output OnWaitingForPlayers(void) : "Sent when Waiting For Players begins."
+	output OnWaitingForPlayersPreLoop(void) : "Sent when Waiting For Players begins, but only if the current run hasn't been looped."
+	output OnWaitingForPlayersPostLoop(void) : "Sent when Waiting For Players begins, but only if the current run has been looped at least once."
+	output OnGracePeriodEnd(void) : "Sent when the grace period ends."
+]
+
+@BaseClass base(prop_dynamic_base) = rf2_object_base
+[
+	active(choices) : "Active" : 1 : "Can this object be interacted with?" =
+	[
+		1 : "Yes"
+		0 : "No"
+	]
+]
+
+@PointClass base(rf2_object_base) studio() = rf2_object_crate : 
+	"A crate containing an item."
+[
+	cost(float) : "Cost" : -1 : "The cost to open this crate. If below 0, the cost will be calculated automatically."
+	
+	type(choices) : "Crate Type" : 0 : "Type of crate this is." = 
+	[
+		0: "Normal"
+		1: "Large"
+		2: "Strange"
+		3: "Collectors"
+		4: "Haunted"
+		5: "Unusual"
+	]
+	
+	item(choices) : "Item" : 0 : "If set to something other than None, the crate will always contain this item. Otherwise the item is random based on the type of crate." = 
+	[
+		0: "None"
+		1: "Tomb Readers"
+		2: "Merc's Pride Scarf"
+		3: "Eye-Catcher"
+		4: "License to Maim"
+		5: "Robin Walkers"
+		6: "Well-Rounded Rifleman"
+		7: "Archimedes"
+		8: "Point and Shoot"
+		9: "Pocket Medic"
+		10: "Bandit's Boots"
+		11: "Triple A Badge"
+		12: "Class Crown"
+		13: "Brigade Helm (Pyro)"
+		14: "Dangeresque, Too?"
+		15: "Law"
+		17: "RoBro 3000"
+		19: "Horseless Headless Horsemann's Head"
+		20: "MONOCULUS!"
+		21: "Saxton Hat"
+		22: "Scrap Metal"
+		23: "Reclaimed Metal"
+		24: "Refined Metal"
+		25: "Noh Mercy (Spy)"
+		26: "Weather Master (Medic)"
+		27: "Killer Exclusive"
+		28: "Whale Bone Charm"
+		29: "Bruiser's Bandana"
+		30: "Executioner"
+		31: "Towering Pillar of Hats"
+		32: "Cryptic Keepsake"
+		33: "Horrific Headsplitter"
+		34: "Tux"
+		35: "Lucky Cat Hat"
+		36: "Misfortune Fedora"
+		37: "Dark Helm"
+		38: "Unidentified Following Object"
+		39: "Goalkeeper"
+		40: "Counterfeit Billycock (Spy)"
+		41: "Dr's Dapper Topper"
+		43: "Flight of the Monarch (Scout)"
+		44: "Blighted Beak (Medic)"
+		45: "Physician's Procedure Mask (Medic)"
+		47: "Teddy Roosebelt (Engineer)"
+		48: "Head of Defense (Engineer)"
+		49: "Holy Hunter (Sniper)"
+		50:	"Brainiac Hairpiece (Engineer)"
+		51: "Conjurer's Cowl (Demoman)"
+		52: "Compatriot (Soldier)"
+		53: "Tough Guy's Toque (Heavy)"
+		54: "Battery Canteens"
+		56: "Marxman"
+		62: "War Pig (Soldier)"
+		63: "Pugilist's Protector (Heavy)"
+		64: "Last Breath (Pyro)"
+		65: "Mark of the Saint"
+		66: "Scotch Bonnet (Demoman)"
+		67: "Long Fall Loafers (Scout)"
+		68: "Bloodhound (Sniper)"
+		69: "Hawk Warrior (Soldier)"
+		70: "Deus Specs"
+		71: "Max's Severed Head"
+		74: "Spiral Sallet"
+		75: "Graybanns"
+		76: "Antlers"
+		77: "Toadstool Topper (Engineer)"
+		78: "Gargoyle Key"
+		79: "Full Metal Helmet"
+		81: "Pyromancer's Mask (Pyro)"
+		83: "Stealthy Scarf (Spy)"
+		84: "Showstopper (Spy)"
+		85: "Villain's Veil (Sniper)"
+		86: "Beacon from Beyond"
+		88: "Fed-Fightin' Fedora (Scout)"
+		91: "Alien Swarm Parasite"
+		92: "Cheater's Lament"
+	]
+]
+
+@PointClass base(rf2_object_base) studio("models/props_manor/table_01.mdl") = rf2_object_workbench : 
+	"A table allowing you to trade for items."
+[
+	custom_item_cost(integer) : "Cost" : 1 : "How many items of the workbench's quality the player will have to trade to obtain the workbench's item."
+	
+	item(choices) : "Item Type" : 0 : "Set the type of item on the workbench. None to pick a random item using the Item Quality." =
+	[
+		0: "None"
+		1: "Tomb Readers"
+		2: "Merc's Pride Scarf"
+		3: "Eye-Catcher"
+		4: "License to Maim"
+		5: "Robin Walkers"
+		6: "Well-Rounded Rifleman"
+		7: "Archimedes"
+		8: "Point and Shoot"
+		9: "Pocket Medic"
+		10: "Bandit's Boots"
+		11: "Triple A Badge"
+		12: "Class Crown"
+		13: "Brigade Helm (Pyro)"
+		14: "Dangeresque, Too?"
+		15: "Law"
+		17: "RoBro 3000"
+		19: "Horseless Headless Horsemann's Head"
+		20: "MONOCULUS!"
+		21: "Saxton Hat"
+		22: "Scrap Metal"
+		23: "Reclaimed Metal"
+		24: "Refined Metal"
+		25: "Noh Mercy (Spy)"
+		26: "Weather Master (Medic)"
+		27: "Killer Exclusive"
+		28: "Whale Bone Charm"
+		29: "Bruiser's Bandana"
+		30: "Executioner"
+		31: "Towering Pillar of Hats"
+		32: "Cryptic Keepsake"
+		33: "Horrific Headsplitter"
+		34: "Tux"
+		35: "Lucky Cat Hat"
+		36: "Misfortune Fedora"
+		37: "Dark Helm"
+		38: "Unidentified Following Object"
+		39: "Goalkeeper"
+		40: "Counterfeit Billycock (Spy)"
+		41: "Dr's Dapper Topper"
+		43: "Flight of the Monarch (Scout)"
+		44: "Blighted Beak (Medic)"
+		45: "Physician's Procedure Mask (Medic)"
+		47: "Teddy Roosebelt (Engineer)"
+		48: "Head of Defense (Engineer)"
+		49: "Holy Hunter (Sniper)"
+		50:	"Brainiac Hairpiece (Engineer)"
+		51: "Conjurer's Cowl (Demoman)"
+		52: "Compatriot (Soldier)"
+		53: "Tough Guy's Toque (Heavy)"
+		54: "Battery Canteens"
+		56: "Marxman"
+		62: "War Pig (Soldier)"
+		63: "Pugilist's Protector (Heavy)"
+		64: "Last Breath (Pyro)"
+		65: "Mark of the Saint"
+		66: "Scotch Bonnet (Demoman)"
+		67: "Long Fall Loafers (Scout)"
+		68: "Bloodhound (Sniper)"
+		69: "Hawk Warrior (Soldier)"
+		70: "Deus Specs"
+		71: "Max's Severed Head"
+		74: "Spiral Sallet"
+		75: "Graybanns"
+		76: "Antlers"
+		77: "Toadstool Topper (Engineer)"
+		78: "Gargoyle Key"
+		79: "Full Metal Helmet"
+		81: "Pyromancer's Mask (Pyro)"
+		83: "Stealthy Scarf (Spy)"
+		84: "Showstopper (Spy)"
+		85: "Villain's Veil (Sniper)"
+		86: "Beacon from Beyond"
+		88: "Fed-Fightin' Fedora (Scout)"
+		91: "Alien Swarm Parasite"
+		92: "Cheater's Lament"
+	]
+	
+	item_quality(choices) : "Item Quality" : 0 : "Set the quality for the item on the workbench. Ignored if Item Type is set." = 
+	[
+		0: "Random"
+		1: "Normal"
+		2: "Genuine"
+		3: "Unusual"
+		4: "Haunted"
+		5: "Collectors"
+	]
+	
+	trade_quality(choices) : "Trade Quality" : 0 : "Set the quality of items required to trade into the workbench." = 
+	[
+		0: "Use Item Quality"
+		1: "Normal"
+		2: "Genuine"
+		3: "Unusual"
+		4: "Haunted"
+		5: "Collectors"
+	]
+]
+
+@PointClass base(rf2_object_base) studio("models/props_trainyard/blast_furnace_skybox002.mdl") = rf2_object_scrapper :
+	"An item scrapper. Can be used by players to scrap items they don't want into metals that can be utilized at workbenches, which take priority over other items."
+[
+	
+]
+
+@PointClass base(rf2_object_base) studio("models/props_manor/deadtree01.mdl") = rf2_object_tree :
+	"The Tree of Fate. For a cost of 2 Gargoyle Keys, this object allows players to decide what the next map will be."
+[
+	
+]
+
+@PointClass base(rf2_object_base) studio("models/props_gameplay/tombstone_tankbuster.mdl") = rf2_object_statue :
+	"A mysterious gravestone. This object will only work after a certain number of stages have been completed. It will start a vote to end the game when interacted with. You probably don't want to use this entity."
+[
+	
+]
+
+@SolidClass base(trigger_multiple) = rf2_trigger_exit :
+	"A trigger volume that, once enough players are inside, starts a vote to end the level."
+[
+
+]
