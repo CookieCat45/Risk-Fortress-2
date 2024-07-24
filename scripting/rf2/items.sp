@@ -520,12 +520,26 @@ void UpdatePlayerItem(int client, int item)
 			int secondary = GetPlayerWeaponSlot(client, 1);
 			if (primary > 0)
 			{
-				TF2Attrib_SetByDefIndex(primary, 266, value); // "projectile penetration"
+				if (PlayerHasItem(client, item))
+				{
+					TF2Attrib_SetByDefIndex(primary, 266, value); // "projectile penetration"
+				}
+				else
+				{
+					TF2Attrib_RemoveByDefIndex(primary, 266);
+				}
 			}
 			
 			if (secondary > 0)
 			{
-				TF2Attrib_SetByDefIndex(secondary, 266, value);
+				if (PlayerHasItem(client, item))
+				{
+					TF2Attrib_SetByDefIndex(secondary, 266, value);
+				}
+				else
+				{
+					TF2Attrib_RemoveByDefIndex(secondary, 266);
+				}
 			}
 		}
 		case Item_PrideScarf, Item_ClassCrown:

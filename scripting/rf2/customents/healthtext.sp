@@ -209,9 +209,9 @@ public void RF_UpdateText(int entity)
 	{
 		maxHealth = RF2_GetCalculatedMaxHealth(target.index);
 	}
-	else if (IsTankBadass(target.index))
+	else if (RF2_TankBoss(target.index).IsValid())
 	{
-		maxHealth = target.GetProp(Prop_Data, "m_iActualMaxHealth");
+		maxHealth = RF2_TankBoss(target.index).MaxHealth;
 	}
 	else
 	{

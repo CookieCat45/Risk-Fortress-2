@@ -64,7 +64,7 @@ static void OnCreate(RF2_Object_Altar altar)
 
 static Action OnInteract(int client, RF2_Object_Altar altar)
 {
-	if (PlayerHasItem(client, Item_HauntedKey))
+	if (PlayerHasItem(client, Item_HauntedKey, true))
 	{
 		GiveItem(client, Item_HauntedKey, -1);
 		float pos[3];

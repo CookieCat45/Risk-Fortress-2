@@ -559,7 +559,7 @@ public Action Timer_StartTeleporterEvent(Handle timer, int entity)
 
 public Action Timer_TeleporterThink(Handle timer, int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT || g_bGameOver)
 		return Plugin_Stop;
 	
 	RF2_Object_Teleporter teleporter = RF2_Object_Teleporter(entity);
@@ -576,7 +576,7 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 		if (!IsClientInGame(i) || !IsPlayerAlive(i))
 			continue;
 		
-		if (IsPlayerSurvivor(i))
+		if (IsPlayerSurvivor(i) && !IsPlayerMinion(i))
 		{
 			aliveSurvivors++;
 			if (PlayerHasItem(i, Item_BeaconFromBeyond))

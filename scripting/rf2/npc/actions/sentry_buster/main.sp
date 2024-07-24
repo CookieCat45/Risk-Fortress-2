@@ -72,7 +72,7 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 			int builder = GetEntPropEnt(target, Prop_Send, "m_hBuilder");
 			if (IsValidClient(builder))
 			{
-				ShowAnnotation(builder, _, "Sentry Buster's Target", 8.0, target);
+				ShowAnnotation(builder, _, "Sentry Buster's Target", 8.0, target, target);
 			}
 		}
 	}

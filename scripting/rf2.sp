@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.13b"
+#define PLUGIN_VERSION "0.13.1b"
 #endif
 
 #include <rf2>
@@ -3236,7 +3236,7 @@ public Action Timer_PlayerHud(Handle timer)
 		{
 			strangeItemInfo = "";
 		}
-
+		
 		miscText = "";
 		char difficultyName[32];
 		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
@@ -3247,23 +3247,14 @@ public Action Timer_PlayerHud(Handle timer)
 				if (IsValidEntity2(g_iPlayerLastAttackedTank[i]))
 				{
 					static char classname[128], name[32];
-					int maxHealth;
-					int health = GetEntProp(g_iPlayerLastAttackedTank[i], Prop_Data, "m_iHealth");
 					GetEntityClassname(g_iPlayerLastAttackedTank[i], classname, sizeof(classname));
-					
-					if (IsTankBadass(g_iPlayerLastAttackedTank[i]))
+					RF2_TankBoss tank = RF2_TankBoss(g_iPlayerLastAttackedTank[i]);
+					if (tank.IsValid())
 					{
-						name = "Badass Tank";
-						maxHealth = GetEntProp(g_iPlayerLastAttackedTank[i], Prop_Data, "m_iActualMaxHealth");
+						name = tank.IsBadass() ? "Badass Tank" : "Tank";
+						FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Tanks Destroyed: %i/%i\n%s Health: %i/%i",
+							g_iTanksKilledObjective, g_iTankKillRequirement, name, tank.Health, tank.MaxHealth);
 					}
-					else
-					{
-						name = "Tank";
-						maxHealth = GetEntProp(g_iPlayerLastAttackedTank[i], Prop_Data, "m_iMaxHealth");
-					}
-					
-					FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Tanks Destroyed: %i/%i\n%s Health: %i/%i",
-						g_iTanksKilledObjective, g_iTankKillRequirement, name, health, maxHealth);
 				}
 				else
 				{
@@ -5137,7 +5128,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				}
 			}
 			
-			case TF_CUSTOM_BURNING, TF_CUSTOM_BURNING_FLARE, TF_CUSTOM_BURNING_ARROW:
+			case TF_CUSTOM_BURNING, TF_CUSTOM_BURNING_FLARE, TF_CUSTOM_BURNING_ARROW, TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING:
 			{
 				if (damageType & DMG_BURN)
 				{
@@ -5649,7 +5640,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				{
 					damage *= GetPlayerFireRateMod(attacker, weapon); // Fire rate increases flamethrower damage, at a reduced rate
 				}
-				else if ((damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE || damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING)
+				else if ((damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE)
 						&& strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball"))
 				{
 					float mult = GetPlayerFireRateMod(attacker, weapon)*1.5;

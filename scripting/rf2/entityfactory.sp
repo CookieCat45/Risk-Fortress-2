@@ -35,7 +35,7 @@ void InstallEnts()
 	RF2_RaidBoss_Galleom.Init();
 	RF2_Companion_Base.Init();
 	RF2_Companion_HeavyBot.Init();
-	BadassTank_Init(); // TODO: convert to methodmap
+	RF2_TankBoss.Init();
 }
 
 void HookMapStart(Function func)

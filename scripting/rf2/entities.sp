@@ -666,6 +666,7 @@ void GetEntPos(int entity, float buffer[3], bool center=false)
 	}
 }
 
+/*
 void SetSequence(int entity, const char[] sequence, float playbackrate=1.0)
 {
 	int seq = CBaseAnimating(entity).LookupSequence(sequence);
@@ -679,6 +680,7 @@ void SetSequence(int entity, const char[] sequence, float playbackrate=1.0)
 		LogError("[SetSequence] Couldn't find sequence \"%s\".", sequence);
 	}
 }
+*/
 
 float AddGesture(int entity, const char[] sequence, float duration=0.0, bool autokill=true, float playbackrate=1.0, int priority=1)
 {

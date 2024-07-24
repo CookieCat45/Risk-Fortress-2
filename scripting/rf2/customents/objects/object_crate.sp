@@ -327,7 +327,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	
 	if (crate.Type == Crate_Haunted)
 	{
-		if (PlayerHasItem(attacker, Item_HauntedKey))
+		if (PlayerHasItem(attacker, Item_HauntedKey, true))
 		{
 			GiveItem(attacker, Item_HauntedKey, -1);
 		}

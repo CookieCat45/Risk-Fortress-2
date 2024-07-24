@@ -230,6 +230,11 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		return IsPlayingGestureByIndex(this.index, seq);
 	}
 	
+	public bool IsPlayingGesture(const char[] seq)
+	{
+		return IsPlayingGesture(this.index, seq);
+	}
+	
 	public int GetNewTarget(float maxDist=0.0)
 	{
 		float pos[3];
