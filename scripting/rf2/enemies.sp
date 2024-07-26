@@ -35,6 +35,7 @@ static bool g_bEnemyBotHoldFireUntilReloaded[MAX_ENEMIES];
 static bool g_bEnemyBotAlwaysJump[MAX_ENEMIES];
 static bool g_bEnemyBotAlwaysAttack[MAX_ENEMIES];
 static float g_flEnemyBotMeleeDistance[MAX_ENEMIES];
+static bool g_bEnemyBotUberOnSight[MAX_ENEMIES];
 
 // Weapons
 static bool g_bEnemyWeaponUseStaticAttributes[MAX_ENEMIES][TF_WEAPON_SLOTS];
@@ -197,6 +198,12 @@ methodmap Enemy
 	{
 		public get()			{ return g_bEnemyNoCrits[this.Index]; }
 		public set(bool value)	{ g_bEnemyNoCrits[this.Index] = value; }
+	}
+
+	property bool BotUberOnSight
+	{
+		public get()			{ return g_bEnemyBotUberOnSight[this.Index]; }
+		public set(bool value)	{ g_bEnemyBotUberOnSight[this.Index] = value; }
 	}
 	
 	property int BotSkill
@@ -502,6 +509,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.BotAlwaysJump = asBool(enemyKey.GetNum("tf_bot_constant_jump", false));
 		enemy.BotAlwaysAttack = asBool(enemyKey.GetNum("tf_bot_always_attack", false));
 		enemy.BotMeleeDistance = enemyKey.GetFloat("tf_bot_melee_distance");
+		enemy.BotUberOnSight = asBool(enemyKey.GetNum("tf_bot_uber_on_sight", false));
 		
 		// XP and cash awards on death
 		enemy.XPAward = enemyKey.GetFloat("xp_award", 15.0);

@@ -1585,6 +1585,19 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		buttons |= IN_ATTACK;
 	}
 	
+	if (TF2_GetPlayerClass(bot.Client) == TFClass_Medic)
+	{
+		// should we uber upon sight of an enemy?
+		if (Enemy(bot.Client) != NULL_ENEMY && Enemy(bot.Client).BotUberOnSight && bot.GetTarget() != NULL_KNOWN_ENTITY)
+		{
+			int medigun = GetPlayerWeaponSlot(bot.Client, TFWeaponSlot_Secondary);
+			if (medigun != INVALID_ENT && medigun == GetActiveWeapon(bot.Client) && GetEntPropFloat(medigun, Prop_Send, "m_flChargeLevel") >= 100.0)
+			{
+				buttons |= IN_ATTACK2;
+			}
+		}
+	}
+	
 	buttons |= bot.ForcedButtons;
 	return Plugin_Continue;
 }

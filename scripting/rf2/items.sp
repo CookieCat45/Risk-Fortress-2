@@ -2613,6 +2613,13 @@ public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
 	
+	if (IsInvuln(victim)) // Goombas damage through Uber by default because of DMG_CRUSH, let's prevent that
+	{
+		damageMultiplier = 0.0;
+		damageBonus = 0.0;
+		return Plugin_Changed;
+	}
+	
 	if (PlayerHasItem(attacker, ItemScout_LongFallBoots) && CanUseCollectorItem(attacker, ItemScout_LongFallBoots))
 	{
 		// Goombas by default do the victim's health in damage, let's instead give it a base damage value
