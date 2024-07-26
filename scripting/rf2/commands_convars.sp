@@ -604,7 +604,18 @@ public Action Command_VoteSkipWait(int client, int args)
 				vote.AddItem("Yes", "Yes");
 				vote.AddItem("No", "No");
 				vote.ExitButton = false;
-				vote.DisplayVoteToAll(10);
+				int clients[MAXTF2PLAYERS];
+				int clientCount;
+				for (int i = 1; i <= MaxClients; i++)
+				{
+					if (!IsClientInGame(i) || GetClientTeam(i) <= 1 || IsFakeClient(i))
+						continue;
+					
+					clients[clientCount] = i;
+					clientCount++;
+				}
+				
+				vote.DisplayVote(clients, clientCount, 10);
 			}
 			else
 			{
@@ -683,7 +694,18 @@ public Action Command_ExtendWait(int client, int args)
 			vote.AddItem("Yes", "Yes");
 			vote.AddItem("No", "No");
 			vote.ExitButton = false;
-			vote.DisplayVoteToAll(10);
+			int clients[MAXTF2PLAYERS];
+			int clientCount;
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (!IsClientInGame(i) || GetClientTeam(i) <= 1 || IsFakeClient(i))
+					continue;
+				
+				clients[clientCount] = i;
+				clientCount++;
+			}
+			
+			vote.DisplayVote(clients, clientCount, 10);
 		}
 		
 	}
@@ -2112,7 +2134,7 @@ public void ConVarHook_MaxHumanPlayers(ConVar convar, const char[] oldValue, con
 {
 	int newVal = StringToInt(newValue);
 	SetMVMPlayerCvar(g_bExtraAdminSlot ? newVal+1 : newVal);
-	FindConVar("tf_bot_quota").SetInt(MaxClients-newVal-1);
+	FindConVar("tf_bot_quota").SetInt(MaxClients-newVal);
 }
 
 public Action Command_ParticleTest(int client, int args)

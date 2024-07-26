@@ -161,13 +161,39 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 			return this.Bot.GetIntentionInterface();
 		}
 	}
+	
+	property int Health
+	{
+		public get()
+		{
+			return this.GetProp(Prop_Data, "m_iHealth");
+		}
+
+		public set(int value)
+		{
+			this.SetProp(Prop_Data, "m_iHealth", value);
+		}
+	}
+	
+	property int MaxHealth
+	{
+		public get()
+		{
+			return this.GetProp(Prop_Data, "m_iMaxHealth");
+		}
+		
+		public set(int value)
+		{
+			this.SetProp(Prop_Data, "m_iMaxHealth", value);
+		}
+	}
 
 	// Do not target this team
 	property int DefendTeam
 	{
 		public get()
 		{
-			return asBool(this.GetProp(Prop_Data, "m_iDefendTeam"));
+			return this.GetProp(Prop_Data, "m_iDefendTeam");
 		}
 		
 		public set(int value)
@@ -270,6 +296,15 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		return this.Target;
 	}
 	
+	public void ApproachEntity(int entity, float maxDist=0.0, bool walk=false)
+	{
+		float targetPos[3];
+		GetEntPos(entity, targetPos, true);
+		this.Path.ComputeToPos(this.Bot, targetPos, maxDist);
+		this.Path.Update(this.Bot);
+		walk ? this.Locomotion.Walk() : this.Locomotion.Run();
+	}
+	
 	public bool HasLOSTo(CBaseEntity entity)
 	{
 		return this.MyNextBotPointer().GetVisionInterface().IsLineOfSightClearToEntity(entity.index);
@@ -315,6 +350,28 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 	public void SetStuckPos(const float vec[3])
 	{
 		this.SetPropVector(Prop_Data, "m_vecStuckPos", vec);
+	}
+	
+	public void SpewGibs(const char[][] gibModels, int size)
+	{
+		float pos[3], angles[3], vel[3];
+		this.WorldSpaceCenter(pos);
+		for (int i = 0; i < size; i++)
+		{
+			int prop = CreateEntityByName("prop_physics_multiplayer");
+			DispatchKeyValueInt(prop, "spawnflags", 4);
+			SetEntityModel2(prop, gibModels[i]);
+			angles[0] = GetRandomFloat(-179.0, 0.0);
+			angles[1] = GetRandomFloat(-179.0, 179.0);
+			angles[2] = GetRandomFloat(-179.0, 179.0);
+			GetAngleVectors(angles, vel, NULL_VECTOR, NULL_VECTOR);
+			NormalizeVector(vel, vel);
+			ScaleVector(vel, GetRandomFloat(500.0, 1250.0));
+			TeleportEntity(prop, pos, angles);
+			DispatchSpawn(prop);
+			SDK_ApplyAbsVelocityImpulse(prop, vel);
+			CreateTimer(GetRandomFloat(10.0, 18.0), Timer_DeleteEntity, EntIndexToEntRef(prop), TIMER_FLAG_NO_MAPCHANGE);
+		}
 	}
 }
 
@@ -394,6 +451,9 @@ static Action Timer_UnstuckCheck(Handle timer, int entity)
 	{
 		return Plugin_Stop;
 	}
+
+	if (!npc.Locomotion.IsAttemptingToMove())
+		return Plugin_Continue;
 	
 	bool stuck;
 	float pos[3], oldStuckPos[3], mins[3], maxs[3];

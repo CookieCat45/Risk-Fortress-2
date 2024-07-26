@@ -675,7 +675,8 @@ void SpawnMinion(int client)
 		case TFClass_Scout:
 		{
 			SetVariantString(MODEL_BOT_SCOUT);
-			CreateWeapon(client, "tf_weapon_bat_wood", 44, _, true);
+			CreateWeapon(client, "tf_weapon_lunchbox_drink", 1145, _, true);
+			CreateWeapon(client, "tf_weapon_bat_wood", 44, "218 = 1", true);
 			g_iPlayerBaseHealth[client] = 315;
 			g_flPlayerMaxSpeed[client] = 420.0;
 		}
@@ -692,6 +693,7 @@ void SpawnMinion(int client)
 		case TFClass_Pyro:
 		{
 			SetVariantString(MODEL_BOT_PYRO);
+			CreateWeapon(client, "tf_weapon_rocketpack", 1179, _, true);
 			CreateWeapon(client, "tf_weapon_fireaxe", 348, _, true);
 			g_iPlayerBaseHealth[client] = 450;
 			g_flPlayerMaxSpeed[client] = 320.0;
@@ -710,6 +712,7 @@ void SpawnMinion(int client)
 		{
 			SetVariantString(MODEL_BOT_HEAVY);
 			CreateWeapon(client, "tf_weapon_fists", 5, "2 = 1.2");
+			CreateWeapon(client, "tf_weapon_lunchbox", 863, _, true);
 			g_iPlayerBaseHealth[client] = 800;
 			g_flPlayerMaxSpeed[client] = 260.0;
 		}
@@ -729,7 +732,7 @@ void SpawnMinion(int client)
 		{
 			SetVariantString(MODEL_BOT_MEDIC);
 			CreateWeapon(client, "tf_weapon_crossbow", 1079, "1 = 0.5", true);
-			CreateWeapon(client, "tf_weapon_medigun", 894, "9 = 0.0 ; 105 = 0.0 ; 7 = 0.75");
+			CreateWeapon(client, "tf_weapon_medigun", 411, "314 = -3 ; 7 = 0.6", true);
 			CreateWeapon(client, "tf_weapon_bonesaw", 1143, "1 = 0.8");
 			g_iPlayerBaseHealth[client] = 375;
 			g_flPlayerMaxSpeed[client] = 360.0;

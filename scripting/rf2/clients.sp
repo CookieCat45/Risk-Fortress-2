@@ -1532,13 +1532,6 @@ int GetDesiredPlayerCap()
 	return g_cvMaxHumanPlayers.IntValue;
 }
 
-/*
-int GetActualPlayerCap()
-{
-	return FindConVar("tf_mvm_defenders_team_size").IntValue;
-}
-*/
-
 void ToggleHiddenSlot(bool state)
 {
 	if (state)

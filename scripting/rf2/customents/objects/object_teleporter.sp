@@ -447,7 +447,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			
 			if (PlayerHasItem(i, Item_CheatersLament_Recharging) && !g_bPlayerReviveActivated[i])
 			{
-				GiveItem(i, Item_CheatersLament);
+				GiveItem(i, Item_CheatersLament, 1, true);
 				GiveItem(i, Item_CheatersLament_Recharging, -1);
 				RF2_PrintToChat(i, "%t", "ReviveItemCharged");
 			}

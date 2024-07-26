@@ -36,6 +36,7 @@ void InstallEnts()
 	RF2_Companion_Base.Init();
 	RF2_Companion_HeavyBot.Init();
 	RF2_TankBoss.Init();
+	RF2_RobotButler.Init();
 }
 
 void HookMapStart(Function func)

@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.13.1b"
+#define PLUGIN_VERSION "0.13.2b"
 #endif
 
 #include <rf2>
@@ -432,6 +432,7 @@ int g_iThrillerRepeatCount;
 #include "rf2/npc/npc_sentry_buster.sp"
 #include "rf2/npc/npc_raidboss_galleom.sp"
 #include "rf2/npc/npc_companion_base.sp"
+#include "rf2/npc/npc_robot_butler.sp"
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
@@ -905,7 +906,7 @@ public void OnMapStart()
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("sv_tags").Flags = 0;
-		SetMVMPlayerCvar(g_bExtraAdminSlot ? GetDesiredPlayerCap()+1 : GetDesiredPlayerCap());
+		SetMVMPlayerCvar(GetDesiredPlayerCap());
 		
 		// Why is this a development only ConVar Valve?
 		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
@@ -1020,7 +1021,7 @@ public void OnConfigsExecuted()
 		char class[32];
 		GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
 		FindConVar("tf_bot_force_class").SetString(class);
-		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxHumanPlayers.IntValue-1); // extra hidden slot for an admin
+		FindConVar("tf_bot_quota").SetInt(MaxClients-g_cvMaxHumanPlayers.IntValue);
 		FindConVar("tf_bot_quota_mode").SetString("normal");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
@@ -1313,12 +1314,14 @@ public void OnClientPutInServer(int client)
 			TFBot(client).FollowerIndex = GetFreePathFollowerIndex(client);
 			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_TFBotWeaponCanSwitch);
 		}
+		/*
 		else if (g_bExtraAdminSlot && GetTotalHumans(false) < GetDesiredPlayerCap()+1)
 		{
 			// remove extra admin slot
 			ToggleHiddenSlot(false);
 			g_bExtraAdminSlot = false;
 		}
+		*/
 		
 		if (g_bRoundActive && !IsFakeClient(client) && !IsStageCleared())
 		{
@@ -1349,6 +1352,7 @@ public void OnClientPostAdminCheck(int client)
 {
 	if (RF2_IsEnabled() && !IsFakeClient(client))
 	{
+		/*
 		if (GetTotalHumans(false) > GetDesiredPlayerCap() + (g_bExtraAdminSlot ? 1 : 0))
 		{
 			if (!IsAdminReserved(client))
@@ -1362,6 +1366,7 @@ public void OnClientPostAdminCheck(int client)
 				ToggleHiddenSlot(true);
 			}
 		}
+		*/
 		
 		char auth[MAX_AUTHID_LENGTH];
 		if (GetClientAuthId(client, AuthId_Steam2, auth, sizeof(auth)))
@@ -1413,6 +1418,7 @@ public void OnClientDisconnect(int client)
 	if (!RF2_IsEnabled())
 		return;
 	
+	/*
 	if (!IsFakeClient(client))
 	{
 		if (!g_bMapChanging && g_bExtraAdminSlot && !ArePlayersConnecting())
@@ -1422,6 +1428,7 @@ public void OnClientDisconnect(int client)
 			g_bExtraAdminSlot = false;
 		}
 	}
+	*/
 
 	StopMusicTrack(client);
 	if (g_bPlayerTimingOut[client] && IsPlayerSurvivor(client) && !IsPlayerMinion(client))
@@ -1537,8 +1544,8 @@ void CheckRedTeam(int client)
 	{
 		if (i == client || !IsClientInGame(i))
 			continue;
-
-		if (IsPlayerSurvivor(i))
+		
+		if (IsPlayerSurvivor(i) && !IsPlayerMinion(i))
 			count++;
 	}
 	
@@ -2064,7 +2071,8 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			
 			case ItemDemo_ConjurersCowl, ItemMedic_WeatherMaster: event.SetString("weapon", "spellbook_lightning");
 			
-			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, ItemStrange_CroneDome, ItemSpy_Showstopper, ItemHeavy_GoneCommando: event.SetString("weapon", "pumpkindeath");
+			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, 
+				ItemStrange_CroneDome, ItemSpy_Showstopper, ItemHeavy_GoneCommando, ItemStrange_Botler: event.SetString("weapon", "pumpkindeath");
 			
 			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder, Item_RoBro: event.SetString("weapon", "merasmus_zap");
 			
@@ -5509,7 +5517,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 	
 	if (victimIsClient)
 	{
-		if (CanPlayerRegen(victim) && damage > 0.0)
+		if (CanPlayerRegen(victim) && damage > 0.0 && !invuln)
 		{
 			const float regenTimeMin  = 0.5;
 			const float regenTimeMax  = 5.0;
@@ -5568,7 +5576,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			g_bPlayerReviveActivated[victim] = true;
 			CreateTimer(GetItemMod(Item_CheatersLament, 0), Timer_PowerPlayExpire, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 			GiveItem(victim, Item_CheatersLament, -1);
-			GiveItem(victim, Item_CheatersLament_Recharging);
+			GiveItem(victim, Item_CheatersLament_Recharging, 1, true);
 		}
 	}
 	else if (IsTank(victim))

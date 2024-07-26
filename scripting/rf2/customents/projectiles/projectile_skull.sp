@@ -43,7 +43,7 @@ methodmap RF2_Projectile_Skull < RF2_Projectile_Base
 	
 	public static bool IsPlayerCursed(int client)
 	{
-		return IsValidEntity2(g_iDeathWorldText[client]);
+		return IsValidEntity2(g_iDeathWorldText[client]) && TF2_IsPlayerInCondition(client, TFCond_MarkedForDeath);
 	}
 }
 

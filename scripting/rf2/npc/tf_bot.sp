@@ -1603,14 +1603,6 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 	return Plugin_Continue;
 }
 
-/*
-void UpdateBotQuota()
-{
-	ConVar quota = FindConVar("tf_bot_quota");
-	quota.IntValue = MaxClients-g_cvMaxHumanPlayers.IntValue;
-}
-*/
-
 // -1 = let bot decide
 int TFBot_GetDesiredWeapon(TFBot bot, int &slot=WeaponSlot_Primary)
 {

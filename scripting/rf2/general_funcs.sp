@@ -587,6 +587,18 @@ void PrecacheSoundArray(const char[][] soundArray, int size, bool download=true)
 	}
 }
 
+void PrecacheModelArray(const char[][] modelArray, int size, bool download=true)
+{
+	for (int i = 0; i < size; i++)
+	{
+		PrecacheModel2(modelArray[i], true);
+		if (download)
+		{
+			AddModelToDownloadsTable(modelArray[i], false);
+		}
+	}
+}
+
 int GetPluginModifiedTime()
 {
 	static char path[PLATFORM_MAX_PATH];

@@ -886,7 +886,7 @@ void UpdatePlayerItem(int client, int item)
 			{
 				if (PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
 				{
-					TF2Attrib_SetByDefIndex(watch, 221, 1.0-fmin(1.0, CalcItemMod(client, item, 1))); // "mult decloak rate"
+					TF2Attrib_SetByDefIndex(watch, 221, 1.0-fmin(0.99, CalcItemMod(client, item, 1))); // "mult decloak rate"
 				}
 				else
 				{
@@ -1425,6 +1425,26 @@ bool ActivateStrangeItem(int client)
 	
 	switch (equipment)
 	{
+		case ItemStrange_Botler:
+		{
+			RF2_RobotButler bot = RF2_RobotButler(CreateEntityByName("rf2_npc_robot_butler"));
+			bot.Master = client;
+			bot.Team = GetClientTeam(client);
+			int health = RoundToFloor(GetItemMod(ItemStrange_Botler, 0) * GetEnemyHealthMult());
+			bot.MaxHealth = health;
+			bot.Health = health;
+			bot.HealCooldown = GetItemMod(ItemStrange_Botler, 1);
+			bot.BombDamage = GetItemMod(ItemStrange_Botler, 2);
+			bot.BombRadius = GetItemMod(ItemStrange_Botler, 3);
+			bot.SuicideBombAt = GetGameTime()+GetItemMod(ItemStrange_Botler, 4);
+			float pos[3];
+			GetEntPos(client, pos);
+			TE_TFParticle("eyeboss_tp_player", pos);
+			EmitAmbientGameSound("Building_Teleporter.Send", pos);
+			bot.Teleport(pos);
+			bot.Spawn();
+		}
+		
 		case ItemStrange_RobotChicken:
 		{
 			TF2_AddCondition(client, TFCond_CritOnFlagCapture, GetItemMod(ItemStrange_RobotChicken, 0));
@@ -1758,16 +1778,22 @@ bool ActivateStrangeItem(int client)
 			GetClientEyePosition(client, pos);
 			GetClientEyeAngles(client, angles);
 			
-			ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
+			int shuriken = ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
 				GetItemMod(ItemStrange_LegendaryLid, 2), GetItemMod(ItemStrange_LegendaryLid, 0), -2.0);
 			
+			SetEntItemProc(shuriken, ItemStrange_LegendaryLid);
+
 			angles[1] += 10.0;
-			ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
+			shuriken = ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
 				GetItemMod(ItemStrange_LegendaryLid, 2), GetItemMod(ItemStrange_LegendaryLid, 0), -2.0);
+			
+			SetEntItemProc(shuriken, ItemStrange_LegendaryLid);
 			
 			angles[1] -= 20.0;
-			ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
+			shuriken = ShootProjectile(client, "rf2_projectile_shuriken", pos, angles, 
 				GetItemMod(ItemStrange_LegendaryLid, 2), GetItemMod(ItemStrange_LegendaryLid, 0), -2.0);
+			
+			SetEntItemProc(shuriken, ItemStrange_LegendaryLid);
 			
 			ClientPlayGesture(client, "ACT_MP_THROW");
 			EmitSoundToAll(SND_THROW, client);
@@ -1779,9 +1805,11 @@ bool ActivateStrangeItem(int client)
 			GetClientEyePosition(client, pos);
 			GetClientEyeAngles(client, angles);
 			
-			ShootProjectile(client, "rf2_projectile_bomb", pos, angles, 
+			int bomb = ShootProjectile(client, "rf2_projectile_bomb", pos, angles, 
 				GetItemMod(ItemStrange_CroneDome, 3), GetItemMod(ItemStrange_CroneDome, 1), -2.0);
 			
+			SetEntItemProc(bomb, ItemStrange_CroneDome);
+
 			ClientPlayGesture(client, "ACT_MP_THROW");
 			EmitSoundToAll(SND_THROW, client);
 		}
@@ -1792,9 +1820,11 @@ bool ActivateStrangeItem(int client)
 			GetClientEyePosition(client, pos);
 			GetClientEyeAngles(client, angles);
 			
-			ShootProjectile(client, "rf2_projectile_kunai", pos, angles, 
+			int kunai = ShootProjectile(client, "rf2_projectile_kunai", pos, angles, 
 				GetItemMod(ItemStrange_HandsomeDevil, 2), GetItemMod(ItemStrange_HandsomeDevil, 0), -2.0);
 			
+			SetEntItemProc(kunai, ItemStrange_HandsomeDevil);
+
 			ClientPlayGesture(client, "ACT_MP_THROW");
 			EmitSoundToAll(SND_THROW, client);
 		}
