@@ -618,9 +618,12 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 			continue;
 		
 		// Make sure this enemy matches our group if we have one
-		EnemyByIndex(i).GetGroup(group, sizeof(group));
-		if (group[0] && !strcmp2(group, g_szCurrentEnemyGroup))
-			continue;
+		if (g_szCurrentEnemyGroup[0])
+		{
+			EnemyByIndex(i).GetGroup(group, sizeof(group));
+			if (group[0] && !strcmp2(group, g_szCurrentEnemyGroup))
+				continue;
+		}
 		
 		for (int j = 1; j <= EnemyByIndex(i).Weight; j++)
 			enemyList.Push(i);
@@ -649,9 +652,12 @@ int GetRandomBoss(bool getName = false, char[] buffer="", int size=0)
 			continue;
 		
 		// Make sure this enemy matches our group if we have one
-		EnemyByIndex(i).GetGroup(group, sizeof(group));
-		if (group[0] && !strcmp2(group, g_szCurrentEnemyGroup))
-			continue;
+		if (g_szCurrentEnemyGroup[0])
+		{
+			EnemyByIndex(i).GetGroup(group, sizeof(group));
+			if (group[0] && !strcmp2(group, g_szCurrentEnemyGroup))
+				continue;
+		}
 
 		for (int j = 1; j <= EnemyByIndex(i).Weight; j++)
 			bossList.Push(i);
@@ -874,7 +880,6 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		strcopy(buffer, sizeof(buffer), conds);
 		ReplaceString(buffer, MAX_ATTRIBUTE_STRING_LENGTH, " ; ", " = ");
 		int count = ExplodeString(buffer, " = ", buffers, sizeof(buffers), sizeof(buffers[]), true);
-		
 		for (int i = 0; i <= count+1; i+=2)
 		{
 			TF2_AddCondition(client, view_as<TFCond>(StringToInt(buffers[i])), StringToFloat(buffers[i+1]));
@@ -890,6 +895,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	if (g_bPlayerSpawnedByTeleporter[client])
 	{
 		TE_TFParticle("eyeboss_tp_player", spawnPos);
+		TF2_AddCondition(client, TFCond_TeleportedGlow, 15.0);
 		g_bPlayerSpawnedByTeleporter[client] = false;
 	}
 	

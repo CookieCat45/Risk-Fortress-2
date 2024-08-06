@@ -10,7 +10,11 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.13.2b"
+#define PLUGIN_VERSION "0.14b"
+#endif
+
+#if !defined PLUGIN_NAME
+#define PLUGIN_NAME "rf2.smx"
 #endif
 
 #include <rf2>
@@ -63,7 +67,6 @@ float g_flAutoReloadTime;
 float g_flCurrentCostMult;
 float g_flHeadshotDamage;
 bool g_bChangeDetected;
-bool g_bHauntedKeyDrop[MAXTF2PLAYERS];
 bool g_bServerRestarting;
 bool g_bForceRifleSound;
 bool g_bMapRunning;
@@ -144,6 +147,7 @@ bool g_bPlayerHealOnHitCooldown[MAXTF2PLAYERS];
 bool g_bPlayerViewingItemDesc[MAXTF2PLAYERS];
 bool g_bPlayerReviveActivated[MAXTF2PLAYERS];
 bool g_bPlayerItemShareExcluded[MAXTF2PLAYERS];
+bool g_bHauntedKeyDrop[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -167,6 +171,7 @@ float g_flPlayerRifleHeadshotBonusTime[MAXTF2PLAYERS];
 float g_flPlayerGravityJumpBonusTime[MAXTF2PLAYERS];
 float g_flPlayerTimeSinceLastPing[MAXTF2PLAYERS];
 float g_flPlayerTimeSinceLastItemPickup[MAXTF2PLAYERS];
+float g_flPlayerCaberRechargeAt[MAXTF2PLAYERS];
 
 int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
@@ -246,6 +251,7 @@ Handle g_hSDKWeaponSwitch;
 Handle g_hSDKRealizeSpy;
 Handle g_hSDKSpawnZombie;
 Handle g_hSDKAbsVelImpulse;
+Handle g_hSDKTankSetStartNode;
 DynamicDetour g_hDetourSentryAttack;
 DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourSetReloadTimer;
@@ -391,6 +397,7 @@ int g_iThrillerRepeatCount;
 #include "rf2/customents/dispenser_shield.sp"
 #include "rf2/customents/world_center.sp"
 #include "rf2/customents/trigger_exit.sp"
+#include "rf2/customents/tank_spawner.sp"
 
 #include "rf2/customents/objects/object_base.sp"
 #include "rf2/customents/objects/object_teleporter.sp"
@@ -607,6 +614,14 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CBaseEntity::ApplyAbsVelocityImpulse");
 	}
 	
+	StartPrepSDKCall(SDKCall_Entity);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFTankBoss::SetStartingPathTrackNode");
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // targetname of path_track entity
+	g_hSDKTankSetStartNode = EndPrepSDKCall();
+	if (!g_hSDKTankSetStartNode)
+	{
+		LogError("[SDK] Failed to create call for CTFTankBoss::SetStartingPathTrackNode");
+	}
 	
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFWeaponBase::GetMaxClip1");
@@ -1042,7 +1057,7 @@ public void OnMapEnd()
 	g_szForcedMap = "";
 	if (RF2_IsEnabled())
 	{
-		if (!g_bGameOver && !IsInUnderworld())
+		if (!g_bGameOver && g_bGameInitialized && !IsInUnderworld())
 		{
 			g_iStagesCompleted++;
 		}
@@ -1095,6 +1110,9 @@ void CleanUp()
 	g_bInUnderworld = false;
 	g_flNextAutoReloadCheckTime = 0.0;
 	g_flAutoReloadTime = 0.0;
+	g_flMinSpawnDistOverride = -1.0;
+	g_flMaxSpawnDistOverride = -1.0;
+	g_flBossSpawnChanceBonus = 0.0;
 	g_hPlayerTimer = null;
 	g_hHudTimer = null;
 	g_hDifficultyTimer = null;
@@ -2076,7 +2094,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			
 			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder, Item_RoBro: event.SetString("weapon", "merasmus_zap");
 			
-			case ItemStrange_LegendaryLid, ItemStrange_HandsomeDevil: event.SetString("weapon", "kunai");
+			case ItemStrange_LegendaryLid, ItemStrange_HandsomeDevil, Item_BedouinBandana: event.SetString("weapon", "kunai");
 			
 			case ItemScout_FedFedora: event.SetString("weapon", "headshot");
 			
@@ -2745,8 +2763,7 @@ public void RF_TeleporterThink(int building)
 		const int maxSpawns = 2;
 		const float max = 250.0;
 		float subIncrement = RF2_GetDifficultyCoeff() / g_cvSubDifficultyIncrement.FloatValue;
-		float bossChance = subIncrement < max ? subIncrement : max;
-
+		float bossChance = fmin(subIncrement+g_flBossSpawnChanceBonus, max);
 		for (int i = 0; i < enemies.Length; i++)
 		{
 			client = enemies.Get(i);
@@ -2886,6 +2903,53 @@ void EndGracePeriod()
 			SetVariantFloat(1.0);
 			AcceptEntityInput(entity, "SetSetupTime");
 			CreateTimer(2.0, Timer_DeleteEntity, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+		}
+	}
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+			continue;
+
+		if (PlayerHasItem(i, Item_HauntedHat))
+		{
+			ArrayList buffs = new ArrayList();
+			buffs.Push(TFCond_CritOnFirstBlood);
+			
+			// make crits extra rare
+			for (int a = 1; a <= 2; a++)
+			{
+				buffs.Push(TFCond_MegaHeal);
+				buffs.Push(TFCond_DefenseBuffed);
+				buffs.Push(TFCond_BalloonHead);
+				buffs.Push(TFCond_RegenBuffed);
+				if (!PlayerHasItem(i, Item_MisfortuneFedora))
+				{
+					buffs.Push(TFCond_Buffed);
+				}
+			}
+			
+			TF2_AddCondition(i, buffs.Get(0, buffs.Length-1), CalcItemMod(i, Item_HauntedHat, 0));
+			delete buffs;
+
+			ArrayList debuffs = new ArrayList();
+			debuffs.Push(TFCond_Dazed);
+			debuffs.Push(TFCond_Bleeding);
+			debuffs.Push(TFCond_MarkedForDeathSilent);
+			TFCond debuff = debuffs.Get(0, debuffs.Length-1);
+			delete debuffs;
+			if (debuff == TFCond_Dazed)
+			{
+				TF2_StunPlayer(i, CalcItemMod(i, Item_HauntedHat, 1), 0.35, TF_STUNFLAG_SLOWDOWN, i);
+			}
+			else if (debuff == TFCond_Bleeding)
+			{
+				TF2_MakeBleed(i, i, CalcItemMod(i, Item_HauntedHat, 1));
+			}
+			else
+			{
+				TF2_AddCondition(i, debuff, CalcItemMod(i, Item_HauntedHat, 1));
+			}
 		}
 	}
 	
@@ -3206,7 +3270,6 @@ public Action Timer_PlayerHud(Handle timer)
 		
 		hudSeconds = RoundFloat((g_flSecondsPassed) - (float(g_iMinutesPassed) * 60.0));
 		strangeItem = GetPlayerEquipmentItem(i);
-		
 		if (strangeItem > Item_Null && !IsPlayerMinion(i))
 		{
 			GetItemName(strangeItem, strangeItemInfo, sizeof(strangeItemInfo));
@@ -3246,25 +3309,24 @@ public Action Timer_PlayerHud(Handle timer)
 		}
 		
 		miscText = "";
-		char difficultyName[32];
+		static char difficultyName[32];
 		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
 		if (IsPlayerSurvivor(i))
 		{
-			if (g_bTankBossMode && !g_bGracePeriod)
+			if (!g_bGracePeriod)
 			{
 				if (IsValidEntity2(g_iPlayerLastAttackedTank[i]))
 				{
-					static char classname[128], name[32];
-					GetEntityClassname(g_iPlayerLastAttackedTank[i], classname, sizeof(classname));
 					RF2_TankBoss tank = RF2_TankBoss(g_iPlayerLastAttackedTank[i]);
 					if (tank.IsValid())
 					{
-						name = tank.IsBadass() ? "Badass Tank" : "Tank";
-						FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Tanks Destroyed: %i/%i\n%s Health: %i/%i",
+						static char name[32];
+						name = tank.IsBadass() ? tank.SuperBadass ? "Super Badass Tank" : "Badass Tank" : "Tank";
+						FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), g_bTankBossMode ? "Tanks Destroyed: %i/%i\n%s Health: %i/%i" : "%s Health: %i/%i",
 							g_iTanksKilledObjective, g_iTankKillRequirement, name, tank.Health, tank.MaxHealth);
 					}
 				}
-				else
+				else if (g_bTankBossMode)
 				{
 					g_iPlayerLastAttackedTank[i] = INVALID_ENT;
 					FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Tanks Destroyed: %i/%i",
@@ -3276,6 +3338,10 @@ public Action Timer_PlayerHud(Handle timer)
 			if (class == TFClass_Spy && g_flPlayerVampireSapperCooldown[i] > 0.0)
 			{
 				FormatEx(miscText, sizeof(miscText), "\nSapper Cooldown: %.1f", g_flPlayerVampireSapperCooldown[i]);
+			}
+			else if (class == TFClass_DemoMan && g_flPlayerCaberRechargeAt[i] > 0.0)
+			{
+				FormatEx(miscText, sizeof(miscText), "\nCaber: %.1f", FloatAbs(g_flPlayerCaberRechargeAt[i]-GetGameTime()));
 			}
 			else if (class == TFClass_Sniper)
 			{
@@ -3427,15 +3493,14 @@ public Action Timer_Difficulty(Handle timer)
 	{
 		g_iSubDifficulty++;
 		SetHudDifficulty(g_iSubDifficulty);
-
 		static float lastBellTime;
-		if (GetTickedTime() > lastBellTime+10.0)
+		if (g_iSubDifficulty <= SubDifficulty_Hahaha && GetTickedTime() > lastBellTime+10.0)
 		{
 			EmitSoundToAll(SND_BELL);
 			lastBellTime = GetTickedTime();
 		}
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -3525,6 +3590,35 @@ public Action Timer_PlayerTimer(Handle timer)
 			if (ammoType > TFAmmoType_None && ammoType < TFAmmoType_Metal)
 			{
 				GivePlayerAmmo(i, 999999, ammoType, true);
+			}
+		}
+
+		if (TF2_GetPlayerClass(i) == TFClass_DemoMan && IsPlayerSurvivor(i))
+		{
+			int caber = GetPlayerWeaponSlot(i, WeaponSlot_Melee);
+			if (caber != INVALID_ENT)
+			{
+				// Recharging caber
+				static char classname[64];
+				GetEntityClassname(caber, classname, sizeof(classname));
+				if (strcmp2(classname, "tf_weapon_stickbomb"))
+				{
+					bool detonated = asBool(GetEntProp(caber, Prop_Send, "m_iDetonated"));
+					if (detonated)
+					{
+						if (g_flPlayerCaberRechargeAt[i] == 0.0)
+						{
+							g_flPlayerCaberRechargeAt[i] = GetGameTime()+60.0;
+						}
+						else if (GetGameTime() >= g_flPlayerCaberRechargeAt[i])
+						{
+							SetEntProp(caber, Prop_Send, "m_iDetonated", false);
+							g_flPlayerCaberRechargeAt[i] = 0.0;
+							EmitGameSoundToClient(i, "Item.Materialize");
+							PrintHintText(i, "Your Ullapool Caber has been recharged");
+						}
+					}
+				}
 			}
 		}
 		
@@ -5201,6 +5295,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			proc *= GetItemProcCoeff(GetEntItemProc(inflictor));
 		}
 		
+		if (damageType & DMG_BLAST && PlayerHasItem(attacker, ItemDemo_OldBrimstone) && CanUseCollectorItem(attacker, ItemDemo_OldBrimstone))
+		{
+			damage *= 1.0 + CalcItemMod(attacker, ItemDemo_OldBrimstone, 0);
+		}
+		
 		if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
 		{
 			bool flare = strcmp2(inflictorClassname, "tf_projectile_flare");
@@ -5755,6 +5854,22 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 					delete hitEnemies;
 				}
 			}
+
+			switch (damageCustom)
+			{
+				case TF_CUSTOM_CHARGE_IMPACT:
+				{
+					if (PlayerHasItem(attacker, ItemDemo_OldBrimstone) && CanUseCollectorItem(attacker, ItemDemo_OldBrimstone))
+					{
+						float boomPos[3];
+						GetEntPos(attacker, boomPos, true);
+						float dmg = GetItemMod(ItemDemo_OldBrimstone, 2);
+						float radius = GetItemMod(ItemDemo_OldBrimstone, 3) * (1.0 + CalcItemMod(attacker, ItemDemo_OldBrimstone, 1));
+						DoRadiusDamage(attacker, attacker, boomPos, ItemDemo_OldBrimstone, dmg, DMG_BLAST, radius);
+						DoExplosionEffect(boomPos);
+					}
+				}
+			}
 			
 			if (PlayerHasItem(attacker, Item_AlienParasite) && !g_bPlayerHealOnHitCooldown[attacker])
 			{
@@ -5765,12 +5880,12 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			
 			if (IsPlayerSurvivor(attacker))
 			{
-				if (damage >= 10000.0)
+				if (damage >= 10000.0 && damageCustom != TF_CUSTOM_BACKSTAB)
 				{
 					TriggerAchievement(attacker, ACHIEVEMENT_BIGDAMAGE);
 				}
 				
-				if (damage >= 32767.0)
+				if (damage >= 32767.0 && damageCustom != TF_CUSTOM_BACKSTAB)
 				{
 					TriggerAchievement(attacker, ACHIEVEMENT_DAMAGECAP);
 				}
@@ -6156,7 +6271,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	
 	if (!bot && buttons & IN_ATTACK)
 	{
-		if (IsPlayerSurvivor(client) && g_flPlayerVampireSapperCooldown[client] <= 0.0 && TF2_GetPlayerClass(client) == TFClass_Spy)
+		if ((IsPlayerSurvivor(client) || IsPlayerMinion(client)) && g_flPlayerVampireSapperCooldown[client] <= 0.0 && TF2_GetPlayerClass(client) == TFClass_Spy)
 		{
 			if (!TF2_IsPlayerInCondition(client, TFCond_Cloaked) && GetGameTime() >= GetEntPropFloat(client, Prop_Send, "m_flInvisChangeCompleteTime"))
 			{

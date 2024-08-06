@@ -13,7 +13,7 @@ methodmap RF2_Projectile_Kunai < RF2_Projectile_Base
 	
 	public bool IsValid()
 	{
-		if (this.index == 0 || !IsValidEntity2(this.index))
+		if (!IsValidEntity2(this.index))
 		{
 			return false;
 		}
@@ -51,14 +51,15 @@ static void OnCollide(RF2_Projectile_Kunai kunai, int other)
 		return;
 	
 	int damageType = DMG_SLASH;
-	if (IsValidClient(other))
+	int itemProc = GetEntItemProc(kunai.index);
+	if (itemProc == ItemStrange_HandsomeDevil && IsValidClient(other))
 	{
 		if (TF2_IsPlayerInCondition(other, TFCond_MarkedForDeath) || TF2_IsPlayerInCondition(other, TFCond_MarkedForDeathSilent))
 			damageType |= DMG_CRIT;
 	}
 	
-	RF_TakeDamage(other, kunai.index, kunai.Owner, kunai.Damage, damageType, GetEntItemProc(kunai.index));
-	if (IsValidClient(other))
+	RF_TakeDamage(other, kunai.index, kunai.Owner, kunai.Damage, damageType, itemProc);
+	if (itemProc == ItemStrange_HandsomeDevil && IsValidClient(other))
 	{
 		TF2_AddCondition(other, TFCond_MarkedForDeath, GetItemMod(ItemStrange_HandsomeDevil, 1), IsValidClient(kunai.Owner) ? kunai.Owner : 0);
 	}

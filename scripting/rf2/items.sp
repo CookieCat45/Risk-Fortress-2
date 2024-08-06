@@ -518,7 +518,7 @@ void UpdatePlayerItem(int client, int item)
 			float value = CalcItemMod(client, Item_MaxHead, 0);
 			int primary = GetPlayerWeaponSlot(client, 0);
 			int secondary = GetPlayerWeaponSlot(client, 1);
-			if (primary > 0)
+			if (primary != INVALID_ENT)
 			{
 				if (PlayerHasItem(client, item))
 				{
@@ -530,7 +530,7 @@ void UpdatePlayerItem(int client, int item)
 				}
 			}
 			
-			if (secondary > 0)
+			if (secondary != INVALID_ENT)
 			{
 				if (PlayerHasItem(client, item))
 				{
@@ -558,7 +558,7 @@ void UpdatePlayerItem(int client, int item)
 			for (int i = WeaponSlot_Primary; i <= WeaponSlot_InvisWatch; i++)
 			{
 				weapon = GetPlayerWeaponSlot(client, i);
-				if (weapon <= 0)
+				if (weapon == INVALID_ENT)
 					continue;
 					
 				ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType"); // we may not need to waste an attribute slot here
@@ -633,7 +633,7 @@ void UpdatePlayerItem(int client, int item)
 			if (CanUseCollectorItem(client, ItemEngi_Teddy))
 			{
 				int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-				if (wrench > 0)
+				if (wrench != INVALID_ENT)
 				{
 					if (PlayerHasItem(client, ItemEngi_Teddy))
 					{
@@ -653,7 +653,7 @@ void UpdatePlayerItem(int client, int item)
 		case ItemMedic_BlightedBeak, ItemMedic_ProcedureMask:
 		{
 			int medigun = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-			if (medigun > 0)
+			if (medigun != INVALID_ENT)
 			{
 				if (item == ItemMedic_BlightedBeak && PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
 				{
@@ -689,7 +689,7 @@ void UpdatePlayerItem(int client, int item)
 			if (CanUseCollectorItem(client, item))
 			{
 				int minigun = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-				if (minigun > 0)
+				if (minigun != INVALID_ENT)
 				{
 					if (PlayerHasItem(client, item))
 					{
@@ -703,6 +703,38 @@ void UpdatePlayerItem(int client, int item)
 						TF2Attrib_RemoveByDefIndex(minigun, 323);
 					}
 				}	
+			}
+		}
+		case ItemDemo_OldBrimstone:
+		{
+			if (CanUseCollectorItem(client, item))
+			{
+				float value = 1.0 + CalcItemMod(client, ItemDemo_OldBrimstone, 1);
+				int primary = GetPlayerWeaponSlot(client, 0);
+				int secondary = GetPlayerWeaponSlot(client, 1);
+				if (primary != INVALID_ENT)
+				{
+					if (PlayerHasItem(client, item))
+					{
+						TF2Attrib_SetByDefIndex(primary, 99, value); // "blast radius increased"
+					}
+					else
+					{
+						TF2Attrib_RemoveByDefIndex(primary, 99);
+					}
+				}
+				
+				if (secondary != INVALID_ENT)
+				{
+					if (PlayerHasItem(client, item))
+					{
+						TF2Attrib_SetByDefIndex(secondary, 99, value);
+					}
+					else
+					{
+						TF2Attrib_RemoveByDefIndex(secondary, 99);
+					}
+				}
 			}
 		}
 		case Item_BatteryCanteens:
@@ -735,12 +767,12 @@ void UpdatePlayerItem(int client, int item)
 					int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
 					amount = CalcItemMod_HyperbolicInverted(client, item, 1);
 					
-					if (primary > 0)
+					if (primary != INVALID_ENT)
 					{
 						TF2Attrib_SetByDefIndex(primary, 106, amount); // "weapon spread bonus"
 					}
 					
-					if (secondary > 0)
+					if (secondary != INVALID_ENT)
 					{
 						TF2Attrib_SetByDefIndex(secondary, 106, amount);
 					}
@@ -751,12 +783,12 @@ void UpdatePlayerItem(int client, int item)
 				TF2Attrib_RemoveByDefIndex(client, 178);
 				int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 				int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-				if (primary > 0)
+				if (primary != INVALID_ENT)
 				{
 					TF2Attrib_RemoveByDefIndex(primary, 106);
 				}
 				
-				if (secondary > 0)
+				if (secondary != INVALID_ENT)
 				{
 					TF2Attrib_RemoveByDefIndex(secondary, 106);
 				}
@@ -767,7 +799,7 @@ void UpdatePlayerItem(int client, int item)
 			if (CanUseCollectorItem(client, item))
 			{
 				int launcher = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-				if (launcher > 0)
+				if (launcher != INVALID_ENT)
 				{
 					if (PlayerHasItem(client, item))
 					{
@@ -801,7 +833,7 @@ void UpdatePlayerItem(int client, int item)
 			{
 				int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 				int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-				if (primary > 0)
+				if (primary != INVALID_ENT)
 				{
 					if (PlayerHasItem(client, item))
 					{
@@ -814,7 +846,7 @@ void UpdatePlayerItem(int client, int item)
 					}
 				}
 				
-				if (secondary > 0)
+				if (secondary != INVALID_ENT)
 				{
 					if (PlayerHasItem(client, item))
 					{
@@ -828,7 +860,7 @@ void UpdatePlayerItem(int client, int item)
 				}
 				
 				int shield = GetPlayerShield(client);
-				if (shield > 0)
+				if (shield != INVALID_ENT)
 				{
 					if (PlayerHasItem(client, item))
 					{
@@ -1105,6 +1137,41 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 			if (!TR_DidHit() && GetVectorDistance(victimPos, enemyPos, true) <= sq(radius))
 			{
 				TF2_MakeBleed(i, attacker, GetItemMod(Item_Executioner, 3));
+			}
+		}
+	}
+	
+	if (PlayerHasItem(attacker, Item_BedouinBandana))
+	{
+		if (RandChanceFloatEx(attacker, 0.0, 1.0, GetItemMod(Item_BedouinBandana, 0)))
+		{
+			float damage = GetItemMod(Item_BedouinBandana, 1) + CalcItemMod(attacker, Item_BedouinBandana, 2, -1);
+			float speed = GetItemMod(Item_BedouinBandana, 4);
+			int count = GetItemModInt(Item_BedouinBandana, 3);
+			float victimPos[3], spawnPos[3], angles[3], dir[3];
+			GetEntPos(victim, victimPos, true);
+			for (int i = 1; i <= count; i++)
+			{
+				// spread the knives out a bit
+				GetAngleVectors(angles, dir, NULL_VECTOR, NULL_VECTOR);
+				NormalizeVector(dir, dir);
+				CopyVectors(victimPos, spawnPos);
+				float rand = GetRandomFloat(25.0, 75.0);
+				spawnPos[0] += dir[0] * rand;
+				spawnPos[1] += dir[1] * rand;
+				spawnPos[2] += dir[2] * rand;
+				
+				RF2_Projectile_Kunai kunai = RF2_Projectile_Kunai(ShootProjectile(attacker, "rf2_projectile_kunai", spawnPos, angles, speed, damage, _, _, false));
+				kunai.Homing = true;
+				kunai.Flying = true;
+				kunai.DeactivateOnHit = false;
+				kunai.SetWorldImpactSound(""); // otherwise there will be earrape
+				SetEntItemProc(kunai.index, Item_BedouinBandana);
+				kunai.SetRedTrail("flaregun_trail_red");
+				kunai.SetBlueTrail("flaregun_trail_blue");
+				kunai.AltParticleSpawn = true;
+				kunai.Spawn();
+				angles[1] += 60.0;
 			}
 		}
 	}
@@ -2089,7 +2156,8 @@ public Action Timer_EquipmentCooldown(Handle timer, int client)
 }
 
 void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float angles[3], bool infiniteRange=true, 
-	const float endPos[3]=NULL_VECTOR, float damage, int damageFlags, float size, int colors[4], const char[] particleAttach="")
+	const float endPos[3]=NULL_VECTOR, float damage, int damageFlags, float size, int colors[4], const char[] particleAttach="", 
+	bool particle=true, bool playSound=true, float life=0.4)
 {
 	RayType type;
 	float vec[3], end[3];
@@ -2106,18 +2174,24 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 	
 	TR_TraceRayFilter(pos, vec, MASK_PLAYERSOLID_BRUSHONLY, type, TraceFilter_WallsOnly);
 	TR_GetEndPosition(end);
-	TE_SetupBeamPoints(pos, end, g_iBeamModel, 0, 0, 0, 0.4, size, size, 0, 2.0, colors, 8);
+	TE_SetupBeamPoints(pos, end, g_iBeamModel, 0, 0, 0, life, size, size, 0, 2.0, colors, 8);
 	TE_SendToAll();
-	EmitSoundToAll(SND_LASER, attacker);
+
+	if (playSound)
+		EmitSoundToAll(SND_LASER, attacker);
 	
-	if (particleAttach[0])
+	if (particle)
 	{
-		TE_TFParticle("drg_manmelter_impact", pos, attacker, PATTACH_POINT, particleAttach);
+		if (particleAttach[0])
+		{
+			TE_TFParticle("drg_manmelter_impact", pos, attacker, PATTACH_POINT, particleAttach);
+		}
+		else
+		{
+			TE_TFParticle("drg_manmelter_impact", pos);
+		}
 	}
-	else
-	{
-		TE_TFParticle("drg_manmelter_impact", pos);
-	}
+	
 	
 	// hitbox
 	float mins[3], maxs[3];

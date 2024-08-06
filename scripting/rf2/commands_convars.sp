@@ -1301,6 +1301,10 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 				float pos[3];
 				GetEntPos(param1, pos);
 				char bossName[256];
+				
+				if (g_bGracePeriod)
+					EndGracePeriod();
+
 				SpawnBoss(target, type, pos, false, 0.0, 3000.0);
 				EnemyByIndex(type).GetName(bossName, sizeof(bossName));
 				RF2_PrintToChat(param1, "%t", "SpawnedBoss", bossName);
@@ -1360,6 +1364,10 @@ public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
 				float pos[3];
 				GetEntPos(param1, pos);
 				char enemyName[256];
+
+				if (g_bGracePeriod)
+					EndGracePeriod();
+
 				SpawnEnemy(target, type, pos, 0.0, 3000.0);
 				EnemyByIndex(type).GetName(enemyName, sizeof(enemyName));
 				RF2_PrintToChat(param1, "%t", "SpawnedEnemy", enemyName);

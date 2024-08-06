@@ -20,7 +20,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 	
 	public bool IsValid()
 	{
-		if (this.index == 0 || !IsValidEntity2(this.index))
+		if (!IsValidEntity2(this.index))
 		{
 			return false;
 		}
@@ -46,6 +46,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			.DefineFloatField("m_flDirectDamage")
 			.DefineFloatField("m_flExplodeRadius")
 			.DefineFloatField("m_flFalloffMult")
+			.DefineFloatField("m_flLastVPhysicsUpdate")
 			.DefineVectorField("m_vecHitboxMins")
 			.DefineVectorField("m_vecHitboxMaxs")
 			.DefineBoolField("m_bHit")
@@ -319,6 +320,19 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			this.SetPropFloat(Prop_Data, "m_flFalloffMult", value);
 		}
 	}
+
+	property float LastVPhysicsUpdate
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flLastVPhysicsUpdate");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flLastVPhysicsUpdate", value);
+		}
+	}
 	
 	// for explosions
 	property int ImpactTarget
@@ -448,6 +462,9 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			case SoundType_CharImpact: this.GetCharImpactSound(sound, sizeof(sound));
 			case SoundType_WorldImpact: this.GetWorldImpactSound(sound, sizeof(sound));
 		}
+
+		if (!sound[0])
+			return;
 		
 		if (type == SoundType_Fire)
 		{
@@ -552,7 +569,6 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		if (closestEnt != INVALID_ENT)
 		{
 			this.HomingTarget = closestEnt;
-			this.LastHomingTime = GetGameTime();
 		}
 	}
 
@@ -598,6 +614,7 @@ static void OnCreate(RF2_Projectile_Base proj)
 	proj.DeactivateTime = 6.0;
 	proj.HomingSpeed = 50.0;
 	proj.LastHomingTime = GetGameTime();
+	proj.LastVPhysicsUpdate = GetGameTime();
 	proj.SetHitboxMins({-20.0, -20.0, -20.0});
 	proj.SetHitboxMaxs({20.0, 20.0, 20.0});
 	SetEntityCollisionGroup(proj.index, COLLISION_GROUP_PROJECTILE);
@@ -606,6 +623,7 @@ static void OnCreate(RF2_Projectile_Base proj)
 	proj.HookOnCollide(Projectile_OnCollide);
 	SDKHook(proj.index, SDKHook_SpawnPost, OnSpawnPost);
 	SDKHook(proj.index, SDKHook_VPhysicsUpdate, OnVPhysicsUpdate);
+	CreateTimer(0.5, Timer_CheckVPhysicsUpdate, EntIndexToEntRef(proj.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	if (g_hHookVPhysicsCollision)
 	{
 		g_hHookVPhysicsCollision.HookEntity(Hook_Post, proj.index, DHook_ProjectileCollision);
@@ -655,8 +673,15 @@ static void OnSpawnPost(int entity)
 			SpawnParticleViaTrigger(proj.index, trail, _, PATTACH_ABSORIGIN_FOLLOW);
 		}
 	}
-	
-	if (proj.Flying)
+
+	proj.PlaySound(SoundType_Fire);
+}
+
+public void OnVPhysicsUpdate(int entity)
+{
+	RF2_Projectile_Base proj = RF2_Projectile_Base(entity);
+	proj.LastVPhysicsUpdate = GetGameTime();
+	if (!IsValidEntity2(proj.Thruster) && proj.Flying)
 	{
 		static char name[32];
 		FormatEx(name, sizeof(name), "rf2proj_%i", proj.index);
@@ -670,13 +695,7 @@ static void OnSpawnPost(int entity)
 		ActivateEntity(proj.Thruster);
 		AcceptEntityInput(proj.Thruster, "Activate");
 	}
-	
-	proj.PlaySound(SoundType_Fire);
-}
 
-public void OnVPhysicsUpdate(int entity)
-{
-	RF2_Projectile_Base proj = RF2_Projectile_Base(entity);
 	if (!proj.HasHit)
 	{
 		float pos[3], mins[3], maxs[3];
@@ -713,6 +732,7 @@ public void OnVPhysicsUpdate(int entity)
 		
 		if (IsValidEntity2(proj.HomingTarget) && IsLOSClear(proj.index, proj.HomingTarget) && (!IsValidClient(proj.HomingTarget) || IsPlayerAlive(proj.HomingTarget)))
 		{
+			proj.LastHomingTime = GetGameTime();
 			float ang[3], myPos[3], targetPos[3], vel[3];
 			proj.WorldSpaceCenter(myPos);
 			CBaseEntity(proj.HomingTarget).WorldSpaceCenter(targetPos);
@@ -729,6 +749,21 @@ public void OnVPhysicsUpdate(int entity)
 			proj.Flying = false;
 		}
 	}
+}
+
+public Action Timer_CheckVPhysicsUpdate(Handle timer, int entity)
+{
+	RF2_Projectile_Base proj = RF2_Projectile_Base(entity);
+	if (!proj.IsValid() || proj.HasHit)
+		return Plugin_Stop;
+
+	if (GetGameTime() > proj.LastVPhysicsUpdate+8.0)
+	{
+		proj.Deactivate();
+		return Plugin_Stop;
+	}
+	
+	return Plugin_Continue;
 }
 
 public MRESReturn DHook_ProjectileCollision(int entity, DHookParam params)

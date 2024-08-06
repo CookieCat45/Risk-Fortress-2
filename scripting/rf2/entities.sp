@@ -99,7 +99,7 @@ bool DoEntitiesIntersect(int ent1, int ent2)
 
 // SPELL PROJECTILES WILL ONLY WORK IF THE OWNER ENTITY IS A PLAYER! DO NOT TRY THEM WITH ANYTHING ELSE!
 int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], const float angles[3],
-	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true)
+	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, bool spawn=true)
 {
 	int entity = CreateEntityByName(classname);
 	if (entity == -1)
@@ -172,8 +172,12 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 	GetAngleVectors(projectileAngles, velocity, NULL_VECTOR, NULL_VECTOR);
 	NormalizeVector(velocity, velocity);
 	ScaleVector(velocity, speed);
-	DispatchSpawn(entity);
-	ActivateEntity(entity);
+	if (spawn)
+	{
+		DispatchSpawn(entity);
+		ActivateEntity(entity);
+	}
+	
 	TeleportEntity(entity, pos, projectileAngles, velocity);
 	SetEntPropVector(entity, Prop_Send, "m_vecForce", velocity);
 	return entity;

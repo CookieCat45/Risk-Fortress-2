@@ -8,6 +8,7 @@ void InstallEnts()
 	RF2_Item.Init();
 	RF2_HealthText.Init();
 	RF2_WorldCenter.Init();
+	RF2_TankSpawner.Init();
 	RF2_Object_Base.Init();
 	RF2_Object_Crate.Init();
 	RF2_Object_Teleporter.Init();

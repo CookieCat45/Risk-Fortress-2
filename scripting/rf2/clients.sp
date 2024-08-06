@@ -39,6 +39,7 @@ void RefreshClient(int client, bool force=false)
 	g_flPlayerRifleHeadshotBonusTime[client] = 0.0;
 	g_flPlayerGravityJumpBonusTime[client] = 0.0;
 	g_flPlayerTimeSinceLastItemPickup[client] = 0.0;
+	g_flPlayerCaberRechargeAt[client] = 0.0;
 	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;

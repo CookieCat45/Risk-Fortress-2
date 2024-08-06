@@ -11,7 +11,7 @@ methodmap RF2_Trigger_Exit < CBaseEntity
 	
 	public bool IsValid()
 	{
-		if (this.index == 0 || !IsValidEntity2(this.index))
+		if (!IsValidEntity2(this.index))
 		{
 			return false;
 		}

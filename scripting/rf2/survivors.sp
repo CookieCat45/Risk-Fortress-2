@@ -702,7 +702,7 @@ void SpawnMinion(int client)
 		case TFClass_DemoMan:
 		{
 			SetVariantString(MODEL_BOT_DEMO);
-			CreateWeapon(client, "tf_weapon_bottle", 609, _, true);
+			CreateWeapon(client, "tf_weapon_sword", 404, _, true);
 			CreateWearable(client, "tf_wearable_demoshield", 1099, _, true);
 			g_iPlayerBaseHealth[client] = 450;
 			g_flPlayerMaxSpeed[client] = 300.0;

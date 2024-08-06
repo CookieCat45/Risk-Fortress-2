@@ -11,7 +11,7 @@ methodmap RF2_GameRules < CBaseEntity
 	
 	public bool IsValid()
 	{
-		if (this.index == 0 || !IsValidEntity2(this.index))
+		if (!IsValidEntity2(this.index))
 		{
 			return false;
 		}
@@ -45,6 +45,7 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineOutput("OnTankDestructionStart")
 			.DefineOutput("OnTankDestructionComplete")
 			.DefineOutput("OnTankDestructionBombDeployed")
+			.DefineOutput("OnTankDestroyed")
 			.DefineOutput("OnRoundStart")
 			.DefineOutput("OnRoundStartPreLoop")
 			.DefineOutput("OnRoundStartPostLoop")

@@ -15,6 +15,9 @@ char g_szUnderworldMap[PLATFORM_MAX_PATH];
 char g_szFinalMap[PLATFORM_MAX_PATH];
 
 float g_flGracePeriodTime = 30.0;
+float g_flMinSpawnDistOverride = -1.0;
+float g_flMaxSpawnDistOverride = -1.0;
+float g_flBossSpawnChanceBonus;
 float g_flLoopMusicAt[MAXTF2PLAYERS] = {-1.0, ...};
 float g_flStageBGMDuration;
 float g_flBossBGMDuration;

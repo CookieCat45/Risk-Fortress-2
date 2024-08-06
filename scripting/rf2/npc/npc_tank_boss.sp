@@ -2,6 +2,7 @@
 #pragma newdecls required
 
 #define MODEL_TANK_BADASS "models/rf2/boss_bots/boss_tank_badass.mdl"
+#define MODEL_TANK_SUPER_BADASS "models/rf2/boss_bots/boss_tank_super_badass.mdl"
 #define PATH_TRACK_START "rf2_tank_start"
 #define ATT_ROCKET_R "rocket_r"
 #define ATT_ROCKET_L "rocket_l"
@@ -11,10 +12,13 @@
 #define ROCKET_ATTACK_COOLDOWN 2.0
 #define LASER_ATTACK_COOLDOWN 25.0
 #define BARRAGE_ATTACK_COOLDOWN 50.0
+#define LASERCANNON_ATTACK_COOLDOWN 60.0
 
 #define SND_TANK_LASERSHOOT "rf2/sfx/boss_tank_badass/laser_shoot.wav"
 #define SND_TANK_LASERRISE "weapons/teleporter_build_open2.wav"
 #define SND_TANK_LASERRISE_END "weapons/sentry_upgrading2.wav"
+#define SND_LASERCANNON_CHARGE "rf2/sfx/boss_tank_badass/super_laser_charge.wav"
+#define SND_LASERCANNON_FIRE "rf2/sfx/boss_tank_badass/super_laser_fire.wav"
 
 static const char g_szTankLaserVoices[][] =
 {
@@ -34,12 +38,21 @@ static const char g_szTankBarrageVoices[][] =
 };
 
 static int g_iBadassTankModelIndex;
+static int g_iSuperBadassTankModelIndex;
+
+enum
+{
+	TankType_Normal,
+	TankType_Badass,
+	TankType_SuperBadass,
+};
 
 enum
 {
 	SPECIAL_NONE,
 	SPECIAL_LASER,
 	SPECIAL_BARRAGE,
+	SPECIAL_LASERCANNON,
 };
 
 static bool g_bTankDeploying[MAX_EDICTS];
@@ -79,13 +92,44 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 			.DefineFloatField("m_flNextLaserAttack")
 			.DefineFloatField("m_flNextBarrageAttack")
 			.DefineFloatField("m_flNextLaserShot")
+			.DefineFloatField("m_flNextLaserCannonAttack")
+			.DefineFloatField("m_flLaserCannonChargeTime")
+			.DefineFloatField("m_flLaserCannonEndTime")
 			.DefineIntField("m_iSpecialAttack")
 			.DefineIntField("m_iActualMaxHealth")
+			.DefineBoolField("m_bSuperBadass", _, "superbadass")
+			.DefineBoolField("m_bFiringLaserCannon")
 		.EndDataMapDesc();
 		g_Factory.Install();
 		HookMapStart(BadassTank_OnMapStart);
 	}
 	
+	property bool SuperBadass
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bSuperBadass"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bSuperBadass", value);
+		}
+	}
+
+	property bool FiringLaserCannon
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bFiringLaserCannon"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bFiringLaserCannon", value);
+		}
+	}
+
 	property float NextRocketAttackR
 	{
 		public get()
@@ -111,7 +155,7 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 			this.SetPropFloat(Prop_Data, "m_flNextRocketAttackL", value);
 		}
 	}
-
+	
 	property float NextLaserAttack
 	{
 		public get()
@@ -122,6 +166,45 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 		public set(float value)
 		{
 			this.SetPropFloat(Prop_Data, "m_flNextLaserAttack", value);
+		}
+	}
+
+	property float NextLaserCannonAttack
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flNextLaserCannonAttack");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flNextLaserCannonAttack", value);
+		}
+	}
+
+	property float LaserCannonChargeTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flLaserCannonChargeTime");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flLaserCannonChargeTime", value);
+		}
+	}
+
+	property float LaserCannonEndTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flLaserCannonEndTime");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flLaserCannonEndTime", value);
 		}
 	}
 	
@@ -234,14 +317,44 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 			g_bTankDeploying[this.index] = value;
 		}
 	}
+	
+	public void SetPathTrackNode(int entity)
+	{
+		char name[128];
+		GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
+		if (!name[0])
+		{
+			FormatEx(name, sizeof(name), "rf2_pathtack_temp%i", entity);
+			DispatchKeyValue(entity, "targetname", name);
+			SDKCall(g_hSDKTankSetStartNode, this.index, name);
+			DispatchKeyValue(entity, "targetname", "");
+		}
+		else
+		{
+			SDKCall(g_hSDKTankSetStartNode, this.index, name);
+		}
+	}
 }
 
 void BadassTank_OnMapStart()
 {
 	g_iBadassTankModelIndex = PrecacheModel2(MODEL_TANK_BADASS, true);
+	g_iSuperBadassTankModelIndex = PrecacheModel2(MODEL_TANK_SUPER_BADASS, true);
 	AddModelToDownloadsTable(MODEL_TANK_BADASS, false);
+	#if defined PRERELEASE
+	AddModelToDownloadsTable(MODEL_TANK_SUPER_BADASS, false);
+	AddMaterialToDownloadsTable("materials/rf2/bosses/super_badass_tank/sentry3_blue");
+	AddMaterialToDownloadsTable("materials/rf2/bosses/super_badass_tank/tank_eye");
+	AddMaterialToDownloadsTable("materials/rf2/bosses/super_badass_tank/tank_eye_shell");
+	AddMaterialToDownloadsTable("materials/rf2/bosses/super_badass_tank/tankbody1");
+	AddMaterialToDownloadsTable("materials/rf2/bosses/super_badass_tank/tankbody2");
+	AddSoundToDownloadsTable(SND_LASERCANNON_CHARGE, false);
+	AddSoundToDownloadsTable(SND_LASERCANNON_FIRE, false);
+	#endif
 	PrecacheSound2(SND_TANK_LASERRISE, true);
 	PrecacheSound2(SND_TANK_LASERRISE_END, true);
+	PrecacheSound2(SND_LASERCANNON_CHARGE, true);
+	PrecacheSound2(SND_LASERCANNON_FIRE, true);
 	AddSoundToDownloadsTable(SND_TANK_LASERSHOOT);
 	PrecacheSoundArray(g_szTankLaserVoices, sizeof(g_szTankLaserVoices));
 	PrecacheSoundArray(g_szTankBarrageVoices, sizeof(g_szTankBarrageVoices));
@@ -255,10 +368,11 @@ static void OnCreate(RF2_TankBoss tank)
 	tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 3);
 	
 	float gameTime = GetGameTime();
-	tank.SetPropFloat(Prop_Data, "m_flNextRocketAttackR", gameTime+ROCKET_ATTACK_COOLDOWN);
-	tank.SetPropFloat(Prop_Data, "m_flNextRocketAttackL", gameTime+ROCKET_ATTACK_COOLDOWN*1.5);
-	tank.SetPropFloat(Prop_Data, "m_flNextLaserAttack", gameTime+LASER_ATTACK_COOLDOWN);
-	tank.SetPropFloat(Prop_Data, "m_flNextBarrageAttack", gameTime+BARRAGE_ATTACK_COOLDOWN);
+	tank.NextRocketAttackR = gameTime+ROCKET_ATTACK_COOLDOWN;
+	tank.NextRocketAttackL = gameTime+ROCKET_ATTACK_COOLDOWN*1.5;
+	tank.NextLaserAttack = gameTime+LASER_ATTACK_COOLDOWN;
+	tank.NextBarrageAttack = gameTime+BARRAGE_ATTACK_COOLDOWN;
+	tank.NextLaserCannonAttack = gameTime+15.0; // use this first (Super Badass only)
 	SDKHook(tank.index, SDKHook_Think, Hook_BadassTankThink);
 	SDKHook(tank.index, SDKHook_SpawnPost, Hook_BadassTankSpawnPost);
 }
@@ -266,11 +380,37 @@ static void OnCreate(RF2_TankBoss tank)
 public void Hook_BadassTankSpawnPost(int entity)
 {
 	RF2_TankBoss tank = RF2_TankBoss(entity);
-	tank.SetModel(MODEL_TANK_BADASS);
+	if (tank.SuperBadass)
+	{
+		tank.SetModel(MODEL_TANK_SUPER_BADASS);
+		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iSuperBadassTankModelIndex, _, 0);
+		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iSuperBadassTankModelIndex, _, 1);
+		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iSuperBadassTankModelIndex, _, 2);
+		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iSuperBadassTankModelIndex, _, 3);
+		
+		// hide bomb model
+		int bomb = MaxClients+1;
+		char modelName[PLATFORM_MAX_PATH];
+		while ((bomb = FindEntityByClassname(bomb, "prop_dynamic")) != INVALID_ENT)
+		{
+			if (GetEntPropEnt(bomb, Prop_Send, "moveparent") != tank.index)
+				continue;
+			
+			GetEntPropString(bomb, Prop_Data, "m_ModelName", modelName, sizeof(modelName));
+			if (strcmp2(modelName, "models/bots/boss_bot/bomb_mechanism.mdl"))
+			{
+				SetEntityRenderMode(bomb, RENDER_NONE);
+				break;
+			}
+		}
+	}
+	else
+	{
+		tank.SetModel(MODEL_TANK_BADASS);
+	}
 	
 	// The reason this needs to be done is because Tanks will change their model based on how much damage they have taken
 	// in relation to their max health. Setting their max health to 0 AFTER spawning will prevent this behaviour.
-	// Making our own damaged models would have to be done manually as the default ones are hardcoded.
 	int maxHealth = tank.GetProp(Prop_Data, "m_iMaxHealth");
 	tank.MaxHealth = maxHealth;
 	tank.SetProp(Prop_Data, "m_iMaxHealth", 0);
@@ -297,7 +437,7 @@ void EndTankDestructionMode()
 	char text[256];
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+		if (!IsClientInGame(i) || !IsPlayerSurvivor(i) && !IsPlayerMinion(i))
 			continue;
 		
 		FormatEx(text, sizeof(text), "%T", "EndLevelCommandReminder", i);
@@ -353,7 +493,7 @@ static int SpawnTanks()
 		
 		if (i == 1)
 		{
-			CreateTankBoss(badass);
+			CreateTankBoss(TankType_Normal);
 		}
 		else // delay the rest of the spawns
 		{
@@ -370,43 +510,53 @@ public Action Timer_CreateTankBoss(Handle timer, bool badass)
 	if (!g_bRoundActive || !g_bTankBossMode)
 		return Plugin_Continue;
 		
-	CreateTankBoss(badass);
+	CreateTankBoss(badass ? TankType_Badass : TankType_Normal);
 	return Plugin_Continue;
 }
 
-RF2_TankBoss CreateTankBoss(bool badass=false)
+RF2_TankBoss CreateTankBoss(int type, RF2_TankSpawner spawnPoint=view_as<RF2_TankSpawner>(INVALID_ENT))
 {
-	ArrayList spawnPoints = new ArrayList();
-	int spawn;
-	int entity = MaxClients+1;
-	char name[32];
-	
-	while ((entity = FindEntityByClassname(entity, "path_track")) != INVALID_ENT)
-	{
-		GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
-		if (StrContains(name, PATH_TRACK_START) != -1)
-		{
-			spawnPoints.Push(entity);
-		}
-	}
-	
-	if (spawnPoints.Length <= 0)
-	{
-		delete spawnPoints;
-		char mapName[128];
-		GetCurrentMap(mapName, sizeof(mapName));
-		LogError("[CreateTankBoss] Map \"%s\" has no path_track entities named \"%s\"! Tanks cannot be spawned!", mapName, PATH_TRACK_START);
-		return RF2_TankBoss(INVALID_ENT);
-	}
-	
-	spawn = spawnPoints.Get(GetRandomInt(0, spawnPoints.Length-1));
-	delete spawnPoints;
 	float pos[3], angles[3];
-	GetEntPos(spawn, pos);
-	GetEntPropVector(spawn, Prop_Data, "m_angAbsRotation", angles);
+	if (spawnPoint.IsValid())
+	{
+		spawnPoint.GetAbsOrigin(pos);
+		spawnPoint.GetAbsAngles(angles);
+	}
+	else
+	{
+		ArrayList spawnPoints = new ArrayList();
+		int spawn;
+		int entity = MaxClients+1;
+		char name[32];
+		
+		while ((entity = FindEntityByClassname(entity, "path_track")) != INVALID_ENT)
+		{
+			GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
+			if (StrContains(name, PATH_TRACK_START) != -1)
+			{
+				spawnPoints.Push(entity);
+			}
+		}
+		
+		if (spawnPoints.Length <= 0)
+		{
+			delete spawnPoints;
+			char mapName[128];
+			GetCurrentMap(mapName, sizeof(mapName));
+			LogError("[CreateTankBoss] Map \"%s\" has no path_track entities named \"%s\"! Tanks cannot be spawned!", mapName, PATH_TRACK_START);
+			return RF2_TankBoss(INVALID_ENT);
+		}
+		
+		spawn = spawnPoints.Get(GetRandomInt(0, spawnPoints.Length-1));
+		delete spawnPoints;
+		GetEntPos(spawn, pos);
+		GetEntPropVector(spawn, Prop_Data, "m_angAbsRotation", angles);
+	}
+	
 	angles[0] = 0.0;
 	angles[2] = 0.0;
-	RF2_TankBoss tank = RF2_TankBoss(CreateEntityByName(badass ? "rf2_tank_boss_badass" : "tank_boss"));
+	RF2_TankBoss tank = RF2_TankBoss(CreateEntityByName(type != TankType_Normal ? "rf2_tank_boss_badass" : "tank_boss"));
+	tank.SuperBadass = type == TankType_SuperBadass;
 	int health = RoundToFloor(float(g_cvTankBaseHealth.IntValue) * (1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvTankHealthScale.FloatValue)));
 	if (IsSingleplayer(false))
 	{
@@ -423,10 +573,14 @@ RF2_TankBoss CreateTankBoss(bool badass=false)
 	tank.Speed = speed;
 	tank.Teleport(pos, angles);
 	tank.Spawn();
-	RF2_HealthText text = CreateHealthText(tank.index, 230.0, 35.0, badass ? "BADASS TANK" : "TANK");
-	if (badass)
+	RF2_HealthText text = CreateHealthText(tank.index, 230.0, 35.0);
+	if (type == TankType_Badass)
 	{
 		text.SetHealthColor(HEALTHCOLOR_HIGH, {0, 75, 200, 255});
+	}
+	else if (type == TankType_SuperBadass)
+	{
+		text.SetHealthColor(HEALTHCOLOR_HIGH, {0, 100, 25, 255});
 	}
 	else
 	{
@@ -435,7 +589,6 @@ RF2_TankBoss CreateTankBoss(bool badass=false)
 	
 	SDKHook(tank.index, SDKHook_Think, Hook_TankBossThink);
 	g_iTanksSpawned++;
-	
 	int pitch = SNDPITCH_NORMAL;
 	if (g_iTanksSpawned > 1)
 	{
@@ -449,6 +602,10 @@ RF2_TankBoss CreateTankBoss(bool badass=false)
 public void Hook_TankBossThink(int entity)
 {
 	RF2_TankBoss tank = RF2_TankBoss(entity);
+	float motion[3], ang[3];
+	tank.MyNextBotPointer().GetLocomotionInterface().GetMotionVector(motion);
+	GetVectorAngles(motion, ang);
+	tank.SetAbsAngles(ang);
 	// check for deploy animation
 	if (!tank.Deploying && !g_bGameOver)
 	{
@@ -491,6 +648,12 @@ public Action Timer_TankDeployBomb(Handle timer, int entity)
 
 public void Output_OnTankKilled(const char[] output, int caller, int activator, float delay)
 {
+	RF2_GameRules gamerules = GetRF2GameRules();
+	if (gamerules.IsValid())
+	{
+		gamerules.FireOutput("OnTankDestroyed");
+	}
+	
 	if (!g_bTankBossMode)
 		return;
 	
@@ -551,11 +714,18 @@ public void Hook_BadassTankThink(int entity)
 				EmitSoundToAll(SND_LAW_FIRE, tank.index, _, _, _, _, _, _, pos);
 				
 				float attackRate, nextAttackTime;
-				switch (RF2_GetDifficulty())
+				if (tank.SuperBadass)
 				{
-					case DIFFICULTY_STEEL: attackRate = 0.75;
-					case DIFFICULTY_TITANIUM: attackRate = 0.5;
-					default: attackRate = 1.0;
+					attackRate = 0.25;
+				}
+				else
+				{
+					switch (RF2_GetDifficulty())
+					{
+						case DIFFICULTY_STEEL: attackRate = 0.75;
+						case DIFFICULTY_TITANIUM: attackRate = 0.5;
+						default: attackRate = 1.0;
+					}
 				}
 
 				nextAttackTime = ROCKET_ATTACK_COOLDOWN * attackRate;
@@ -575,19 +745,25 @@ public void Hook_BadassTankThink(int entity)
 	
 	float nextLaserAttack = tank.NextLaserAttack;
 	float nextBarrageAttack = tank.NextBarrageAttack;
+	float nextLaserCannonAttack = tank.NextLaserCannonAttack;
 	if (special == SPECIAL_NONE)
 	{
 		// decide our next special attack if we can use one
 		int newSpecial;
-		if (gameTime >= nextLaserAttack || gameTime >= nextBarrageAttack)
+		if (gameTime >= nextLaserAttack || gameTime >= nextBarrageAttack || gameTime >= nextLaserCannonAttack && tank.SuperBadass)
 		{
-			// both are ready? decide randomly
-			if (gameTime >= nextLaserAttack && gameTime >= nextBarrageAttack)
+			if (gameTime >= nextLaserCannonAttack && tank.SuperBadass)
+			{
+				// always use laser cannon first if ready
+				newSpecial = SPECIAL_LASERCANNON;
+			}
+			else if (gameTime >= nextLaserAttack && gameTime >= nextBarrageAttack)
 			{
 				newSpecial = GetRandomInt(SPECIAL_LASER, SPECIAL_BARRAGE);
 			}
 			else
 			{
+				// both are ready? decide randomly
 				newSpecial = gameTime >= nextLaserAttack ? SPECIAL_LASER : SPECIAL_BARRAGE;
 			}
 			
@@ -633,13 +809,26 @@ public void Hook_BadassTankThink(int entity)
 							EmitSoundToAll(g_szTankBarrageVoices[num], tank.index, _, 120);
 							EmitSoundToAll(g_szTankBarrageVoices[num], tank.index, _, 120);
 							EmitSoundToAll(SND_TANK_LASERRISE, tank.index, _, 120);
-							
 							float duration = tank.AddGesture("rocket_turn_up", _, _, 0.2, 2);
 							if (nextLaserAttack - GetGameTime() <= 10.0)
 							{
 								tank.NextLaserAttack = nextLaserAttack + duration + 10.0;
 							}
 						}
+					}
+					
+					case SPECIAL_LASERCANNON: // Super Badass only
+					{
+						tank.RemoveAllGestures();
+						special = newSpecial;
+						tank.SpecialAttack = special;
+						tank.AddGesture("deploy", _, false, 1.0, 999);
+						tank.LaserCannonChargeTime = gameTime+5.0;
+						tank.LaserCannonEndTime = gameTime+16.5;
+						SpawnInfoParticle("dxhr_lightningball_parent_red", pos, 3.2, tank.index, "lasercannon");
+						EmitSoundToAll(SND_LASERCANNON_CHARGE, tank.index, _, SNDLEVEL_SCREAMING);
+						EmitSoundToAll(SND_LASERCANNON_CHARGE, tank.index, _, SNDLEVEL_SCREAMING);
+						EmitSoundToAll(SND_LASERCANNON_CHARGE, tank.index, _, SNDLEVEL_SCREAMING);
 					}
 				}
 			}
@@ -747,10 +936,24 @@ public void Hook_BadassTankThink(int entity)
 						
 						const float speed = 1000.0;
 						const float damage = 35.0;
-						int laser = ShootProjectile(tank.index, "tf_projectile_rocket", pos, angles, speed, damage);
-						SetEntityModel2(laser, MODEL_INVISIBLE);
-						EmitSoundToAll(SND_TANK_LASERSHOOT, tank.index, _, 120);
-						SpawnInfoParticle("drg_cow_rockettrail_fire_blue", pos, _, laser);
+						for (int i = 1; i <= (tank.SuperBadass ? 3 : 1); i++)
+						{
+							if (i == 2)
+							{
+								angles[1] -= 8.0;
+							}
+							else if (i == 3)
+							{
+								angles[1] += 16.0;
+							}
+							
+							int laser = ShootProjectile(tank.index, "tf_projectile_rocket", pos, angles, speed, damage);
+							SetEntityCollisionGroup(laser, TFCOLLISION_GROUP_ROCKET_BUT_NOT_WITH_OTHER_ROCKETS); // So the lasers don't collide with themselves
+							SetEntityModel2(laser, MODEL_INVISIBLE);
+							EmitSoundToAll(SND_TANK_LASERSHOOT, tank.index, _, 120);
+							SpawnInfoParticle("drg_cow_rockettrail_fire_blue", pos, _, laser);
+						}
+						
 						SpawnInfoParticle("teleported_flash", laserPos, 0.1);
 						float fireRate = float(tank.Health) / float(tank.MaxHealth);
 						fireRate = fmax(fireRate, 0.5);
@@ -787,6 +990,39 @@ public void Hook_BadassTankThink(int entity)
 					
 					CreateTimer(time, Timer_EndBarrageAttack, EntIndexToEntRef(tank.index), TIMER_FLAG_NO_MAPCHANGE);
 					tank.NextLaserAttack = nextLaserAttack+time;
+				}
+			}
+		}
+		
+		case SPECIAL_LASERCANNON:
+		{
+			if (gameTime >= tank.LaserCannonChargeTime)
+			{
+				if (!tank.FiringLaserCannon)
+				{
+					EmitSoundToAll(SND_LASERCANNON_FIRE, tank.index, _, SNDLEVEL_SCREAMING);
+					EmitSoundToAll(SND_LASERCANNON_FIRE, tank.index, _, SNDLEVEL_SCREAMING);
+					EmitSoundToAll(SND_LASERCANNON_FIRE, tank.index, _, SNDLEVEL_SCREAMING);
+					tank.FiringLaserCannon = true;
+				}
+				
+				float pos[3], angles[3];
+				int attachment = LookupEntityAttachment(tank.index, "lasercannon");
+				GetEntityAttachment(tank.index, attachment, pos, angles);
+				tank.GetAbsAngles(angles);
+				angles[0] += 1.5; // angle down slightly
+				int color[4];
+				color[0] = GetRandomInt(75, 255);
+				color[1] = GetRandomInt(75, 255);
+				color[2] = GetRandomInt(75, 255);
+				color[3] = 255;
+				FireLaser(tank.index, _, pos, angles, true, _, 75.0, DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE|DMG_IGNITE, 55.0, color, _, false, false, 0.3);
+				if (gameTime >= tank.LaserCannonEndTime)
+				{
+					tank.SpecialAttack = SPECIAL_NONE;
+					tank.NextLaserCannonAttack = gameTime+LASERCANNON_ATTACK_COOLDOWN;
+					tank.RemoveAllGestures();
+					tank.FiringLaserCannon = false;
 				}
 			}
 		}

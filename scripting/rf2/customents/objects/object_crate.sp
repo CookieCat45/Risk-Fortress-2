@@ -33,7 +33,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 	
 	public bool IsValid()
 	{
-		if (this.index == 0 || !IsValidEntity2(this.index))
+		if (!IsValidEntity2(this.index))
 		{
 			return false;
 		}
@@ -298,6 +298,7 @@ static void OnCreate(RF2_Object_Crate crate)
 static void OnSpawn(int entity)
 {
 	RF2_Object_Crate crate = RF2_Object_Crate(entity);
+	crate.SetProp(Prop_Data, "m_iTeamNum", TEAM_SURVIVOR); // This is so caber hits don't detonate
 	if (!crate.Initialized)
 	{
 		// Probably spawned with ent_create

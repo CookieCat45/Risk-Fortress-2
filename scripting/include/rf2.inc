@@ -113,6 +113,9 @@ enum
 	ItemStrange_Longwave = 94,
 	ItemHeavy_GoneCommando = 95,
 	ItemStrange_Botler = 96,
+	Item_BedouinBandana = 97,
+	Item_HauntedHat = 98,
+	ItemDemo_OldBrimstone = 99,
 	Item_MaxValid,
 };
 

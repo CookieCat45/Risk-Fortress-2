@@ -19,7 +19,7 @@ methodmap RF2_Projectile_HomingRocket < RF2_Projectile_Base
 	
 	public bool IsValid()
 	{
-		if (this.index == 0 || !IsValidEntity2(this.index))
+		if (!IsValidEntity2(this.index))
 		{
 			return false;
 		}

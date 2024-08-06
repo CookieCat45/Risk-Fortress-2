@@ -13,6 +13,26 @@
 	output OnChosen(void) : "Sent when this spawn point is chosen as the Teleporter spawn point."
 ]
 
+@PointClass base(Targetname, Angles) studio("models/bots/boss_bot/boss_tank.mdl") = rf2_tank_spawner : 
+	"A tank spawner. Used as a tank spawn point in Tank Destruction mode, but can also be used to manually spawn tanks via inputs."
+[
+	tank_destruction_spawnpoint(choices) : "Use For Tank Destruction?" : 1 : "Use as a spawn point in Tank Destruction mode?" = 
+	[
+		1 : "Yes"
+		0 : "No"
+	]
+	
+	base_health_override(integer) : "Base Health Override" : -1 : "If above 0, this will be the base health value of tanks spawned by this entity."
+	
+	health_percent_per_player(float) : "Health Percentage Per Player" : "0.2" : "Extra health in decimal percentage per player. Only used if base health is overriden."
+	
+	speed_override(float) : "Speed Override" : "-1.0" : "If 0 or greater, this will be the speed value of tanks spawned by this entity."
+	
+	input SpawnTank(target_destination) : "Spawns a normal Tank. The input value is the name of the path_track node to start at."
+	input SpawnBadassTank(target_destination) : "Spawns a Badass Tank. The input value is the name of the path_track node to start at."
+	input SpawnSuperBadassTank(target_destination) : "Spawns a Super Badass Tank. The input value is the name of the path_track node to start at."
+]
+
 @PointClass base(Targetname, Angles) studio("models/props_halloween/gargoyle_backpack.mdl") = rf2_altar_spawn : 
 	"A spawn point for the Altar. Altars can be used to enter the Underworld."
 [
@@ -71,7 +91,6 @@
 	output OnTankDestructionStart(void) : "Sent when Tank Destruction Mode begins."
 	output OnTankDestructionComplete(void) : "Sent when Tank Destruction Mode is won."
 	output OnTankDestructionBombDeployed(void) : "Sent when the bomb is deployed by a Tank in Tank Destruction Mode."
-	
 	output OnRoundStart(void) : "Sent when the round begins."
 	output OnRoundStartPreLoop(void) : "Sent when the round begins in a run, but only if it hasn't been looped."
 	output OnRoundStartPostLoop(void) : "Sent when the round begins in a run, but only if it has been looped at least once."
@@ -79,6 +98,7 @@
 	output OnWaitingForPlayersPreLoop(void) : "Sent when Waiting For Players begins, but only if the current run hasn't been looped."
 	output OnWaitingForPlayersPostLoop(void) : "Sent when Waiting For Players begins, but only if the current run has been looped at least once."
 	output OnGracePeriodEnd(void) : "Sent when the grace period ends."
+	output OnTankDestroyed(void) : "Sent when a tank is destroyed. Fires regardless of Tank Destruction mode being enabled."
 ]
 
 @BaseClass base(prop_dynamic_base) = rf2_object_base
