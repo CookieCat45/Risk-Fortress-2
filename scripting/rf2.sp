@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.14b"
+#define PLUGIN_VERSION "0.14.1b"
 #endif
 
 #if !defined PLUGIN_NAME
@@ -1716,6 +1716,12 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 		}
 	}
 	
+	int breakable = MaxClients+1;
+	while ((breakable = FindEntityByClassname(breakable, "func_breakable")) != INVALID_ENT)
+	{
+		SetEntProp(breakable, Prop_Data, "m_iTeamNum", TEAM_SURVIVOR); // So caber hits don't detonate
+	}
+	
 	if (g_hPlayerTimer)
 		delete g_hPlayerTimer;
 	
@@ -2929,14 +2935,14 @@ void EndGracePeriod()
 				}
 			}
 			
-			TF2_AddCondition(i, buffs.Get(0, buffs.Length-1), CalcItemMod(i, Item_HauntedHat, 0));
+			TF2_AddCondition(i, buffs.Get(GetRandomInt(0, buffs.Length-1)), CalcItemMod(i, Item_HauntedHat, 0));
 			delete buffs;
-
+			
 			ArrayList debuffs = new ArrayList();
 			debuffs.Push(TFCond_Dazed);
 			debuffs.Push(TFCond_Bleeding);
 			debuffs.Push(TFCond_MarkedForDeathSilent);
-			TFCond debuff = debuffs.Get(0, debuffs.Length-1);
+			TFCond debuff = debuffs.Get(GetRandomInt(0, debuffs.Length-1));
 			delete debuffs;
 			if (debuff == TFCond_Dazed)
 			{
@@ -5285,7 +5291,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_Compatriot, 0);
 		}
 		
-		if (PlayerHasItem(attacker, Item_BeaconFromBeyond) && RF2_Object_Teleporter.IsEventActive())
+		if (!selfDamage && PlayerHasItem(attacker, Item_BeaconFromBeyond) && RF2_Object_Teleporter.IsEventActive())
 		{
 			damage *= CalcItemMod_HyperbolicInverted(attacker, Item_BeaconFromBeyond, 1);
 		}
@@ -5295,7 +5301,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			proc *= GetItemProcCoeff(GetEntItemProc(inflictor));
 		}
 		
-		if (damageType & DMG_BLAST && PlayerHasItem(attacker, ItemDemo_OldBrimstone) && CanUseCollectorItem(attacker, ItemDemo_OldBrimstone))
+		if (!selfDamage && damageType & DMG_BLAST && PlayerHasItem(attacker, ItemDemo_OldBrimstone) && CanUseCollectorItem(attacker, ItemDemo_OldBrimstone))
 		{
 			damage *= 1.0 + CalcItemMod(attacker, ItemDemo_OldBrimstone, 0);
 		}

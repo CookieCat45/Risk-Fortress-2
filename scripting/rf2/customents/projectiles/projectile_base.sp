@@ -753,10 +753,10 @@ public void OnVPhysicsUpdate(int entity)
 
 public Action Timer_CheckVPhysicsUpdate(Handle timer, int entity)
 {
-	RF2_Projectile_Base proj = RF2_Projectile_Base(entity);
+	RF2_Projectile_Base proj = RF2_Projectile_Base(EntRefToEntIndex(entity));
 	if (!proj.IsValid() || proj.HasHit)
 		return Plugin_Stop;
-
+	
 	if (GetGameTime() > proj.LastVPhysicsUpdate+8.0)
 	{
 		proj.Deactivate();

@@ -845,6 +845,10 @@ int GetEntityDisplayName(int entity, char[] buffer, int size)
 	{
 		return strcopy(buffer, size, "Sentry Buster");
 	}
+	else if (strcmp2(classname, "rf2_npc_robot_butler"))
+	{
+		return strcopy(buffer, size, "Botler 2000");
+	}
 	else if (strcmp2(classname, "tank_boss"))
 	{
 		return strcopy(buffer, size, "Tank");
