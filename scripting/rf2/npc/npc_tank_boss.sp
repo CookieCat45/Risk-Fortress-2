@@ -524,6 +524,7 @@ RF2_TankBoss CreateTankBoss(int type, RF2_TankSpawner spawnPoint=view_as<RF2_Tan
 	}
 	else
 	{
+		// Legacy, for now
 		ArrayList spawnPoints = new ArrayList();
 		int spawn;
 		int entity = MaxClients+1;
@@ -556,7 +557,11 @@ RF2_TankBoss CreateTankBoss(int type, RF2_TankSpawner spawnPoint=view_as<RF2_Tan
 	angles[0] = 0.0;
 	angles[2] = 0.0;
 	RF2_TankBoss tank = RF2_TankBoss(CreateEntityByName(type != TankType_Normal ? "rf2_tank_boss_badass" : "tank_boss"));
-	tank.SuperBadass = type == TankType_SuperBadass;
+	if (type != TankType_Normal)
+	{
+		tank.SuperBadass = type == TankType_SuperBadass;
+	}
+		
 	int health = RoundToFloor(float(g_cvTankBaseHealth.IntValue) * (1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvTankHealthScale.FloatValue)));
 	if (IsSingleplayer(false))
 	{

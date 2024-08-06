@@ -336,6 +336,12 @@
 		"en"		"You scrapped 1 {1} for 1 Gargoyle Key."
 	}
 	
+	"UsedScrapperCollectors" // No color tags
+	{
+		"#format"	"{1:s},{2:s},{3:s}"
+		"en"		"You scrapped 1 {1} for 1 {2} and 1 {3}."
+	}
+	
 	// Altars
 	"AltarActivated"
 	{

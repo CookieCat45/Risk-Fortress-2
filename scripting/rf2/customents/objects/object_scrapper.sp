@@ -41,27 +41,29 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 		int count;
 		char info[8], display[128];
 		bool collector;
+		TFClassType class = TF2_GetPlayerClass(client);
 		for (int i = 1; i <= GetTotalItems(); i++)
 		{
-			if (IsScrapItem(i) || IsEquipmentItem(i) || !PlayerHasItem(client, i, true) || GetItemQuality(i) == Quality_Community)
+			if (IsScrapItem(i) || !PlayerHasItem(client, i, true) || GetItemQuality(i) == Quality_Community)
 				continue;
 			
-			if (GetItemQuality(i) == Quality_Collectors)
+			if (!collector && GetItemQuality(i) == Quality_Collectors && GetCollectorItemClass(i) != class)
 			{
-				if (IsPlayerMinion(client) || GetCollectorItemClass(i) == TF2_GetPlayerClass(client))
-				{
-					continue;
-				}
-				else if (!collector)
-				{
-					FormatEx(display, sizeof(display), "%T", "ScrapCollectors", client);
-					menu.InsertItem(0, "scrap_collectors", display);
-					collector = true;
-				}
+				FormatEx(display, sizeof(display), "%T", "ScrapCollectors", client);
+				menu.InsertItem(0, "scrap_collectors", display);
+				collector = true;
 			}
 			
 			IntToString(i, info, sizeof(info));
-			FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[i], GetPlayerItemCount(client, i, true));
+			if (IsEquipmentItem(i))
+			{
+				display = g_szItemName[i];
+			}
+			else
+			{
+				FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[i], GetPlayerItemCount(client, i, true));
+			}
+			
 			menu.AddItem(info, display);
 			count++;
 		}
@@ -109,101 +111,98 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 			char info[32];
 			menu.GetItem(param2, info, sizeof(info));
 			int item = StringToInt(info);
-			bool scrapAllCollectors = strcmp2(info, "scrap_collectors");
-			
-			if (scrapAllCollectors || item != Item_Null && PlayerHasItem(param1, item, true))
+			if (strcmp2(info, "scrap_collectors"))
 			{
+				int total, count;
 				TFClassType class = TF2_GetPlayerClass(param1);
-				if (scrapAllCollectors || GetItemQuality(item) == Quality_Collectors && GetCollectorItemClass(item) != class)
+				for (int i = 1; i <= GetTotalItems(); i++)
 				{
-					if (scrapAllCollectors)
+					if (GetItemQuality(i) != Quality_Collectors || !PlayerHasItem(param1, i))
+						continue;
+					
+					if (GetCollectorItemClass(i) == class)
+						continue;
+					
+					count = GetPlayerItemCount(param1, i, true);
+					GiveItem(param1, i, -count);
+					total += count;
+				}
+				
+				if (total <= 0)
+				{
+					EmitSoundToClient(param1, SND_NOPE);
+					PrintCenterText(param1, "%t", "NoCollectorItems");
+					return 0;
+				}
+				
+				ArrayList itemList = new ArrayList();
+				int randomItem;
+				int itemCount[MAX_ITEMS];
+				
+				for (int i = 1; i <= total; i++)
+				{
+					randomItem = GetRandomCollectorItem(class);
+					GiveItem(param1, randomItem, _, true);
+					itemCount[randomItem]++;
+					
+					if (itemList.FindValue(randomItem) == -1)
 					{
-						int total, count;
-						for (int i = 1; i <= GetTotalItems(); i++)
-						{
-							if (GetItemQuality(i) != Quality_Collectors || !PlayerHasItem(param1, i))
-								continue;
-							
-							if (GetCollectorItemClass(i) == class)
-								continue;
-							
-							count = GetPlayerItemCount(param1, i, true);
-							GiveItem(param1, i, -count);
-							total += count;
-						}
-						
-						if (total <= 0)
-						{
-							EmitSoundToClient(param1, SND_NOPE);
-							PrintCenterText(param1, "%t", "NoCollectorItems");
-							return 0;
-						}
-						
-						ArrayList itemList = new ArrayList();
-						int randomItem;
-						int itemCount[MAX_ITEMS];
-						
-						for (int i = 1; i <= total; i++)
-						{
-							randomItem = GetRandomCollectorItem(class);
-							GiveItem(param1, randomItem, _, true);
-							itemCount[randomItem]++;
-							
-							if (itemList.FindValue(randomItem) == -1)
-							{
-								itemList.Push(randomItem);
-							}
-						}
-						
-						char itemName[64];
-						for (int i = 0; i < itemList.Length; i++)
-						{
-							randomItem = itemList.Get(i);
-							GetItemName(randomItem, itemName, sizeof(itemName));
-							RF2_PrintToChat(param1, "%t", "ReceivedCollectorItem", itemCount[randomItem], itemName);
-						}
-						
-						EmitSoundToClient(param1, SND_USE_SCRAPPER);
-						RF2_Object_Scrapper.ShowScrapMenu(param1, false);
-						delete itemList;
-					}
-					else
-					{
-						GiveItem(param1, item, -1);
-						int randomItem = GetRandomCollectorItem(TF2_GetPlayerClass(param1));
-						GiveItem(param1, randomItem, _, true);
-						PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[randomItem]);
-						EmitSoundToClient(param1, SND_USE_SCRAPPER);
-						RF2_Object_Scrapper.ShowScrapMenu(param1, false);
+						itemList.Push(randomItem);
 					}
 				}
-				else if (GetItemQuality(item) != Quality_Collectors)
+				
+				char itemName[64];
+				for (int i = 0; i < itemList.Length; i++)
+				{
+					randomItem = itemList.Get(i);
+					GetItemName(randomItem, itemName, sizeof(itemName));
+					RF2_PrintToChat(param1, "%t", "ReceivedCollectorItem", itemCount[randomItem], itemName);
+				}
+				
+				EmitSoundToClient(param1, SND_USE_SCRAPPER);
+				RF2_Object_Scrapper.ShowScrapMenu(param1, false);
+				delete itemList;
+			}
+			else if (item != Item_Null && PlayerHasItem(param1, item, true))
+			{
+				if (IsEquipmentItem(item))
+				{
+					g_iPlayerEquipmentItem[param1] = Item_Null;
+				}
+				else
 				{
 					GiveItem(param1, item, -1);
-					int quality = GetItemQuality(item);
-					int scrap;
-					
-					switch (quality)
-					{
-						case Quality_Normal: scrap = Item_ScrapMetal;
-						case Quality_Genuine: scrap = Item_ReclaimedMetal;
-						case Quality_Unusual: scrap = Item_RefinedMetal;
-					}
-					
-					if (scrap > Item_Null)
-					{
-						GiveItem(param1, scrap, 1, true);
-						PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[scrap]);
-					}
-					else if (IsHauntedItem(item)) // haunted item, give haunted key
-					{
-						GiveItem(param1, Item_HauntedKey, 1, true);
-						PrintCenterText(param1, "%t", "UsedScrapperHaunted", g_szItemName[item]);
-					}
-					
-					EmitSoundToClient(param1, SND_USE_SCRAPPER);
-					RF2_Object_Scrapper.ShowScrapMenu(param1, false);
 				}
+				
+				int quality = GetItemQuality(item);
+				int scrap;
+				
+				switch (quality)
+				{
+					case Quality_Normal: scrap = Item_ScrapMetal;
+					case Quality_Genuine, Quality_Strange: scrap = Item_ReclaimedMetal;
+					case Quality_Unusual: scrap = Item_RefinedMetal;
+				}
+				
+				if (quality == Quality_Collectors)
+				{
+					GiveItem(param1, Item_ScrapMetal, 1, true);
+					GiveItem(param1, Item_ReclaimedMetal, 1, true);
+					PrintCenterText(param1, "%t", "UsedScrapperCollectors", g_szItemName[item], g_szItemName[Item_ScrapMetal], g_szItemName[Item_ReclaimedMetal]);
+				}
+				else if (scrap > Item_Null)
+				{
+					GiveItem(param1, scrap, 1, true);
+					PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[scrap]);
+				}
+				else if (IsHauntedItem(item)) // haunted item, give haunted key
+				{
+					GiveItem(param1, Item_HauntedKey, 1, true);
+					PrintCenterText(param1, "%t", "UsedScrapperHaunted", g_szItemName[item]);
+				}
+				
+				EmitSoundToClient(param1, SND_USE_SCRAPPER);
+				RF2_Object_Scrapper.ShowScrapMenu(param1, false);
 			}
 		}
 		case MenuAction_Cancel:

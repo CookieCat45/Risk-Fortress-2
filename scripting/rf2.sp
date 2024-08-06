@@ -1110,8 +1110,8 @@ void CleanUp()
 	g_bInUnderworld = false;
 	g_flNextAutoReloadCheckTime = 0.0;
 	g_flAutoReloadTime = 0.0;
-	g_flMinSpawnDistOverride = -1.0;
-	g_flMaxSpawnDistOverride = -1.0;
+	//g_flMinSpawnDistOverride = -1.0;
+	//g_flMaxSpawnDistOverride = -1.0;
 	g_flBossSpawnChanceBonus = 0.0;
 	g_hPlayerTimer = null;
 	g_hHudTimer = null;
@@ -2775,7 +2775,7 @@ public void RF_TeleporterThink(int building)
 			{
 				g_iPlayerEnemySpawnType[client] = GetRandomEnemy();
 			}
-
+			
 			// Don't spawn everyone on the same frame to reduce lag
 			DataPack pack;
 			CreateDataTimer(time, Timer_SpawnEnemyTeleporter, pack, TIMER_FLAG_NO_MAPCHANGE);

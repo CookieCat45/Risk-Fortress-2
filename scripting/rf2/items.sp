@@ -1149,7 +1149,8 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 			float speed = GetItemMod(Item_BedouinBandana, 4);
 			int count = GetItemModInt(Item_BedouinBandana, 3);
 			float victimPos[3], spawnPos[3], angles[3], dir[3];
-			GetEntPos(victim, victimPos, true);
+			GetClientEyePosition(victim, victimPos);
+			victimPos[2] -= 10.0;
 			for (int i = 1; i <= count; i++)
 			{
 				// spread the knives out a bit
