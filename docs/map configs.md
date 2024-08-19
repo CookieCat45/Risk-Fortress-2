@@ -105,4 +105,22 @@ Entries in this section need to be implemented in the plugin to work. Currently,
 # Map Settings
 Maps have a few settings that you can tweak in their own sections:<br/>
 
-- `enemy_pack`: The enemy pack to use for this map. We'll get into how to create and use these later. **Don't include the .cfg file extension**.
+- `name`: The file name of the map, without the extension. You don't have to use the full name of the map, using only part of it works too.<br/>
+
+- `enemy_pack`: The enemy pack to use for this map. We'll get into how to create and use these shortly. **Don't include the .cfg file extension**.<br/>
+
+- `boss_pack`: The boss pack to use for this map. Bosses will appear during the Teleporter event or may spawn randomly when the difficulty reaches a certain point.<br/>
+
+- `enemy_pack_loop`: Same as `enemy_pack`, but is used in place of it if the game has looped at least once.<br/>
+
+- `boss_pack_loop`: Same as `boss_pack`, but is used in place of it if the game has looped at least once.<br/>
+
+- `grace_period_time`: How long the grace period at the beginning of the map will last. Defaults to 30 seconds. -1 for no grace period.<br/>
+
+- `theme`: Music track to play during the course of the map. The duration of the track needs to be specified in `theme_duration`, in seconds.<br/>
+
+- `boss_theme`: Music track to play during the Teleporter event or when the tanks arrive in Tank Destruction mode. The duration of the track needs to be specified in `boss_theme_duration`, in seconds.<br/>
+
+- `theme_alt`/`boss_theme_alt`/`theme_alt_duration`/`boss_theme_alt_duration`: Same as above, but used in place of the normal music tracks if the game has looped at least once.<br/>
+
+- `tank_destruction`: Special keyvalue. 1 to enable Tank Destruction mode. The map needs to have `rf2_tank_spawner` entities placed for this to work.
