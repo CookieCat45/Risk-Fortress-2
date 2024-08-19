@@ -63,3 +63,6 @@ A tip to prevent this from happening in the first place is to use `tools/toolscl
 - Health and ammo kits shouldn't be placed either, as players have infinite reserve ammo and regenerate health automatically.
 - Make sure that doorways or tight passages in your map are spacious enough for giant robots to fit through.
 - For map layouts in general, maps that are very spacious and open are ideal, as this will give lots of room for objects/enemies to spawn, as well as more room for players to kite around enemies. Cramped maps, maps with low ceilings, maps that are too small, or otherwise non-spacious maps should be avoided.
+<br/><br/>
+
+## Other Guides
