@@ -10,11 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.14.1b"
-#endif
-
-#if !defined PLUGIN_NAME
-#define PLUGIN_NAME "rf2.smx"
+#define PLUGIN_VERSION "0.15b"
 #endif
 
 #include <rf2>
@@ -24,7 +20,6 @@
 #include <tf2attributes>
 #include <tf2items>
 #include <tf_ontakedamage>
-#include <morecolors>
 
 #undef REQUIRE_EXTENSIONS
 #tryinclude <SteamWorks>
@@ -72,6 +67,7 @@ bool g_bForceRifleSound;
 bool g_bMapRunning;
 bool g_bRingCashBonus;
 bool g_bEnteringUnderworld;
+bool g_bEnteringFinalArea;
 bool g_bItemSharingDisabledForMap;
 char g_szForcedMap[256];
 char g_szMapForcerName[MAX_NAME_LENGTH];
@@ -125,7 +121,6 @@ char g_szEnemyHudText[1024] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i\n%
 // Players
 bool g_bPlayerViewingItemMenu[MAXTF2PLAYERS];
 bool g_bPlayerIsTeleporterBoss[MAXTF2PLAYERS];
-bool g_bPlayerStunnable[MAXTF2PLAYERS] = { true, ... };
 bool g_bPlayerIsAFK[MAXTF2PLAYERS];
 bool g_bPlayerExtraSentryHint[MAXTF2PLAYERS];
 bool g_bPlayerInSpawnQueue[MAXTF2PLAYERS];
@@ -283,6 +278,9 @@ GlobalForward g_fwTeleEventStart;
 GlobalForward g_fwTeleEventEnd;
 GlobalForward g_fwGracePeriodStart;
 GlobalForward g_fwGracePeriodEnded;
+GlobalForward g_fwOnTakeDamage;
+GlobalForward g_fwOnCustomItemLoaded;
+GlobalForward g_fwOnPlayerItemUpdate;
 PrivateForward g_fwOnMapStart;
 
 // ConVars
@@ -328,6 +326,7 @@ ConVar g_cvTeleporterRadiusMultiplier;
 ConVar g_cvObjectSpreadDistance;
 ConVar g_cvObjectBaseCost;
 ConVar g_cvObjectBaseCount;
+ConVar g_cvExtraMiscObjects;
 ConVar g_cvItemShareEnabled;
 ConVar g_cvTankBaseHealth;
 ConVar g_cvTankHealthScale;
@@ -451,14 +450,15 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	
 	g_bLateLoad = late;
 	g_bMapRunning = late;
+	RegPluginLibrary("rf2");
 	LoadNatives();
+	LoadForwards();
 	return APLRes_Success;
 }
 
 public void OnPluginStart()
 {
 	LoadGameData();
-	LoadForwards();
 	LoadCommandsAndCvars();
 	InstallEnts();
 	BakeCookies();
@@ -967,7 +967,12 @@ public void OnMapStart()
 		g_iMaxStages = FindMaxStages();
 		LoadMapSettings(mapName);
 		g_bTropicsMapExists = RF2_IsMapValid("rf2_tropics"); // For ACHIEVEMENT_TEMPLESECRET - hide it if the map doesn't exist
-		LoadItems();
+		
+		if (GetTotalItems() <= 0)
+		{
+			LoadItems();
+		}
+		
 		LoadWeapons();
 		LoadSurvivorStats();
 		Call_StartForward(g_fwOnMapStart);
@@ -1294,7 +1299,6 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_bot_pyro_shove_away_range"));
 	ResetConVar(FindConVar("tf_bot_force_class"));
 	ResetConVar(FindConVar("tf_allow_server_hibernation"));
-	ResetConVar(FindConVar("tf_bot_join_after_player"));
 }
 
 public void OnAllPluginsLoaded()
@@ -1719,7 +1723,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	int breakable = MaxClients+1;
 	while ((breakable = FindEntityByClassname(breakable, "func_breakable")) != INVALID_ENT)
 	{
-		SetEntProp(breakable, Prop_Data, "m_iTeamNum", TEAM_SURVIVOR); // So caber hits don't detonate
+		SetEntTeam(breakable, TEAM_SURVIVOR); // so caber hits don't detonate
 	}
 	
 	if (g_hPlayerTimer)
@@ -1808,7 +1812,6 @@ void StartDifficultyVote()
 	if (GetRandomInt(1, 20) == 1 || DoesSteelVictoryFlagExist())
 	{
 		menu.AddItem("3", "Titanium (Expert)");
-		RemoveSteelVictoryFlag();
 	}
 	
 	int clients[MAXTF2PLAYERS] = {-1, ...};
@@ -1845,6 +1848,7 @@ public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int par
 				EmitSoundToAll(SND_EVIL_LAUGH);
 				EmitSoundToAll(SND_EVIL_LAUGH);
 				RF2_PrintToChatAll("%t", "DifficultySetDeadly", difficultyName);
+				RemoveSteelVictoryFlag();
 			}
 		}
 		case MenuAction_VoteCancel:
@@ -2895,7 +2899,7 @@ void EndGracePeriod()
 	int entity = MaxClients+1;
 	
 	char name[128];
-	// We have to do this or else bots will misbehave, thinking it's still setup time. They won't attack players and will randomly taunt.
+	// We have to do this crap or else bots will misbehave, thinking it's still setup time. They won't attack players and will randomly taunt.
 	while ((entity = FindEntityByClassname(entity, "team_round_timer")) != INVALID_ENT)
 	{
 		// make sure it doesn't have a name, to avoid messing with map logic (ones starting with zz_ are created by the game)
@@ -2914,9 +2918,14 @@ void EndGracePeriod()
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
+		if (!IsClientInGame(i) || !IsPlayerSurvivor(i, false))
 			continue;
-
+		
+		if (!IsPlayerAlive(i))
+		{
+			TF2_RespawnPlayer(i); // respawn this guy if they're dead for some reason
+		}
+		
 		if (PlayerHasItem(i, Item_HauntedHat))
 		{
 			ArrayList buffs = new ArrayList();
@@ -2941,7 +2950,7 @@ void EndGracePeriod()
 			ArrayList debuffs = new ArrayList();
 			debuffs.Push(TFCond_Dazed);
 			debuffs.Push(TFCond_Bleeding);
-			debuffs.Push(TFCond_MarkedForDeathSilent);
+			debuffs.Push(TFCond_MarkedForDeath);
 			TFCond debuff = debuffs.Get(GetRandomInt(0, debuffs.Length-1));
 			delete debuffs;
 			if (debuff == TFCond_Dazed)
@@ -3145,13 +3154,13 @@ public Action Timer_SpawnEnemy(Handle timer, int client)
 public Action Timer_SetNextStage(Handle timer, int stage)
 {
 	g_iCurrentStage = stage;
-	if (g_iCurrentStage == 1)
+	if (g_iCurrentStage == 1 && !g_bEnteringFinalArea)
 	{
 		g_iLoopCount++;
 	}
 	
 	// rf2_setnextmap or Tree of Fate
-	if (g_szForcedMap[0])
+	if (g_szForcedMap[0] && !g_bEnteringFinalArea)
 	{
 		char reason[64];
 		if (g_szMapForcerName[0])
@@ -3170,6 +3179,10 @@ public Action Timer_SetNextStage(Handle timer, int stage)
 	else if (g_bEnteringUnderworld)
 	{
 		ForceChangeLevel(g_szUnderworldMap, "Entering the Underworld");
+	}
+	else if (g_bEnteringFinalArea)
+	{
+		ForceChangeLevel(g_szFinalMap, "Entering the final area");
 	}
 	else
 	{
@@ -3203,11 +3216,11 @@ public Action Timer_PlayerHud(Handle timer)
 		g_hHudTimer = null;
 		return Plugin_Stop;
 	}
-
+	
 	int hudSeconds, strangeItem;
 	static char strangeItemInfo[128];
 	static char miscText[128];
-
+	
 	SetHudTextParams(-1.0, -1.3, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -3571,7 +3584,7 @@ public Action Timer_PlayerTimer(Handle timer)
 						MakeSurvivor(i, freeIndex, false);
 					}
 				}
-				else if (!GetRF2GameRules().DisableDeath && !g_bPlayerSpawningAsMinion[i])
+				else if (!g_bGracePeriod && !GetRF2GameRules().DisableDeath && !g_bPlayerSpawningAsMinion[i])
 				{
 					g_bPlayerSpawningAsMinion[i] = true;
 					CreateTimer(5.0, Timer_MinionSpawn, GetClientUserId(i), TIMER_FLAG_NO_MAPCHANGE);
@@ -4278,14 +4291,6 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 			{
 				TF2Attrib_SetByDefIndex(melee, 264, meleeRangeBonus);
 			}
-		}
-	}
-	else if (condition == TFCond_Dazed)
-	{
-		if (!RF2_CanBeStunned(client) && IsPlayerStunned(client))
-		{
-			TF2_RemoveCondition(client, TFCond_Dazed);
-			return;
 		}
 	}
 	else if (condition == TFCond_Parachute)
@@ -5187,6 +5192,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			{
 				if (victimIsClient && IsPlayerSurvivor(victim) && HasEntProp(inflictor, Prop_Send, "m_iDeflected") && GetEntProp(inflictor, Prop_Send, "m_iDeflected"))
 				{
+					// Reflect damage against players should never do more than half their health
 					damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.5);
 				}
 				
@@ -5197,7 +5203,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					int enemy = GetEntDataEnt2(inflictor, offset); // m_hEnemy
 					if (enemy != victim) // enemy == victim means direct damage was dealt, otherwise this is splash
 					{
-						proc *= 0.5;
+						proc *= 0.5; // reduced proc coefficient for splash damage
 					}
 				}
 				else if (strcmp2(inflictorClassname, "tf_projectile_pipe"))
@@ -5208,10 +5214,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					{
 						proc *= 0.5;
 					}
-				}
-				else if (strcmp2(inflictorClassname, "tf_projectile_pipe_remote"))
-				{
-					proc *= 0.5;
 				}
 			}
 			else if (strcmp2(inflictorClassname, "entity_medigun_shield"))
@@ -5301,9 +5303,30 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			proc *= GetItemProcCoeff(GetEntItemProc(inflictor));
 		}
 		
-		if (!selfDamage && damageType & DMG_BLAST && PlayerHasItem(attacker, ItemDemo_OldBrimstone) && CanUseCollectorItem(attacker, ItemDemo_OldBrimstone))
+		if (damageType & DMG_BLAST && /*PlayerHasItem(attacker, ItemDemo_OldBrimstone) &&*/ CanUseCollectorItem(attacker, ItemDemo_OldBrimstone))
 		{
-			damage *= 1.0 + CalcItemMod(attacker, ItemDemo_OldBrimstone, 0);
+			if (selfDamage)
+			{
+				// don't increase self damage and make sure we don't get hit by the increased explosion radius from our own weapons
+				if (StrContains(inflictorClassname, "tf_projectile_pipe") != -1)
+				{
+					// check both origin + eye pos
+					float myPos[3], eyePos[3], pipePos[3];
+					GetEntPos(victim, myPos);
+					GetClientEyePosition(victim, eyePos);
+					GetEntPos(inflictor, pipePos);
+					const float dist = 200.0;
+					// pipe/sticky radius is 146, but this does seem a bit inaccurate because the game detects it differently, so add more leniency
+					if (GetVectorDistance(myPos, pipePos) > dist && GetVectorDistance(eyePos, pipePos) > dist)
+					{
+						return Plugin_Handled;
+					}
+				}
+			}
+			else
+			{
+				damage *= 1.0 + CalcItemMod(attacker, ItemDemo_OldBrimstone, 0);
+			}
 		}
 		
 		if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
@@ -5915,11 +5938,12 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	bool rangedDamage = (damageType & DMG_BULLET || damageType & DMG_BLAST || damageType & DMG_IGNITE || damageType & DMG_SONIC);
 	bool validWeapon = weapon > 0 && !IsCombatChar(weapon); // Apparently the weapon can be the attacker??
 	bool inflictorIsBuilding = inflictor > 0 && IsBuilding(inflictor);
+	int attackerProc, inflictorProc;
+	attackerProc = GetEntItemProc(attacker);
+	inflictorProc = IsValidEntity2(inflictor) ? GetEntItemProc(inflictor) : Item_Null;
 	if (IsValidClient(attacker) && attacker != victim && IsValidEntity2(inflictor))
 	{
 		bool rolledCrit;
-		int attackerProc = GetEntItemProc(attacker);
-		int inflictorProc = GetEntItemProc(inflictor);
 		static char classname[128];
 		GetEntityClassname(inflictor, classname, sizeof(classname));
 		bool canCrit = attackerProc != ItemSniper_HolyHunter && !(StrContains(classname, "tf_proj") != -1 && HasEntProp(inflictor, Prop_Send, "m_bCritical"));
@@ -6011,8 +6035,8 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					}
 					
 					// Executioner has a chance to cause bleeding on crit damage
-					if (IsValidClient(victim) && PlayerHasItem(attacker, Item_Executioner)
-						&& damageCustom != TF_CUSTOM_BLEEDING && !TF2_IsPlayerInCondition(victim, TFCond_Bonked) && !g_bExecutionerBleedCooldown[attacker])
+					if (!g_bExecutionerBleedCooldown[attacker] && damageCustom != TF_CUSTOM_BLEEDING && PlayerHasItem(attacker, Item_Executioner)
+						&& IsValidClient(victim) && !TF2_IsPlayerInCondition(victim, TFCond_Bonked))
 					{
 						if (RandChanceFloatEx(attacker, 0.001, 1.0, GetItemMod(Item_Executioner, 0) * proc))
 						{
@@ -6043,7 +6067,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					damage *= 1.35;
 				}
 			}
-
+			
 			case CritType_MiniCrit:
 			{
 				if (critType == CritType_Crit) // Mini-Crit -> Crit
@@ -6108,7 +6132,6 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.15);
 	}
 	
-	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
 	if (IsValidClient(attacker))
 	{
 		switch (damageCustom)
@@ -6119,14 +6142,54 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			}
 		}
 	}
-
+	
+	Call_StartForward(g_fwOnTakeDamage);
+	Call_PushCell(victim);
+	Call_PushCellRef(attacker);
+	Call_PushCellRef(inflictor);
+	Call_PushFloatRef(damage);
+	Call_PushCellRef(damageType);
+	Call_PushCellRef(weapon);
+	Call_PushArray(damageForce, 3);
+	Call_PushArray(damagePosition, 3);
+	Call_PushCell(damageCustom);
+	Call_PushCellRef(critType);
+	Call_PushCell(attackerProc);
+	Call_PushCell(inflictorProc);
+	Call_PushFloat(proc);
+	Action result;
+	Call_Finish(result);
+	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
+	if (result != Plugin_Continue)
+		return result;
+	
 	return damage != originalDamage || originalDamageType != damageType || originalCritType != critType ? Plugin_Changed : Plugin_Continue;
 }
 
-public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
-		float damageForce[3], float damagePosition[3], int damagecustom)
+public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
+		float damageForce[3], float damagePosition[3], int damageCustom)
 {
-	return Hook_OnTakeDamageAlive(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
+	Action result = Hook_OnTakeDamageAlive(victim, attacker, inflictor, damage, damageType, weapon, damageForce, damagePosition, damageCustom);
+	
+	// TF2_OnTakeDamageModifyRules() doesn't get called for buildings so we do this here
+	Call_StartForward(g_fwOnTakeDamage);
+	Call_PushCell(victim);
+	Call_PushCellRef(attacker);
+	Call_PushCellRef(inflictor);
+	Call_PushFloatRef(damage);
+	Call_PushCellRef(damageType);
+	Call_PushCellRef(weapon);
+	Call_PushArray(damageForce, 3);
+	Call_PushArray(damagePosition, 3);
+	Call_PushCell(damageCustom);
+	int dummy;
+	Call_PushCellRef(dummy); // crit type is unavailable
+	Call_PushCell(GetEntItemProc(attacker));
+	Call_PushCell(GetEntItemProc(inflictor));
+	Call_PushFloat(g_flDamageProc);
+	Call_Finish(result);
+	damage = fmin(damage, 32767.0);
+	return result;
 }
 
 public void Hook_BuildingOnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon,

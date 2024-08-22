@@ -73,7 +73,7 @@ methodmap RF2_Object_Gravestone < RF2_Object_Base
 					if (GetSpawnPoint(pos, minionPos, 350.0, 3500.0, TEAM_SURVIVOR, _, _, _, MASK_NPCSOLID_BRUSHONLY, 35.0))
 					{
 						skeleton = CreateEntityByName("tf_zombie");
-						SetEntProp(skeleton, Prop_Data, "m_iTeamNum", 5);
+						SetEntTeam(skeleton, 5);
 						TeleportEntity(skeleton, pos);
 						DispatchSpawn(skeleton);
 						SetEntProp(skeleton, Prop_Data, "m_iMaxHealth", health);

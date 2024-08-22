@@ -74,8 +74,8 @@ void LoadCommandsAndCvars()
 	g_cvSurvivorLagBehindThreshold = CreateConVar("rf2_survivor_lag_behind_threshold", "0.6", "If any player has an item count lower than the player with the most items times this value, they will be considered 'lagging behind'. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvSurvivorMaxExtraCrates = CreateConVar("rf2_survivor_max_extra_crates", "0", "The highest number of catch-up crates to spawn for a player.", FCVAR_NOTIFY, true, 0.0);
 	g_cvCashBurnTime = CreateConVar("rf2_enemy_cash_burn_time", "30.0", "Time in seconds that dropped cash will disappear after spawning.", FCVAR_NOTIFY, true, 0.0);
-	g_cvEnemyHealthScale = CreateConVar("rf2_enemy_level_health_scale", "0.08", "How much the enemy team's health will increase per level, in decimal percentage. Includes neutral enemies, such as Monoculus.", FCVAR_NOTIFY, true, 0.0);
-	g_cvEnemyDamageScale = CreateConVar("rf2_enemy_level_damage_scale", "0.04", "How much the enemy team's damage will increase per level, in decimal percentage. Includes neutral enemies, such as Monoculus.", FCVAR_NOTIFY, true, 0.0);
+	g_cvEnemyHealthScale = CreateConVar("rf2_enemy_level_health_scale", "0.08", "How much the enemy team's health will increase per level, in decimal percentage. Includes NPCs.", FCVAR_NOTIFY, true, 0.0);
+	g_cvEnemyDamageScale = CreateConVar("rf2_enemy_level_damage_scale", "0.04", "How much the enemy team's damage will increase per level, in decimal percentage. Includes NPCs.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyXPDropScale = CreateConVar("rf2_enemy_xp_drop_scale", "0.15", "How much enemy XP drops scale per level.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyCashDropScale = CreateConVar("rf2_enemy_cash_drop_scale", "0.15", "How much enemy cash drops scale per level.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyMinSpawnDistance = CreateConVar("rf2_enemy_spawn_min_distance", "1000.0", "The minimum distance an enemy can spawn in relation to Survivors.", FCVAR_NOTIFY, true, 0.0);
@@ -94,6 +94,7 @@ void LoadCommandsAndCvars()
 	g_cvObjectSpreadDistance = CreateConVar("rf2_object_spread_distance", "80.0", "The minimum distance that spawned objects must be spread apart from eachother.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "12", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCost = CreateConVar("rf2_object_base_cost", "50.0", "The base cost to use objects such as crates. Scales with the difficulty.", FCVAR_NOTIFY, true, 0.0);
+	g_cvExtraMiscObjects = CreateConVar("rf2_extra_misc_objects", "2", "Additional number of non-crate objects to spawn.", FCVAR_NOTIFY, true, 0.0);
 	g_cvItemShareEnabled = CreateConVar("rf2_item_share_enabled", "1", "Whether or not to enable the item sharing system. This system is designed to prevent players from hogging items in multiplayer.\n0 = Always disabled, 1 = Disable under certain conditions only, 2 = Disable only if 1 player is on RED.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvItemShareDisableLoopCount = CreateConVar("rf2_item_share_disable_loop_count", "0", "Disable item sharing after this many loops if rf2_item_share_enabled is set to 1. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvItemShareDisableThreshold = CreateConVar("rf2_item_share_disable_threshold", "0.6", "If rf2_item_share_enabled is set to 1, disable item sharing after all players have filled at least this much of their item cap. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -203,7 +204,7 @@ public Action Command_GiveItem(int client, int args)
 	int item;
 	char name[MAX_NAME_LENGTH];
 	
-	for (int i = 1; i <= GetTotalItems(); i++)
+	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		GetItemName(i, name, sizeof(name), false);
 		if ((g_bItemInDropPool[i] || IsScrapItem(i)) && StrContains(name, arg2, false) != -1)
@@ -310,7 +311,7 @@ public Action Command_GiveAllItems(int client, int args)
 	{
 		for (int i = 0; i < matches; i++)
 		{
-			for (int j = 1; j <= GetTotalItems(); j++)
+			for (int j = 1; j < GetTotalItems(); j++)
 			{
 				if (!g_bItemInDropPool[j] && !IsScrapItem(j))
 					continue;

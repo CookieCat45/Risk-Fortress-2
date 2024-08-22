@@ -337,7 +337,7 @@ int SpawnObjects()
 	// Non-crate object weights are separate
 	int workbenchWeight = 20;
 	int scrapperWeight = 12;
-	int graveWeight = 2;
+	int graveWeight = 3;
 	int pumpkinWeight = 1;
 	
 	if (!altar.IsValid())
@@ -389,6 +389,7 @@ int SpawnObjects()
 	}
 	
 	int minCrates = RoundToFloor(float(spawnCount) * 0.75);
+	int extraMisc = g_cvExtraMiscObjects.IntValue;
 	int bonusCrates;
 	int playerBonus;
 	if (g_iLoopCount <= 0)
@@ -412,7 +413,7 @@ int SpawnObjects()
 	int strangeCrateLimit = imax(imin(RoundToCeil(float(minCrates)*0.08), survivorCount), 4);
 	RF2_Object_Crate crate;
 	bool remove;
-	while (spawns < spawnCount+bonusCrates)
+	while (spawns < spawnCount+bonusCrates+extraMisc)
 	{
 		GetSpawnPoint(worldCenter, spawnPos, 0.0, distance, _, true);
 		if (attempts < 1000)

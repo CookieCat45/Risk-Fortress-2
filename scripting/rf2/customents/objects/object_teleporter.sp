@@ -150,14 +150,32 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		}
 		
 		Menu vote = new Menu(Menu_TeleporterVote);
+		#if defined PRERELEASE
+		bool final = nextStageVote && g_iLoopCount >= 1 && IsAboutToLoop() && RF2_IsMapValid(g_szFinalMap);
+		#else
+		bool final = false;
+		#endif
 		if (nextStageVote)
 		{
-			if (client > 0)
-				vote.SetTitle("Depart now? (%N)", client);
+			if (final)
+			{
+				// ask if they want to enter the final area
+				if (client > 0)
+					vote.SetTitle("A fork appears in the path ahead. Where do you wish to go? (%N)", client);
+				else
+					vote.SetTitle("A fork appears in the path ahead. Where do you wish to go?");
+
+				vote.VoteResultCallback = OnNextStageVoteFinishFinal;
+			}
 			else
-				vote.SetTitle("Depart now?");
-			
-			vote.VoteResultCallback = OnNextStageVoteFinish;
+			{
+				if (client > 0)
+					vote.SetTitle("Depart now? (%N)", client);
+				else
+					vote.SetTitle("Depart now?");
+				
+				vote.VoteResultCallback = OnNextStageVoteFinish;
+			}
 		}
 		else
 		{
@@ -169,10 +187,20 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			vote.VoteResultCallback = OnTeleporterVoteFinish;
 		}
 		
-		vote.AddItem("Yes", "Yes");
-		vote.AddItem("No", "No");
+		if (final)
+		{
+			vote.AddItem("final_area", "Travel towards the large industrial building in the distance");
+			vote.AddItem("normal_path", "Continue on the normal path");
+			vote.AddItem("nowhere", "I'm not going anywhere yet");
+		}
+		else
+		{
+			vote.AddItem("Yes", "Yes");
+			vote.AddItem("No", "No");
+		}
+		
 		vote.ExitButton = false;
-		vote.DisplayVote(clients, clientCount, 12);
+		vote.DisplayVote(clients, clientCount, final ? 25 : 12);
 	}
 	
 	public void Prepare()
@@ -320,7 +348,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 					else if (eyeSpawnCount > 0)
 					{
 						boss = CreateEntityByName("eyeball_boss");
-						SetEntProp(boss, Prop_Data, "m_iTeamNum", 5);
+						SetEntTeam(boss, 5);
 						eyeSpawnCount--;
 					}
 					
@@ -350,8 +378,6 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		StopMusicTrackAll();
 		RF2_Object_Teleporter.EventCompletion();
 		RF2_PrintToChatAll("%t", "TeleporterComplete");
-		Call_StartForward(g_fwTeleEventEnd);
-		Call_Finish();
 		RF2_GameRules gamerules = GetRF2GameRules();
 		if (gamerules.IsValid())
 		{
@@ -459,7 +485,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		while ((boss = FindEntityByClassname(boss, "headless_hatman")) != INVALID_ENT)
 		{
 			// HHH team number is 0, set to something else so he actually takes damage and dies
-			SetEntProp(boss, Prop_Data, "m_iTeamNum", 1);
+			SetEntTeam(boss, 1);
 			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
 			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
 		}
@@ -473,6 +499,9 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
 			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
 		}
+		
+		Call_StartForward(g_fwTeleEventEnd);
+		Call_Finish();
 	}
 }
 
@@ -600,7 +629,7 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 	// now let's see how many of them are actually in the radius, so we can add charge based on that
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsPlayerSurvivor(i))
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsPlayerSurvivor(i) || IsPlayerMinion(i))
 			continue;
 		
 		if (IsPlayerSurvivor(i))
@@ -769,6 +798,63 @@ public void OnNextStageVoteFinish(Menu menu, int numVotes, int numClients, const
 		else
 		{
 			g_bIsConfirmation = false;
+		}
+	}
+}
+
+static bool g_bWasTie;
+public void OnNextStageVoteFinishFinal(Menu menu, int numVotes, int numClients, const int[][] clientInfo, int numItems, const int[][] itemInfo)
+{
+	if (numVotes > 0)
+	{
+		int finalAreaVotes, loopVotes, noVotes;
+		for (int i = 0; i < numItems; i++)
+		{
+			switch (itemInfo[i][VOTEINFO_ITEM_INDEX])
+			{
+				case 0: finalAreaVotes = itemInfo[i][VOTEINFO_ITEM_VOTES];
+				case 1: loopVotes = itemInfo[i][VOTEINFO_ITEM_VOTES];
+				case 2: noVotes = itemInfo[i][VOTEINFO_ITEM_VOTES];
+			}
+		}
+		
+		// Decide the winner
+		if (noVotes > 0 && (noVotes > finalAreaVotes && noVotes > loopVotes || noVotes == finalAreaVotes && noVotes > loopVotes 
+			|| noVotes == loopVotes && noVotes > finalAreaVotes || noVotes == finalAreaVotes && noVotes == loopVotes))
+		{
+			// No one wins
+			g_bWasTie = false;
+			return;
+		}
+		else if (finalAreaVotes > loopVotes)
+		{
+			g_bEnteringFinalArea = true;
+			g_bWasTie = false;
+			ForceTeamWin(TEAM_SURVIVOR);
+		}
+		else if (loopVotes > finalAreaVotes)
+		{
+			g_bWasTie = false;
+			ForceTeamWin(TEAM_SURVIVOR);
+		}
+		else
+		{
+			// It's a tie, try again
+			RF2_Object_Teleporter.StartVote(INVALID_ENT, true);
+			RF2_PrintToChatAll("The voting result was a tie. Casting the vote again.");
+			if (g_bWasTie)
+			{
+				// Another tie! Decide randomly at this point.
+				g_bWasTie = false;
+				if (GetRandomInt(1, 2) == 1)
+				{
+					g_bEnteringFinalArea = true;
+				}
+
+				ForceTeamWin(TEAM_SURVIVOR);
+			}
+
+			g_bWasTie = true;
 		}
 	}
 }

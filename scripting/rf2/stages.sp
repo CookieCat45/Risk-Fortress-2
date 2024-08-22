@@ -159,6 +159,7 @@ void ReadMapKeys(KeyValues mapKey)
 	
 	PrintToServer("[RF2] Enemies/bosses loaded: %i", g_iEnemyCount);
 	g_flGracePeriodTime = mapKey.GetFloat("grace_period_time", 30.0);
+	g_flBossSpawnChanceBonus = mapKey.GetFloat("boss_spawn_chance_bonus", 0.0);
 	g_bTankBossMode = asBool(mapKey.GetNum("tank_destruction", false));
 }
 
@@ -266,8 +267,8 @@ bool RF2_IsMapValid(char[] mapName)
 	if (!IsMapValid(mapName))
 		return false;
 	
-	// If it's the underworld map, we don't have to do anything here
-	if (StrContains(g_szUnderworldMap, mapName, false) == 0)
+	// If it's the underworld map or the final map, we don't have to do anything here
+	if (g_szUnderworldMap[0] && StrContains(g_szUnderworldMap, mapName, false) == 0 || g_szFinalMap[0] && StrContains(g_szFinalMap, mapName, false) == 0)
 	{
 		return true;
 	}
@@ -418,6 +419,11 @@ bool IsStageCleared()
 	}
 	
 	return GameRules_GetRoundState() == RoundState_TeamWin && GameRules_GetProp("m_iWinningTeam") == TEAM_SURVIVOR;
+}
+
+stock bool IsAboutToLoop()
+{
+	return g_iCurrentStage >= g_iMaxStages && g_iCurrentStage % g_iMaxStages == 0;
 }
 
 int DetermineNextStage()

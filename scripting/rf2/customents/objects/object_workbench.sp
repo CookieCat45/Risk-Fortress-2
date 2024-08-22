@@ -229,7 +229,7 @@ static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 	int cost = bench.Cost;
 	int scrapItem;
 	
-	for (int i = 1; i <= GetTotalItems(); i++)
+	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (i != benchItem && GetItemQuality(i) == quality && PlayerHasItem(client, i, true))
 		{

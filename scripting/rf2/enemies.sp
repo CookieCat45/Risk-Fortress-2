@@ -555,13 +555,13 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemyKey.GoBack();
 		}
 		
-		for (int i = 1; i <= GetTotalItems(); i++)
+		for (int i = 1; i < GetTotalItems(); i++)
 			enemy.SetItem(i, 0);
 		
 		int itemId;
 		if (enemyKey.JumpToKey("items"))
 		{
-			for (int item = 1; item <= GetTotalItems(); item++)
+			for (int item = 1; item < GetTotalItems(); item++)
 			{
 				if (item == 1 && enemyKey.GotoFirstSubKey(false) || enemyKey.GotoNextKey(false))
 				{
@@ -843,7 +843,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		}
 	}
 	
-	for (int i = 1; i <= GetTotalItems(); i++)
+	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (enemy.GetItem(i) > 0)
 		{

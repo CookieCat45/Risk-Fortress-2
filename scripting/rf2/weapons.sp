@@ -633,6 +633,7 @@ void TF2_RemoveLoadoutWearables(int client)
 	}
 }
 
+// some weapon's proc coefficient are handled differently, like rocket/grenade launchers, and won't be in here
 float GetWeaponProcCoefficient(int weapon)
 {
 	static char classname[128];
@@ -641,7 +642,7 @@ float GetWeaponProcCoefficient(int weapon)
 	{
 		return 0.2;
 	}
-	else if (strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_smg"))
+	else if (strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_smg") || strcmp2(classname, "tf_weapon_pipebomblauncher"))
 	{
 		return 0.5;
 	}

@@ -1,7 +1,8 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-void RF_TakeDamage(int entity, int inflictor, int attacker, float damage, int damageType=DMG_GENERIC, int procItem=Item_Null, int weapon=-1, const float damageForce[3]=NULL_VECTOR, const float damagePosition[3]=NULL_VECTOR)
+void RF_TakeDamage(int entity, int inflictor, int attacker, float damage, int damageType=DMG_GENERIC, int procItem=Item_Null, 
+	int weapon=-1, const float damageForce[3]=NULL_VECTOR, const float damagePosition[3]=NULL_VECTOR)
 {
 	if (procItem > Item_Null)
 	{
@@ -98,18 +99,18 @@ bool DoEntitiesIntersect(int ent1, int ent2)
 }
 
 // SPELL PROJECTILES WILL ONLY WORK IF THE OWNER ENTITY IS A PLAYER! DO NOT TRY THEM WITH ANYTHING ELSE!
-int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], const float angles[3],
+int ShootProjectile(int owner=INVALID_ENT, const char[] classname, const float pos[3], const float angles[3],
 	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, bool spawn=true)
 {
 	int entity = CreateEntityByName(classname);
-	if (entity == -1)
+	if (entity == INVALID_ENT)
 	{
 		if (StrContains(classname, "rf2_") == 0)
 		{
-			LogError("[ShootProjectile] Invalid projectile entity %s. Did you forget to call the Init() method?", classname);
+			LogError("[ShootProjectile] Invalid projectile entity %s. Did you possibly forget to call the Init() method on a custom projectile?", classname);
 		}
 		
-		return -1;
+		return INVALID_ENT;
 	}
 	
 	if (RF2_Projectile_Base(entity).IsValid())
@@ -120,9 +121,7 @@ int ShootProjectile(int owner=-1, const char[] classname, const float pos[3], co
 	SetEntityOwner(entity, owner);
 	if (owner > 0)
 	{
-		int team = GetEntTeam(owner);
-		SetEntProp(entity, Prop_Data, "m_iTeamNum", team);
-		SetEntProp(entity, Prop_Send, "m_iTeamNum", team);
+		SetEntTeam(entity, GetEntTeam(owner));
 	}
 	
 	float projectileAngles[3], velocity[3];

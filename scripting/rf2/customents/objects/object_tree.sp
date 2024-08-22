@@ -52,14 +52,16 @@ static void OnCreate(RF2_Object_Tree tree)
 	tree.SetModel(MODEL_TREE);
 	tree.SetObjectName("Tree of Fate");
 	tree.TextZOffset = 100.0;
-	ArrayList mapList = GetMapsForStage(DetermineNextStage());
-	if (mapList.Length <= 1)
+	ArrayList mapList = g_bEnteringFinalArea ? null : GetMapsForStage(DetermineNextStage());
+	if (g_bEnteringFinalArea || mapList && mapList.Length <= 1)
 	{
 		// If there's only 1 map for the next stage, there's no point in using this object
 		tree.Active = false;
 		tree.Effects = 0;
 		tree.SetWorldText("Try Again Later :)");
-		delete mapList;
+		if (mapList) 
+			delete mapList;
+
 		return;
 	}
 	

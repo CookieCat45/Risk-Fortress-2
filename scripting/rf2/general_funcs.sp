@@ -20,6 +20,77 @@ bool RandChanceFloat(float min, float max, float goal, float &result=0.0)
 	return result <= goal;
 }
 
+// If the result of GetRandomInt(min, max) is below or equal to goal, returns true. Factors in luck stat from client.
+bool RandChanceIntEx(int client, int min, int max, int goal, int &result=0)
+{
+	int random, badRolls;
+	int rollTimes = 1 + GetPlayerLuckStat(client);
+	bool success;
+	
+	if (rollTimes < 0)
+	{
+		// We are unlucky. Roll once. To succeed, we must roll as many successful rolls as we have bad rolls.
+		badRolls = rollTimes * -1;
+		rollTimes = 1;
+	}
+	
+	for (int i = 1; i <= rollTimes; i++)
+	{
+		if ((random = GetRandomInt(min, max)) <= goal)
+		{
+			if (badRolls <= 0) // If we have no bad rolls, we are successful.
+			{
+				success = true;
+				break;
+			}
+			else // We have a bad roll. Decrement and try again for a bad result.
+			{
+				badRolls--;
+				i = 0;
+			}
+		}
+	}
+	
+	result = random;
+	return success;
+}
+
+// If the result of GetRandomFloat(min, max) is below or equal to goal, returns true. Factors in luck stat from client.
+bool RandChanceFloatEx(int client, float min, float max, float goal, float &result=0.0)
+{
+	float random;
+	int rollTimes = 1 + GetPlayerLuckStat(client);
+	int badRolls;
+	bool success;
+	
+	if (rollTimes < 0)
+	{
+		// We are unlucky. Roll once. To succeed, we must roll as many successful rolls as we have bad rolls.
+		badRolls = rollTimes * -1;
+		rollTimes = 1;
+	}
+	
+	for (int i = 1; i <= rollTimes; i++)
+	{
+		if ((random = GetRandomFloat(min, max)) <= goal)
+		{
+			if (badRolls <= 0) // If we have no bad rolls, we are successful.
+			{
+				success = true;
+				break;
+			}
+			else // We have a bad roll. Decrement and try again for a bad result.
+			{
+				badRolls--;
+				i = 0;
+			}
+		}
+	}
+	
+	result = random;
+	return success;
+}
+
 void ForceTeamWin(int team)
 {
 	int point;

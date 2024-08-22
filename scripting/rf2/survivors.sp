@@ -233,7 +233,7 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 
 void UpdateItemsForPlayer(int client)
 {
-	for (int i = 1; i <= GetTotalItems(); i++)
+	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		UpdatePlayerItem(client, i);
 	}
@@ -362,7 +362,7 @@ void LoadSurvivorInventory(int client, int index)
 		CreateTimer(0.1, Timer_EquipmentCooldown, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
-	for (int i = 1; i <= GetTotalItems(); i++)
+	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (!IsEquipmentItem(i))
 			g_iPlayerItem[client][i] = g_iSavedItem[index][i];

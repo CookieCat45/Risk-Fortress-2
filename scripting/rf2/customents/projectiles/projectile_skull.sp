@@ -155,7 +155,7 @@ static int SummonSkeleton(int client)
 	GetEntPos(client, pos);
 	TE_TFParticle("ghost_smoke", pos);
 	int skeleton = CreateEntityByName("tf_zombie");
-	SetEntProp(skeleton, Prop_Data, "m_iTeamNum", 5);
+	SetEntTeam(skeleton, 5);
 	TeleportEntity(skeleton, pos);
 	DispatchSpawn(skeleton);
 	int health = RoundToFloor(400.0 * GetEnemyHealthMult());

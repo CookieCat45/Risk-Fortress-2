@@ -18,6 +18,8 @@ float g_flEquipmentItemMinCooldown[MAX_ITEMS];
 float g_flItemSpriteScale[MAX_ITEMS] = {1.0, ...};
 float g_flItemProcCoeff[MAX_ITEMS] = {1.0, ...};
 
+char g_szItemSectionName[MAX_ITEMS][64];
+char g_szCustomItemFileName[MAX_ITEMS][PLATFORM_MAX_PATH];
 char g_szItemName[MAX_ITEMS][64];
 char g_szItemDesc[MAX_ITEMS][512];
 char g_szItemUnusualEffectName[MAX_ITEMS][64];
@@ -38,57 +40,82 @@ char g_szUnusualEffectDisplayName[MAX_UNUSUAL_EFFECTS][64];
 char g_szItemEquipRegion[MAX_ITEMS][64];
 char g_szItemSprite[MAX_ITEMS][PLATFORM_MAX_PATH];
 
-void LoadItems()
+int LoadItems(const char[] customPath="")
 {
-	KeyValues effectKey = CreateKeyValues("");
-	char config[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, ItemConfig);
-	if (!effectKey.ImportFromFile(config))
+	char config[PLATFORM_MAX_PATH], buffer[64], file[PLATFORM_MAX_PATH];
+	bool custom = asBool(customPath[0]);
+	int count;
+	if (custom)
 	{
-		delete effectKey;
-		ThrowError("File %s does not exist", config);
+		strcopy(config, sizeof(config), customPath);
+		// remove the file path, we just want the name of the file here
+		file = config;
+		char temp[PLATFORM_MAX_PATH];
+		SplitString(file, "custom_items\\", temp, sizeof(temp));
+		StrCat(temp, sizeof(temp), "custom_items\\");
+		ReplaceStringEx(file, sizeof(file), temp, "");
+		ReplaceString(file, sizeof(file), "/", "");
+		ReplaceString(file, sizeof(file), "\\", "");
+	}
+	else
+	{
+		BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, ItemConfig);
 	}
 	
 	// Do our unusual effects first so we have them when we load the items
-	g_iUnusualEffectCount = 0;
-	char buffer[64], split[16];
-	effectKey.GetSectionName(buffer, sizeof(buffer));
-	
-	if (strcmp2(buffer, "items"))
+	if (!custom)
 	{
-		effectKey.GotoNextKey();
-	}
-	
-	for (int i = 0; i < MAX_UNUSUAL_EFFECTS; i++)
-	{
-		if (i == 0 && effectKey.GotoFirstSubKey(false) || effectKey.GotoNextKey(false))
+		KeyValues effectKey = CreateKeyValues("");
+		if (!effectKey.ImportFromFile(config))
 		{
-			effectKey.GetSectionName(g_szUnusualEffectDisplayName[i], sizeof(g_szUnusualEffectDisplayName[]));
-			effectKey.GetString(NULL_STRING, buffer, sizeof(buffer));
-			
-			ReplaceString(buffer, sizeof(buffer), " ", ""); // remove whitespace
-			SplitString(buffer, ";", split, sizeof(split));
-			ReplaceStringEx(buffer, sizeof(buffer), split, "");
-			ReplaceStringEx(buffer, sizeof(buffer), ";", "");
-			
-			g_iUnusualEffectType[i] = StringToInt(split);
-			strcopy(g_szUnusualEffectName[i], sizeof(g_szUnusualEffectName[]), buffer);
-			g_iUnusualEffectCount++;
+			delete effectKey;
+			ThrowError("File %s does not exist", config);
 		}
+		g_iUnusualEffectCount = 0;
+		effectKey.GetSectionName(buffer, sizeof(buffer));
+		
+		if (strcmp2(buffer, "items"))
+		{
+			effectKey.GotoNextKey();
+		}
+		
+		char split[16];
+		for (int i = 0; i < MAX_UNUSUAL_EFFECTS; i++)
+		{
+			if (i == 0 && effectKey.GotoFirstSubKey(false) || effectKey.GotoNextKey(false))
+			{
+				effectKey.GetSectionName(g_szUnusualEffectDisplayName[i], sizeof(g_szUnusualEffectDisplayName[]));
+				effectKey.GetString(NULL_STRING, buffer, sizeof(buffer));
+				
+				ReplaceString(buffer, sizeof(buffer), " ", ""); // remove whitespace
+				SplitString(buffer, ";", split, sizeof(split));
+				ReplaceStringEx(buffer, sizeof(buffer), split, "");
+				ReplaceStringEx(buffer, sizeof(buffer), ";", "");
+				
+				g_iUnusualEffectType[i] = StringToInt(split);
+				strcopy(g_szUnusualEffectName[i], sizeof(g_szUnusualEffectName[]), buffer);
+				g_iUnusualEffectCount++;
+			}
+		}
+		
+		delete effectKey;
 	}
 	
-	delete effectKey;
-	
-	// Now items
-	g_iItemCount = 0;
+	if (!custom)
+		g_iItemCount = 0;
+
 	int item;
 	KeyValues itemKey = CreateKeyValues("");
-	itemKey.ImportFromFile(config);
-	itemKey.GetSectionName(buffer, sizeof(buffer));
+	if (!itemKey.ImportFromFile(config))
+	{
+		delete itemKey;
+		ThrowError("File %s does not exist", config);
+	}
 	
+	itemKey.GetSectionName(buffer, sizeof(buffer));
 	bool error;
 	// don't assume the position of the effects tree
-	if (strcmp2(buffer, "effects", false))
+	if (!custom && strcmp2(buffer, "effects", false))
 	{
 		error = !itemKey.GotoNextKey();
 	}
@@ -103,12 +130,22 @@ void LoadItems()
 		ThrowError("Keyvalues section \"items\" does not exist in %s", config);
 	}
 	
-	for (int i = 0; i <= GetTotalItems(); i++)
+	for (int i = 0; i < GetTotalItems(); i++)
 	{
 		if (i == 0 && itemKey.GotoFirstSubKey() || itemKey.GotoNextKey())
 		{
 			// This value will correspond to the item's index in the plugin so we know what the item does.
-			item = itemKey.GetNum("item_type", Item_Null);
+			if (!custom)
+			{
+				item = itemKey.GetNum("item_type", Item_Null);
+			}
+			else
+			{
+				item = g_iItemCount; // use the next available slot for subplugin items
+				strcopy(g_szCustomItemFileName[item], sizeof(g_szCustomItemFileName[]), file);
+			}
+			
+			itemKey.GetSectionName(g_szItemSectionName[item], sizeof(g_szItemSectionName[]));
 			itemKey.GetString("name", g_szItemName[item], sizeof(g_szItemName[]), "Unnamed Item");
 			itemKey.GetString("desc", g_szItemDesc[item], sizeof(g_szItemDesc[]), "(No description found...)");
 			CRemoveTags(g_szItemDesc[item], sizeof(g_szItemDesc[]));
@@ -131,7 +168,7 @@ void LoadItems()
 			}
 			else
 			{
-				LogError("[LoadItems] Bad item sprite for item %i (%s: %s)", item, g_szItemName[item], g_szItemSprite[item]);
+				LogError("[LoadItems] Bad item sprite for item %i (%s: %s)", item, g_szItemSectionName[item], g_szItemSprite[item]);
 			}
 			
 			// The effect of item modifiers are arbitrary, and depend on the item. Some may not use them at all.
@@ -172,6 +209,16 @@ void LoadItems()
 			}
 			
 			g_iItemCount++;
+			count++;
+			if (custom)
+			{
+				// let any subplugins know that a custom item has been loaded
+				Call_StartForward(g_fwOnCustomItemLoaded);
+				Call_PushString(file);
+				Call_PushString(g_szItemSectionName[item]);
+				Call_PushCell(item);
+				Call_Finish();
+			}
 		}
 		else
 		{
@@ -179,8 +226,59 @@ void LoadItems()
 		}
 	}
 	
-	PrintToServer("[RF2] Items loaded: %i", g_iItemCount);
+	if (!custom)
+	{
+		// we just finished loading the base items, now load custom items from subplugins
+		LoadCustomItems();
+	}
+	
+	CheckForDuplicateSectionNames();
 	delete itemKey;
+	return count;
+}
+
+void LoadCustomItems()
+{
+	int count;
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "%s/%s", ConfigPath, "custom_items/");
+	DirectoryListing dir = OpenDirectory(path);
+	if (!dir)
+	{
+		LogError("The %s directory was not found. Custom items will not be loaded.", path);
+		return;
+	}
+	
+	FileType type;
+	char file[PLATFORM_MAX_PATH], buffer[PLATFORM_MAX_PATH];
+	while (dir.GetNext(file, sizeof(file), type))
+	{
+		if (type != FileType_File)
+			continue;
+		
+		FormatEx(buffer, sizeof(buffer), "%s/%s", path, file);
+		LogMessage("Loading custom items file: %s", file);
+		count += LoadItems(buffer);
+	}
+	
+	PrintToServer("[RF2] Items loaded: %i (%i custom)", g_iItemCount, count);
+	delete dir;
+}
+
+void CheckForDuplicateSectionNames()
+{
+	ArrayList list = new ArrayList(64);
+	for (int i = 0; i < GetTotalItems(); i++)
+	{
+		if (list.FindString(g_szItemSectionName[i]) != -1)
+		{
+			LogError("[WARNING] Found duplicate item section name: '%s' for item %i. Change it or it will cause issues.", g_szItemSectionName[i], i);
+		}
+		
+		list.PushString(g_szItemSectionName[i]);
+	}
+	
+	delete list;
 }
 
 bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
@@ -211,7 +309,7 @@ int GetRandomItem(int normalWeight=0, int genuineWeight=0,
 	{
 		if (i == Quality_Collectors || i == Quality_HauntedStrange)
 			continue;
-
+		
 		switch (i)
 		{
 			case Quality_Normal: count = normalWeight;
@@ -231,13 +329,13 @@ int GetRandomItem(int normalWeight=0, int genuineWeight=0,
 	quality = array.Get(GetRandomInt(0, array.Length-1));
 	array.Clear();
 	
-	for (int i = 1; i <= GetTotalItems(); i++)
+	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (!g_bItemInDropPool[i] || GetItemQuality(i) == Quality_Collectors)
 			continue;
 		
 		if (GetItemQuality(i) == quality 
-		|| quality == Quality_Haunted && allowHauntedStrange && GetItemQuality(i) == Quality_HauntedStrange)
+			|| quality == Quality_Haunted && allowHauntedStrange && GetItemQuality(i) == Quality_HauntedStrange)
 		{
 			array.Push(i);
 		}
@@ -263,7 +361,7 @@ int GetRandomItemEx(int quality)
 	ArrayList array = new ArrayList();
 	int item;
 	
-	for (int i = 1; i <= GetTotalItems(); i++)
+	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (!g_bItemInDropPool[i])
 			continue;
@@ -292,7 +390,7 @@ int GetRandomCollectorItem(TFClassType class)
 	ArrayList array = new ArrayList();
 	int item;
 	
-	for (int i = 0; i <= GetTotalItems(); i++)
+	for (int i = 0; i < GetTotalItems(); i++)
 	{
 		if (!g_bItemInDropPool[i])
 			continue;
@@ -388,7 +486,7 @@ int EquipItemAsWearable(int client, int item)
 		
 		index = GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex");
 		
-		for (int i = 1; i <= GetTotalItems(); i++)
+		for (int i = 1; i < GetTotalItems(); i++)
 		{
 			if (PlayerHasItem(client, i) && index == g_iItemSchemaIndex[i])
 			{
@@ -511,6 +609,11 @@ int GetQualityEquipPriority(int quality)
 
 void UpdatePlayerItem(int client, int item)
 {
+	Call_StartForward(g_fwOnPlayerItemUpdate);
+	Call_PushCell(client);
+	Call_PushCell(item);
+	Call_Finish();
+	
 	switch (item)
 	{
 		case Item_MaxHead:
@@ -759,7 +862,7 @@ void UpdatePlayerItem(int client, int item)
 				float amount = CalcItemMod_HyperbolicInverted(client, item, 0);
 				TF2Attrib_SetByDefIndex(client, 178, amount); // "deploy time decreased"
 				
-				// These classes don't have weapons that benefit from accuracy bonuses (at least afaik)
+				// These classes don't have weapons that benefit from accuracy bonuses, so don't bother
 				TFClassType class = TF2_GetPlayerClass(client);
 				if (class != TFClass_Medic && class != TFClass_DemoMan)
 				{
@@ -990,7 +1093,7 @@ void UpdatePlayerItem(int client, int item)
 		int qualityPriority = GetQualityEquipPriority(GetItemQuality(item));
 		while (qualityPriority >= 0)
 		{
-			for (int i = 1; i <= GetTotalItems(); i++)
+			for (int i = 1; i < GetTotalItems(); i++)
 			{
 				if (i != item && PlayerHasItem(client, i) && GetQualityEquipPriority(GetItemQuality(i)) >= qualityPriority)
 				{
@@ -1010,77 +1113,6 @@ void UpdatePlayerItem(int client, int item)
 	{
 		EquipItemAsWearable(client, item);
 	}
-}
-
-// If the result of GetRandomInt(min, max) is below or equal to goal, returns true. Factors in luck stat from client.
-bool RandChanceIntEx(int client, int min, int max, int goal, int &result=0)
-{
-	int random, badRolls;
-	int rollTimes = 1 + GetPlayerLuckStat(client);
-	bool success;
-	
-	if (rollTimes < 0)
-	{
-		// We are unlucky. Roll once. To succeed, we must roll as many successful rolls as we have bad rolls.
-		badRolls = rollTimes * -1;
-		rollTimes = 1;
-	}
-	
-	for (int i = 1; i <= rollTimes; i++)
-	{
-		if ((random = GetRandomInt(min, max)) <= goal)
-		{
-			if (badRolls <= 0) // If we have no bad rolls, we are successful.
-			{
-				success = true;
-				break;
-			}
-			else // We have a bad roll. Decrement and try again for a bad result.
-			{
-				badRolls--;
-				i = 0;
-			}
-		}
-	}
-	
-	result = random;
-	return success;
-}
-
-// If the result of GetRandomFloat(min, max) is below or equal to goal, returns true. Factors in luck stat from client.
-bool RandChanceFloatEx(int client, float min, float max, float goal, float &result=0.0)
-{
-	float random;
-	int rollTimes = 1 + GetPlayerLuckStat(client);
-	int badRolls;
-	bool success;
-	
-	if (rollTimes < 0)
-	{
-		// We are unlucky. Roll once. To succeed, we must roll as many successful rolls as we have bad rolls.
-		badRolls = rollTimes * -1;
-		rollTimes = 1;
-	}
-	
-	for (int i = 1; i <= rollTimes; i++)
-	{
-		if ((random = GetRandomFloat(min, max)) <= goal)
-		{
-			if (badRolls <= 0) // If we have no bad rolls, we are successful.
-			{
-				success = true;
-				break;
-			}
-			else // We have a bad roll. Decrement and try again for a bad result.
-			{
-				badRolls--;
-				i = 0;
-			}
-		}
-	}
-	
-	result = random;
-	return success;
 }
 
 void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=DMG_GENERIC, CritType critType=CritType_None, int assister=INVALID_ENT, int damageCustom=0)
@@ -1349,7 +1381,7 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 				float radius = GetItemMod(Item_Dangeresque, 4) + CalcItemMod(attacker, Item_Dangeresque, 5, -1);
 				SetEntPropFloat(bomb, Prop_Send, "m_DmgRadius", radius);
 				SetEntityOwner(bomb, attacker);
-				SetEntProp(bomb, Prop_Data, "m_iTeamNum", GetClientTeam(attacker));
+				SetEntTeam(bomb, GetEntTeam(attacker));
 				g_bCashBomb[bomb] = true;
 				if (IsEnemy(victim))
 				{
@@ -1479,7 +1511,7 @@ bool ActivateStrangeItem(int client)
 	if (equipment == ItemStrange_PartyHat)
 	{
 		ArrayList equipmentList = new ArrayList();
-		for (int i = 1; i <= GetTotalItems(); i++)
+		for (int i = 1; i < GetTotalItems(); i++)
 		{
 			if (i == ItemStrange_PartyHat || !g_bItemInDropPool[i] || !IsEquipmentItem(i))
 				continue;
@@ -1938,7 +1970,7 @@ bool ActivateStrangeItem(int client)
 			ArrayList randomItems = new ArrayList();
 			int type = item.Type;
 			int quality = GetItemQuality(type);
-			for (int i = 1; i <= GetTotalItems(); i++)
+			for (int i = 1; i < GetTotalItems(); i++)
 			{
 				if (g_bItemInDropPool[i] && (GetItemQuality(i) == quality || IsHauntedItem(i) && IsHauntedItem(type)) && i != type)
 				{
@@ -2060,7 +2092,7 @@ public Action Timer_FusRoDah(Handle timer, int client)
 			ScaleVector(vel, -2.0);
 			TeleportEntity(entity, _, _, vel);
 			SetEntityOwner(entity, client);
-			SetEntProp(entity, Prop_Data, "m_iTeamNum", team);
+			SetEntTeam(entity, team);
 		}
 	}
 	
@@ -2445,37 +2477,40 @@ int GetPlayerEquipmentItem(int client)
 	return g_iPlayerEquipmentItem[client];
 }
 
-float CalcItemMod(int client, int item, int slot, int extraAmount=0)
+float CalcItemMod(int client, int item, int slot, int extraAmount=0, bool allowMinions=false)
 {
-	// hack to prevent minions from utilizing items
-	if (IsPlayerMinion(client) || !IsPlayerAlive(client))
-		item = Item_Null;
+	int count = g_iPlayerItem[client][item]+extraAmount;
+	if (!allowMinions && IsPlayerMinion(client) || !IsPlayerAlive(client))
+		count = 0;
 	
-	return g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount);
+	return g_flItemModifier[item][slot] * float(count);
 }
 
-float CalcItemMod_Hyperbolic(int client, int item, int slot, int extraAmount=0)
+float CalcItemMod_Hyperbolic(int client, int item, int slot, int extraAmount=0, bool allowMinions=false)
 {
-	if (IsPlayerMinion(client) || !IsPlayerAlive(client))
-		item = Item_Null;
+	int count = g_iPlayerItem[client][item]+extraAmount;
+	if (!allowMinions && IsPlayerMinion(client) || !IsPlayerAlive(client))
+		count = 0;
 	
-	return 1.0 - 1.0 / (1.0 + g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
+	return 1.0 - 1.0 / (1.0 + g_flItemModifier[item][slot] * float(count));
 }
 
-float CalcItemMod_HyperbolicInverted(int client, int item, int slot, int extraAmount=0)
+float CalcItemMod_HyperbolicInverted(int client, int item, int slot, int extraAmount=0, bool allowMinions=false)
 {
-	if (IsPlayerMinion(client) || !IsPlayerAlive(client))
-		item = Item_Null;
+	int count = g_iPlayerItem[client][item]+extraAmount;
+	if (!allowMinions && IsPlayerMinion(client) || !IsPlayerAlive(client))
+		count = 0;
 	
-	return 1.0 / (1.0 + g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
+	return 1.0 / (1.0 + g_flItemModifier[item][slot] * float(count));
 }
 
-int CalcItemModInt(int client, int item, int slot, int extraAmount=0)
+int CalcItemModInt(int client, int item, int slot, int extraAmount=0, bool allowMinions=false)
 {
-	if (IsPlayerMinion(client) || !IsPlayerAlive(client))
-		item = Item_Null;
+	int count = g_iPlayerItem[client][item]+extraAmount;
+	if (!allowMinions && IsPlayerMinion(client) || !IsPlayerAlive(client))
+		count = 0;
 
-	return RoundToFloor(g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount));
+	return RoundToFloor(g_flItemModifier[item][slot] * float(count));
 }
 
 /*
@@ -2501,7 +2536,7 @@ float GetItemProcCoeff(int item)
 ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true, bool allowCommunity=false, bool byPriority=false)
 {
 	ArrayList items = new ArrayList();
-	for (int i = 1; i <= GetTotalItems(); i++)
+	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (!g_bItemForceShowInInventory[i])
 		{

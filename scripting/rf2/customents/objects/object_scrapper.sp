@@ -42,7 +42,7 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 		char info[8], display[128];
 		bool collector;
 		TFClassType class = TF2_GetPlayerClass(client);
-		for (int i = 1; i <= GetTotalItems(); i++)
+		for (int i = 1; i < GetTotalItems(); i++)
 		{
 			if (IsScrapItem(i) || !PlayerHasItem(client, i, true) || GetItemQuality(i) == Quality_Community)
 				continue;
@@ -115,7 +115,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 			{
 				int total, count;
 				TFClassType class = TF2_GetPlayerClass(param1);
-				for (int i = 1; i <= GetTotalItems(); i++)
+				for (int i = 1; i < GetTotalItems(); i++)
 				{
 					if (GetItemQuality(i) != Quality_Collectors || !PlayerHasItem(param1, i))
 						continue;
