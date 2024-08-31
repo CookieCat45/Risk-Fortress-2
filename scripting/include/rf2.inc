@@ -274,7 +274,7 @@ native bool RF2_RandChanceInt(int min, int max, int goal, int &result=0);
  * @param result	Optional parameter to store the result of the roll.
  * @return			True if roll succeeds, false otherwise.
  */
-native bool RF2_RandChanceFloat(float min, float max, float goal, float &result=0);
+native bool RF2_RandChanceFloat(float min, float max, float goal, float &result=0.0);
 
 /**
  * Rolls a random number within the min and max values. If the result of GetRandomInt(min, max) is below or equal to goal, returns true.
@@ -300,7 +300,7 @@ native bool RF2_RandChanceIntEx(int client, int min, int max, int goal, int &res
  * @param result	Optional parameter to store the result of the roll.
  * @return			True if roll succeeds, false otherwise.
  */
-native bool RF2_RandChanceFloatEx(int client, float min, float max, float goal, float &result=0);
+native bool RF2_RandChanceFloatEx(int client, float min, float max, float goal, float &result=0.0);
 
 /**
  * Returns the player's current equipment item.

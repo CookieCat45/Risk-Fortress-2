@@ -305,10 +305,10 @@ public void RF_ResetGiveItemBool()
 	g_bDisableGiveItemForward = false;
 }
 
-public void TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index, int level, int quality, int entity)
+public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index, int level, int quality, int entity)
 {
 	if (!RF2_IsEnabled() || !IsValidEntity2(entity))
-		return;
+		return 0;
 	
 	if (g_bSetStringAttributes)
 	{
