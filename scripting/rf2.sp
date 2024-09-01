@@ -262,16 +262,11 @@ DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookOnWrenchHit;
 DynamicHook g_hHookVPhysicsCollision;
 DynamicHook g_hHookRiflePostFrame;
-DynamicHook g_hHookIterateAttributes;
 DynamicHook g_hHookIsCombatItem;
 DynamicHook g_hHookMeleeSmack;
 DynamicHook g_hHookForceRespawn;
 DynamicHook g_hHookCreateFakeClientEx;
 DynamicHook g_hHookDedicatedServer;
-int g_iEconItem;
-int g_iOnlyIterateItemViewAttributes;
-int g_iIterateAttributesHookId[MAX_EDICTS];
-int g_iIterateAttributesPostHookId[MAX_EDICTS];
 
 // Forwards
 GlobalForward g_fwTeleEventStart;
@@ -471,7 +466,7 @@ public void OnPluginStart()
 	g_iFileTime = GetPluginModifiedTime();
 	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
 	{
-		g_PathFollowers[i] = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+		g_PathFollowers[i] = PathFollower(INVALID_FUNCTION, FilterIgnoreActors, FilterOnlyActors);
 	}
 	
 	if (g_cvHiddenServerStartTime.FloatValue == 0.0)
@@ -506,21 +501,6 @@ public void OnPluginEnd()
 		{
 			g_PathFollowers[i].Destroy();
 			g_PathFollowers[i] = view_as<PathFollower>(0);
-		}
-	}
-	
-	for (int i = MaxClients+1; i < MAX_EDICTS; i++)
-	{
-		if (g_iIterateAttributesHookId[i])
-		{
-			DynamicHook.RemoveHook(g_iIterateAttributesHookId[i]);
-			g_iIterateAttributesHookId[i] = INVALID_HOOK_ID;
-		}
-		
-		if (g_iIterateAttributesPostHookId[i])
-		{
-			DynamicHook.RemoveHook(g_iIterateAttributesPostHookId[i]);
-			g_iIterateAttributesPostHookId[i] = INVALID_HOOK_ID;
 		}
 	}
 }
@@ -755,20 +735,6 @@ void LoadGameData()
 	if (!g_hHookRiflePostFrame)
 	{
 		LogError("[DHooks] Failed to create virtual hook for CTFSniperRifle::ItemPostFrame");
-	}
-	
-	
-	g_hHookIterateAttributes = new DynamicHook(gamedata.GetOffset("CEconItemView::IterateAttributes"), HookType_Raw, ReturnType_Void, ThisPointer_Address);
-	if (g_hHookIterateAttributes)
-	{
-		g_hHookIterateAttributes.AddParam(HookParamType_ObjectPtr);
-		g_iEconItem = FindSendPropInfo("CEconEntity", "m_Item");
-		FindSendPropInfo("CEconEntity", "m_bOnlyIterateItemViewAttributes", _, _, g_iOnlyIterateItemViewAttributes);
-		
-	}
-	else
-	{
-		LogError("[DHooks] Failed to create virtual hook for CEconItemView::IterateAttributes");
 	}
 	
 	
@@ -1157,22 +1123,6 @@ void CleanUp()
 		else if (RF2_Projectile_Base(entity).IsValid())
 		{
 			delete RF2_Projectile_Base(entity).OnCollide;
-		}
-	}
-	
-	// Make sure these are all unhooked, or else shit potentially breaks
-	for (int i = MaxClients+1; i < MAX_EDICTS; i++)
-	{
-		if (g_iIterateAttributesHookId[i])
-		{
-			DynamicHook.RemoveHook(g_iIterateAttributesHookId[i]);
-			g_iIterateAttributesHookId[i] = INVALID_HOOK_ID;
-		}
-		
-		if (g_iIterateAttributesPostHookId[i])
-		{
-			DynamicHook.RemoveHook(g_iIterateAttributesPostHookId[i]);
-			g_iIterateAttributesPostHookId[i] = INVALID_HOOK_ID;
 		}
 	}
 }
@@ -4694,8 +4644,6 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bFiredWhileRocketJumping[entity] = false;
 	g_flTeleporterNextSpawnTime[entity] = -1.0;
 	SetAllInArray(g_flLastHalloweenBossAttackTime[entity], sizeof(g_flLastHalloweenBossAttackTime[]), 0.0);
-	g_iIterateAttributesHookId[entity] = INVALID_HOOK_ID;
-	g_iIterateAttributesPostHookId[entity] = INVALID_HOOK_ID;
 	if (StrContains(classname, "tf_projectile") == 0)
 	{
 		SDKHook(entity, SDKHook_SpawnPost, Hook_ProjectileSpawnPost);
@@ -4796,18 +4744,6 @@ public void OnEntityDestroyed(int entity)
 	if (pf && pf.IsValid())
 	{
 		pf.Invalidate();
-	}
-
-	if (g_iIterateAttributesHookId[entity])
-	{
-		DynamicHook.RemoveHook(g_iIterateAttributesHookId[entity]);
-		g_iIterateAttributesHookId[entity] = INVALID_HOOK_ID;
-	}
-	
-	if (g_iIterateAttributesPostHookId[entity])
-	{
-		DynamicHook.RemoveHook(g_iIterateAttributesPostHookId[entity]);
-		g_iIterateAttributesPostHookId[entity] = INVALID_HOOK_ID;
 	}
 	
 	g_iEntityPathFollowerIndex[entity] = -1;

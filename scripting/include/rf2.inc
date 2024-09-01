@@ -638,7 +638,6 @@ stock void RF2_ReplyToCommand(int client, const char[] message, any ...)
 	CReplyToCommand(client, "{lightseagreen}[RF2] {default}%s", buffer);
 }
 
-#if !defined PRERELEASE
 public SharedPlugin __pl_rf2 =
 {
 	name = "rf2",
@@ -649,7 +648,6 @@ public SharedPlugin __pl_rf2 =
 		required = 0,
 #endif
 };
-#endif
 
 #if !defined REQUIRE_PLUGIN
 public void __pl_rf2_SetNTVOptional()

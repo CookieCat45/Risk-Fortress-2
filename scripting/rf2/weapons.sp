@@ -10,7 +10,6 @@ char g_szWeaponIndexIdentifier[TF_CLASSES][MAX_WEAPONS][PLATFORM_MAX_PATH];
 char g_szWeaponAttributes[TF_CLASSES][MAX_WEAPONS][MAX_ATTRIBUTE_STRING_LENGTH];
 char g_szWeaponClassnameReplacement[TF_CLASSES][MAX_WEAPONS][64];
 
-bool g_bWeaponStaticAttributes[TF_CLASSES][MAX_WEAPONS];
 bool g_bWeaponStripAttributes[TF_CLASSES][MAX_WEAPONS];
 bool g_bWeaponHasStringAttributes[TF_CLASSES][MAX_WEAPONS];
 char g_szWeaponStringAttributeName[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][128];
@@ -41,10 +40,9 @@ void LoadWeapons()
 			while (firstKey ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
 			{
 				weaponKey.GetSectionName(g_szWeaponIndexIdentifier[i][count], sizeof(g_szWeaponIndexIdentifier[][]));
-				weaponKey.GetString("attributes", g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]));
+				weaponKey.GetString("add_attributes", g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]));
 				weaponKey.GetString("classname", g_szWeaponClassnameReplacement[i][count], sizeof(g_szWeaponClassnameReplacement[][]));
 				g_iWeaponIndexReplacement[i][count] = weaponKey.GetNum("index", -1);
-				g_bWeaponStaticAttributes[i][count] = asBool(weaponKey.GetNum("static_attributes", false));
 				g_bWeaponStripAttributes[i][count] = asBool(weaponKey.GetNum("strip_attributes", false));
 				
 				// do we have any string attributes?
@@ -97,30 +95,6 @@ static int g_iStringAttributeWeapon; // Not to be confused with entity indexes
 static bool g_bDisableGiveItemForward;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
 {
-	// Breaks in Waiting for Players apparently????
-	if (g_bWaitingForPlayers)
-	{
-		item = TF2Items_CreateItem(OVERRIDE_ATTRIBUTES);
-		int attribArray[MAX_ATTRIBUTES];
-		int totalAttribs;
-		float valueArray[MAX_ATTRIBUTES];
-		int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);
-		for (int n = 0; n < count; n++)
-		{
-			if (!IsAttributeBlacklisted(attribArray[n]) && attribArray[n] > 0)
-			{
-				totalAttribs++;
-				if (totalAttribs <= MAX_ATTRIBUTES)
-				{
-					TF2Items_SetNumAttributes(item, totalAttribs);
-					TF2Items_SetAttribute(item, totalAttribs-1, attribArray[n], valueArray[n]);
-				}
-			}
-		}
-		
-		return Plugin_Changed;
-	}
-	
 	if (!RF2_IsEnabled() || !g_bRoundActive)
 		return Plugin_Continue;
 	
@@ -134,6 +108,8 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 	int totalAttribs;
 	IntToString(index, buffer, sizeof(buffer));
 	bool found;
+	int dummy1[MAX_ATTRIBUTES];
+	float dummy2[MAX_ATTRIBUTES];
 	for (int i = 0; i < g_iWeaponCount[class]; i++)
 	{
 		if (StrContainsEx(g_szWeaponIndexIdentifier[class][i], buffer) == -1)
@@ -141,7 +117,9 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 		
 		found = true;
 		item = TF2Items_CreateItem(flags);
+		totalAttribs = TF2Attrib_GetStaticAttribs(index, dummy1, dummy2, 16);
 		bool newWeapon;
+		TF2Items_SetClassname(item, classname);
 		
 		// Using the OVERRIDE_CLASSNAME flag in this forward does not work properly,
 		// we need to do this ugly workaround by creating an entirely new weapon.
@@ -154,11 +132,12 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 		// strip the static attributes for this weapon?
 		if (g_bWeaponStripAttributes[class][i])
 		{
-			action = Plugin_Changed;
 			flags |= OVERRIDE_ATTRIBUTES;
+			action = Plugin_Changed;
 			TF2Items_SetNumAttributes(item, 0);
+			totalAttribs = 0;
 		}
-		else if (g_bWeaponStaticAttributes[class][i])
+		else
 		{
 			action = Plugin_Changed;
 			flags |= OVERRIDE_ATTRIBUTES;
@@ -260,6 +239,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 	if (!found)
 	{
 		// set static attributes by default
+		totalAttribs = 0;
 		action = Plugin_Changed;
 		item = TF2Items_CreateItem(OVERRIDE_ATTRIBUTES);
 		int attribArray[MAX_ATTRIBUTES];
@@ -340,15 +320,9 @@ public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index
 		g_bSetStringAttributes = false;
 	}
 	
-	if (g_hHookIterateAttributes)
-	{
-		Address itemView = GetEntityAddress(entity) + view_as<Address>(g_iEconItem);
-		g_iIterateAttributesHookId[entity] = g_hHookIterateAttributes.HookRaw(Hook_Pre, itemView, DHook_IterateAttributes);
-		g_iIterateAttributesPostHookId[entity] = g_hHookIterateAttributes.HookRaw(Hook_Post, itemView, DHook_IterateAttributesPost);
-	}
-
 	SetEntProp(entity, Prop_Send, "m_bValidatedAttachedEntity", true);
 	RequestFrame(RF_MeleeSmackHook, EntIndexToEntRef(entity));
+	return 0;
 }
 
 public void RF_MeleeSmackHook(int entity)
@@ -810,18 +784,6 @@ public MRESReturn DHook_RiflePostFramePost(int entity)
 	}
 	
 	g_bWasOffGround = false;
-	return MRES_Ignored;
-}
-
-public MRESReturn DHook_IterateAttributes(Address addr, DHookParam params)
-{
-	StoreToAddress(addr + view_as<Address>(g_iOnlyIterateItemViewAttributes), true, NumberType_Int8, false);
-	return MRES_Ignored;
-}
-
-public MRESReturn DHook_IterateAttributesPost(Address addr, DHookParam params)
-{
-	StoreToAddress(addr + view_as<Address>(g_iOnlyIterateItemViewAttributes), false, NumberType_Int8, false);
 	return MRES_Ignored;
 }
 

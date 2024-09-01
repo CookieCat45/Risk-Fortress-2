@@ -118,3 +118,7 @@ scripting/spcomp64.exe
 scripting/ensurenav.sp
 scripting/listenhost.sp
 scripting/stringtable_stats.sp
+scripting/compile.sh
+scripting/include/sourcescramble.inc
+scripting/spcomp
+scripting/spcomp64

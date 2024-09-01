@@ -130,7 +130,7 @@ int LoadItems(const char[] customPath="")
 		ThrowError("Keyvalues section \"items\" does not exist in %s", config);
 	}
 	
-	for (int i = 0; i < GetTotalItems(); i++)
+	for (int i = 0; i < MAX_ITEMS; i++)
 	{
 		if (i == 0 && itemKey.GotoFirstSubKey() || itemKey.GotoNextKey())
 		{
@@ -246,23 +246,25 @@ void LoadCustomItems()
 	if (!dir)
 	{
 		LogError("The %s directory was not found. Custom items will not be loaded.", path);
-		return;
 	}
-	
-	FileType type;
-	char file[PLATFORM_MAX_PATH], buffer[PLATFORM_MAX_PATH];
-	while (dir.GetNext(file, sizeof(file), type))
+	else
 	{
-		if (type != FileType_File)
-			continue;
-		
-		FormatEx(buffer, sizeof(buffer), "%s/%s", path, file);
-		LogMessage("Loading custom items file: %s", file);
-		count += LoadItems(buffer);
+		FileType type;
+		char file[PLATFORM_MAX_PATH], buffer[PLATFORM_MAX_PATH];
+		while (dir.GetNext(file, sizeof(file), type))
+		{
+			if (type != FileType_File)
+				continue;
+
+			FormatEx(buffer, sizeof(buffer), "%s/%s", path, file);
+			LogMessage("Loading custom items file: %s", file);
+			count += LoadItems(buffer);
+		}
+
+		delete dir;
 	}
 	
 	PrintToServer("[RF2] Items loaded: %i (%i custom)", g_iItemCount, count);
-	delete dir;
 }
 
 void CheckForDuplicateSectionNames()
@@ -1229,13 +1231,10 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 	
 	if (damageCustom == TF_CUSTOM_HEADSHOT || damageCustom == TF_CUSTOM_HEADSHOT_DECAPITATION || damageCustom == TF_CUSTOM_PENETRATE_HEADSHOT)
 	{
-		if (PlayerHasItem(attacker, ItemSniper_HolyHunter) && CanUseCollectorItem(attacker, ItemSniper_HolyHunter))
-		{
-			DataPack pack = new DataPack();
-			pack.WriteCell(attacker);
-			pack.WriteCell(victim);
-			RequestFrame(RF_DoExplosiveHeadshot, pack);
-		}
+		DataPack pack = new DataPack();
+		pack.WriteCell(attacker);
+		pack.WriteCell(victim);
+		RequestFrame(RF_DoHeadshotBonuses, pack);
 	}
 
 	if (PlayerHasItem(attacker, ItemSoldier_WarPig) && CanUseCollectorItem(attacker, ItemSoldier_WarPig) && IsValidEntity2(inflictor))
@@ -1408,7 +1407,7 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 	}
 }
 
-public void RF_DoExplosiveHeadshot(DataPack pack)
+public void RF_DoHeadshotBonuses(DataPack pack)
 {
 	pack.Reset();
 	int attacker = pack.ReadCell();
