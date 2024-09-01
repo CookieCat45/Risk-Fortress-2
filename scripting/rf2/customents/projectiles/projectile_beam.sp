@@ -32,7 +32,7 @@ methodmap RF2_Projectile_Beam < RF2_Projectile_Base
 
 void Beam_OnMapStart()
 {
-	PrecacheSound2(SND_DEMO_BEAM, true);
+	AddSoundToDownloadsTable(SND_DEMO_BEAM);
 }
 
 static void OnCreate(RF2_Projectile_Beam beam)

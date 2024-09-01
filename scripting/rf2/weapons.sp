@@ -107,17 +107,14 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 	char buffer[64];
 	int totalAttribs;
 	IntToString(index, buffer, sizeof(buffer));
-	bool found;
 	for (int i = 0; i < g_iWeaponCount[class]; i++)
 	{
 		if (StrContainsEx(g_szWeaponIndexIdentifier[class][i], buffer) == -1)
 			continue;
-		
-		found = true;
+
 		item = TF2Items_CreateItem(flags);
-		totalAttribs = TF2Attrib_GetStaticAttribs(index, {0, ...}, {0.0, ...}, MAX_STATIC_ATTRIBUTES);
-		bool newWeapon;
 		TF2Items_SetClassname(item, classname);
+		bool newWeapon;
 		
 		// Using the OVERRIDE_CLASSNAME flag in this forward does not work properly,
 		// we need to do this ugly workaround by creating an entirely new weapon.
@@ -133,7 +130,6 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			flags |= OVERRIDE_ATTRIBUTES;
 			action = Plugin_Changed;
 			TF2Items_SetNumAttributes(item, 0);
-			totalAttribs = 0;
 		}
 		else
 		{
@@ -167,10 +163,9 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 		{
 			action = Plugin_Changed;
 			flags |= OVERRIDE_ATTRIBUTES;
-			
 			char attributes[MAX_ATTRIBUTE_STRING_LENGTH], attrs[32][32];
 			strcopy(attributes, sizeof(attributes), g_szWeaponAttributes[class][i]);
-			ReplaceString(attributes, MAX_ATTRIBUTE_STRING_LENGTH, " ; ", " = ");
+			ReplaceString(attributes, sizeof(attributes), " ; ", " = ");
 			int count = ExplodeString(attributes, " = ", attrs, 32, 32, true);
 			
 			if (count > 0)
@@ -185,7 +180,6 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 					{
 						val = StringToFloat(attrs[n+1]);
 						totalAttribs++;
-						
 						if (totalAttribs < MAX_STATIC_ATTRIBUTES)
 						{
 							TF2Items_SetNumAttributes(item, totalAttribs);
@@ -203,7 +197,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			g_StringAttributeClass = class;
 			g_iStringAttributeWeapon = i;
 		}
-		
+
 		if (totalAttribs > MAX_STATIC_ATTRIBUTES)
 		{
 			LogError("[TF2Items_OnGiveNamedItem] Item %i (%s) exceeded static attribute limit of %i", index, classname, MAX_STATIC_ATTRIBUTES);
@@ -220,7 +214,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			
 			flags |= FORCE_GENERATION;
 			TF2Items_SetFlags(item, flags);
-			DataPack pack = CreateDataPack();
+			DataPack pack = new DataPack();
 			pack.WriteCell(client);
 			pack.WriteCell(item);
 			RequestFrame(RF_ReplaceNewWeapon, pack);
@@ -232,29 +226,6 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 		}
 		
 		break;
-	}
-	
-	if (!found)
-	{
-		// set static attributes by default
-		totalAttribs = 0;
-		action = Plugin_Changed;
-		item = TF2Items_CreateItem(OVERRIDE_ATTRIBUTES);
-		int attribArray[MAX_STATIC_ATTRIBUTES];
-		float valueArray[MAX_STATIC_ATTRIBUTES];
-		int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_STATIC_ATTRIBUTES);
-		for (int n = 0; n < count; n++)
-		{
-			if (!IsAttributeBlacklisted(attribArray[n]) && attribArray[n] > 0)
-			{
-				totalAttribs++;
-				if (totalAttribs < MAX_STATIC_ATTRIBUTES)
-				{
-					TF2Items_SetNumAttributes(item, totalAttribs);
-					TF2Items_SetAttribute(item, totalAttribs-1, attribArray[n], valueArray[n]);
-				}
-			}
-		}
 	}
 	
 	return action;
