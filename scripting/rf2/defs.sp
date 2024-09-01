@@ -346,7 +346,8 @@ enum
 #define MAX_STRING_ATTRIBUTES 8
 #define MAX_WEAPONS 256
 #define TF_WEAPON_SLOTS 10
-#define MAX_ATTRIBUTES 16
+#define MAX_ATTRIBUTES 20
+#define MAX_STATIC_ATTRIBUTES 16
 #define MAX_ATTRIBUTE_STRING_LENGTH 512
 #define TFObjectMode_Disposable TFObjectMode_Exit
 

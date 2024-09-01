@@ -260,7 +260,7 @@ void SetClassAttributes(int client)
 			
 			val = StringToFloat(attrs[n+1]);
 			totalAttribs++;
-			if (totalAttribs > MAX_ATTRIBUTES)
+			if (totalAttribs >= MAX_ATTRIBUTES)
 				break;
 				
 			TF2Attrib_SetByDefIndex(client, attrib, val);
@@ -270,7 +270,7 @@ void SetClassAttributes(int client)
 		{
 			char tfClassName[16];
 			GetClassString(class, tfClassName, sizeof(tfClassName));
-			LogError("[SetClassAttributes] Survivor class %i (%s) reached attribute limit of %i", view_as<int>(class), tfClassName, MAX_ATTRIBUTES);
+			LogError("[SetClassAttributes] Survivor class %i (%s) exceeded attribute limit of %i", view_as<int>(class), tfClassName, MAX_ATTRIBUTES);
 		}
 	}
 }

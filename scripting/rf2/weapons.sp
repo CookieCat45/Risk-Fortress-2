@@ -108,8 +108,6 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 	int totalAttribs;
 	IntToString(index, buffer, sizeof(buffer));
 	bool found;
-	int dummy1[MAX_ATTRIBUTES];
-	float dummy2[MAX_ATTRIBUTES];
 	for (int i = 0; i < g_iWeaponCount[class]; i++)
 	{
 		if (StrContainsEx(g_szWeaponIndexIdentifier[class][i], buffer) == -1)
@@ -117,7 +115,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 		
 		found = true;
 		item = TF2Items_CreateItem(flags);
-		totalAttribs = TF2Attrib_GetStaticAttribs(index, dummy1, dummy2, 16);
+		totalAttribs = TF2Attrib_GetStaticAttribs(index, {0, ...}, {0.0, ...}, MAX_STATIC_ATTRIBUTES);
 		bool newWeapon;
 		TF2Items_SetClassname(item, classname);
 		
@@ -141,15 +139,15 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 		{
 			action = Plugin_Changed;
 			flags |= OVERRIDE_ATTRIBUTES;
-			int attribArray[MAX_ATTRIBUTES];
-			float valueArray[MAX_ATTRIBUTES];
-			int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);
+			int attribArray[MAX_STATIC_ATTRIBUTES];
+			float valueArray[MAX_STATIC_ATTRIBUTES];
+			int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_STATIC_ATTRIBUTES);
 			for (int n = 0; n < count; n++)
 			{
 				if (!IsAttributeBlacklisted(attribArray[n]) && attribArray[n] > 0)
 				{
 					totalAttribs++;
-					if (totalAttribs <= MAX_ATTRIBUTES)
+					if (totalAttribs < MAX_STATIC_ATTRIBUTES)
 					{
 						TF2Items_SetNumAttributes(item, totalAttribs);
 						TF2Items_SetAttribute(item, totalAttribs-1, attribArray[n], valueArray[n]);
@@ -188,7 +186,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 						val = StringToFloat(attrs[n+1]);
 						totalAttribs++;
 						
-						if (totalAttribs <= MAX_ATTRIBUTES)
+						if (totalAttribs < MAX_STATIC_ATTRIBUTES)
 						{
 							TF2Items_SetNumAttributes(item, totalAttribs);
 							TF2Items_SetAttribute(item, totalAttribs-1, attrib, val);
@@ -206,9 +204,9 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			g_iStringAttributeWeapon = i;
 		}
 		
-		if (totalAttribs > MAX_ATTRIBUTES)
+		if (totalAttribs > MAX_STATIC_ATTRIBUTES)
 		{
-			LogError("[TF2Items_OnGiveNamedItem] Item %i (%s) reached attribute limit of %i", index, classname, MAX_ATTRIBUTES);
+			LogError("[TF2Items_OnGiveNamedItem] Item %i (%s) exceeded static attribute limit of %i", index, classname, MAX_STATIC_ATTRIBUTES);
 		}
 		
 		if (newWeapon)
@@ -242,15 +240,15 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 		totalAttribs = 0;
 		action = Plugin_Changed;
 		item = TF2Items_CreateItem(OVERRIDE_ATTRIBUTES);
-		int attribArray[MAX_ATTRIBUTES];
-		float valueArray[MAX_ATTRIBUTES];
-		int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);
+		int attribArray[MAX_STATIC_ATTRIBUTES];
+		float valueArray[MAX_STATIC_ATTRIBUTES];
+		int count = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_STATIC_ATTRIBUTES);
 		for (int n = 0; n < count; n++)
 		{
 			if (!IsAttributeBlacklisted(attribArray[n]) && attribArray[n] > 0)
 			{
 				totalAttribs++;
-				if (totalAttribs <= MAX_ATTRIBUTES)
+				if (totalAttribs < MAX_STATIC_ATTRIBUTES)
 				{
 					TF2Items_SetNumAttributes(item, totalAttribs);
 					TF2Items_SetAttribute(item, totalAttribs-1, attribArray[n], valueArray[n]);
@@ -356,18 +354,18 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 		int attribCount, attribSlot, staticAttribCount;
 		bool maxAttribs;
 		
-		attribCount = imin(count/2, MAX_ATTRIBUTES);
+		attribCount = imin(count/2, MAX_STATIC_ATTRIBUTES);
 		TF2Items_SetNumAttributes(weapon, attribCount+1);
 		
 		if (staticAttributes)
 		{
-			int attribArray[MAX_ATTRIBUTES];
-			float valueArray[MAX_ATTRIBUTES];
-			staticAttribCount = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);
+			int attribArray[MAX_STATIC_ATTRIBUTES];
+			float valueArray[MAX_STATIC_ATTRIBUTES];
+			staticAttribCount = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_STATIC_ATTRIBUTES);
 			
 			if (staticAttribCount > 0)
 			{
-				int totalAttribs = imin(attribCount+staticAttribCount, MAX_ATTRIBUTES);
+				int totalAttribs = imin(attribCount+staticAttribCount, MAX_STATIC_ATTRIBUTES);
 				TF2Items_SetNumAttributes(weapon, totalAttribs);
 				
 				for (int i = 0; i < staticAttribCount; i++)
@@ -377,8 +375,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 					
 					TF2Items_SetAttribute(weapon, attribSlot, attribArray[i], valueArray[i]);
 					attribSlot++;
-					
-					if (attribSlot >= MAX_ATTRIBUTES)
+					if (attribSlot >= MAX_STATIC_ATTRIBUTES)
 					{
 						maxAttribs = true;
 						break;
@@ -403,7 +400,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 				TF2Items_SetAttribute(weapon, attribSlot, attrib, val);
 				attribSlot++;
 				
-				if (attribSlot >= MAX_ATTRIBUTES)
+				if (attribSlot >= MAX_STATIC_ATTRIBUTES)
 				{
 					maxAttribs = true;
 					break;
@@ -413,7 +410,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 		
 		if (maxAttribs) // Uh oh.
 		{
-			LogError("[CreateWeapon] Maximum number of attributes reached (%i) on weapon \"%s\" index %i\n\"%s\"\nstatic attribute count = %i", MAX_ATTRIBUTES, classname, index, attributes, staticAttribCount);
+			LogError("[CreateWeapon] Maximum number of static attributes reached (%i) on weapon \"%s\" index %i\n\"%s\"\nstatic attribute count = %i", MAX_ATTRIBUTES, classname, index, attributes, staticAttribCount);
 		}
 		
 		TF2Items_SetNumAttributes(weapon, attribSlot+1);
@@ -507,13 +504,14 @@ bool visible = true, const char[] model="", int quality=0, int level=0)
 		{
 			int attribArray[MAX_ATTRIBUTES];
 			float valueArray[MAX_ATTRIBUTES];
-			int staticAttribCount = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_ATTRIBUTES);
+			int staticAttribCount = TF2Attrib_GetStaticAttribs(index, attribArray, valueArray, MAX_STATIC_ATTRIBUTES);
 			
 			if (staticAttribCount > 0)
 			{
 				totalAttribs += staticAttribCount;
-				totalAttribs = imin(totalAttribs, MAX_ATTRIBUTES);
-				
+				if (totalAttribs > MAX_ATTRIBUTES)
+					staticAttribCount = imin(staticAttribCount, totalAttribs-staticAttribCount);
+
 				for (int i = 0; i < staticAttribCount; i++)
 				{
 					if (IsAttributeBlacklisted(attribArray[i]) || attribArray[i] <= 0)
@@ -527,7 +525,7 @@ bool visible = true, const char[] model="", int quality=0, int level=0)
 	
 	if (totalAttribs > MAX_ATTRIBUTES)
 	{
-		LogError("[CreateWearable] Wearable %i (%s) reached attribute limit of %i", index, classname, MAX_ATTRIBUTES);
+		LogError("[CreateWearable] Wearable %i (%s) exceeded attribute limit of %i", index, classname, MAX_ATTRIBUTES);
 	}
 	
 	if (!visible)
