@@ -274,10 +274,16 @@ void RobotButler_OnMapStart()
 	AddMaterialToDownloadsTable("materials/rf2/bots/robot_butler_1_blu");
 	AddMaterialToDownloadsTable("materials/rf2/bots/robot_butler_color");
 	AddMaterialToDownloadsTable("materials/rf2/bots/robot_butler_normal");
-	AddMaterialToDownloadsTable("materials/rf2/bots/robot_butler_phongexponent");
 	AddMaterialToDownloadsTable("materials/rf2/bots/robot_butler_blue_color");
 	AddMaterialToDownloadsTable("materials/rf2/bots/robot_butler_1_color");
 	AddMaterialToDownloadsTable("materials/rf2/bots/robot_butler_1_blue_color");
+	// the file pathing is messed up in the VMTs, this is the easier way to fix it
+	AddMaterialToDownloadsTable("materials/models/props_embargo/robot_butler_phongexponent");
+	AddMaterialToDownloadsTable("materials/models/props_embargo/robot_butler_blue_color");
+	AddMaterialToDownloadsTable("materials/models/props_embargo/robot_butler_1_color");
+	AddMaterialToDownloadsTable("materials/models/props_embargo/robot_butler_1_blue_color");
+	AddMaterialToDownloadsTable("materials/models/props_embargo/robot_butler_color");
+	AddMaterialToDownloadsTable("materials/models/props_embargo/robot_butler_normal");
 }
 
 static void OnCreate(RF2_RobotButler bot)

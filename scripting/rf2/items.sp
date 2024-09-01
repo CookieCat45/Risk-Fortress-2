@@ -253,7 +253,7 @@ void LoadCustomItems()
 		char file[PLATFORM_MAX_PATH], buffer[PLATFORM_MAX_PATH];
 		while (dir.GetNext(file, sizeof(file), type))
 		{
-			if (type != FileType_File)
+			if (type != FileType_File || strcmp2(file, "dummy.cfg"))
 				continue;
 
 			FormatEx(buffer, sizeof(buffer), "%s/%s", path, file);
