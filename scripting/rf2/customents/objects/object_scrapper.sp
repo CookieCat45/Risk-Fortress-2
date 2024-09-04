@@ -44,7 +44,7 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 		TFClassType class = TF2_GetPlayerClass(client);
 		for (int i = 1; i < GetTotalItems(); i++)
 		{
-			if (IsScrapItem(i) || !PlayerHasItem(client, i, true) || GetItemQuality(i) == Quality_Community)
+			if (IsScrapItem(i) || !PlayerHasItem(client, i, true) || GetItemQuality(i) == Quality_Community || GetItemQuality(i) == Quality_Strange)
 				continue;
 			
 			if (!collector && GetItemQuality(i) == Quality_Collectors && GetCollectorItemClass(i) != class)
@@ -163,7 +163,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 				RF2_Object_Scrapper.ShowScrapMenu(param1, false);
 				delete itemList;
 			}
-			else if (item != Item_Null && PlayerHasItem(param1, item, true))
+			else if (item != Item_Null && PlayerHasItem(param1, item, true) && GetItemQuality(item) != Quality_Strange)
 			{
 				if (IsEquipmentItem(item))
 				{
@@ -180,7 +180,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 				switch (quality)
 				{
 					case Quality_Normal: scrap = Item_ScrapMetal;
-					case Quality_Genuine, Quality_Strange: scrap = Item_ReclaimedMetal;
+					case Quality_Genuine: scrap = Item_ReclaimedMetal;
 					case Quality_Unusual: scrap = Item_RefinedMetal;
 				}
 				

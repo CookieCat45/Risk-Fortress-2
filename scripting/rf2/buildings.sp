@@ -148,7 +148,7 @@ public MRESReturn Detour_SentryGunAttack(int entity)
 				int offset = FindSendPropInfo("CObjectSentrygun", "m_iState") + 4; // m_flNextAttack
 				float time = GetEntDataFloat(entity, offset);
 				time -= gameTime;
-				time *= GetPlayerFireRateMod(owner);
+				time *= GetPlayerFireRateMod(owner, entity);
 				SetEntDataFloat(entity, offset, gameTime+time, true);
 			}
 		}

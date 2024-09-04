@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.15b"
+#define PLUGIN_VERSION "0.15.1b"
 #endif
 
 #include <rf2>
@@ -2637,7 +2637,7 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 				shield.UpdateBatteryText();
 			}
 			
-			shield.NextBatteryDrainTime = GetGameTime()+0.3;
+			shield.NextBatteryDrainTime = GetGameTime()+0.25;
 			int builder = GetEntPropEnt(shield.Dispenser, Prop_Send, "m_hBuilder");
 			if (IsValidClient(builder) && IsPlayerAlive(builder))
 			{
@@ -5952,34 +5952,31 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		
 		if (critType != CritType_None)
 		{
-			switch (critType)
+			if (critType == CritType_Crit)
 			{
-				case CritType_Crit:
+				// Cryptic Keepsake converts crit chance to crit damage, other than its own crit chance
+				if (PlayerHasItem(attacker, Item_CrypticKeepsake))
 				{
-					// Cryptic Keepsake converts crit chance to crit damage, other than its own crit chance
-					if (PlayerHasItem(attacker, Item_CrypticKeepsake))
+					if (PlayerHasItem(attacker, Item_TombReaders))
 					{
-						if (PlayerHasItem(attacker, Item_TombReaders))
-						{
-							damage *= 1.0 + CalcItemMod(attacker, Item_TombReaders, 0);
-						}
-						
-						if (PlayerHasItem(attacker, Item_SaxtonHat) && damageType & DMG_MELEE)
-						{
-							damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 1);
-						}
+						damage *= 1.0 + CalcItemMod(attacker, Item_TombReaders, 0);
 					}
 					
-					// Executioner has a chance to cause bleeding on crit damage
-					if (!g_bExecutionerBleedCooldown[attacker] && damageCustom != TF_CUSTOM_BLEEDING && PlayerHasItem(attacker, Item_Executioner)
-						&& IsValidClient(victim) && !TF2_IsPlayerInCondition(victim, TFCond_Bonked))
+					if (PlayerHasItem(attacker, Item_SaxtonHat) && damageType & DMG_MELEE)
 					{
-						if (RandChanceFloatEx(attacker, 0.001, 1.0, GetItemMod(Item_Executioner, 0) * proc))
-						{
-							TF2_MakeBleed(victim, attacker, GetItemMod(Item_Executioner, 1));
-							g_bExecutionerBleedCooldown[attacker] = true;
-							CreateTimer(0.2, Timer_ExecutionerBleedCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
-						}
+						damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 1);
+					}
+				}
+				
+				// Executioner has a chance to cause bleeding on crit damage
+				if (!g_bExecutionerBleedCooldown[attacker] && damageCustom != TF_CUSTOM_BLEEDING && PlayerHasItem(attacker, Item_Executioner)
+					&& IsValidClient(victim) && !TF2_IsPlayerInCondition(victim, TFCond_Bonked))
+				{
+					if (RandChanceFloatEx(attacker, 0.001, 1.0, GetItemMod(Item_Executioner, 0) * proc))
+					{
+						TF2_MakeBleed(victim, attacker, GetItemMod(Item_Executioner, 1));
+						g_bExecutionerBleedCooldown[attacker] = true;
+						CreateTimer(0.2, Timer_ExecutionerBleedCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
 					}
 				}
 			}

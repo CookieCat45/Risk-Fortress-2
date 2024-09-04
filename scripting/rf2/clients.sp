@@ -606,19 +606,23 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 {
 	float multiplier = 1.0;
 	static char classname[64];
-	if (weapon > 0)
+	bool sentry = weapon > 0 && strcmp2(classname, "obj_sentrygun");
+	if (!sentry && weapon > 0)
 	{
 		GetEntityClassname(weapon, classname, sizeof(classname));
-		if (strcmp2(classname, "tf_weapon_flamethrower") || strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
+		bool flamethrower = strcmp2(classname, "tf_weapon_flamethrower");
+		if (flamethrower || strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
 		{
+			bool dragonsFury = !flamethrower;
 			multiplier += CalcItemMod(client, Item_MaimLicense, 0);
 			multiplier += float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1);
 			multiplier += CalcItemMod(client, Item_MaxHead, 2);
 			multiplier += CalcItemMod(client, Item_SaintMark, 3);
 			multiplier += CalcItemMod(client, Item_TripleA, 1);
-			if (multiplier > 1.0)
+			if (multiplier > 1.0 && dragonsFury)
 			{
-				const float penalty = 0.6;
+				// Dragon's Fury has a fire rate scaling penalty, flamethrowers do not (note that flamethrowers scale damage with fire rate items)
+				const float penalty = 0.5;
 				multiplier = Pow(multiplier, penalty);
 			}
 			
@@ -661,7 +665,12 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 		multiplier *= CalcItemMod_HyperbolicInverted(client, ItemSniper_VillainsVeil, 1);
 	}
 	
-	if (weapon > 0 && multiplier < 1.0)
+	if (sentry)
+	{
+		const float penalty = 0.5;
+		multiplier = Pow(multiplier, penalty);
+	}
+	else if (weapon > 0 && multiplier < 1.0)
 	{
 		if (strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_syringegun_medic"))
 		{
@@ -673,7 +682,7 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 			int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
 			if (index == 527 || index == 1104) // Widowmaker/Air Strike
 			{
-				const float penalty = 0.6;
+				const float penalty = 0.5;
 				multiplier = Pow(multiplier, penalty);
 			}
 		}
@@ -1261,6 +1270,9 @@ public MRESReturn Detour_HandleRageGain(DHookParam params)
 
 public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam params)
 {
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+
 	if (IsValidClient(entity))
 	{
 		float health = DHookGetParam(params, 1);
