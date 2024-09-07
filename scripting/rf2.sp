@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.15.1b"
+#define PLUGIN_VERSION "0.15.2b"
 #endif
 
 #include <rf2>
@@ -904,6 +904,7 @@ public void OnMapStart()
 		HookEvent("player_chargedeployed", OnPlayerChargeDeployed, EventHookMode_Post);
 		HookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
 		HookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
+		HookEvent("player_upgradedobject", OnPlayerUpgradeObject, EventHookMode_Post);
 		HookEvent("player_team", OnChangeTeamMessage, EventHookMode_Pre);
 		HookEvent("player_connect_client", OnPlayerConnect, EventHookMode_Pre);
 		HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
@@ -1052,6 +1053,7 @@ void CleanUp()
 	UnhookEvent("player_chargedeployed", OnPlayerChargeDeployed, EventHookMode_Post);
 	UnhookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
 	UnhookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
+	UnhookEvent("player_upgradedobject", OnPlayerUpgradeObject, EventHookMode_Post);
 	UnhookEvent("player_team", OnChangeTeamMessage, EventHookMode_Pre);
 	UnhookEvent("player_connect_client", OnPlayerConnect, EventHookMode_Pre);
 	UnhookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
@@ -2490,6 +2492,7 @@ public Action OnPlayerDropObject(Event event, const char[] name, bool dontBroadc
 		}
 	}
 	
+	CalculatePlayerMaxHealth(client, false);
 	return Plugin_Continue;
 }
 
@@ -2568,7 +2571,30 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 		TriggerAchievement(client, ACHIEVEMENT_SENTRIES);
 	}
 	
+	CalculatePlayerMaxHealth(client, false);
 	return Plugin_Continue;
+}
+
+public Action OnPlayerUpgradeObject(Event event, const char[] name, bool dontBroadcast)
+{
+	int building = event.GetInt("index");
+	int builder = GetEntPropEnt(building, Prop_Send, "m_hBuilder");
+	if (IsValidClient(builder) && IsPlayerAlive(builder))
+	{
+		// delay by one frame to override max health set by upgrading
+		RequestFrame(RF_DelayMaxHealthUpdate, GetClientUserId(builder));
+	}
+
+	return Plugin_Continue;
+}
+
+public void RF_DelayMaxHealthUpdate(int client)
+{
+	client = GetClientOfUserId(client);
+	if (IsValidClient(client) && IsPlayerAlive(client))
+	{
+		CalculatePlayerMaxHealth(client, false);
+	}
 }
 
 public Action Timer_DispenserShieldThink(Handle timer, int entity)
@@ -2602,7 +2628,7 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 	{
 		if (GetGameTime() > shield.NextModelUpdateTime)
 		{
-			int dispLevel = GetEntProp(shield.Dispenser, Prop_Send, "m_iUpgradeLevel");
+			int dispLevel = GetEntProp(shield.Dispenser, Prop_Send, "m_iHighestUpgradeLevel");
 			if (dispLevel != shield.Level && dispLevel > shield.Level)
 			{
 				shield.Level = dispLevel;
@@ -5845,12 +5871,12 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			
 			if (IsPlayerSurvivor(attacker))
 			{
-				if (damage >= 10000.0 && damageCustom != TF_CUSTOM_BACKSTAB)
+				if (damage >= 10000.0 && damageCustom != TF_CUSTOM_BACKSTAB && !selfDamage)
 				{
 					TriggerAchievement(attacker, ACHIEVEMENT_BIGDAMAGE);
 				}
 				
-				if (damage >= 32767.0 && damageCustom != TF_CUSTOM_BACKSTAB)
+				if (damage >= 32767.0 && damageCustom != TF_CUSTOM_BACKSTAB && !selfDamage)
 				{
 					TriggerAchievement(attacker, ACHIEVEMENT_DAMAGECAP);
 				}

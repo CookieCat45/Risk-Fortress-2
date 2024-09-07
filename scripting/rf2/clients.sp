@@ -398,12 +398,12 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	
 	if (PlayerHasItem(client, Item_PrideScarf))
 	{
-		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_PrideScarf, 0))) - maxHealth;
+		maxHealth += CalcItemModInt(client, Item_PrideScarf, 0);
 	}
 	
 	if (PlayerHasItem(client, Item_ClassCrown))
 	{
-		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_ClassCrown, 0))) - maxHealth;
+		maxHealth += CalcItemModInt(client, Item_ClassCrown, 0);
 	}
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
@@ -453,7 +453,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	return actualMaxHealth;
 }
 
-int CalculateBuildingMaxHealth(int client, int entity)
+int CalculateBuildingMaxHealth(int client, int entity, bool set=true)
 {
 	int maxHealth;
 	if (GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
@@ -462,7 +462,7 @@ int CalculateBuildingMaxHealth(int client, int entity)
 	}
 	else
 	{
-		switch (GetEntProp(entity, Prop_Send, "m_iUpgradeLevel"))
+		switch (GetEntProp(entity, Prop_Send, "m_iHighestUpgradeLevel"))
 		{
 			case 1: maxHealth = 150;
 			case 2: maxHealth = 180;
@@ -472,16 +472,21 @@ int CalculateBuildingMaxHealth(int client, int entity)
 	
 	if (PlayerHasItem(client, Item_PrideScarf))
 	{
-		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_PrideScarf, 0))) - maxHealth;
+		maxHealth += CalcItemModInt(client, Item_PrideScarf, 0);
 	}
 	
 	if (PlayerHasItem(client, Item_ClassCrown))
 	{
-		maxHealth += RoundToFloor(float(maxHealth) * (1.0 + CalcItemMod(client, Item_ClassCrown, 0))) - maxHealth;
+		maxHealth += CalcItemModInt(client, Item_ClassCrown, 0);
 	}
 	
 	maxHealth = RoundToFloor(float(maxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
 	maxHealth = imax(maxHealth, 1); // prevent 0, causes division by zero crash on client
+	if (set)
+	{
+
+	}
+
 	return maxHealth;
 }
 

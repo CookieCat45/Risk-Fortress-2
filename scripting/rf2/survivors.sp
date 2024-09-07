@@ -196,16 +196,6 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 				}
 			}
 			
-			/*
-			if (g_iLoopCount >= 2 && g_iSavedItem[invIndex][Item_PrideScarf] < itemsToGive/3)
-			{
-				// Give a bunch of health otherwise the player just endlessly dies at this point
-				GiveItem(client, Item_PrideScarf, imin(imax((itemsToGive/3)-g_iSavedItem[invIndex][Item_PrideScarf], 0), 100));
-				GiveItem(client, Item_SpiralSallet, 10-imin(g_iSavedItem[invIndex][Item_SpiralSallet], 10));
-				GiveItem(client, Item_ClassCrown);
-			}
-			*/
-			
 			if (g_iSavedEquipmentItem[invIndex] == Item_Null)
 			{
 				GiveItem(client, GetRandomItemEx(Quality_Strange));
