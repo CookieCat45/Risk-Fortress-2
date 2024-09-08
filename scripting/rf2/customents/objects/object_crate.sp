@@ -269,6 +269,23 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 		
 		this.Initialized = true;
 	}
+
+	public void ScaleHitbox(float value)
+	{
+		float mins[3], maxs[3];
+		this.GetPropVector(Prop_Send, "m_vecMins", mins);
+		this.GetPropVector(Prop_Send, "m_vecMaxs", maxs);
+		ScaleVector(mins, value);
+		ScaleVector(maxs, value);
+		this.SetPropVector(Prop_Send, "m_vecMins", mins);
+		this.SetPropVector(Prop_Send, "m_vecMaxs", maxs);
+		this.SetPropVector(Prop_Send, "m_vecMinsPreScaled", mins);
+		this.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", maxs);
+		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMins", mins);
+		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMaxs", maxs);
+		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMinsPreScaled", mins);
+		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMaxsPreScaled", maxs);
+	}
 }
 
 RF2_Object_Crate SpawnCrate(int type, const float pos[3], bool bonus=false)
@@ -293,6 +310,7 @@ static void OnCreate(RF2_Object_Crate crate)
 {
 	SDKHook(crate.index, SDKHook_OnTakeDamage, Hook_OnCrateHit);
 	SDKHook(crate.index, SDKHook_Spawn, OnSpawn);
+	SDKHook(crate.index, SDKHook_SpawnPost, OnSpawnPost);
 }
 
 static void OnSpawn(int entity)
@@ -303,6 +321,24 @@ static void OnSpawn(int entity)
 	{
 		// Probably spawned with ent_create
 		crate.Initialize();
+	}
+}
+
+static void OnSpawnPost(int entity)
+{
+	// Some crate models have a very small bounding box and can be hard to hit
+	RF2_Object_Crate crate = RF2_Object_Crate(entity);
+	switch (crate.Type)
+	{
+		case Crate_Collectors, Crate_Unusual:
+		{
+			crate.ScaleHitbox(2.0);
+		}
+
+		case Crate_Haunted, Crate_Strange:
+		{
+			crate.ScaleHitbox(1.5);
+		}
 	}
 }
 

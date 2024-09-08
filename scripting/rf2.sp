@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.15.2b"
+#define PLUGIN_VERSION "0.15.3b"
 #endif
 
 #include <rf2>
@@ -5257,17 +5257,9 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			procItem = GetEntItemProc(inflictor);
 		}
 		
-		// So here's an explanation for this. For a very long time, I did not realize
-		// that buildings don't call OnTakeDamageAlive when they take damage. So as a result,
-		// buildings went for a very long time without being affected by ANY damage modifications.
-		// It's fixed now, but to avoid severely disrupting Engineer's balancing,
-		// RED Team buildings are not affected by enemy damage multipliers. They'd just get decimated instantly.
-		if (!victimIsBuilding || GetEntTeam(victim) == TEAM_ENEMY)
+		if (!selfDamage || procItem != ItemStrange_DemonicDome && procItem != Item_HorrificHeadsplitter)
 		{
-			if (!selfDamage || procItem != ItemStrange_DemonicDome && procItem != Item_HorrificHeadsplitter)
-			{
-				damage *= GetPlayerDamageMult(attacker);
-			}
+			damage *= GetPlayerDamageMult(attacker);
 		}
 		
 		if (!selfDamage && inflictor > 0 && g_bFiredWhileRocketJumping[inflictor] 

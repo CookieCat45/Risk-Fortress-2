@@ -828,6 +828,11 @@ void SetAllInArray(any[] array, int size, any value)
 		array[i] = value;
 }
 
+stock void PrintVector(const float vec[3])
+{
+	PrintToServer("%.2f, %.2f, %.2f", vec[0], vec[1], vec[2]);
+}
+
 stock bool asBool(any value)
 {
 	return view_as<bool>(value);
