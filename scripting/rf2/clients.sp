@@ -411,7 +411,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		TF2Attrib_SetByDefIndex(client, 286, healthScale); // building health
 		
 		// If we have any buildings up, update their max health now
-		int buildingMaxHealth, oldBuildingMaxHealth, buildingHealth;
+		int buildingMaxHealth, oldBuildingMaxHealth;
 		bool carried;
 		int entity = MaxClients+1;
 		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
@@ -428,10 +428,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 				SetEntProp(entity, Prop_Send, "m_iMaxHealth", buildingMaxHealth);
 				if (!carried && !GetEntProp(entity, Prop_Send, "m_bBuilding"))
 				{
-					buildingHealth = GetEntProp(entity, Prop_Send, "m_iHealth") + (buildingMaxHealth-oldBuildingMaxHealth);
-					SetVariantInt(imax(buildingHealth, 1));
-					// NOTE: The SetHealth input is very misleading. It sets the building's MAX HEALTH, not the HEALTH value. Use AddHealth to change building health.
-					AcceptEntityInput(entity, "SetHealth");
+					SetEntityHealth(entity, imax(GetEntProp(entity, Prop_Send, "m_iHealth") + (buildingMaxHealth-oldBuildingMaxHealth), 1));
 				}
 			}
 		}
@@ -453,7 +450,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	return actualMaxHealth;
 }
 
-int CalculateBuildingMaxHealth(int client, int entity, bool set=true)
+int CalculateBuildingMaxHealth(int client, int entity)
 {
 	int maxHealth;
 	if (GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
@@ -470,6 +467,7 @@ int CalculateBuildingMaxHealth(int client, int entity, bool set=true)
 		}
 	}
 	
+	maxHealth = RoundToFloor(float(maxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
 	if (PlayerHasItem(client, Item_PrideScarf))
 	{
 		maxHealth += CalcItemModInt(client, Item_PrideScarf, 0);
@@ -479,14 +477,8 @@ int CalculateBuildingMaxHealth(int client, int entity, bool set=true)
 	{
 		maxHealth += CalcItemModInt(client, Item_ClassCrown, 0);
 	}
-	
-	maxHealth = RoundToFloor(float(maxHealth) * TF2Attrib_HookValueFloat(1.0, "mult_engy_building_health", client));
+
 	maxHealth = imax(maxHealth, 1); // prevent 0, causes division by zero crash on client
-	if (set)
-	{
-
-	}
-
 	return maxHealth;
 }
 
@@ -611,10 +603,10 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 {
 	float multiplier = 1.0;
 	static char classname[64];
+	GetEntityClassname(weapon, classname, sizeof(classname));
 	bool sentry = weapon > 0 && strcmp2(classname, "obj_sentrygun");
 	if (!sentry && weapon > 0)
 	{
-		GetEntityClassname(weapon, classname, sizeof(classname));
 		bool flamethrower = strcmp2(classname, "tf_weapon_flamethrower");
 		if (flamethrower || strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
 		{

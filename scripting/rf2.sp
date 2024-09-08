@@ -2469,6 +2469,9 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 
 public Action OnPlayerDropObject(Event event, const char[] name, bool dontBroadcast)
 {
+	if (!g_bRoundActive)
+		return Plugin_Continue;
+
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	int building = event.GetInt("index");
 	if (CanTeamQuickBuild(GetClientTeam(client)))
@@ -2503,6 +2506,9 @@ public void RF_DispenserQuickBuild(int building)
 
 public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroadcast)
 {
+	if (!g_bRoundActive)
+		return Plugin_Continue;
+
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	int building = event.GetInt("index");
 	TFObjectType type = TF2_GetObjectType2(building);
@@ -2577,6 +2583,9 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 
 public Action OnPlayerUpgradeObject(Event event, const char[] name, bool dontBroadcast)
 {
+	if (!g_bRoundActive)
+		return Plugin_Continue;
+
 	int building = event.GetInt("index");
 	int builder = GetEntPropEnt(building, Prop_Send, "m_hBuilder");
 	if (IsValidClient(builder) && IsPlayerAlive(builder))
@@ -2613,6 +2622,18 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 		&& !GetEntProp(shield.Dispenser, Prop_Send, "m_bCarried")
 		&& !GetEntProp(shield.Dispenser, Prop_Send, "m_bHasSapper"));
 	
+	// make sure we have the correct collision state as it seems to be finicky sometimes
+	if (active && shield.Enabled)
+	{
+		shield.SetProp(Prop_Send, "m_nSolidType", SOLID_VPHYSICS);
+		SetEntityCollisionGroup(shield.index, TFCOLLISION_GROUP_COMBATOBJECT);
+	}
+	else
+	{
+		shield.SetProp(Prop_Send, "m_nSolidType", SOLID_NONE);
+		SetEntityCollisionGroup(shield.index, 0);
+	}
+
 	if (!shield.Enabled && !shield.UserDisabled)
 	{
 		if (active)
