@@ -388,7 +388,8 @@ int SpawnObjects()
 		}
 	}
 	
-	int minCrates = RoundToFloor(float(spawnCount) * 0.75);
+	const float cratePercent = 0.7;
+	int minCrates = RoundToFloor(float(spawnCount) * cratePercent);
 	int extraMisc = g_cvExtraMiscObjects.IntValue;
 	int bonusCrates;
 	int playerBonus;

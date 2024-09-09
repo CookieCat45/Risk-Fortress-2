@@ -304,6 +304,11 @@ bool RollAttackCrit(int client, int damageType=DMG_GENERIC, int damageCustom=-1)
 			critChance += CalcItemMod(client, Item_TombReaders, 0);
 		}
 		
+		if (PlayerHasItem(client, Item_Executioner))
+		{
+			critChance += CalcItemMod(client, Item_Executioner, 5);
+		}
+
 		if (PlayerHasItem(client, Item_SaxtonHat) && melee)
 		{
 			critChance += CalcItemMod(client, Item_SaxtonHat, 1);
@@ -405,6 +410,11 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	{
 		maxHealth += CalcItemModInt(client, Item_ClassCrown, 0);
 	}
+
+	if (PlayerHasItem(client, Item_MisfortuneFedora))
+	{
+		maxHealth = RoundToFloor(float(maxHealth) * CalcItemMod_HyperbolicInverted(client, Item_MisfortuneFedora, 2));
+	}
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
@@ -476,6 +486,11 @@ int CalculateBuildingMaxHealth(int client, int entity)
 	if (PlayerHasItem(client, Item_ClassCrown))
 	{
 		maxHealth += CalcItemModInt(client, Item_ClassCrown, 0);
+	}
+
+	if (PlayerHasItem(client, Item_MisfortuneFedora))
+	{
+		maxHealth = RoundToFloor(float(maxHealth) * CalcItemMod_HyperbolicInverted(client, Item_MisfortuneFedora, 2));
 	}
 
 	maxHealth = imax(maxHealth, 1); // prevent 0, causes division by zero crash on client
@@ -1210,7 +1225,7 @@ TFCond GetRandomMannpowerRune_Enemies(int client, char soundBuffer[PLATFORM_MAX_
 	return rune;
 }
 
-bool IsPlayerMiniCritBuffed(int client)
+stock bool IsPlayerMiniCritBuffed(int client)
 {
 	return TF2_IsPlayerInCondition(client, TFCond_CritCola)
 		|| TF2_IsPlayerInCondition(client, TFCond_Buffed)
@@ -1218,7 +1233,7 @@ bool IsPlayerMiniCritBuffed(int client)
 		|| TF2_IsPlayerInCondition(client, TFCond_MiniCritOnKill);
 }
 
-bool IsPlayerCritBoosted(int client)
+stock bool IsPlayerCritBoosted(int client)
 {
 	return TF2_IsPlayerInCondition(client, TFCond_CritCanteen)
 		|| TF2_IsPlayerInCondition(client, TFCond_Kritzkrieged)

@@ -162,7 +162,7 @@ int ShootProjectile(int owner=INVALID_ENT, const char[] classname, const float p
 	
 	if (allowCrit && IsValidClient(owner) && HasEntProp(entity, Prop_Send, "m_bCritical"))
 	{
-		if (RollAttackCrit(owner) || PlayerHasItem(owner, Item_Executioner) && IsPlayerMiniCritBuffed(owner))
+		if (RollAttackCrit(owner))
 		{
 			SetEntProp(entity, Prop_Send, "m_bCritical", true);
 		}

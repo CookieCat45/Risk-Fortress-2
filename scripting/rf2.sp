@@ -10,7 +10,7 @@
 #if defined PRERELEASE
 #define PLUGIN_VERSION "PRERELEASE"
 #else
-#define PLUGIN_VERSION "0.15.3b"
+#define PLUGIN_VERSION "0.15.4b"
 #endif
 
 #include <rf2>
@@ -4390,12 +4390,6 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	// we already do flamethrowers in our damage hook
 	if (!result)
 	{
-		if (PlayerHasItem(client, Item_Executioner) && IsPlayerMiniCritBuffed(client))
-		{
-			result = true;
-			changed = true;
-		}
-		
 		if (TF2Attrib_HookValueInt(1, "mult_crit_chance", weapon) != 0)
 		{
 			if (RollAttackCrit(client, melee ? DMG_MELEE : DMG_GENERIC))
@@ -5959,7 +5953,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		// Check for full crits for any damage that isn't against a building and isn't from a weapon.
 		if (!validWeapon && canCrit && !IsBuilding(victim))
 		{
-			if (critType != CritType_Crit || critType == CritType_MiniCrit && !PlayerHasItem(attacker, Item_Executioner))
+			if (critType != CritType_Crit)
 			{
 				rolledCrit = RollAttackCrit(attacker);
 				if (rolledCrit)
@@ -6008,13 +6002,7 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		{
 			critType = CritType_Crit;
 		}
-		
-		// Executioner converts minicrits to full crits
-		if (canCrit && PlayerHasItem(attacker, Item_Executioner) && critType == CritType_MiniCrit)
-		{
-			critType = CritType_Crit;
-		}
-		
+
 		if (IsValidClient(victim)
 			&& (IsValidClient(attacker) && IsEnemy(attacker) && Enemy(attacker).NoCrits 
 				|| TF2_IsPlayerInCondition(victim, TFCond_DefenseBuffed) || TF2_IsPlayerInCondition(victim, TFCond_RuneResist)))
@@ -6029,15 +6017,13 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 				// Cryptic Keepsake converts crit chance to crit damage, other than its own crit chance
 				if (PlayerHasItem(attacker, Item_CrypticKeepsake))
 				{
-					if (PlayerHasItem(attacker, Item_TombReaders))
-					{
-						damage *= 1.0 + CalcItemMod(attacker, Item_TombReaders, 0);
-					}
-					
+					float mult = 1.0 + CalcItemMod(attacker, Item_TombReaders, 0) + CalcItemMod(attacker, Item_Executioner, 5);
 					if (PlayerHasItem(attacker, Item_SaxtonHat) && damageType & DMG_MELEE)
 					{
-						damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 1);
+						mult += CalcItemMod(attacker, Item_SaxtonHat, 1);
 					}
+					
+					damage *= mult;
 				}
 				
 				// Executioner has a chance to cause bleeding on crit damage

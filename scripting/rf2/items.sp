@@ -717,6 +717,8 @@ void UpdatePlayerItem(int client, int item)
 			{
 				TF2_RemoveCondition(client, TFCond_Buffed);
 			}
+
+			CalculatePlayerMaxHealth(client);
 		}
 		case Item_UFO:
 		{

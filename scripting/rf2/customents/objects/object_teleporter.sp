@@ -451,7 +451,6 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		
 		int randomItem;
 		bool collector;
-		bool wasSharingEnabled = IsItemSharingEnabled();
 		char name[MAX_NAME_LENGTH], quality[32];
 		for (int i = 1; i <= MaxClients; i++)
 		{
