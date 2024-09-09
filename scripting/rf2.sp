@@ -5193,7 +5193,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			}
 			else
 			{
-				proc *= 0.5;
+				proc *= 0.33;
 			}
 		}
 		else if (inflictor > 0)
