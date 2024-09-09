@@ -2122,7 +2122,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					int max = g_cvHauntedKeyDropChanceMax.IntValue;
 					if (max > 0 && RandChanceIntEx(attacker, 1, max, 1))
 					{
-						PrintHintText(attacker, "%t", "HauntedKeyDrop", victim);
+						PrintCenterText(attacker, "%t", "HauntedKeyDrop", victim);
 						g_bHauntedKeyDrop[attacker] = true;
 						GiveItem(attacker, Item_HauntedKey, 1, true);
 					}
@@ -2241,7 +2241,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			}
 			else if (alive == 1)
 			{
-				PrintHintText(lastMan, "%t", "LastMan");
+				PrintCenterText(lastMan, "%t", "LastMan");
 				EmitSoundToAll(SND_LASTMAN);
 				SpeakResponseConcept_MVM(lastMan, "TLK_MVM_LAST_MAN_STANDING");
 			}
@@ -5059,7 +5059,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 	}
 	
-	if (victimIsClient && IsSingleplayer(false) && IsPlayerSurvivor(victim))
+	// reduce damage taken in stage 1 for singleplayer
+	if (victimIsClient && IsSingleplayer(false) && IsPlayerSurvivor(victim) && g_iStagesCompleted == 0)
 	{
 		damage *= 0.8;
 	}

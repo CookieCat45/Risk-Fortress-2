@@ -1358,10 +1358,11 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 				}
 				
 				EmitSoundToClient(pillarOfHatsOwner, SND_USE_SCRAPPER);
+				EmitSoundToClient(pillarOfHatsOwner, SND_USE_SCRAPPER);
 				GiveItem(pillarOfHatsOwner, item, 1, true);
 				char name[64];
 				GetItemName(item, name, sizeof(name));
-				PrintHintText(pillarOfHatsOwner, "You received 1 %s", name);
+				PrintCenterText(pillarOfHatsOwner, "You received 1 %s", name);
 				g_iMetalItemsDropped[pillarOfHatsOwner]++;
 			}
 		}

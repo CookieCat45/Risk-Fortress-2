@@ -179,7 +179,7 @@ public void Output_OnSkeletonKingDeath(const char[] output, int caller, int acti
 		if (IsClientInGame(i) && IsPlayerSurvivor(i))
 		{
 			GiveItem(i, Item_HauntedKey, 1, true);
-			PrintHintText(i, "You have been awarded 1 Gargoyle Key.");
+			PrintCenterText(i, "You have been awarded 1 Gargoyle Key.");
 		}
 	}
 }

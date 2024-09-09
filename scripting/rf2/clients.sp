@@ -390,8 +390,8 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	int healthAttrib = TF2Attrib_HookValueInt(0, "add_maxhealth", client) - RoundToFloor(attr ? TF2Attrib_GetValue(attr) : 0.0);
 	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)+healthAttrib) * healthScale);
 	
-	// Bosses have less health in single player (for now) to avoid overly long fights
-	if (IsSingleplayer(false) && IsBoss(client))
+	// Bosses have less health in single player in the first stage
+	if (IsSingleplayer(false) && IsBoss(client) && g_iStagesCompleted == 0)
 	{
 		maxHealth = RoundToFloor(float(maxHealth) * 0.75);
 	}
