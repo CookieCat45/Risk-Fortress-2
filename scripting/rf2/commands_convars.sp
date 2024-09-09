@@ -899,7 +899,6 @@ void ShowItemInfo(int client, int item)
 {
 	Menu menu = new Menu(Menu_ItemInfo);
 	menu.ExitBackButton = true;
-	
 	char quality[32];
 	GetQualityName(GetItemQuality(item), quality, sizeof(quality));
 	menu.SetTitle("%s (%s)", g_szItemName[item], quality);

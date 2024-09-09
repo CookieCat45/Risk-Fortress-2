@@ -38,36 +38,39 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 	{
 		Menu menu = new Menu(Menu_ItemScrapper);
 		menu.SetTitle("What would you like to scrap?");
-		int count;
+		int count, item;
 		char info[8], display[128];
 		bool collector;
 		TFClassType class = TF2_GetPlayerClass(client);
-		for (int i = 1; i < GetTotalItems(); i++)
+		ArrayList itemList = GetSortedItemList(true, false);
+		for (int i = 0; i < itemList.Length; i++)
 		{
-			if (IsScrapItem(i) || !PlayerHasItem(client, i, true) || GetItemQuality(i) == Quality_Community || GetItemQuality(i) == Quality_Strange)
-				continue;
+			item = itemList.Get(i);
+			if (!PlayerHasItem(client, item, true) || GetItemQuality(item) == Quality_Community || GetItemQuality(item) == Quality_Strange)
+				continue;	
 			
-			if (!collector && GetItemQuality(i) == Quality_Collectors && GetCollectorItemClass(i) != class)
+			if (!collector && GetItemQuality(item) == Quality_Collectors && GetCollectorItemClass(item) != class)
 			{
 				FormatEx(display, sizeof(display), "%T", "ScrapCollectors", client);
 				menu.InsertItem(0, "scrap_collectors", display);
 				collector = true;
 			}
 			
-			IntToString(i, info, sizeof(info));
-			if (IsEquipmentItem(i))
+			IntToString(item, info, sizeof(info));
+			if (IsEquipmentItem(item))
 			{
-				display = g_szItemName[i];
+				display = g_szItemName[item];
 			}
 			else
 			{
-				FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[i], GetPlayerItemCount(client, i, true));
+				FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[item], GetPlayerItemCount(client, item, true));
 			}
 			
 			menu.AddItem(info, display);
 			count++;
 		}
-		
+
+		delete itemList;
 		if (count > 0)
 		{
 			menu.DisplayAt(client, g_iPlayerLastScrapMenuItem[client], 12);

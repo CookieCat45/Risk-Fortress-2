@@ -5246,6 +5246,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 					bonus += CalcItemMod(attacker, Item_Executioner, 4);
 					damage *= bonus;
 				}
+				else
+				{
+					// Players can stall themselves in the air indefinitely with self bleed damage, prevent this
+					damageType |= DMG_PREVENT_PHYSICS_FORCE;
+				}
 			}
 			
 			case TF_CUSTOM_BURNING, TF_CUSTOM_BURNING_FLARE, TF_CUSTOM_BURNING_ARROW, TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING:
