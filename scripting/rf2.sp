@@ -104,7 +104,7 @@ int g_iRespawnWavesCompleted;
 // HUD
 Handle g_hMainHudSync;
 Handle g_hObjectiveHudSync;
-Handle g_hDispenserBatteryHudSync;
+Handle g_hBuildingHudSync;
 int g_iMainHudR = 100;
 int g_iMainHudG = 255;
 int g_iMainHudB = 100;
@@ -930,7 +930,7 @@ public void OnMapStart()
 		AddTempEntHook("TFBlood", TEHook_TFBlood);
 		g_hMainHudSync = CreateHudSynchronizer();
 		g_hObjectiveHudSync = CreateHudSynchronizer();
-		g_hDispenserBatteryHudSync = CreateHudSynchronizer();
+		g_hBuildingHudSync = CreateHudSynchronizer();
 		g_iMaxStages = FindMaxStages();
 		LoadMapSettings(mapName);
 		g_bTropicsMapExists = RF2_IsMapValid("rf2_tropics"); // For ACHIEVEMENT_TEMPLESECRET - hide it if the map doesn't exist
@@ -1107,7 +1107,7 @@ void CleanUp()
 	g_bRingCashBonus = false;
 	delete g_hMainHudSync;
 	delete g_hObjectiveHudSync;
-	delete g_hDispenserBatteryHudSync;
+	delete g_hBuildingHudSync;
 	g_hCrashedPlayerSteamIDs.Clear();
 	g_hHHHTargets.Clear();
 	g_hMonoculusTargets.Clear();
@@ -2685,39 +2685,6 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 			}
 			
 			shield.NextBatteryDrainTime = GetGameTime()+0.25;
-			int builder = GetEntPropEnt(shield.Dispenser, Prop_Send, "m_hBuilder");
-			if (IsValidClient(builder) && IsPlayerAlive(builder))
-			{
-				int r, g, b;
-				if (shield.Battery <= 25)
-				{
-					r = 255;
-					g = 100;
-					b = 100;
-				}
-				else if (shield.Battery <= 50)
-				{
-					r = 255;
-					g = 255;
-					b = 100;
-				}
-				else
-				{
-					r = 100;
-					g = 255;
-					b = 100;
-				}
-				
-				SetHudTextParams(-1.0, 0.7, 8.0, r, g, b, 255);
-				if (shield.UserDisabled)
-				{
-					ShowSyncHudText(builder, g_hDispenserBatteryHudSync, "***SHIELD DISABLED***\nSHIELD BATTERY: %i", shield.Battery);
-				}
-				else
-				{
-					ShowSyncHudText(builder, g_hDispenserBatteryHudSync, "SHIELD BATTERY: %i", shield.Battery);
-				}
-			}
 		}
 		
 		bool carried = asBool(GetEntProp(shield.Dispenser, Prop_Send, "m_bCarried"));
@@ -3389,14 +3356,66 @@ public Action Timer_PlayerHud(Handle timer)
 					}
 				}
 			}
-			/*
-			else if (class == TFClass_Engineer && PlayerHasItem(i, ItemEngi_HeadOfDefense))
+			else if (class == TFClass_Engineer)
 			{
-				FormatEx(miscText, sizeof(miscText), 
-					"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n																													Disposable Sentries: %i/%i", 
-					g_hPlayerExtraSentryList[i].Length, CalcItemModInt(i, ItemEngi_HeadOfDefense, 0));
+				bool show;
+				int r, g, b;
+				static char buildingHudText[128];
+				buildingHudText = "";
+				int dispenser = GetBuiltObject(i, TFObject_Dispenser);
+				RF2_DispenserShield shield = dispenser != INVALID_ENT ? GetDispenserShield(dispenser) : RF2_DispenserShield(INVALID_ENT);
+				if (shield.IsValid())
+				{
+					show = true;
+					if (shield.Battery <= 25)
+					{
+						r = 255;
+						g = 100;
+						b = 100;
+					}
+					else if (shield.Battery <= 50)
+					{
+						r = 255;
+						g = 255;
+						b = 100;
+					}
+					else
+					{
+						r = 100;
+						g = 255;
+						b = 100;
+					}
+					
+					if (shield.UserDisabled)
+					{
+						FormatEx(buildingHudText, sizeof(buildingHudText), "***SHIELD DISABLED***\nSHIELD BATTERY: %i", shield.Battery);
+					}
+					else
+					{
+						FormatEx(buildingHudText, sizeof(buildingHudText), "SHIELD BATTERY: %i", shield.Battery);
+					}
+				}
+				else
+				{
+					r = 255;
+					g = 255;
+					b = 255;
+				}
+
+				if (PlayerHasItem(i, ItemEngi_HeadOfDefense))
+				{
+					show = true;
+					Format(buildingHudText, sizeof(buildingHudText), "%s\nDISPOSABLE SENTRIES: %i/%i", buildingHudText,
+						g_hPlayerExtraSentryList[i].Length, CalcItemModInt(i, ItemEngi_HeadOfDefense, 0));
+				}
+
+				if (show)
+				{
+					SetHudTextParams(-1.0, 0.7, 0.15, r, g, b, 255);
+					ShowSyncHudText(i, g_hBuildingHudSync, buildingHudText);
+					SetHudTextParams(-1.0, -1.3, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
+				}
 			}
-			*/
 			
 			static char cashString[64];
 			FormatEx(cashString, sizeof(cashString), "$%.0f", g_flPlayerCash[i]);
@@ -5167,7 +5186,15 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		
 		if (inflictorIsBuilding)
 		{
-			proc *= 0.5;
+			if (IsSentryDisposable(inflictor))
+			{
+				// disposables don't proc items, period
+				proc = 0.0;
+			}
+			else
+			{
+				proc *= 0.5;
+			}
 		}
 		else if (inflictor > 0)
 		{
