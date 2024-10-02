@@ -76,7 +76,7 @@ static void OnCollide(RF2_Projectile_Skull skull, int other)
 			if (!IsPlayerAlive(other))
 			{
 				// Summon a skeleton immediately if the enemy was killed by the projectile
-				SummonSkeleton(other);
+				SummonSkeleton(skull.Owner, other);
 			}
 			if (!IsBoss(other) && !RF2_Projectile_Skull.IsPlayerCursed(other)
 			&& RandChanceFloatEx(skull.Owner, 0.0001, 1.0, GetItemMod(ItemStrange_DemonicDome, 3)) && GetClientHealth(other) > 0)
@@ -114,6 +114,7 @@ static Action Timer_InstantDeath(Handle timer, int client)
 	if (!(client = GetClientOfUserId(client)) || !IsClientInGame(client))
 		return Plugin_Stop;
 	
+	int inflictor = GetClientOfUserId(g_iDeathInflictor[client]);
 	if (!IsPlayerAlive(client))
 	{
 		if (IsValidEntity2(g_iDeathWorldText[client]))
@@ -121,7 +122,7 @@ static Action Timer_InstantDeath(Handle timer, int client)
 			RemoveEntity(g_iDeathWorldText[client]);
 		}
 		
-		SummonSkeleton(client);
+		SummonSkeleton(inflictor, client);
 		return Plugin_Stop;
 	}
 	
@@ -135,27 +136,31 @@ static Action Timer_InstantDeath(Handle timer, int client)
 	{
 		RemoveEntity(text);
 		ForcePlayerSuicide(client);
-		int inflictor = GetClientOfUserId(g_iDeathInflictor[client]);
 		// manually trigger on kill items, we don't want to have the player dealing damage here
 		if (IsValidClient(inflictor) && IsPlayerAlive(inflictor))
 		{
 			DoItemKillEffects(inflictor, inflictor, client);
 		}
 		
-		SummonSkeleton(client);
+		SummonSkeleton(inflictor, client);
 		return Plugin_Stop;
 	}
 	
 	return Plugin_Continue;
 }
 
-static int SummonSkeleton(int client)
+static int SummonSkeleton(int attacker, int client)
 {
 	float pos[3];
 	GetEntPos(client, pos);
 	TE_TFParticle("ghost_smoke", pos);
 	int skeleton = CreateEntityByName("tf_zombie");
-	SetEntTeam(skeleton, 5);
+	if (IsValidClient(attacker) && IsPlayerAlive(attacker))
+	{
+		SetEntityOwner(skeleton, attacker);
+		SetEntTeam(skeleton, GetClientTeam(attacker));
+	}
+	
 	TeleportEntity(skeleton, pos);
 	DispatchSpawn(skeleton);
 	int health = RoundToFloor(400.0 * GetEnemyHealthMult());

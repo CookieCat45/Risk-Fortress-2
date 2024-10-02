@@ -2600,7 +2600,10 @@ public Action Timer_MedicTeslaCoil(Handle timer, int client)
 		return Plugin_Stop;
 
 	int medigun = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-	if (medigun == INVALID_ENT || !GetEntProp(medigun, Prop_Send, "m_bChargeRelease"))
+	if (medigun == INVALID_ENT || !GetEntProp(medigun, Prop_Send, "m_bChargeRelease")
+		&& !TF2_IsPlayerInCondition(client, TFCond_UberBulletResist)
+		&& !TF2_IsPlayerInCondition(client, TFCond_UberBlastResist)
+		&& !TF2_IsPlayerInCondition(client, TFCond_UberFireResist))
 		return Plugin_Stop;
 
 	// only zap if medigun is out

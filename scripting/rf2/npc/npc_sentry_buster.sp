@@ -359,7 +359,7 @@ public Action Timer_BusterSpawnWave(Handle timer)
 	if (!g_bRoundActive || IsStageCleared())
 		return Plugin_Stop;
 	
-	if (IsSentryBusterActive() || !GetRF2GameRules().AllowEnemySpawning)
+	if (g_bRaidBossMode || IsSentryBusterActive() || !GetRF2GameRules().AllowEnemySpawning)
 		return Plugin_Continue;
 	
 	bool sentryActive;
@@ -460,7 +460,7 @@ void DoSentryBusterWave()
 
 static void Timer_BusterSpawnRetry(Handle timer, int sentry)
 {
-	if (IsStageCleared() || (sentry = EntRefToEntIndex(sentry)) == INVALID_ENT || !GetRF2GameRules().AllowEnemySpawning)
+	if (IsStageCleared() || (sentry = EntRefToEntIndex(sentry)) == INVALID_ENT || g_bRaidBossMode || !GetRF2GameRules().AllowEnemySpawning)
 		return;
 	
 	RF2_SentryBuster buster = RF2_SentryBuster.Create(sentry);

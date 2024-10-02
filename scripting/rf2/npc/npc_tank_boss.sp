@@ -364,7 +364,6 @@ static void OnCreate(RF2_TankBoss tank)
 	tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 1);
 	tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 2);
 	tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 3);
-	
 	float gameTime = GetGameTime();
 	tank.NextRocketAttackR = gameTime+ROCKET_ATTACK_COOLDOWN;
 	tank.NextRocketAttackL = gameTime+ROCKET_ATTACK_COOLDOWN*1.5;
@@ -373,9 +372,10 @@ static void OnCreate(RF2_TankBoss tank)
 	tank.NextLaserCannonAttack = gameTime+15.0; // use this first (Super Badass only)
 	SDKHook(tank.index, SDKHook_Think, Hook_BadassTankThink);
 	SDKHook(tank.index, SDKHook_SpawnPost, Hook_BadassTankSpawnPost);
+	SDKHook(tank.index, SDKHook_OnTakeDamageAlive, Hook_BadassTankOnTakeDamageAlive);
 }
 
-public void Hook_BadassTankSpawnPost(int entity)
+static void Hook_BadassTankSpawnPost(int entity)
 {
 	RF2_TankBoss tank = RF2_TankBoss(entity);
 	if (tank.SuperBadass)
@@ -603,7 +603,7 @@ RF2_TankBoss CreateTankBoss(int type, RF2_TankSpawner spawnPoint=view_as<RF2_Tan
 	return tank;
 }
 
-public void Hook_TankBossThink(int entity)
+static void Hook_TankBossThink(int entity)
 {
 	RF2_TankBoss tank = RF2_TankBoss(entity);
 	float motion[3], ang[3];
@@ -685,7 +685,25 @@ public void Output_OnTankKilled(const char[] output, int caller, int activator, 
 
 // ---------------------------------------------- Badass Tank -----------------------------------------------------------
 
-public void Hook_BadassTankThink(int entity)
+static Action Hook_BadassTankOnTakeDamageAlive(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
+		float damageForce[3], float damagePosition[3], int damagecustom)
+{
+    RF2_TankBoss tank = RF2_TankBoss(victim);
+    Action action = Plugin_Continue;
+    if (damagetype & DMG_CRIT && tank.SuperBadass)
+    {
+		// 50% resistance to crits
+		float baseDamage = damage/3.0;
+		float critDamage;
+		critDamage = damage-baseDamage;
+		damage = baseDamage + (critDamage*0.5);
+		action = Plugin_Changed;
+    }
+
+    return action;
+}
+
+static void Hook_BadassTankThink(int entity)
 {
 	RF2_TankBoss tank = RF2_TankBoss(entity);
 	float gameTime = GetGameTime();
