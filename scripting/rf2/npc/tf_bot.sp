@@ -1106,9 +1106,13 @@ static void Timer_TFBotStopForceAttack(Handle timer, int client)
 public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 {
 	TFBot bot = TFBot(client);
-	if (!bot)
+	if (!bot || !bot.GetNextBot())
+	{
+		// This can happen, don't know why, but let's just kick the bot and forget about it
+		KickClient(client, "Invalid INextBot pointer");
 		return Plugin_Continue;
-	
+	}
+
 	static bool reloading[MAXTF2PLAYERS];
 	int activeWep = GetActiveWeapon(client);
 	if (activeWep != INVALID_ENT && activeWep != GetPlayerWeaponSlot(client, WeaponSlot_Melee))

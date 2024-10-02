@@ -6695,7 +6695,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		return Plugin_Continue;
 	
 	// Apparently non-connected clients can call this??? (SourceTV?)
-	if (!IsClientInGame(client))
+	if (!IsClientInGame(client) || IsClientSourceTV(client))
 		return Plugin_Continue;
 
 	bool bot = IsFakeClient(client);
