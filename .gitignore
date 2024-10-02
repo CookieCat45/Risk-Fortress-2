@@ -122,3 +122,6 @@ scripting/compile.sh
 scripting/include/sourcescramble.inc
 scripting/spcomp
 scripting/spcomp64
+scripting/damagetest.smx
+scripting/damagetest.sp
+scripting/ent_fire_dedicated.sp
