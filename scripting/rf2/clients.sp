@@ -53,7 +53,7 @@ void RefreshClient(int client, bool force=false)
 	g_bMeleeMiss[client] = false;
 	g_szObjectiveHud[client] = "";
 	
-	if (!g_bMapChanging && IsClientInGame(client) && !IsClientSourceTV(client))
+	if (!g_bMapChanging && IsClientInGame(client) && !IsSpecBot(client))
 	{
 		TF2Attrib_RemoveAll(client);
 		SetEntityGravity(client, 1.0);
@@ -151,7 +151,7 @@ int GetPlayersOnTeam(int team, bool alive=false, bool onlyHumans=false)
 	int count;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || GetClientTeam(i) != team || IsClientSourceTV(i))
+		if (!IsClientInGame(i) || GetClientTeam(i) != team || IsSpecBot(i))
 			continue;
 		
 		if (alive && !IsPlayerAlive(i))
@@ -172,7 +172,7 @@ int GetRandomPlayer(int team = -1, bool alive=true, bool onlyHumans=false)
 	int playerArray[MAXTF2PLAYERS] = {-1, ...};
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || onlyHumans && IsFakeClient(i) || IsClientSourceTV(i))
+		if (!IsClientInGame(i) || onlyHumans && IsFakeClient(i) || IsSpecBot(i))
 			continue;
 
 		if (alive && !IsPlayerAlive(i) || team >= 0 && GetClientTeam(i) != team)
@@ -1599,6 +1599,11 @@ bool IsAdminReserved(int client)
 	
 	// If total players is greater than non-admin player cap, this admin is holding a reserved slot.
 	return GetTotalHumans(false) > GetDesiredPlayerCap();
+}
+
+bool IsSpecBot(int client)
+{
+	return IsClientSourceTV(client) || IsClientReplay(client);
 }
 
 /*

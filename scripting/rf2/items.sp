@@ -2366,7 +2366,7 @@ public Action Timer_HalloweenThriller(Handle timer, int merasmus)
 		{
 			for (int i = 1; i <= MaxClients; i++)
 			{
-				if (!IsClientInGame(i) || IsClientSourceTV(i))
+				if (!IsClientInGame(i) || IsSpecBot(i))
 					continue;
 				
 				if (IsPlayerAlive(i))

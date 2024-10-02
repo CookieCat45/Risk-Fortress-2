@@ -1335,7 +1335,7 @@ public void OnClientPutInServer(int client)
 {
 	RefreshClient(client);
 	GetClientName(client, g_szPlayerOriginalName[client], sizeof(g_szPlayerOriginalName[]));
-	if (RF2_IsEnabled() && !IsClientSourceTV(client) && !IsClientReplay(client))
+	if (RF2_IsEnabled() && !IsSpecBot(client))
 	{
 		if (IsFakeClient(client))
 		{
@@ -3820,7 +3820,7 @@ public Action Timer_PlayerTimer(Handle timer)
 	float maxShareTime = g_cvItemShareMaxTime.FloatValue;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || IsClientSourceTV(i))
+		if (!IsClientInGame(i) || IsSpecBot(i))
 			continue;
 		
 		if (g_bRoundActive && itemShare && IsPlayerSurvivor(i, false))
@@ -4916,7 +4916,7 @@ public void TF2_OnWaitingForPlayersEnd()
 	PrintToServer("%T", "WaitingEnd", LANG_SERVER);
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i))
+		if (IsClientInGame(i) && IsFakeClient(i) && !IsSpecBot(i))
 		{
 			ChangeClientTeam(i, TEAM_ENEMY);
 		}
@@ -6695,7 +6695,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		return Plugin_Continue;
 	
 	// Apparently non-connected clients can call this??? (SourceTV?)
-	if (!IsClientInGame(client) || IsClientSourceTV(client))
+	if (!IsClientInGame(client) || IsSpecBot(client))
 		return Plugin_Continue;
 
 	bool bot = IsFakeClient(client);

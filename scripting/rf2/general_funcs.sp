@@ -230,7 +230,7 @@ void ReloadPlugin(bool changeMap=true)
 	{
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsClientInGame(i) || IsClientSourceTV(i))
+			if (!IsClientInGame(i) || IsSpecBot(i))
 				continue;
 				
 			SetVariantString("");
