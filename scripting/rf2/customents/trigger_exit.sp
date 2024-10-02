@@ -162,7 +162,7 @@ static void OnCreate(RF2_Trigger_Exit trigger)
 		return;
 	
 	trigger.PlayersArray = new ArrayList();
-	trigger.MinTimeBeforeUse = GetGameTime()+120.0;
+	trigger.MinTimeBeforeUse = IsInUnderworld() ? GetGameTime()+120.0 : GetGameTime();
 	SDKHook(trigger.index, SDKHook_StartTouchPost, Hook_ExitStartTouch);
 	SDKHook(trigger.index, SDKHook_EndTouchPost, Hook_ExitEndTouch);
 	CreateTimer(0.2, Timer_VoteCheck, EntIndexToEntRef(trigger.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -213,7 +213,7 @@ static Action Timer_VoteCheck(Handle timer, int entity)
 	if (GetGameTime() >= trigger.NextVoteTime && trigger.GetPlayerCount() >= trigger.GetRequiredPlayers())
 	{
 		RF2_Object_Teleporter.StartVote(_, true);
-		float value = IsSingleplayer(false) ? 6.0 : 50.0;
+		float value = IsSingleplayer(false) ? 4.0 : 12.0;
 		trigger.NextVoteTime = GetGameTime() + value;
 	}
 	else
