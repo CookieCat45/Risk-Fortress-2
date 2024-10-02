@@ -4916,7 +4916,7 @@ public void TF2_OnWaitingForPlayersEnd()
 	PrintToServer("%T", "WaitingEnd", LANG_SERVER);
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && IsFakeClient(i))
+		if (IsClientInGame(i) && IsFakeClient(i) && !IsClientSourceTV(i))
 		{
 			ChangeClientTeam(i, TEAM_ENEMY);
 		}
