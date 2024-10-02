@@ -38,7 +38,7 @@ void LoadMapSettings(const char[] mapName)
 	
 	bool found;
 	static int stageKv = 1;
-	if (g_szUnderworldMap[0] && StrContains(g_szUnderworldMap, mapName, false) == 0)
+	if (g_szUnderworldMap[0] && StrContains(mapName, g_szUnderworldMap, false) == 0)
 	{
 		if (mapKey.JumpToKey("special") && mapKey.JumpToKey("underworld"))
 		{
@@ -50,7 +50,7 @@ void LoadMapSettings(const char[] mapName)
 			LogError("Tried to load settings for underworld map (%s) but somehow, the section doesn't exist. Not good!", mapName);
 		}
 	}
-	else if (g_szFinalMap[0] && StrContains(g_szFinalMap, mapName, false) == 0)
+	else if (g_szFinalMap[0] && StrContains(mapName, g_szFinalMap, false) == 0)
 	{
 		if (mapKey.JumpToKey("special") && mapKey.JumpToKey("final"))
 		{

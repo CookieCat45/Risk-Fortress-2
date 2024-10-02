@@ -585,7 +585,7 @@ float GetWeaponProcCoefficient(int weapon)
 	{
 		return 0.2;
 	}
-	else if (strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_smg"))
+	else if (strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_smg") || strcmp2(classname, "tf_weapon_handgun_scout_secondary"))
 	{
 		return 0.35;
 	}

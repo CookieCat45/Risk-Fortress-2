@@ -5284,7 +5284,6 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 	if (!RF2_IsEnabled() || !g_bRoundActive)
 		return Plugin_Continue;
 	
-	
 	CritType originalCritType = critType;
 	float proc = 1.0;
 	float originalDamage = damage;
@@ -5338,6 +5337,29 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					vel[2] = 300.0;
 					vel[2] = TF2Attrib_HookValueFloat(vel[2], "damage_force_reduction", victim);
 					SDK_ApplyAbsVelocityImpulse(victim, vel);
+				}
+			}
+		}
+
+		bool afterburn = damageType & DMG_BURN && (damageCustom == TF_CUSTOM_BURNING || damageCustom == TF_CUSTOM_BURNING_FLARE 
+			|| damageCustom == TF_CUSTOM_BURNING_ARROW || damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING);
+
+		if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
+		{
+			bool gas = TF2_IsPlayerInCondition(victim, TFCond_Gas);
+			bool primary = weapon == GetPlayerWeaponSlot(attacker, WeaponSlot_Primary);
+			bool shouldProcLastBreath = gas || validWeapon && (strcmp2(inflictorClassname, "tf_projectile_flare") || damageType & DMG_MELEE || !afterburn || GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary) == weapon);
+
+			if (victimIsClient && shouldProcLastBreath && (gas || !primary))
+			{
+				if (validWeapon && !primary && TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeath) || TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeathSilent))
+				{
+					damage *= 1.0 + CalcItemMod(attacker, ItemPyro_LastBreath, 1);
+				}
+
+				if (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro))
+				{
+					TF2_AddCondition(victim, TFCond_MarkedForDeathSilent, CalcItemMod(attacker, ItemPyro_LastBreath, 0), attacker);
 				}
 			}
 		}
@@ -5927,28 +5949,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			else
 			{
 				damage *= 1.0 + CalcItemMod(attacker, ItemDemo_OldBrimstone, 0);
-			}
-		}
-		
-		bool afterburn = damageType & DMG_BURN && (damageCustom == TF_CUSTOM_BURNING || damageCustom == TF_CUSTOM_BURNING_FLARE 
-			|| damageCustom == TF_CUSTOM_BURNING_ARROW || damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING);
-
-		if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
-		{
-			bool shouldProcLastBreath = TF2_IsPlayerInCondition(victim, TFCond_Gas) 
-				|| validWeapon && (strcmp2(inflictorClassname, "tf_projectile_flare") || damageType & DMG_MELEE || !afterburn || GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary) == weapon);
-
-			if (victimIsClient && shouldProcLastBreath)
-			{
-				if (TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeath) || TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeathSilent))
-				{
-					damage *= 1.0 + CalcItemMod(attacker, ItemPyro_LastBreath, 1);
-				}
-
-				if (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro))
-				{
-					TF2_AddCondition(victim, TFCond_MarkedForDeathSilent, CalcItemMod(attacker, ItemPyro_LastBreath, 0), attacker);
-				}
 			}
 		}
 		

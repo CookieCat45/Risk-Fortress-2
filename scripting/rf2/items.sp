@@ -1353,7 +1353,7 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 			int total = count;
 			int spawnCount;
 			int spawnLimit = GetItemModInt(Item_OldCrown, 3) + CalcItemModInt(attacker, Item_OldCrown, 4, -1);
-			float damage = GetItemMod(Item_OldCrown, 2) + CalcItemMod(attacker, Item_OldCrown, 3, -1);
+			float damage = GetItemMod(Item_OldCrown, 2);
 			float pos[3], victimPos[3], angles[3];
 			GetEntPos(attacker, pos, true);
 			GetEntPos(victim, victimPos, true);
