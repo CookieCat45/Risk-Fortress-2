@@ -71,7 +71,7 @@ void LoadCommandsAndCvars()
 	g_cvSurvivorDamageScale = CreateConVar("rf2_survivor_level_damage_scale", "0.12", "How much a Survivor's damage will increase per level, in decimal percentage.", FCVAR_NOTIFY);
 	g_cvSurvivorBaseXpRequirement = CreateConVar("rf2_survivor_xp_base_requirement", "100.0", "Base XP requirement for a Survivor to level up.", FCVAR_NOTIFY, true, 1.0);
 	g_cvSurvivorXpRequirementScale = CreateConVar("rf2_survivor_xp_requirement_scale", "1.5", "How much the XP requirement for a Survivor to level up will scale per level, in decimal percentage.", FCVAR_NOTIFY, true, 1.0);
-	g_cvSurvivorLagBehindThreshold = CreateConVar("rf2_survivor_lag_behind_threshold", "0.6", "If any player has an item count lower than the player with the most items times this value, they will be considered 'lagging behind'. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvSurvivorLagBehindThreshold = CreateConVar("rf2_survivor_lag_behind_threshold", "0.6", "If any player has a total item count lower than the player with the most items times this value, they will be considered 'lagging behind'. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvSurvivorMaxExtraCrates = CreateConVar("rf2_survivor_max_extra_crates", "0", "The highest number of catch-up crates to spawn for a player.", FCVAR_NOTIFY, true, 0.0);
 	g_cvCashBurnTime = CreateConVar("rf2_enemy_cash_burn_time", "30.0", "Time in seconds that dropped cash will disappear after spawning.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyHealthScale = CreateConVar("rf2_enemy_level_health_scale", "0.08", "How much the enemy team's health will increase per level, in decimal percentage. Includes NPCs.", FCVAR_NOTIFY, true, 0.0);
@@ -88,16 +88,19 @@ void LoadCommandsAndCvars()
 	g_cvBossPowerupLevel = CreateConVar("rf2_boss_powerup_level", "300", "The level at which bosses will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvBossStabDamageType = CreateConVar("rf2_boss_backstab_damage_type", "0", "Determines how bosses take backstab damage. 0 - raw damage. 1 - percentage.\nBoth benefit from any damage bonuses, excluding crits.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamagePercent = CreateConVar("rf2_boss_backstab_damage_percentage", "0.12", "If rf2_boss_backstab_damage_type is 1, how much health, in decimal percentage, is subtracted from the boss upon backstab.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvBossStabDamageAmount = CreateConVar("rf2_boss_backstab_damage_amount", "750.0", "If rf2_boss_backstab_damage_type is 0, the base damage that is dealt to a boss upon backstab.", FCVAR_NOTIFY, true, 0.0);
+	g_cvBossStabDamageAmount = CreateConVar("rf2_boss_backstab_damage_multiplier", "750.0", "If rf2_boss_backstab_damage_type is 0, the base damage that is dealt to a boss upon backstab.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTeleporterRadiusMultiplier = CreateConVar("rf2_object_teleporter_radius_multiplier", "1.0", "How much to multiply the size of the Teleporter radius.", FCVAR_NOTIFY, true, 0.01);
+	g_cvAlwaysAllowTitaniumVoting = CreateConVar("rf2_always_allow_titanium_voting", "0", "If nonzero, Titanium will always appear as an option in the difficulty vote.", FCVAR_NOTIFY, true, 0.0);
 	g_cvMaxObjects = CreateConVar("rf2_object_max", "120", "The maximum number of objects allowed to spawn. Does not include Teleporters or Altars.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectSpreadDistance = CreateConVar("rf2_object_spread_distance", "80.0", "The minimum distance that spawned objects must be spread apart from eachother.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCount = CreateConVar("rf2_object_base_count", "12", "The base amount of objects that will be spawned. Scales based on player count and the difficulty.", FCVAR_NOTIFY, true, 0.0);
 	g_cvObjectBaseCost = CreateConVar("rf2_object_base_cost", "50.0", "The base cost to use objects such as crates. Scales with the difficulty.", FCVAR_NOTIFY, true, 0.0);
+	g_cvBarrelSpawnCount = CreateConVar("rf2_object_barrel_spawn_count", "6", "Number of money barrels to spawn", FCVAR_NOTIFY, true, 0.0);
 	g_cvExtraMiscObjects = CreateConVar("rf2_extra_misc_objects", "2", "Additional number of non-crate objects to spawn.", FCVAR_NOTIFY, true, 0.0);
 	g_cvItemShareEnabled = CreateConVar("rf2_item_share_enabled", "1", "Whether or not to enable the item sharing system. This system is designed to prevent players from hogging items in multiplayer.\n0 = Always disabled, 1 = Disable under certain conditions only, 2 = Disable only if 1 player is on RED.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvItemShareDisableLoopCount = CreateConVar("rf2_item_share_disable_loop_count", "0", "Disable item sharing after this many loops if rf2_item_share_enabled is set to 1. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvItemShareDisableThreshold = CreateConVar("rf2_item_share_disable_threshold", "0.6", "If rf2_item_share_enabled is set to 1, disable item sharing after all players have filled at least this much of their item cap. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvItemShareMaxTime = CreateConVar("rf2_item_share_max_time", "50.0", "If a player hasn't picked up a new item after this many seconds, they will be ignored by the item share system.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "6000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
 	g_cvTankHealthScale = CreateConVar("rf2_tank_health_scale", "0.1", "How much a Tank's health will scale per enemy level, in decimal percentage.");
 	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "75.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);
@@ -742,10 +745,9 @@ public int Menu_ExtendWaitVote(Menu menu, MenuAction action, int param1, int par
 	return 0;
 }
 
-public Action Timer_ResetWaitTime(Handle timer, float value)
+public void Timer_ResetWaitTime(Handle timer, float value)
 {
 	FindConVar("mp_waitingforplayers_time").FloatValue = value;
-	return Plugin_Continue;
 }
 
 public Action Command_Discord(int client, int args)
@@ -2141,8 +2143,8 @@ public void ConVarHook_EnableAFKManager(ConVar convar, const char[] oldValue, co
 public void ConVarHook_MaxHumanPlayers(ConVar convar, const char[] oldValue, const char[] newValue)
 {
 	int newVal = StringToInt(newValue);
-	SetMVMPlayerCvar(g_bExtraAdminSlot ? newVal+1 : newVal);
-	FindConVar("tf_bot_quota").SetInt(MaxClients-newVal);
+	SetMVMPlayerCvar(newVal);
+	UpdateBotQuota();
 }
 
 public Action Command_ParticleTest(int client, int args)

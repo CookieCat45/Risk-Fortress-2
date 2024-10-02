@@ -109,7 +109,7 @@ static void InstantDeathCurse(int client, int inflictor)
 	CreateTimer(1.0, Timer_InstantDeath, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
-public Action Timer_InstantDeath(Handle timer, int client)
+static Action Timer_InstantDeath(Handle timer, int client)
 {
 	if (!(client = GetClientOfUserId(client)) || !IsClientInGame(client))
 		return Plugin_Stop;

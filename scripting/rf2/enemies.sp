@@ -517,7 +517,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.Weight = imin(imax(enemyKey.GetNum("weight", 50), 1), 100);
 		enemy.FullRage = asBool(enemyKey.GetNum("full_rage", false));
 		enemy.NoBleeding = asBool(enemyKey.GetNum("no_bleeding", true));
-		enemy.ShouldGlow = asBool(enemyKey.GetNum("glow", enemy.IsBoss));
+		enemy.ShouldGlow = asBool(enemyKey.GetNum("glow", false));
 		enemy.NoCrits = asBool(enemyKey.GetNum("no_crits", false));
 		
 		enemy.WeaponCount = 0;
@@ -621,7 +621,7 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 		if (g_szCurrentEnemyGroup[0])
 		{
 			EnemyByIndex(i).GetGroup(group, sizeof(group));
-			if (group[0] && !strcmp2(group, g_szCurrentEnemyGroup))
+			if (group[0] && StrContainsEx(group, g_szCurrentEnemyGroup, false) == -1)
 				continue;
 		}
 		
@@ -641,7 +641,7 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 
 // Returns the index of a currently-loaded boss at random based on weight.
 // Optionally can retrieve the config name.
-int GetRandomBoss(bool getName = false, char[] buffer="", int size=0)
+int GetRandomBoss(bool getName=false, char[] buffer="", int size=0)
 {
 	ArrayList bossList = new ArrayList();
 	int selected;
@@ -655,7 +655,7 @@ int GetRandomBoss(bool getName = false, char[] buffer="", int size=0)
 		if (g_szCurrentEnemyGroup[0])
 		{
 			EnemyByIndex(i).GetGroup(group, sizeof(group));
-			if (group[0] && !strcmp2(group, g_szCurrentEnemyGroup))
+			if (group[0] && StrContainsEx(group, g_szCurrentEnemyGroup, false) == -1)
 				continue;
 		}
 
@@ -684,11 +684,11 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	}
 	
 	ChangeClientTeam(client, TEAM_ENEMY);
-	
 	if (IsFakeClient(client))
 	{
 		switch (RF2_GetDifficulty())
 		{
+			// Bots have more skill on higher difficulties
 			case DIFFICULTY_STEEL:
 			{
 				if (enemy.BotSkill < TFBotSkill_Hard && enemy.BotSkill != TFBotSkill_Expert)
@@ -931,14 +931,16 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 			}
 		}
 		
-		SetEntProp(client, Prop_Send, "m_bGlowEnabled", teleporterBoss);
+		//SetEntProp(client, Prop_Send, "m_bGlowEnabled", teleporterBoss);
 		g_flPlayerGiantFootstepInterval[client] = boss.BossFootstepInterval;
 		TF2Attrib_SetByDefIndex(client, 252, 0.2); // "damage force reduction"
 		TF2Attrib_SetByDefIndex(client, 329, 0.2); // "airblast vulnerability multiplier"
 		TF2Attrib_SetByDefIndex(client, 326, 1.35); // "increased jump height"
+		TF2Attrib_SetByDefIndex(client, 105, 0.0); // "overheal penalty"
 		if (teleporterBoss)
 		{
 			CreateHealthText(client, 100.0*boss.ModelScale, 20.0, g_szEnemyName[type]);
+			OutlineTeleporterBosses();
 		}
 		
 		return true;
@@ -964,27 +966,13 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 
 void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 {
-	ArrayList players = new ArrayList();
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!IsClientInGame(i) || g_bPlayerInSpawnQueue[i] || g_bPlayerIsTeleporterBoss[i] || GetClientTeam(i) != TEAM_ENEMY)
-			continue;
-		
-		if (!IsFakeClient(i) && !g_cvAllowHumansInBlue.BoolValue)
-			continue;
-		
-		players.Push(i);
-	}
-	
-	players.SortCustom(SortBossSpawnList);
-	int count, client;
 	int bossCount = 1 + ((GetPlayersOnTeam(TEAM_SURVIVOR, true)-1)/2) + RoundToFloor(g_flDifficultyCoeff/(g_cvSubDifficultyIncrement.FloatValue*2.5));
-	bossCount = imax(bossCount, 1);
+	bossCount = imin(imax(bossCount, 1), GetPlayersOnTeam(TEAM_ENEMY));
+	ArrayList players = FindBestPlayersToSpawn(bossCount, true);
 	float time;
-	
 	for (int i = 0; i < players.Length; i++)
 	{
-		client = players.Get(i);
+		int client = players.Get(i);
 		g_bPlayerInSpawnQueue[client] = true;
 		
 		// don't spawn all the bosses at once, as it will cause client crashes if there are too many
@@ -994,75 +982,114 @@ void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 		pack.WriteCell(GetRandomBoss());
 		pack.WriteCell(teleporter.index);
 		time += 0.1;
-		
-		count++;
-		if (count >= bossCount)
-			break;
 	}
 	
 	delete players;
 	EmitSoundToAll(SND_BOSS_SPAWN);
 }
 
-public int SortBossSpawnList(int index1, int index2, ArrayList array, Handle hndl)
+ArrayList FindBestPlayersToSpawn(int count, bool bossRules=false)
 {
-	int client1 = array.Get(index1);
-	int client2 = array.Get(index2);
-	
-	if (!GetCookieBool(client1, g_coBecomeBoss))
-		return 1;
-	
-	if (!GetCookieBool(client2, g_coBecomeBoss))
-		return -1;
-	
-	if (IsPlayerAlive(client1))
-		return 1;
-	
-	if (IsPlayerAlive(client2))
-		return -1;
-	
-	if (IsBoss(client1))
-		return 1;
-	
-	if (IsBoss(client2))
-		return -1;
+	ArrayList players = new ArrayList();
+	int retries;
+	for ( ;; )
+	{
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (players.FindValue(i) != -1 || !IsClientInGame(i))
+				continue;
 
-	if (IsFakeClient(client1))
-		return 1;
-	
-	if (IsFakeClient(client2))
-		return -1;
-	
-	return 0;
+			// Don't use alive players until our first retry
+			// Never use players in the spawn queue, players who are Teleporter bosses, or players not in Blue team
+			if (IsPlayerAlive(i) && retries == 0 || g_bPlayerInSpawnQueue[i] || g_bPlayerIsTeleporterBoss[i] || GetClientTeam(i) != TEAM_ENEMY)
+				continue;
+			
+			// Don't use alive bosses until our second retry
+			if (retries < 2 && IsBoss(i))
+				continue;
+
+			// Don't use human players if we don't allow them
+			if (!IsFakeClient(i) && !g_cvAllowHumansInBlue.BoolValue)
+				continue;
+
+			// Don't use human players with boss preference turned off until our second retry
+			if (bossRules && retries < 2 && !IsFakeClient(i) && !GetCookieBool(i, g_coBecomeBoss))
+				continue;
+			
+			players.Push(i);
+			if (players.Length >= count)
+			{
+				return players;
+			}
+		}
+
+		// if we don't have enough players to spawn, try again with less restrictions
+		// First retry - use alive players, but not bosses
+		// Second retry - use alive players, including bosses (but not teleporter bosses) and use players with boss preference turned off
+		// After that, give up
+		if (players.Length < count)
+		{
+			retries++;
+			if (retries >= 3)
+			{
+				break;
+			}
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	return players;
 }
 
-public Action Timer_SpawnTeleporterBoss(Handle time, DataPack pack)
+// Limit the number of teleporter bosses with outlines for performance reasons
+void OutlineTeleporterBosses(int count=4)
+{
+	ArrayList bosses = new ArrayList();
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsBoss(i, true) || Enemy(i) != NULL_ENEMY && Enemy(i).ShouldGlow)
+			continue;
+
+		// reset glow on every teleporter boss
+		SetEntProp(i, Prop_Send, "m_bGlowEnabled", false);
+		bosses.Push(i);
+	}
+
+	if (bosses.Length > count)
+		bosses.Resize(count);
+
+	for (int i = 0; i < bosses.Length; i++)
+	{
+		SetEntProp(bosses.Get(i), Prop_Send, "m_bGlowEnabled", true);
+	}
+
+	delete bosses;
+}
+
+public void Timer_SpawnTeleporterBoss(Handle time, DataPack pack)
 {
 	pack.Reset();
 	int client = GetClientOfUserId(pack.ReadCell());
-	
-	if (client == 0 || !IsClientInGame(client))
-		return Plugin_Continue;
+	if (!client || !IsClientInGame(client))
+		return;
 	
 	int type = pack.ReadCell();
 	int spawnEntity = pack.ReadCell();
-	
 	g_bPlayerIsTeleporterBoss[client] = true;
 	float pos[3];
 	GetEntPos(spawnEntity, pos);
-	
 	SpawnBoss(client, type, pos, true);
-	return Plugin_Continue;
 }
 
-public Action Timer_SpawnEnemyRecursive(Handle timer, DataPack pack)
+public void Timer_SpawnEnemyRecursive(Handle timer, DataPack pack)
 {
 	pack.Reset();
 	int client = GetClientOfUserId(pack.ReadCell());
 	if (!IsValidClient(client))
-	{
-		return Plugin_Continue;
-	}
+		return;
 	
 	int type = pack.ReadCell();
 	float pos[3];
@@ -1073,17 +1100,14 @@ public Action Timer_SpawnEnemyRecursive(Handle timer, DataPack pack)
 	float maxDist = pack.ReadFloat();
 	int recurseCount = pack.ReadCell();
 	SpawnEnemy(client, type, pos, minDist, maxDist, true, recurseCount);
-	return Plugin_Continue;
 }
 
-public Action Timer_SpawnBossRecursive(Handle timer, DataPack pack)
+public void Timer_SpawnBossRecursive(Handle timer, DataPack pack)
 {
 	pack.Reset();
 	int client = GetClientOfUserId(pack.ReadCell());
 	if (!IsValidClient(client))
-	{
-		return Plugin_Continue;
-	}
+		return;
 	
 	int type = pack.ReadCell();
 	float pos[3];
@@ -1095,7 +1119,6 @@ public Action Timer_SpawnBossRecursive(Handle timer, DataPack pack)
 	float maxDist = pack.ReadFloat();
 	int recurseCount = pack.ReadCell();
 	SpawnBoss(client, type, pos, teleporterBoss, minDist, maxDist, true, recurseCount);
-	return Plugin_Continue;
 }
 
 int GetEnemyCount()

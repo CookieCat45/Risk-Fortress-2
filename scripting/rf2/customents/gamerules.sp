@@ -22,7 +22,7 @@ methodmap RF2_GameRules < CBaseEntity
 	public static void Init()
 	{
 		g_Factory = new CEntityFactory("rf2_gamerules", OnCreate);
-		g_Factory.DeriveFromBaseEntity();
+		g_Factory.DeriveFromBaseEntity(true);
 		g_Factory.BeginDataMapDesc()
 			.DefineStringField("m_szTeleporterModel", _, "teleporter_model")
 			.DefineBoolField("m_bTimerPaused", _, "timer_paused")
@@ -31,15 +31,27 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineBoolField("m_bDisableObjectSpawning", _, "disable_object_spawning")
 			.DefineBoolField("m_bDisableItemSharing", _, "disable_item_sharing")
 			.DefineBoolField("m_bUseTeamSpawnForEnemies", _, "enemies_teamspawn")
+			.DefineBoolField("m_bAllowQuickBuild", _, "allow_quickbuild")
+			.DefineBoolField("m_bAllowMinionSpawning", _, "allow_minion_spawning")
+			.DefineBoolField("m_bMusicPaused")
 			.DefineInputFunc("ForceStartTeleporter", InputFuncValueType_Void, Input_ForceStartTeleporter)
 			.DefineInputFunc("TriggerWin", InputFuncValueType_Void, Input_TriggerWin)
 			.DefineInputFunc("GameOver", InputFuncValueType_Void, Input_GameOver)
+			.DefineInputFunc("GameVictory", InputFuncValueType_Void, Input_GameVictory)
 			.DefineInputFunc("EnableEnemySpawning", InputFuncValueType_Void, Input_EnableEnemySpawning)
 			.DefineInputFunc("DisableEnemySpawning", InputFuncValueType_Void, Input_DisableEnemySpawning)
 			.DefineInputFunc("EnableDeath", InputFuncValueType_Void, Input_EnableDeath)
 			.DefineInputFunc("DisableDeath", InputFuncValueType_Void, Input_DisableDeath)
+			.DefineInputFunc("EnableQuickBuild", InputFuncValueType_Void, Input_EnableQuickBuild)
+			.DefineInputFunc("DisableQuickBuild", InputFuncValueType_Void, Input_DisableQuickBuild)
+			.DefineInputFunc("PlayCustomMusicTrack", InputFuncValueType_Integer, Input_PlayCustomMusicTrack)
+			.DefineInputFunc("PauseMusic", InputFuncValueType_Void, Input_PauseMusic)
+			.DefineInputFunc("ResumeMusic", InputFuncValueType_Void, Input_ResumeMusic)
+			.DefineInputFunc("PlayDefaultMusicTrack", InputFuncValueType_Void, Input_PlayDefaultMusicTrack)
 			.DefineInputFunc("TriggerAchievement", InputFuncValueType_Integer, Input_TriggerAchievement)
 			.DefineInputFunc("SetEnemyGroup", InputFuncValueType_String, Input_SetEnemyGroup)
+			.DefineInputFunc("EnableMinionSpawning", InputFuncValueType_Void, Input_EnableMinionSpawning)
+			.DefineInputFunc("DisableMinionSpawning", InputFuncValueType_Void, Input_DisableMinionSpawning)
 			.DefineOutput("OnTeleporterEventStart")
 			.DefineOutput("OnTeleporterEventComplete")
 			.DefineOutput("OnTankDestructionStart")
@@ -53,6 +65,7 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineOutput("OnWaitingForPlayersPreLoop")
 			.DefineOutput("OnWaitingForPlayersPostLoop")
 			.DefineOutput("OnGracePeriodEnd")
+			.DefineOutput("OnAllSurvivorsDead")
 		.EndDataMapDesc();
 		g_Factory.Install();
 	}
@@ -79,6 +92,19 @@ methodmap RF2_GameRules < CBaseEntity
 			this.SetProp(Prop_Data, "m_bTimerPaused", value);
 		}
 	}
+
+	property bool MusicPaused
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bMusicPaused"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bMusicPaused", value);
+		}
+	}
 	
 	property bool AllowEnemySpawning
 	{
@@ -90,6 +116,19 @@ methodmap RF2_GameRules < CBaseEntity
 		public set(bool value)
 		{
 			this.SetProp(Prop_Data, "m_bAllowEnemySpawning", value);
+		}
+	}
+
+	property bool AllowMinionSpawning
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bAllowMinionSpawning"));
+		}
+
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bAllowMinionSpawning", value);
 		}
 	}
 
@@ -144,39 +183,43 @@ methodmap RF2_GameRules < CBaseEntity
 			this.SetProp(Prop_Data, "m_bDisableItemSharing", value);
 		}
 	}
+
+	property bool AllowQuickBuild
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bAllowQuickBuild"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bAllowQuickBuild", value);
+		}
+	}
 }
 
 RF2_GameRules GetRF2GameRules()
 {
-	if (g_iRF2GameRulesEntRef == INVALID_ENT || EntRefToEntIndex(g_iRF2GameRulesEntRef) == INVALID_ENT)
+	if (!IsValidEntity2(g_iRF2GameRulesEntity))
 	{
 		int entity = FindEntityByClassname(INVALID_ENT, "rf2_gamerules");
-		if (entity != INVALID_ENT)
+		if (IsValidEntity2(entity))
 		{
-			g_iRF2GameRulesEntRef = EntIndexToEntRef(entity);
+			g_iRF2GameRulesEntity = entity;
 		}
 		else
 		{
-			entity = CreateEntityByName("rf2_gamerules");
-			if (entity != INVALID_ENT)
-			{
-				g_iRF2GameRulesEntRef = EntIndexToEntRef(entity);
-			}
+			g_iRF2GameRulesEntity = CreateEntityByName("rf2_gamerules");
 		}
 	}
 	
-	int gameRules = EntRefToEntIndex(g_iRF2GameRulesEntRef);
-	if (gameRules == INVALID_ENT)
-	{
-		LogError("Warning! Failed to find rf2_gamerules entity!!");
-	}
-	
-	return RF2_GameRules(gameRules);
+	return RF2_GameRules(g_iRF2GameRulesEntity);
 }
 
 static void OnCreate(RF2_GameRules gamerules)
 {
 	gamerules.AllowEnemySpawning = true;
+	gamerules.AllowMinionSpawning = true;
 	char teleModel[PLATFORM_MAX_PATH];
 	gamerules.GetTeleModel(teleModel, sizeof(teleModel));
 	if (teleModel[0] && FileExists(teleModel, true))
@@ -206,7 +249,14 @@ public void Input_TriggerWin(int entity, int activator, int caller, int value)
 
 public void Input_GameOver(int entity, int activator, int caller, int value)
 {
-	GameOver();
+	if (!g_bGameOver)
+		GameOver();
+}
+
+public void Input_GameVictory(int entity, int activator, int caller, int value)
+{
+	if (!g_bGameWon)
+		GameVictory();
 }
 
 public void Input_EnableEnemySpawning(int entity, int activator, int caller, int value)
@@ -229,6 +279,16 @@ public void Input_DisableDeath(int entity, int activator, int caller, int value)
 	RF2_GameRules(entity).DisableDeath = true;
 }
 
+public void Input_EnableQuickBuild(int entity, int activator, int caller, int value)
+{
+	RF2_GameRules(entity).AllowQuickBuild = true;
+}
+
+public void Input_DisableQuickBuild(int entity, int activator, int caller, int value)
+{
+	RF2_GameRules(entity).AllowQuickBuild = false;
+}
+
 public void Input_TriggerAchievement(int entity, int activator, int caller, int value)
 {
 	if (IsValidClient(activator))
@@ -238,6 +298,39 @@ public void Input_TriggerAchievement(int entity, int activator, int caller, int 
 public void Input_SetEnemyGroup(int entity, int activator, int caller, const char[] value)
 {
 	strcopy(g_szCurrentEnemyGroup, sizeof(g_szCurrentEnemyGroup), value);
+}
+
+public void Input_PlayCustomMusicTrack(int entity, int activator, int caller, int value)
+{
+	PlayCustomMusicTrackAll(value);
+}
+
+public void Input_PauseMusic(int entity, int activator, int caller, const char[] value)
+{
+	RF2_GameRules(entity).MusicPaused = true;
+	StopMusicTrackAll();
+}
+
+public void Input_ResumeMusic(int entity, int activator, int caller, const char[] value)
+{
+	RF2_GameRules(entity).MusicPaused = false;
+	PlayMusicTrackAll();
+}
+
+public void Input_PlayDefaultMusicTrack(int entity, int activator, int caller, const char[] value)
+{
+	StopMusicTrackAll();
+	PlayMusicTrackAll();
+}
+
+public void Input_EnableMinionSpawning(int entity, int activator, int caller, const char[] value)
+{
+	RF2_GameRules(entity).AllowMinionSpawning = true;
+}
+
+public void Input_DisableMinionSpawning(int entity, int activator, int caller, const char[] value)
+{
+	RF2_GameRules(entity).AllowMinionSpawning = false;
 }
 
 int SpawnObjects()
@@ -487,6 +580,28 @@ int SpawnObjects()
 		spawns++;
 	}
 	
+	// barrels are separate from the object spawn limit, because they don't matter enough to take up spawn slots for other objects
+	int barrelCount = g_cvBarrelSpawnCount.IntValue;
+	int barrelSpawns;
+	attempts = 0;
+	while (barrelSpawns < barrelCount && attempts < 100)
+	{
+		GetSpawnPoint(worldCenter, spawnPos, 0.0, distance, _, true);
+		nearestObject = GetNearestEntity(spawnPos, "rf2_object*");
+		if (nearestObject != INVALID_ENT)
+		{
+			GetEntPos(nearestObject, nearestPos);
+			if (GetVectorDistance(spawnPos, nearestPos, true) <= sq(spreadDistance)) // Too close to another object.
+			{
+				attempts++;
+				continue;
+			}
+		}
+
+		CreateObject("rf2_object_barrel", spawnPos, true, 10.0);
+		barrelSpawns++;
+	}
+
 	if (IsItemSharingEnabled(false))
 	{
 		CalculateSurvivorItemShare(false);	

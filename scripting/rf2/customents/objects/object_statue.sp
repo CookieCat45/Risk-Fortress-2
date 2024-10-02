@@ -99,7 +99,7 @@ methodmap RF2_Object_Statue < RF2_Object_Base
 	}
 }
 
-static Action Timer_SetGameWon(Handle timer)
+static void Timer_SetGameWon(Handle timer)
 {
 	g_bGameWon = true;
 	PrintToServer("[RF2] Fate Unknown...");
@@ -110,8 +110,6 @@ static Action Timer_SetGameWon(Handle timer)
 			g_bServerRestarting = true;
 		}
 	}
-	
-	return Plugin_Continue;
 }
 
 void Statue_OnMapStart()

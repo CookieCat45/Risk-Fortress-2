@@ -89,7 +89,34 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		buster.BaseNpc.GetBodyMins(mins);
 		buster.BaseNpc.GetBodyMaxs(maxs);
 		bool success;
-		if (GetSpawnPoint(targetPos, pos, 2500.0, 25000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID_BRUSHONLY, 50.0, true))
+		if (GetRF2GameRules().UseTeamSpawnForEnemies)
+		{
+			int spawnPoint = INVALID_ENT;
+			ArrayList spawnPoints = new ArrayList();
+			while ((spawnPoint = FindEntityByClassname(spawnPoint, "info_player_teamspawn")) != INVALID_ENT)
+			{
+				if (GetEntTeam(spawnPoint) != buster.Team || GetEntProp(spawnPoint, Prop_Data, "m_bDisabled"))
+					continue;
+
+				GetEntPos(spawnPoint, pos);
+				TR_TraceHullFilter(pos, pos, mins, maxs, MASK_NPCSOLID_BRUSHONLY, TraceFilter_WallsOnly, TRACE_WORLD_ONLY);
+				if (!TR_DidHit())
+				{
+					spawnPoints.Push(spawnPoint);
+				}
+			}
+
+			if (spawnPoints.Length > 0)
+			{
+				spawnPoint = spawnPoints.Get(GetRandomInt(0, spawnPoints.Length-1));
+				GetEntPos(spawnPoint, pos);
+				buster.Teleport(pos);
+				success = true;
+			}
+
+			delete spawnPoints;
+		}
+		else if (GetSpawnPoint(targetPos, pos, 2500.0, 25000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID_BRUSHONLY, 50.0, true))
 		{
 			buster.Teleport(pos);
 			success = true;
@@ -160,7 +187,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		int entity = MaxClients+1;
 		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
-			if (entity < 1 || entity == this.index)
+			if (!IsValidEntity2(entity) || entity == this.index)
 			{
 				continue;
 			}
@@ -332,7 +359,7 @@ public Action Timer_BusterSpawnWave(Handle timer)
 	if (!g_bRoundActive || IsStageCleared())
 		return Plugin_Stop;
 	
-	if (IsSentryBusterActive())
+	if (IsSentryBusterActive() || !GetRF2GameRules().AllowEnemySpawning)
 		return Plugin_Continue;
 	
 	bool sentryActive;
@@ -431,10 +458,10 @@ void DoSentryBusterWave()
 	delete sentryList;
 }
 
-public Action Timer_BusterSpawnRetry(Handle timer, int sentry)
+static void Timer_BusterSpawnRetry(Handle timer, int sentry)
 {
-	if (IsStageCleared() || (sentry = EntRefToEntIndex(sentry)) == INVALID_ENT)
-		return Plugin_Continue;
+	if (IsStageCleared() || (sentry = EntRefToEntIndex(sentry)) == INVALID_ENT || !GetRF2GameRules().AllowEnemySpawning)
+		return;
 	
 	RF2_SentryBuster buster = RF2_SentryBuster.Create(sentry);
 	if (!buster.IsValid())
@@ -446,8 +473,6 @@ public Action Timer_BusterSpawnRetry(Handle timer, int sentry)
 		EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
 		EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
 	}
-	
-	return Plugin_Continue;
 }
 
 bool IsSentryBusterActive()

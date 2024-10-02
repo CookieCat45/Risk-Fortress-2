@@ -22,7 +22,7 @@ methodmap RF2_WorldCenter < CBaseEntity
 	public static void Init()
 	{
 		g_Factory = new CEntityFactory("rf2_world_center");
-		g_Factory.DeriveFromClass("info_target");
+		g_Factory.DeriveFromBaseEntity(true);
 		g_Factory.Install();
 	}
 }
@@ -30,8 +30,8 @@ methodmap RF2_WorldCenter < CBaseEntity
 // Returns entity index for legacy reasons
 int GetWorldCenter(float vec[3])
 {
-	int entity = EntRefToEntIndex(g_iWorldCenterEntity);
-	if (entity != INVALID_ENT)
+	int entity = g_iWorldCenterEntity;
+	if (IsValidEntity2(entity))
 	{
 		GetEntPos(entity, vec, true);
 		return entity;
@@ -41,7 +41,7 @@ int GetWorldCenter(float vec[3])
 	if (center.IsValid())
 	{
 		center.WorldSpaceCenter(vec);
-		g_iWorldCenterEntity = EntIndexToEntRef(center.index);
+		g_iWorldCenterEntity = center.index;
 		return center.index;
 	}
 	else
@@ -54,7 +54,7 @@ int GetWorldCenter(float vec[3])
 			if (strcmp2(targetName, "rf2_world_center"))
 			{
 				GetEntPos(entity, vec, true);
-				g_iWorldCenterEntity = EntIndexToEntRef(entity);
+				g_iWorldCenterEntity = entity;
 				return entity;
 			}
 		}

@@ -33,6 +33,9 @@ enum
 	ACHIEVEMENT_HITMERASMUS = 27,
 	ACHIEVEMENT_GARGOYLE = 28,
 	ACHIEVEMENT_OBLITERATE = 29,
+	ACHIEVEMENT_BEATGAME = 30,
+	ACHIEVEMENT_BEATGAMESTEEL = 31,
+	ACHIEVEMENT_BEATGAMETITANIUM = 32,
 	
 	// * * * INSERT NEW ACHIEVEMENTS DIRECTLY ABOVE THIS COMMENT ONLY! DO NOT REMOVE ANY ACHIEVEMENTS FROM THE ENUM! * * *
 	MAX_ACHIEVEMENTS,
@@ -158,6 +161,11 @@ bool IsAchievementHidden(int achievement)
 	{
 		return !DoesUnderworldExist();
 	}
+
+	if (achievement == ACHIEVEMENT_BEATGAME || achievement == ACHIEVEMENT_BEATGAMESTEEL || achievement == ACHIEVEMENT_BEATGAMETITANIUM)
+	{
+		return !DoesFinalMapExist();
+	}
 	
 	return achievement == ACHIEVEMENT_DANCE || achievement == ACHIEVEMENT_BADMAGIC || achievement == ACHIEVEMENT_AIRJUMPS;
 }
@@ -221,6 +229,9 @@ int GetAchievementInternalName(int achievement, char[] buffer, int size)
 		case ACHIEVEMENT_HITMERASMUS: return strcopy(buffer, size, "ACHIEVEMENT_HITMERASMUS");
 		case ACHIEVEMENT_GARGOYLE: return strcopy(buffer, size, "ACHIEVEMENT_GARGOYLE");
 		case ACHIEVEMENT_OBLITERATE: return strcopy(buffer, size, "ACHIEVEMENT_OBLITERATE");
+		case ACHIEVEMENT_BEATGAME: return strcopy(buffer, size, "ACHIEVEMENT_BEATGAME");
+		case ACHIEVEMENT_BEATGAMESTEEL: return strcopy(buffer, size, "ACHIEVEMENT_BEATGAMESTEEL");
+		case ACHIEVEMENT_BEATGAMETITANIUM: return strcopy(buffer, size, "ACHIEVEMENT_BEATGAMETITANIUM");
 	}
 	
 	if (!buffer[0])

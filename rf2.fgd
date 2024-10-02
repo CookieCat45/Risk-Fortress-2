@@ -7,6 +7,22 @@
 
 ]
 
+@PointClass base(Targetname) = rf2_logic_bot_death :
+	"Entity that fires an output when a bot of the specified type dies."
+[
+	start_disabled(choices) : "Start Disabled" : 0 =
+	[
+		0 : "No"
+		1 : "Yes"
+	]
+
+	bot_name(string) : "Bot Name" : "" : "Name of the bot to fire outputs for. Corresponds to the bot's section name in the configuration file."
+	output OnBotDeath(void) : "Sent when the bot specified in 'Bot Name' dies. The !activator is the entity that was responsible for killing the bot."
+	input Enable(void) : "Enable"
+	input Disable(void) : "Disable"
+	input Toggle(void) : "Toggle"
+]
+
 @PointClass base(Targetname, Angles) studio("models/rf2/objects/teleporter.mdl") = rf2_teleporter_spawn : 
 	"A spawn point for the Teleporter. One will be selected at random on round start."
 [
@@ -14,7 +30,7 @@
 ]
 
 @PointClass base(Targetname, Angles) studio("models/bots/boss_bot/boss_tank.mdl") = rf2_tank_spawner : 
-	"A tank spawner. Used as a tank spawn point in Tank Destruction mode, but can also be used to manually spawn tanks via inputs."
+	"A tank spawner. Used as a tank spawn point in Tank Destruction mode, but can also be used to manually spawn tanks via inputs. The tank will be spawned using the position and angles of this entity."
 [
 	tank_destruction_spawnpoint(choices) : "Use For Tank Destruction?" : 1 : "Use as a spawn point in Tank Destruction mode?" = 
 	[
@@ -22,15 +38,30 @@
 		0 : "No"
 	]
 	
-	base_health_override(integer) : "Base Health Override" : -1 : "If above 0, this will be the base health value of tanks spawned by this entity."
+	base_health_override(integer) : "Base Health Override" : 0 : "If above 0, this will be the base health value of tanks spawned by this entity."
 	
-	health_percent_per_player(float) : "Health Percentage Per Player" : "0.2" : "Extra health in decimal percentage per player. Only used if base health is overriden."
+	extra_health_per_player(integer) : "Extra Base Health Per Player" : 0 : "Extra base health per player. Only used if base health is overriden."
 	
 	speed_override(float) : "Speed Override" : "-1.0" : "If 0 or greater, this will be the speed value of tanks spawned by this entity."
 	
 	input SpawnTank(target_destination) : "Spawns a normal Tank. The input value is the name of the path_track node to start at."
 	input SpawnBadassTank(target_destination) : "Spawns a Badass Tank. The input value is the name of the path_track node to start at."
 	input SpawnSuperBadassTank(target_destination) : "Spawns a Super Badass Tank. The input value is the name of the path_track node to start at."
+]
+
+@PointClass base(Targetname, Angles) = rf2_raid_boss_spawner :
+	"A raid boss spawner. Used to spawn special raid boss entities. The boss will be spawned using the position and angles of this entity."
+[
+	boss_classname(string) : "Boss Entity Name" : "" : "The entity classname of the boss to spawn."
+	base_health_override(integer) : "Base Health Override" : 0 : "If above 0, this will be the base health value of bosses spawned by this entity."
+	extra_health_per_player(integer) : "Extra Base Health Per Player" : 0 : "Extra base health per player. Only used if base health is overriden."
+
+	input StartBossBattle(void) : "Spawns the boss."
+	input DoBossAction(string) : "Sends a string command that tells the boss to do a certain action. Intended for custom boss behaviour."
+
+	output OnBossHealthDepleted(void) : "Fired when the boss's health is depleted. Note that this does NOT necessarily mean that the boss is dead. This output is intended for phase transitions. OnBossKilled/OnLastBossKilled will be fired when the boss actually dies."
+	output OnBossKilled(void) : "Fired when the boss entity created by this spawner is killed."
+	output OnLastBossKilled(void) : "Fired when the boss entity created by this spawner is killed, AND no other rf2_raid_boss_spawner entities have active bosses."
 ]
 
 @PointClass base(Targetname, Angles) studio("models/props_halloween/gargoyle_backpack.mdl") = rf2_altar_spawn : 
@@ -50,6 +81,12 @@
 	]
 	
 	allow_enemy_spawning(choices) : "Allow Enemy Spawning?" : 1 : "Are enemies allowed to spawn?" = 
+	[
+		1 : "Yes"
+		0 : "No"
+	]
+
+	allow_minion_spawning(choices) : "Allow Minion Spawning?" : 1 : "Are minions allowed to spawn?" =
 	[
 		1 : "Yes"
 		0 : "No"
@@ -78,14 +115,31 @@
 		0 : "No"
 		1 : "Yes"
 	]
+
+	allow_quickbuild(choices) : "Always Allow Quick Building?" : 0 : "Always allow Engineers to quickly build?" =
+	[
+		0 : "No"
+		1 : "Yes"
+	]
 	
 	input EnableEnemySpawning(void) : "Allow enemies to spawn."
 	input DisableEnemySpawning(void) : "Prevent enemies from spawning."
+	input EnableMinionSpawning(void) : "Allow minions to spawn."
+	input DisableMinionSpawning(void) : "Prevent minions from spawning."
+	input EnableDeath(void) : "Prevent Survivors from dying."
+	input DisableDeath(void) : "Allow Survivors to die."
 	input TriggerWin(void) : "Triggers a win for the Survivor team."
 	input GameOver(void) : "Triggers a Game Over."
+	input GameVictory(void) : "Triggers a Game Victory."
+	input PlayCustomMusicTrack(integer) : "Plays a custom music track. The input value is the index of the custom music track, defined in the map's config file."
+	input PlayDefaultMusicTrack(void) : "Stops any custom music track from playing and starts playing the default music track (stage/boss)."
+	input PauseMusic(void) : "Stops all music from playing."
+	input ResumeMusic(void) : "Allows music to play again, if it was paused using the PauseMusic input."
 	input ForceStartTeleporter(void) : "Forces the Teleporter Event to start immediately."
 	input TriggerAchievement(integer) : "Triggers an achievement. The input value is the achievement ID, and the activator is the player to give the achievement to."
 	input SetEnemyGroup(string) : "Sets the enemy group name to use for spawning enemies."
+	input EnableQuickBuild(void) : "Allow Engineers to quick build."
+	input DisableQuickBuild(void) : "Disallow Engineers from quick-building. Note that they will still be able to do it during the grace period."
 	output OnTeleporterEventStart(void) : "Sent when the Teleporter event begins."
 	output OnTeleporterEventComplete(void) : "Sent when the Teleporter event is completed successfully."
 	output OnTankDestructionStart(void) : "Sent when Tank Destruction Mode begins."
@@ -99,15 +153,18 @@
 	output OnWaitingForPlayersPostLoop(void) : "Sent when Waiting For Players begins, but only if the current run has been looped at least once."
 	output OnGracePeriodEnd(void) : "Sent when the grace period ends."
 	output OnTankDestroyed(void) : "Sent when a tank is destroyed. Fires regardless of Tank Destruction mode being enabled."
+	output OnAllSurvivorsDead(void) : "Sent when all of the Survivors are dead."
 ]
 
 @BaseClass base(prop_dynamic_base) = rf2_object_base
 [
-	active(choices) : "Active" : 1 : "Can this object be interacted with?" =
+	active(choices) : "Is Active?" : 1 : "Can this object be interacted with?" =
 	[
 		1 : "Yes"
 		0 : "No"
 	]
+
+	input SetActive(bool) : "Set this object's interaction state. 0 = no interacting, 1 = allow interacting."
 ]
 
 @PointClass base(rf2_object_base) studio() = rf2_object_crate : 

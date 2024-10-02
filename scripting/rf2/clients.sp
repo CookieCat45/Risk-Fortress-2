@@ -29,17 +29,18 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerHealOnHitCooldown[client] = false;
 	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;
-	g_iPlayerBossType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;
 	g_iPlayerAirDashCounter[client] = 0;
 	g_iPlayerGoombaChain[client] = 0;
 	g_iPlayerEnemySpawnType[client] = -1;
 	g_iPlayerBossSpawnType[client] = -1;
+	g_iPlayerShieldHealth[client] = 0;
 	g_flPlayerRegenBuffTime[client] = 0.0;
 	g_flPlayerRifleHeadshotBonusTime[client] = 0.0;
 	g_flPlayerGravityJumpBonusTime[client] = 0.0;
 	g_flPlayerTimeSinceLastItemPickup[client] = 0.0;
 	g_flPlayerCaberRechargeAt[client] = 0.0;
+	g_flPlayerShieldRegenTime[client] = 0.0;
 	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
@@ -52,7 +53,7 @@ void RefreshClient(int client, bool force=false)
 	g_bMeleeMiss[client] = false;
 	g_szObjectiveHud[client] = "";
 	
-	if (IsClientInGame(client) && !g_bMapChanging)
+	if (!g_bMapChanging && IsClientInGame(client) && !IsClientSourceTV(client))
 	{
 		TF2Attrib_RemoveAll(client);
 		SetEntityGravity(client, 1.0);
@@ -126,14 +127,13 @@ public void RF_ResetMinionFlag(int client)
 	g_bPlayerIsMinion[client] = false;
 }
 
-public Action Timer_ResetModel(Handle timer, int client)
+public void Timer_ResetModel(Handle timer, int client)
 {
 	if ((client = GetClientOfUserId(client)) == 0 || IsPlayerAlive(client))
-		return Plugin_Continue;
+		return;
 	
 	SetVariantString("");
 	AcceptEntityInput(client, "SetCustomModel");
-	return Plugin_Continue;
 }
 
 void SilentlyKillPlayer(int client)
@@ -151,7 +151,7 @@ int GetPlayersOnTeam(int team, bool alive=false, bool onlyHumans=false)
 	int count;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || GetClientTeam(i) != team)
+		if (!IsClientInGame(i) || GetClientTeam(i) != team || IsClientSourceTV(i))
 			continue;
 		
 		if (alive && !IsPlayerAlive(i))
@@ -172,7 +172,7 @@ int GetRandomPlayer(int team = -1, bool alive=true, bool onlyHumans=false)
 	int playerArray[MAXTF2PLAYERS] = {-1, ...};
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || onlyHumans && IsFakeClient(i))
+		if (!IsClientInGame(i) || onlyHumans && IsFakeClient(i) || IsClientSourceTV(i))
 			continue;
 
 		if (alive && !IsPlayerAlive(i) || team >= 0 && GetClientTeam(i) != team)
@@ -395,8 +395,8 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	int healthAttrib = TF2Attrib_HookValueInt(0, "add_maxhealth", client) - RoundToFloor(attr ? TF2Attrib_GetValue(attr) : 0.0);
 	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)+healthAttrib) * healthScale);
 	
-	// Bosses have less health in single player in the first stage
-	if (IsSingleplayer(false) && IsBoss(client) && g_iStagesCompleted == 0)
+	// Bosses have less health in single player
+	if (IsSingleplayer(false) && IsBoss(client))
 	{
 		maxHealth = RoundToFloor(float(maxHealth) * 0.75);
 	}
@@ -438,7 +438,8 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 				SetEntProp(entity, Prop_Send, "m_iMaxHealth", buildingMaxHealth);
 				if (!carried && !GetEntProp(entity, Prop_Send, "m_bBuilding"))
 				{
-					SetEntityHealth(entity, imax(GetEntProp(entity, Prop_Send, "m_iHealth") + (buildingMaxHealth-oldBuildingMaxHealth), 1));
+					SetVariantInt(buildingMaxHealth-oldBuildingMaxHealth);
+					AcceptEntityInput(entity, "AddHealth");
 				}
 			}
 		}
@@ -618,7 +619,11 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 {
 	float multiplier = 1.0;
 	static char classname[64];
-	GetEntityClassname(weapon, classname, sizeof(classname));
+	if (weapon > 0)
+	{
+		GetEntityClassname(weapon, classname, sizeof(classname));
+	}
+	
 	bool sentry = weapon > 0 && strcmp2(classname, "obj_sentrygun");
 	if (!sentry && weapon > 0)
 	{
@@ -684,7 +689,9 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	}
 	else if (weapon > 0 && multiplier < 1.0)
 	{
-		if (strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_syringegun_medic"))
+		if (strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_syringegun_medic")
+			|| strcmp2(classname, "tf_weapon_smg") || strcmp2(classname, "tf_weapon_pistol") 
+			|| strcmp2(classname, "tf_weapon_handgun_scout_secondary"))
 		{
 			const float penalty = 0.5;
 			multiplier = Pow(multiplier, penalty);
@@ -886,14 +893,13 @@ void KillAnnotation(int entity)
 	annotation.Fire();
 }
 
-public Action Timer_ResetCharacterGlow(Handle timer, int entity)
+public void Timer_ResetCharacterGlow(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT_REFERENCE)
-		return Plugin_Continue;
+		return;
 	
 	ToggleGlow(entity, false);
 	g_hEntityGlowResetTimer[entity] = null;
-	return Plugin_Continue;
 }
 
 void ApplyVampireSapper(int client, int attacker, float damage=10.0, float duration=8.0)
@@ -1298,7 +1304,7 @@ public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam
 
 public MRESReturn DHook_ForceRespawn(int client)
 {
-	if (!g_bRoundActive)
+	if (g_bWaitingForPlayers || g_bGameOver || g_bGameWon)
 		return MRES_Ignored;
 	
 	int team = GetClientTeam(client);
@@ -1313,7 +1319,7 @@ public MRESReturn DHook_ForceRespawn(int client)
 		ChangeClientTeam(client, TEAM_ENEMY);
 		return MRES_Supercede;
 	}
-	
+
 	return MRES_Ignored;
 }
 
@@ -1540,6 +1546,17 @@ bool HoldingReloadUseWeapon(int client)
 	}
 	
 	return false;
+}
+
+int GetSourceTVBot()
+{
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientConnected(i) && IsClientSourceTV(i))
+			return i;
+	}
+
+	return INVALID_ENT;
 }
 
 int GetSpectateTarget(int client)

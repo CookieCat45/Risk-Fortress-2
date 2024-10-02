@@ -248,6 +248,7 @@ enum // Move collide types
 #define SND_MERASMUS_DANCE2 "vo/halloween_merasmus/sf12_wheel_dance04.mp3"
 #define SND_MERASMUS_DANCE3 "vo/halloween_merasmus/sf12_wheel_dance05.mp3"
 #define SND_BOSS_SPAWN "mvm/mvm_tank_start.wav"
+#define SND_BOSS_DEATH "rf2/sfx/boss_death.wav"
 #define SND_SENTRYBUSTER_BOOM "mvm/sentrybuster/mvm_sentrybuster_explode.wav"
 #define SND_ENEMY_STUN "mvm/mvm_robo_stun.wav"
 #define SND_TELEPORTER_CHARGED "mvm/mvm_bought_in.wav"

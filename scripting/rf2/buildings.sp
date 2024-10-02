@@ -8,7 +8,7 @@
 
 bool IsBuilding(int entity)
 {
-	static char classname[64];
+	static char classname[32];
 	GetEntityClassname(entity, classname, sizeof(classname));
 	return StrContains(classname, "obj_") == 0;
 }
@@ -111,13 +111,23 @@ bool IsSentryDisposable(int sentry)
 	return g_bDisposableSentry[sentry];
 }
 
+static bool g_bWasInSetup;
 public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookParam params)
 {
 	if (RF2_IsEnabled())
 	{
 		// skip upgrade anim
-		if (GetEntProp(entity, Prop_Send, "m_bCarryDeploy") || g_bGracePeriod)
+		bool carryDeploy = asBool(GetEntProp(entity, Prop_Send, "m_bCarryDeploy"));
+		if (carryDeploy || g_bGracePeriod || GetRF2GameRules().AllowQuickBuild)
 		{
+			// Either m_bCarryDeploy or m_bInSetup need to be true for this to work
+			if (!carryDeploy)
+			{
+				g_bWasInSetup = asBool(GameRules_GetProp("m_bInSetup"));
+				if (!g_bWasInSetup)
+					GameRules_SetProp("m_bInSetup", true);
+			}
+
 			GameRules_SetProp("m_bPlayingMannVsMachine", true);
 		}
 	}
@@ -129,9 +139,15 @@ public MRESReturn DHook_StartUpgradingPost(int entity, DHookReturn returnVal, DH
 {
 	if (RF2_IsEnabled())
 	{
+		if (!g_bWasInSetup && !GetEntProp(entity, Prop_Send, "m_bCarryDeploy"))
+		{
+			GameRules_SetProp("m_bInSetup", false);
+		}
+
 		GameRules_SetProp("m_bPlayingMannVsMachine", false);
 	}
 	
+	g_bWasInSetup = false;
 	return MRES_Ignored;
 }
 

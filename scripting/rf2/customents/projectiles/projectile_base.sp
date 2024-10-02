@@ -543,7 +543,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		float dist;
 		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
-			if (!IsCombatChar(entity))
+			if (!IsValidEntity2(entity) || !IsCombatChar(entity))
 				continue;
 			
 			if (IsValidClient(entity))
@@ -751,7 +751,7 @@ public void OnVPhysicsUpdate(int entity)
 	}
 }
 
-public Action Timer_CheckVPhysicsUpdate(Handle timer, int entity)
+static Action Timer_CheckVPhysicsUpdate(Handle timer, int entity)
 {
 	RF2_Projectile_Base proj = RF2_Projectile_Base(EntRefToEntIndex(entity));
 	if (!proj.IsValid() || proj.HasHit)

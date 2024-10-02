@@ -30,7 +30,7 @@ public void RF2_OnPlayerItemUpdate(int client, int item)
 }
 
 public Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, 
-	float damageForce[3], float damagePosition[3], int damageCustom, int &critType, int attackerItem, int inflictorItem, float procCoeff)
+	float damageForce[3], float damagePosition[3], int damageCustom, int attackerItem, int inflictorItem, float &procCoeff)
 {
 	if (IsValidClient(attacker) && RF2_GetPlayerItemAmount(attacker, g_iCustomItemIndex) > 0)
 	{

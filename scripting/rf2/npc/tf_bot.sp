@@ -447,6 +447,13 @@ void TFBot_Think(TFBot bot)
 						GetEntPos(threat, threatPos);
 					}
 					
+					// Snap to ground
+					if (!(GetEntityFlags(threat) & FL_ONGROUND))
+					{
+						TR_TraceRayFilter(threatPos, {90.0, 0.0, 0.0}, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly, _, TRACE_WORLD_ONLY);
+						TR_GetEndPosition(threatPos);
+					}
+
 					if (!bot.HasFlag(TFBOTFLAG_STRAFING))
 					{
 						// Expert bots strafe more often.
@@ -502,7 +509,7 @@ void TFBot_Think(TFBot bot)
 					bool owned;
 					for (int b = 1; b <= MaxClients; b++)
 					{
-						if (owned || !IsClientInGame(b) || !IsFakeClient(b) || TF2_GetPlayerClass(b) != TFClass_Engineer)
+						if (!IsClientInGame(b) || !IsFakeClient(b) || TF2_GetPlayerClass(b) != TFClass_Engineer)
 							continue;
 							
 						if (g_TFBot[b].SentryArea == tfArea)
@@ -512,13 +519,16 @@ void TFBot_Think(TFBot bot)
 						}
 					}
 					
+					// No one owns this area and there are no other things nearby, we can take it if we can get there.
 					tfArea.GetCenter(areaPos);
-					// No one owns this area and there are no other things nearby, we can take it.
 					if (!owned && GetNearestEntity(areaPos, "obj_*", _, 300.0) == INVALID_ENT && GetNearestEntity(areaPos, "rf2_object*", _, 150.0) == INVALID_ENT) 
 					{
+						TFBot_PathToPos(bot, areaPos, 10000.0, true);
+						if (!bot.Follower.IsValid())
+							continue;
+
 						bot.Mission = MISSION_BUILD;
 						bot.SentryArea = tfArea;
-						TFBot_PathToPos(bot, areaPos, 10000.0); // Start marching towards our desired area now
 						break;
 					}
 				}
@@ -527,7 +537,7 @@ void TFBot_Think(TFBot bot)
 			// We failed to find an area, try again after a bit
 			if (!bot.SentryArea)
 			{
-				bot.EngiSearchRetryTime = tickedTime+1.0;
+				bot.EngiSearchRetryTime = tickedTime+0.8;
 			}
 			
 			delete collector;
@@ -659,7 +669,7 @@ void TFBot_Think(TFBot bot)
 		}
 		
 		// Crouch if we're stuck (but not for too long in case this is a mistake)
-		if (bot.StuckTime > 2.0 && bot.StuckTime < 8.0 && GetEntityFlags(bot.Client) & FL_ONGROUND)
+		if (bot.StuckTime > 2.0 && bot.StuckTime < 8.0 && GetEntityFlags(bot.Client) & FL_ONGROUND && !TF2_IsPlayerInCondition(bot.Client, TFCond_Slowed))
 		{
 			bot.AddButtonFlag(IN_DUCK);
 		}
@@ -697,6 +707,9 @@ void TFBot_Think(TFBot bot)
 
 bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 {
+	if (IsPlayerStunned(bot.Client))
+		return false;
+		
 	int item = GetPlayerEquipmentItem(bot.Client);
 	if (item > Item_Null && g_iPlayerEquipmentItemCharges[bot.Client] > 0)
 	{
@@ -841,7 +854,7 @@ void TFBot_TraverseMap(TFBot &bot)
 		
 		if (enemy > 0)
 		{
-			goal = TheNavMesh.GetNavAreaEntity(enemy, GETNAVAREA_ALLOW_BLOCKED_AREAS, 400.0);
+			goal = TheNavMesh.GetNavAreaEntity(enemy, GETNAVAREA_ALLOW_BLOCKED_AREAS, 1000.0);
 		}
 		
 		CNavArea area = !goal ? CBaseCombatCharacter(bot.Client).GetLastKnownArea() : NULL_AREA;
@@ -900,7 +913,7 @@ void TFBot_TraverseMap(TFBot &bot)
 	}
 }
 
-stock void TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool ignoreGoal=false)
+stock bool TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool ignoreGoal=false)
 {
 	ILocomotion locomotion = bot.GetLocomotion();
 	INextBot nextBot = bot.GetNextBot();
@@ -916,6 +929,8 @@ stock void TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool
 		bot.Follower.Invalidate();
 		locomotion.Stop();
 	}
+
+	return goalReached;
 }
 
 stock void TFBot_PathToEntity(TFBot bot, int entity, float distance=1000.0, bool ignoreGoal=false)
@@ -1011,34 +1026,32 @@ bool TFBotEngi_BuildObject(TFBot bot, TFObjectType type, TFObjectMode mode=TFObj
 	return true;
 }
 
-public Action Timer_TFBotBuildDispenser(Handle timer, int client)
+static void Timer_TFBotBuildDispenser(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0)
-		return Plugin_Continue;
+	if (!(client = GetClientOfUserId(client)))
+		return;
 		
 	if (TFBot(client).Mission != MISSION_BUILD || !IsPlayerAlive(client))
-		return Plugin_Continue;
+		return;
 		
 	TFBotEngi_BuildObject(TFBot(client), TFObject_Dispenser, _, 90.0);
-	return Plugin_Continue;
 }
 
-public Action Timer_TFBotBuildTeleporterExit(Handle timer, int client)
+static void Timer_TFBotBuildTeleporterExit(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0)
-		return Plugin_Continue;
+	if (!(client = GetClientOfUserId(client)))
+		return;
 	
 	if (TFBot(client).Mission != MISSION_BUILD  || !IsPlayerAlive(client))
-		return Plugin_Continue;
+		return;
 	
 	TFBotEngi_BuildObject(TFBot(client), TFObject_Teleporter, TFObjectMode_Exit, 180.0);
-	return Plugin_Continue;
 }
 
-public Action Timer_TFBotFinishBuilding(Handle timer, int client)
+static void Timer_TFBotFinishBuilding(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0)
-		return Plugin_Continue;
+	if (!(client = GetClientOfUserId(client)))
+		return;
 	
 	TFBot(client).AttemptingBuild = false;
 	TFBot(client).HasBuilt = TFBot(client).BuiltEverything();
@@ -1064,16 +1077,14 @@ public Action Timer_TFBotFinishBuilding(Handle timer, int client)
 			g_hTFBotEngineerBuildings[client].Push(ref);
 		}
 	}
-	
-	return Plugin_Continue;
 }
 
-public Action Timer_TFBotBuildObject(Handle timer, DataPack pack)
+static void Timer_TFBotBuildObject(Handle timer, DataPack pack)
 {
 	pack.Reset();
 	int client = GetClientOfUserId(pack.ReadCell());
-	if (client == 0)
-		return Plugin_Continue;
+	if (!client)
+		return;
 		
 	float yawOffset = pack.ReadFloat();
 	float angles[3];
@@ -1085,23 +1096,18 @@ public Action Timer_TFBotBuildObject(Handle timer, DataPack pack)
 	CreateTimer(0.5, Timer_TFBotStopForceAttack, client, TIMER_FLAG_NO_MAPCHANGE);
 	
 	TFBot(client).RemoveButtonFlag(IN_DUCK);
-	return Plugin_Continue;
 }
 
-public Action Timer_TFBotStopForceAttack(Handle timer, int client)
+static void Timer_TFBotStopForceAttack(Handle timer, int client)
 {
 	TFBot(client).RemoveButtonFlag(IN_ATTACK);
-	return Plugin_Continue;
 }
 
 public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 {
 	TFBot bot = TFBot(client);
-	
 	if (!bot)
-	{
 		return Plugin_Continue;
-	}
 	
 	static bool reloading[MAXTF2PLAYERS];
 	int activeWep = GetActiveWeapon(client);
@@ -1602,10 +1608,10 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	return Plugin_Continue;
 }
 
-public Action Timer_TFBotRocketJump(Handle timer, int client)
+static void Timer_TFBotRocketJump(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0 || GetEntityFlags(client) & FL_ONGROUND || !IsPlayerAlive(client))
-		return Plugin_Continue;
+	if (!(client = GetClientOfUserId(client)) || GetEntityFlags(client) & FL_ONGROUND || !IsPlayerAlive(client))
+		return;
 	
 	float angles[3];
 	GetClientEyeAngles(client, angles);
@@ -1613,7 +1619,6 @@ public Action Timer_TFBotRocketJump(Handle timer, int client)
 	TeleportEntity(client, _, angles); // look directly down
 	TFBot(client).AddButtonFlag(IN_ATTACK);
 	CreateTimer(0.25, Timer_TFBotStopForceAttack, client, TIMER_FLAG_NO_MAPCHANGE);
-	return Plugin_Continue;
 }
 
 // -1 = let bot decide
@@ -1742,4 +1747,22 @@ public MRESReturn Detour_OnWeaponFired(DHookParam params)
 	}
 	
 	return MRES_Ignored;
+}
+
+void UpdateBotQuota()
+{
+	ConVar quota = FindConVar("tf_bot_quota");
+	if (GetTotalHumans(false) <= 0)
+	{
+		// https://github.com/ValveSoftware/Source-1-Games/issues/5330
+		// tf_bot_join_after_player has an issue where it counts the SourceTV/Replay bot as a player, so if either is present and no players are, bots will join.
+		// This wastes resources, so make sure there actually are players in the server before we add bots.
+		quota.SetInt(0);
+	}
+	else
+	{
+		// SourceTV will decrease the max player count in the server browser unless we decrease tf_bot_quota
+		bool sourceTv = FindConVar("tv_enable").BoolValue;
+		quota.SetInt(MaxClients-g_cvMaxHumanPlayers.IntValue - view_as<int>(sourceTv));
+	}
 }

@@ -189,7 +189,7 @@ static void OnRemove(RF2_Trigger_Exit trigger)
 	}
 }
 
-public Action Timer_VoteCheck(Handle timer, int entity)
+static Action Timer_VoteCheck(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Stop;

@@ -24,7 +24,7 @@ methodmap RF2_BaseNPCAttackAction < NextBotAction
 	// Does a trace hull hitbox attack, offset is relative to entity's origin and angles. resultPos is filled with the origin position of the attack.
 	// returnArray=true returns an ArrayList of entities hit, otherwise returns null
 	public ArrayList DoAttackHitbox(const float offset[3]=NULL_VECTOR, float resultPos[3]=NULL_VECTOR, const float mins[3], const float maxs[3], 
-		float damage, int damageType=DMG_GENERIC, const float forceVector[3]=NULL_VECTOR, bool returnArray=false)
+		float damage, int damageType=DMG_GENERIC, const float forceVector[3]={0.0, 0.0, 0.0}, bool returnArray=false, float buildingDamageMult=1.0)
 	{
 		this.HitCounter++;
 		float pos[3], end[3], ang[3];
@@ -53,6 +53,7 @@ methodmap RF2_BaseNPCAttackAction < NextBotAction
 		hitbox.DamageFlags = damageType;
 		hitbox.SetDamageForce(forceVector);
 		hitbox.ReturnHitEnts = returnArray;
+		hitbox.BuildingDamageMult = buildingDamageMult;
 		hitbox.Teleport(end, ang);
 		hitbox.Spawn();
 		return hitbox.DoDamage();

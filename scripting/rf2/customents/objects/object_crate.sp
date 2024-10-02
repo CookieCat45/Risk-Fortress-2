@@ -128,7 +128,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 			case Crate_Strange: cost = g_cvObjectBaseCost.FloatValue * costMult * 1.5;
 			case Crate_Unusual: cost = g_cvObjectBaseCost.FloatValue * costMult * 16.0;
 		}
-		
+
 		return float(RoundToFloor(cost));
 	}
 	
@@ -269,23 +269,6 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 		
 		this.Initialized = true;
 	}
-
-	public void ScaleHitbox(float value)
-	{
-		float mins[3], maxs[3];
-		this.GetPropVector(Prop_Send, "m_vecMins", mins);
-		this.GetPropVector(Prop_Send, "m_vecMaxs", maxs);
-		ScaleVector(mins, value);
-		ScaleVector(maxs, value);
-		this.SetPropVector(Prop_Send, "m_vecMins", mins);
-		this.SetPropVector(Prop_Send, "m_vecMaxs", maxs);
-		this.SetPropVector(Prop_Send, "m_vecMinsPreScaled", mins);
-		this.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", maxs);
-		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMins", mins);
-		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMaxs", maxs);
-		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMinsPreScaled", mins);
-		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMaxsPreScaled", maxs);
-	}
 }
 
 RF2_Object_Crate SpawnCrate(int type, const float pos[3], bool bonus=false)
@@ -344,7 +327,7 @@ static void OnSpawnPost(int entity)
 
 public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, float damageForce[3], float damagePosition[3], int damageCustom)
 {
-	if (!IsValidClient(attacker) || !(damageType & DMG_MELEE))
+	if (!(damageType & DMG_MELEE) || !IsValidClient(attacker))
 		return Plugin_Continue;
 	
 	if (!IsPlayerSurvivor(attacker))
@@ -448,16 +431,15 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	return Plugin_Continue;
 }
 
-public Action Timer_UltraRareResponse(Handle timer, int client)
+static void Timer_UltraRareResponse(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0)
-		return Plugin_Continue;
+	if (!(client = GetClientOfUserId(client)))
+		return;
 	
 	SpeakResponseConcept_MVM(client, "TLK_MVM_LOOT_ULTRARARE");
-	return Plugin_Continue;
 }
 
-public Action Timer_SpawnItem(Handle timer, DataPack pack)
+static void Timer_SpawnItem(Handle timer, DataPack pack)
 {
 	int client, item;
 	float pos[3];
@@ -472,6 +454,4 @@ public Action Timer_SpawnItem(Handle timer, DataPack pack)
 	{
 		PrintKeyHintText(client, "%t", "ItemPickupTutorial");
 	}
-	
-	return Plugin_Continue;
 }

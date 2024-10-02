@@ -341,7 +341,6 @@ void BadassTank_OnMapStart()
 	g_iBadassTankModelIndex = PrecacheModel2(MODEL_TANK_BADASS, true);
 	g_iSuperBadassTankModelIndex = PrecacheModel2(MODEL_TANK_SUPER_BADASS, true);
 	AddModelToDownloadsTable(MODEL_TANK_BADASS, false);
-	#if defined PRERELEASE
 	AddModelToDownloadsTable(MODEL_TANK_SUPER_BADASS, false);
 	AddMaterialToDownloadsTable("materials/rf2/bosses/super_badass_tank/sentry3_blue");
 	AddMaterialToDownloadsTable("materials/rf2/bosses/super_badass_tank/tank_eye");
@@ -350,7 +349,6 @@ void BadassTank_OnMapStart()
 	AddMaterialToDownloadsTable("materials/rf2/bosses/super_badass_tank/tankbody2");
 	AddSoundToDownloadsTable(SND_LASERCANNON_CHARGE, false);
 	AddSoundToDownloadsTable(SND_LASERCANNON_FIRE, false);
-	#endif
 	PrecacheSound2(SND_TANK_LASERRISE, true);
 	PrecacheSound2(SND_TANK_LASERRISE_END, true);
 	PrecacheSound2(SND_LASERCANNON_CHARGE, true);
@@ -421,7 +419,9 @@ void BeginTankDestructionMode()
 {
 	g_iTankKillRequirement = SpawnTanks();
 	RF2_PrintToChatAll("%t", "TanksHaveArrived");
-	PlayMusicTrackAll();
+	if (g_szBossBGM[0])
+		PlayMusicTrackAll();
+		
 	RF2_Object_Teleporter.ToggleObjectsStatic(false);
 	RF2_GameRules gamerules = GetRF2GameRules();
 	if (gamerules.IsValid())
@@ -455,7 +455,7 @@ void EndTankDestructionMode()
 	CreateTimer(3.0, Timer_CommandReminder, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
-public Action Timer_CommandReminder(Handle timer)
+static Action Timer_CommandReminder(Handle timer)
 {
 	//RF2_PrintToChatAll("%t", "EndLevelCommandReminder");
 	char text[256];
@@ -505,13 +505,12 @@ static int SpawnTanks()
 	return spawnCount;
 }
 
-public Action Timer_CreateTankBoss(Handle timer, bool badass)
+static void Timer_CreateTankBoss(Handle timer, bool badass)
 {
 	if (!g_bRoundActive || !g_bTankBossMode)
-		return Plugin_Continue;
+		return;
 		
 	CreateTankBoss(badass ? TankType_Badass : TankType_Normal);
-	return Plugin_Continue;
 }
 
 RF2_TankBoss CreateTankBoss(int type, RF2_TankSpawner spawnPoint=view_as<RF2_TankSpawner>(INVALID_ENT))
@@ -569,7 +568,7 @@ RF2_TankBoss CreateTankBoss(int type, RF2_TankSpawner spawnPoint=view_as<RF2_Tan
 	}
 	else
 	{
-		health = RoundToFloor(float(health) * (1.0 + 0.2*float(RF2_GetSurvivorCount()-1)));
+		health = RoundToFloor(float(health) * (1.0 + 0.15*float(RF2_GetSurvivorCount()-1)));
 	}
 	
 	tank.Health = health;
@@ -635,10 +634,10 @@ public void Hook_TankBossThink(int entity)
 	}
 }
 
-public Action Timer_TankDeployBomb(Handle timer, int entity)
+static void Timer_TankDeployBomb(Handle timer, int entity)
 {
 	if (g_bGameOver || (entity = EntRefToEntIndex(entity)) == INVALID_ENT)
-		return Plugin_Continue;
+		return;
 	
 	// RIP
 	GameOver();
@@ -647,8 +646,6 @@ public Action Timer_TankDeployBomb(Handle timer, int entity)
 	{
 		gamerules.FireOutput("OnTankDestructionBombDeployed");
 	}
-	
-	return Plugin_Continue;
 }
 
 public void Output_OnTankKilled(const char[] output, int caller, int activator, float delay)
@@ -1034,10 +1031,10 @@ public void Hook_BadassTankThink(int entity)
 	}
 }
 
-public Action Timer_TankFireHomingRockets(Handle timer, int entity)
+static void Timer_TankFireHomingRockets(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
-		return Plugin_Continue;
+		return;
 	
 	RF2_TankBoss tank = RF2_TankBoss(entity);
 	int attachment[2];
@@ -1059,34 +1056,31 @@ public Action Timer_TankFireHomingRockets(Handle timer, int entity)
 	
 	EmitSoundToAll(SND_LAW_FIRE, entity);
 	tank.AddGesture("rocket_shoot_up", _, _, _, 2);
-	return Plugin_Continue;
 }
 
-public Action Timer_EndLaserAttack(Handle timer, int entity)
+static void Timer_EndLaserAttack(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
-		return Plugin_Continue;
+		return;
 	
 	RF2_TankBoss tank = RF2_TankBoss(entity);
 	tank.SpecialAttack = SPECIAL_NONE;
 	tank.NextLaserAttack = GetGameTime()+LASER_ATTACK_COOLDOWN;
 	tank.RemoveAllGestures();
-	return Plugin_Continue;
 }
 
-public Action Timer_EndBarrageAttack(Handle timer, int entity)
+static void Timer_EndBarrageAttack(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
-		return Plugin_Continue;
+		return;
 	
 	RF2_TankBoss tank = RF2_TankBoss(entity);
 	tank.SpecialAttack = SPECIAL_NONE;
 	tank.NextBarrageAttack = GetGameTime()+BARRAGE_ATTACK_COOLDOWN;
 	tank.RemoveAllGestures();
-	return Plugin_Continue;
 }
 
-public Action Timer_TankRocketFixAngles(Handle timer, int entity)
+static Action Timer_TankRocketFixAngles(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return Plugin_Stop;

@@ -653,12 +653,7 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case Item_WhaleBoneCharm:
 		{
-			float amount;
-			if (item == Item_WhaleBoneCharm)
-			{
-				amount = 1.0 + CalcItemMod(client, Item_WhaleBoneCharm, 0);
-			}
-			
+			float amount = 1.0 + CalcItemMod(client, Item_WhaleBoneCharm, 0);
 			int weapon, ammoType;
 			for (int i = WeaponSlot_Primary; i <= WeaponSlot_InvisWatch; i++)
 			{
@@ -671,13 +666,28 @@ void UpdatePlayerItem(int client, int item)
 				{
 					if (IsEnergyWeapon(weapon))
 					{
-						TF2Attrib_SetByDefIndex(weapon, 335, amount); // "clip size bonus upgrade"
+						if (PlayerHasItem(client, Item_WhaleBoneCharm))
+						{
+							TF2Attrib_SetByDefIndex(weapon, 335, amount); // "clip size bonus upgrade"
+						}
+						else
+						{
+							TF2Attrib_RemoveByDefIndex(weapon, 335);
+						}
+						
 					}
 					else
 					{
-						TF2Attrib_SetByDefIndex(weapon, 424, amount); // "clip size penalty HIDDEN"
+						if (PlayerHasItem(client, Item_WhaleBoneCharm))
+						{
+							TF2Attrib_SetByDefIndex(weapon, 424, amount); // "clip size penalty HIDDEN"
+						}
+						else
+						{
+							TF2Attrib_RemoveByDefIndex(weapon, 424);
+						}
+						
 					}
-					
 				}
 			}
 		}
@@ -1080,7 +1090,7 @@ void UpdatePlayerItem(int client, int item)
 		{
 			if (PlayerHasItem(client, item))
 			{
-				TF2Attrib_SetByDefIndex(client, 812, 1.0+CalcItemMod(client, item, 3)); // mod_air_control_blast_jump
+				TF2Attrib_SetByDefIndex(client, 812, 1.0+CalcItemMod(client, item, 2)); // mod_air_control_blast_jump
 			}
 			else
 			{
@@ -1301,7 +1311,7 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 		if (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro))
 		{
 			float angles[3], pos[3];
-			CBaseEntity(victim).WorldSpaceCenter(pos);
+			GetEntPos(victim, pos, true);
 			angles[0] = -80.0;
 			angles[1] = 180.0;
 			RF2_Projectile_Fireball fireball;
@@ -1322,6 +1332,54 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 		}
 	}
 	
+	if (PlayerHasItem(attacker, Item_OldCrown))
+	{
+		float chance = GetItemMod(Item_OldCrown, 0);
+		if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
+		{
+			// don't spawn too many fireballs
+			int limit = GetItemModInt(Item_OldCrown, 1);
+			int count;
+			int entity = MaxClients+1;
+			while ((entity = FindEntityByClassname(entity, "rf2_projectile_fireball")) != INVALID_ENT)
+			{
+				RF2_Projectile_Fireball fireball = RF2_Projectile_Fireball(entity);
+				if (fireball.Homing && fireball.Owner == attacker && fireball.HomingTarget == fireball.Owner)
+				{
+					count++;
+				}
+			}
+
+			int total = count;
+			int spawnCount;
+			int spawnLimit = GetItemModInt(Item_OldCrown, 3) + CalcItemModInt(attacker, Item_OldCrown, 4, -1);
+			float damage = GetItemMod(Item_OldCrown, 2) + CalcItemMod(attacker, Item_OldCrown, 3, -1);
+			float pos[3], victimPos[3], angles[3];
+			GetEntPos(attacker, pos, true);
+			GetEntPos(victim, victimPos, true);
+			GetVectorAnglesTwoPoints(victimPos, pos, angles);
+			while (total < limit && spawnCount < spawnLimit)
+			{
+				RF2_Projectile_Fireball fireball = RF2_Projectile_Fireball(ShootProjectile(attacker, "rf2_projectile_fireball", victimPos, angles, 1000.0, damage, _, _, false));
+				fireball.Homing = true;
+				fireball.HomingTarget = attacker;
+				fireball.DeactivateOnHit = false;
+				fireball.HomingSpeed = GetRandomFloat(15.0, 20.0);
+				fireball.SetWorldImpactSound("misc/null.wav");
+				SetEntItemProc(fireball.index, Item_OldCrown);
+				fireball.Spawn();
+				spawnCount++;
+				total++;
+				angles[1] += GetRandomFloat(20.0, 75.0);
+				angles[0] += GetRandomFloat(20.0, 75.0);
+			}
+			if (count < limit)
+			{
+				
+			}
+		}
+	}
+
 	if (GetClientTeam(victim) == TEAM_ENEMY)
 	{
 		int pillarOfHatsOwner = INVALID_ENT;
@@ -1475,13 +1533,12 @@ public void RF_FireHomingRockets(DataPack pack)
 	EmitAmbientSound(SND_LAW_FIRE, victimPos, _, _, _, 0.75);
 }
 
-public Action Timer_HealBurstCooldown(Handle timer, int client)
+public void Timer_HealBurstCooldown(Handle timer, int client)
 {
 	if (!(client = GetClientOfUserId(client)))
-		return Plugin_Continue;
+		return;
 
 	g_bPlayerHealBurstCooldown[client] = false;
-	return Plugin_Continue;
 }
 
 public void RF_SaxtonRadiusDamage(DataPack pack)
@@ -1562,47 +1619,30 @@ bool ActivateStrangeItem(int client)
 				teleFound = true;
 			}
 			
-			int count;
-			RF2_Object_Crate crate;
-			int cap = GetItemModInt(ItemStrange_Longwave, 0);
 			float pos[3];
 			GetEntPos(client, pos, true);
-			ArrayList crateList = new ArrayList();
-			while (count < cap)
-			{
-				crate = RF2_Object_Crate(GetNearestEntity(pos, "rf2_object_crate", _, _, 0));
-				if (!crate.IsValid())
-					break;
-				
-				// this is silly and lazy, but we can change the crate's team temporarily if we've already set a glow on this crate for GetNearestEntity
-				crate.SetProp(Prop_Data, "m_iTeamNum", 1);
-				crateList.Push(crate);
-				if (IsGlowing(crate.index))
-					continue;
-				
-				count++;
-			}
-			
-			for (int i = crateList.Length-1; i >= 0; i--)
-			{
-				crate = crateList.Get(i);
-				crate.SetProp(Prop_Data, "m_iTeamNum", 0);
-			}
-			
-			if (count <= 0 && !teleFound)
+			ArrayList crateList = GetNearestEntities(pos, "rf2_object_crate");
+			crateList.Resize(imin(crateList.Length, GetItemModInt(ItemStrange_Longwave, 0)));
+			if (crateList.Length <= 0 && !teleFound)
 			{
 				EmitSoundToClient(client, SND_NOPE);
 				PrintCenterText(client, "No objects found!");
 				delete crateList;
 				return false;
 			}
-			
-			for (int i = crateList.Length-1; i >= 0; i--)
+
+			for (int i = 0; i < crateList.Length; i++)
 			{
-				crate = crateList.Get(i);
-				crate.PingMe(_, GetItemMod(ItemStrange_Longwave, 1));
+				RF2_Object_Crate(crateList.Get(i)).PingMe(_, GetItemMod(ItemStrange_Longwave, 1));
 			}
 			
+			// Outline all barrels as well
+			int barrel = MaxClients+1;
+			while ((barrel = FindEntityByClassname(barrel, "rf2_object_barrel")) != INVALID_ENT)
+			{
+				RF2_Object_Barrel(barrel).PingMe(_, GetItemMod(ItemStrange_Longwave, 1));
+			}
+
 			EmitSoundToAll(SND_LONGWAVE_USE, client);
 			EmitSoundToAll(SND_LONGWAVE_USE, client);
 			TE_TFParticle("hammer_bell_ring_shockwave", pos);
@@ -2046,16 +2086,15 @@ bool ActivateStrangeItem(int client)
 	return true;
 }
 
-public Action Timer_EndRingBonus(Handle timer)
+public void Timer_EndRingBonus(Handle timer)
 {
 	g_bRingCashBonus = false;
-	return Plugin_Continue;
 }
 
-public Action Timer_FusRoDah(Handle timer, int client)
+public void Timer_FusRoDah(Handle timer, int client)
 {
 	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
-		return Plugin_Continue;
+		return;
 	
 	float range = GetItemMod(ItemStrange_Dragonborn, 0);
 	int team = GetClientTeam(client);
@@ -2123,7 +2162,6 @@ public Action Timer_FusRoDah(Handle timer, int client)
 	eyePos[2] -= 8.0;
 	TE_TFParticle("mvm_soldier_shockwave", eyePos);
 	UTIL_ScreenShake(eyePos, 10.0, 30.0, 3.0, 1000.0, SHAKE_START, true);
-	return Plugin_Continue;
 }
 
 public Action Timer_ReloadBuffEnd(Handle timer, int client)
@@ -2235,9 +2273,9 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 	TR_TraceHullFilter(pos, end, mins, maxs, MASK_PLAYERSOLID_BRUSHONLY, TraceFilter_BeamHitbox, attacker);
 	int team = GetEntTeam(attacker);
 	int entity = INVALID_ENT;
-	while ((entity = FindEntityByClassname(entity, "*")) != -1)
+	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
-		if (entity > 0 && g_bLaserHitDetected[entity])
+		if (IsValidEntity2(entity) && entity > 0 && g_bLaserHitDetected[entity])
 		{
 			g_bLaserHitDetected[entity] = false;
 			if (GetEntTeam(entity) == team)
@@ -2328,7 +2366,7 @@ public Action Timer_HalloweenThriller(Handle timer, int merasmus)
 		{
 			for (int i = 1; i <= MaxClients; i++)
 			{
-				if (!IsClientInGame(i))
+				if (!IsClientInGame(i) || IsClientSourceTV(i))
 					continue;
 				
 				if (IsPlayerAlive(i))
@@ -2359,18 +2397,16 @@ public Action Timer_HalloweenThriller(Handle timer, int merasmus)
 	return Plugin_Continue;
 }
 
-public Action Timer_RestoreRage(Handle timer, DataPack pack)
+public void Timer_RestoreRage(Handle timer, DataPack pack)
 {
 	pack.Reset();
 	int client = GetClientOfUserId(pack.ReadCell());
 	int team = pack.ReadCell();
-	
-	if (client == 0 || !IsClientInGame(client) || !IsPlayerAlive(client) || GetClientTeam(client) != team)
-		return Plugin_Continue;
+	if (!client || !IsClientInGame(client) || !IsPlayerAlive(client) || GetClientTeam(client) != team)
+		return;
 	
 	SetEntProp(client, Prop_Send, "m_bRageDraining", false);
 	SetEntPropFloat(client, Prop_Send, "m_flRageMeter", pack.ReadFloat());
-	return Plugin_Continue;
 }
 
 int GetQualityColorTag(int quality, char[] buffer, int size)
@@ -2782,20 +2818,6 @@ void DoHeadshotBonuses(int attacker, int victim, float damage)
 		DoExplosionEffect(pos);
 	}
 	
-	if (IsValidClient(victim) && PlayerHasItem(attacker, ItemSniper_Bloodhound) && CanUseCollectorItem(attacker, ItemSniper_Bloodhound))
-	{
-		int stacks = GetItemModInt(ItemSniper_Bloodhound, 0) + CalcItemModInt(attacker, ItemSniper_Bloodhound, 1, -1);
-		for (int i = 1; i <= stacks; i++)
-		{
-			TF2_MakeBleed(victim, attacker, GetItemMod(ItemSniper_Bloodhound, 2));
-		}
-		
-		if (stacks >= 20)
-		{
-			TriggerAchievement(attacker, ACHIEVEMENT_BLOODHOUND);
-		}
-	}
-	
 	if (PlayerHasItem(attacker, ItemSniper_VillainsVeil) && CanUseCollectorItem(attacker, ItemSniper_VillainsVeil))
 	{
 		g_flPlayerRifleHeadshotBonusTime[attacker] = GetItemMod(ItemSniper_VillainsVeil, 2);
@@ -2849,30 +2871,28 @@ void ShowItemDesc(int client, int item)
 	g_hPlayerItemDescTimer[client] = CreateTimer(split ? 17.0 : 13.0, Timer_PlayerViewingItemDesc, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
-public Action Timer_SecondDesc(Handle timer, DataPack pack)
+public void Timer_SecondDesc(Handle timer, DataPack pack)
 {
 	pack.Reset();
 	int client = GetClientOfUserId(pack.ReadCell());
 	if (!client)
-		return Plugin_Continue;
+		return;
 	
 	int item = pack.ReadCell();
 	if (g_iLastShownItem[client] != item)
-		return Plugin_Continue;
+		return;
 	
 	char buffer[200];
 	pack.ReadString(buffer, sizeof(buffer));
 	PrintKeyHintText(client, buffer);
 	g_iLastShownItem[client] = Item_Null;
-	return Plugin_Continue;
 }
 
-public Action Timer_PlayerViewingItemDesc(Handle timer, int client)
+public void Timer_PlayerViewingItemDesc(Handle timer, int client)
 {
 	if (!(client = GetClientOfUserId(client)))
-		return Plugin_Continue;
+		return;
 	
 	g_hPlayerItemDescTimer[client] = null;
 	g_bPlayerViewingItemDesc[client] = false;
-	return Plugin_Continue;
 }

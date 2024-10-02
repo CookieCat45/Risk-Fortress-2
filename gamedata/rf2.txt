@@ -74,6 +74,13 @@
 				"linux64"	"2"
 				"windows64"	"2"
 			}
+			"CBaseFilter::PassesFilterImpl"
+			{
+				"linux"		"199"
+				"windows"	"198"
+				"linux64"	"199"
+				"windows64"	"198"
+			}
 		}
 		"Signatures"
 		{

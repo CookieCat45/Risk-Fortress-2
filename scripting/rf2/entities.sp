@@ -18,16 +18,14 @@ void RF_TakeDamage(int entity, int inflictor, int attacker, float damage, int da
 
 int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0, float maxDist=-1.0, int team=-1, bool trace=false)
 {
-	int nearestEntity = -1;
+	int nearestEntity = INVALID_ENT;
 	float pos[3];
 	float distance;
 	float nearestDist = -1.0;
-
-	int entity = -1;
+	int entity = INVALID_ENT;
 	float minDistSq = sq(minDist);
 	float maxDistSq = sq(maxDist);
-
-	while ((entity = FindEntityByClassname(entity, classname)) != -1)
+	while ((entity = FindEntityByClassname(entity, classname)) != INVALID_ENT)
 	{
 		if (team > -1 && GetEntTeam(entity) != team)
 			continue;
@@ -42,13 +40,10 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 			origin[2] -= 20.0;
 
 			if (TR_DidHit())
-			{
 				continue;
-			}
 		}
 
 		distance = GetVectorDistance(origin, pos, true);
-
 		if ((minDist <= 0.0 || distance >= minDistSq) && (maxDist <= 0.0 || distance <= maxDistSq))
 		{
 			if (distance < nearestDist || nearestDist == -1.0)
@@ -60,6 +55,106 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 	}
 
 	return nearestEntity;
+}
+
+ArrayList GetNearestEntities(float origin[3], const char[] classname, float minDist=-1.0, float maxDist=-1.0, int team=-1, bool trace=false)
+{
+	ArrayList nearestEnts = new ArrayList();
+	int entity = INVALID_ENT;
+	float pos[3];
+	while ((entity = FindEntityByClassname(entity, classname)) != INVALID_ENT)
+	{
+		if (nearestEnts.Length > 0 && nearestEnts.FindValue(entity) != -1 || team > -1 && GetEntTeam(entity) != team)
+			continue;
+		
+		GetEntPos(entity, pos);
+		if (trace)
+		{
+			pos[2] += 20.0;
+			origin[2] += 20.0;
+			TR_TraceRayFilter(origin, pos, MASK_SOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
+			pos[2] -= 20.0;
+			origin[2] -= 20.0;
+
+			if (TR_DidHit())
+				continue;
+		}
+
+		nearestEnts.Push(entity);
+		
+	}
+
+	// sort the list by distance
+	int sortedCount;
+	float distance;
+	float nearestDist = -1.0;
+	float minDistSq = sq(minDist);
+	float maxDistSq = sq(maxDist);
+	for (int i = 0; i < nearestEnts.Length; i++)
+	{
+		entity = nearestEnts.Get(i);
+		distance = GetVectorDistance(origin, pos, true);
+		if ((minDist <= 0.0 || distance >= minDistSq) && (maxDist <= 0.0 || distance <= maxDistSq))
+		{
+			if (distance < nearestDist || nearestDist == -1.0)
+			{
+				nearestEnts.Erase(i);
+				nearestEnts.ShiftUp(sortedCount);
+				nearestEnts.Set(sortedCount, entity);
+				nearestDist = distance;
+				i = sortedCount;
+				sortedCount++;
+			}
+		}
+	}
+
+	return nearestEnts;
+}
+
+ArrayList GetNearestCombatChars(float origin[3], int count=0, float minDist=-1.0, float maxDist=-1.0, int avoidTeam=-1, bool trace=false)
+{
+	ArrayList nearestEnts = new ArrayList();
+	float pos[3];
+	float distance;
+	float nearestDist = -1.0;
+	int entity = INVALID_ENT;
+	float minDistSq = sq(minDist);
+	float maxDistSq = sq(maxDist);
+	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
+	{
+		if (!IsValidEntity2(entity) || nearestEnts.Length > 0 && nearestEnts.FindValue(entity) != -1 || !IsCombatChar(entity) 
+		|| avoidTeam > -1 && GetEntTeam(entity) == avoidTeam || IsValidClient(entity) && !IsPlayerAlive(entity))
+			continue;
+		
+		GetEntPos(entity, pos);
+		if (trace)
+		{
+			pos[2] += 20.0;
+			origin[2] += 20.0;
+			TR_TraceRayFilter(origin, pos, MASK_SOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
+			pos[2] -= 20.0;
+			origin[2] -= 20.0;
+
+			if (TR_DidHit())
+				continue;
+		}
+
+		distance = GetVectorDistance(origin, pos, true);
+		if ((minDist <= 0.0 || distance >= minDistSq) && (maxDist <= 0.0 || distance <= maxDistSq))
+		{
+			if (distance < nearestDist || nearestDist == -1.0)
+			{
+				nearestEnts.Push(entity);
+				if (count > 0 && nearestEnts.Length >= count)
+					break;
+
+				nearestDist = distance;
+				entity = INVALID_ENT; // start the loop over
+			}
+		}
+	}
+
+	return nearestEnts;
 }
 
 float DistBetween(int ent1, int ent2, bool squared=false)
@@ -199,7 +294,7 @@ int ShootProjectile(int owner=INVALID_ENT, const char[] classname, const float p
 */
 ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int item=Item_Null,
 	float baseDamage, int damageFlags, float radius, float minFalloffMult=0.3, 
-	bool allowSelfDamage=false, ArrayList blacklist=null, bool returnHitEnts=false)
+	bool allowSelfDamage=false, ArrayList blacklist=null, bool returnHitEnts=false, float buildingDamageMult=1.0)
 {
 	float enemyPos[3];
 	float distance, falloffMultiplier, calculatedDamage;
@@ -211,9 +306,9 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 		hitEnts = new ArrayList();
 	}
 	
-	while ((entity = FindEntityByClassname(entity, "*")) != -1)
+	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
-		if (entity < 1 || !allowSelfDamage && entity == attacker)
+		if (!IsValidEntity2(entity) || !allowSelfDamage && entity == attacker)
 			continue;
 		
 		if (blacklist && blacklist.FindValue(entity) != -1)
@@ -244,6 +339,11 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 					}
 					
 					calculatedDamage = baseDamage * falloffMultiplier;
+					if (IsBuilding(entity))
+					{
+						calculatedDamage *= buildingDamageMult;
+					}
+					
 					RF_TakeDamage(entity, inflictor, attacker, calculatedDamage, damageFlags, item);
 					if (returnHitEnts)
 					{
@@ -318,17 +418,15 @@ public void RF_CashThinkRate(int entity)
 	RequestFrame(RF_CashThinkRate, EntIndexToEntRef(entity));
 }
 
-public Action Timer_DeleteCash(Handle timer, int entity)
+public void Timer_DeleteCash(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
-		return Plugin_Continue;
+		return;
 	
 	float pos[3];
 	GetEntPos(entity, pos);
 	TE_TFParticle("mvm_cash_explosion", pos);
 	RemoveEntity2(entity);
-
-	return Plugin_Continue;
 }
 
 public Action Timer_CashMagnet(Handle timer, int entity)
@@ -848,6 +946,14 @@ int GetEntityDisplayName(int entity, char[] buffer, int size)
 	{
 		return strcopy(buffer, size, "Botler 2000");
 	}
+	else if (strcmp2(classname, "rf2_npc_false_providence"))
+	{
+		return strcopy(buffer, size, "FALSE PROVIDENCE");
+	}
+	else if (strcmp2(classname, "rf2_npc_shield_crystal"))
+	{
+		return strcopy(buffer, size, "Shield Crystal");
+	}
 	else if (strcmp2(classname, "tank_boss"))
 	{
 		return strcopy(buffer, size, "Tank");
@@ -883,7 +989,7 @@ int GetEntityDisplayName(int entity, char[] buffer, int size)
 		}
 	}
 	
-	return strcopy(buffer, size, "[unknown]");
+	return strcopy(buffer, size, "");
 }
 
 void SDK_ApplyAbsVelocityImpulse(int entity, const float vel[3])
@@ -908,6 +1014,9 @@ int GetFreePathFollowerIndex(int target=INVALID_ENT)
 	ArrayList combatChars = new ArrayList();
 	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
+		if (!IsValidEntity2(entity))
+			continue;
+			
 		if (CBaseEntity(entity).MyNextBotPointer() && entity != target)
 		{
 			combatChars.Push(entity);

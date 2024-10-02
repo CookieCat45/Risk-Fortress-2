@@ -142,6 +142,24 @@ void GameOver()
 	}
 }
 
+void GameVictory()
+{
+	if (g_bGameOver)
+		return;
+
+	g_bGameWon = true;
+	PrintToServer("[RF2] Victory");
+	if (IsServerAutoRestartEnabled())
+	{
+		if (GetTimeSinceServerStart() >= g_cvTimeBeforeRestart.FloatValue)
+		{
+			g_bServerRestarting = true;
+		}
+	}
+
+	CreateTimer(30.0, Timer_GameOver, _, TIMER_FLAG_NO_MAPCHANGE);
+}
+
 void CreateSteelVictoryFlag()
 {
 	if (DoesSteelVictoryFlagExist())
@@ -187,12 +205,12 @@ bool DoesSteelVictoryFlagExist()
 	return false;
 }
 
-public Action Timer_GameOver(Handle timer)
+public void Timer_GameOver(Handle timer)
 {
 	if (g_bServerRestarting)
 	{
 		InsertServerCommand("quit");
-		return Plugin_Continue;
+		return;
 	}
 	
 	if (g_iStagesCompleted == 0 && !IsInUnderworld())
@@ -204,8 +222,6 @@ public Action Timer_GameOver(Handle timer)
 	{
 		ReloadPlugin(true);
 	}
-	
-	return Plugin_Continue;
 }
 
 void ReloadPlugin(bool changeMap=true)
@@ -214,7 +230,7 @@ void ReloadPlugin(bool changeMap=true)
 	{
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsClientInGame(i))
+			if (!IsClientInGame(i) || IsClientSourceTV(i))
 				continue;
 				
 			SetVariantString("");
@@ -282,7 +298,7 @@ void UTIL_ScreenShake(const float center[3], float amplitude, float frequency, f
 	amplitude = fmin(amplitude, MAX_SHAKE_AMPLITUDE);
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || (!bAirShake && (eCommand == SHAKE_START) && !(GetEntityFlags(i) & FL_ONGROUND)))
+		if (!IsClientInGame(i) || IsFakeClient(i) || (!bAirShake && (eCommand == SHAKE_START) && !(GetEntityFlags(i) & FL_ONGROUND)))
 		{
 			continue;
 		}
@@ -357,7 +373,6 @@ void TransmitShakeEvent(int player, float localAmplitude, float frequency, float
 			msg.WriteFloat(localAmplitude);
 			msg.WriteFloat(frequency);
 			msg.WriteFloat(duration);
-
 			EndMessage();
 		}
 	}
@@ -365,7 +380,7 @@ void TransmitShakeEvent(int player, float localAmplitude, float frequency, float
 
 bool IsBossEventActive()
 {
-	return GetCurrentTeleporter().IsValid() && GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE || g_bTankBossMode && !g_bGracePeriod;
+	return g_bRaidBossMode || g_bTankBossMode && !g_bGracePeriod || GetCurrentTeleporter().IsValid() && GetCurrentTeleporter().EventState == TELE_EVENT_ACTIVE;
 }
 
 void SetHudDifficulty(int difficulty)
@@ -450,11 +465,10 @@ void OnDifficultyChanged(int newLevel)
 	int skill;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || !IsFakeClient(i) || !IsPlayerAlive(i))
+		if (!IsClientInGame(i) || !IsFakeClient(i) || !IsPlayerAlive(i) || Enemy(i) == NULL_ENEMY)
 			continue;
 			
 		skill = TFBot(i).GetSkillLevel();
-		
 		switch (newLevel)
 		{
 			case DIFFICULTY_SCRAP, DIFFICULTY_IRON:
@@ -479,6 +493,8 @@ void OnDifficultyChanged(int newLevel)
 			}
 		}
 	}
+
+	UpdateGameDescription();
 }
 
 int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=true, bool hints=false)
@@ -826,6 +842,20 @@ void SetAllInArray(any[] array, int size, any value)
 {
 	for (int i = 0; i < size; i++)
 		array[i] = value;
+}
+
+
+float AngleNormalize(float angle)
+{
+	while (angle > 180.0)
+	{
+		angle -= 360.0;
+	}
+	while (angle < -180.0)
+	{
+		angle += 360.0;
+	}
+	return angle;
 }
 
 stock void PrintVector(const float vec[3])

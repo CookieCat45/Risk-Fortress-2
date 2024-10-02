@@ -24,6 +24,7 @@ static int OnStart(RF2_GalleomDeathState action, RF2_RaidBoss_Galleom boss, Next
 	pos[2] += 80.0;
 	TE_TFParticle("grenade_smoke", pos);
 	EmitSoundToAll(SND_BOSS_DEATH);
+	EmitSoundToAll(SND_BOSS_DEATH);
 	EmitSoundToAll(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING);
 	EmitSoundToAll(SND_GALLEOM_ROAR, boss.index, _, SNDLEVEL_SCREAMING);
 	float time;
@@ -38,13 +39,14 @@ static int OnStart(RF2_GalleomDeathState action, RF2_RaidBoss_Galleom boss, Next
 	
 	ConVar timescale = FindConVar("host_timescale");
 	ConVar cheats = FindConVar("sv_cheats");
+	timescale.Flags &= ~FCVAR_CHEAT;
+	timescale.FloatValue = 0.05;
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || IsFakeClient(i))
 			continue;
 		
 		UTIL_ScreenFade(i, {200, 200, 200, 50}, 0.2, 0.5, FFADE_OUT|FFADE_PURGE);
-		SendConVarValue(i, timescale, "0.02");
 		SendConVarValue(i, cheats, "1");
 	}
 	
@@ -53,26 +55,25 @@ static int OnStart(RF2_GalleomDeathState action, RF2_RaidBoss_Galleom boss, Next
 	return action.Continue();
 }
 
-public Action Timer_HostTimescaleReset(Handle timer)
+static void Timer_HostTimescaleReset(Handle timer)
 {
 	ConVar timescale = FindConVar("host_timescale");
 	ConVar cheats = FindConVar("sv_cheats");
+	timescale.FloatValue = 1.0;
+	timescale.Flags |= FCVAR_CHEAT;
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || IsFakeClient(i))
 			continue;
 		
-		SendConVarValue(i, timescale, "1.0");
-		SendConVarValue(i, cheats, "1");
+		SendConVarValue(i, cheats, "0");
 	}
-	
-	return Plugin_Continue;
 }
 
-public Action Timer_GalleomDeathExplosion(Handle timer, int entity)
+static void Timer_GalleomDeathExplosion(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
-		return Plugin_Continue;
+		return;
 	
 	RF2_RaidBoss_Galleom boss = RF2_RaidBoss_Galleom(entity);
 	float pos[3];
@@ -90,5 +91,4 @@ public Action Timer_GalleomDeathExplosion(Handle timer, int entity)
 	}
 	
 	RemoveEntity2(entity);
-	return Plugin_Continue;
 }

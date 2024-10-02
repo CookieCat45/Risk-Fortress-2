@@ -102,7 +102,7 @@
 	}
 	"ACHIEVEMENT_KILL100K"
 	{
-		"en"	"Metalcide"
+		"en"	"METALCIDE"
 	}
 	"ACHIEVEMENT_GOOMBACHAIN"
 	{
@@ -123,6 +123,18 @@
 	"ACHIEVEMENT_OBLITERATE"
 	{
 		"en"	"Fate Unknown"
+	}
+	"ACHIEVEMENT_BEATGAME"
+	{
+		"en"	"That's A Wrap"
+	}
+	"ACHIEVEMENT_BEATGAMESTEEL"
+	{
+		"en"	"BALLS OF STEEL"
+	}
+	"ACHIEVEMENT_BEATGAMETITANIUM"
+	{
+		"en"	"THE ONLY THING THEY FEAR IS YOU"
 	}
 	
 	//
@@ -248,5 +260,17 @@
 	"ACHIEVEMENT_OBLITERATE_DESC"
 	{
 		"en"	"Offer your power to the mysterious gravestone in the Underworld."
+	}
+	"ACHIEVEMENT_BEATGAME_DESC"
+	{
+		"en"	"Beat the game."
+	}
+	"ACHIEVEMENT_BEATGAMESTEEL_DESC"
+	{
+		"en"	"Beat the game on Steel difficulty or higher."
+	}
+	"ACHIEVEMENT_BEATGAMETITANIUM_DESC"
+	{
+		"en"	"Beat the game on Titanium difficulty."
 	}
 }

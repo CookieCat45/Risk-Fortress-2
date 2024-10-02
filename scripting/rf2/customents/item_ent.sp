@@ -528,13 +528,12 @@ bool PickupItem(int client)
 	return false;
 }
 
-public Action Timer_ItemPickupTutorial(Handle timer, int client)
+static void Timer_ItemPickupTutorial(Handle timer, int client)
 {
 	if (!(client = GetClientOfUserId(client)))
-		return Plugin_Continue;
+		return;
 
 	SetCookieBool(client, g_coTutorialItemPickup, true);
-	return Plugin_Continue;
 }
 
 RF2_Item GetItemInPickupRange(int client)

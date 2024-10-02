@@ -19,6 +19,7 @@ void InstallEnts()
 	RF2_Object_Pumpkin.Init();
 	RF2_Object_Statue.Init();
 	RF2_Object_Tree.Init();
+	RF2_Object_Barrel.Init();
 	RF2_Trigger_Exit.Init();
 	RF2_Projectile_Base.Init();
 	RF2_Projectile_Shuriken.Init();
@@ -33,11 +34,18 @@ void InstallEnts()
 	RF2_NPC_Base.Init();
 	RF2_CustomHitbox.Init();
 	RF2_SentryBuster.Init();
+	RF2_TankBoss.Init();
+	RF2_RobotButler.Init();
+	RF2_Logic_BotDeath.Init();
+	RF2_Providence.Init();
+	RF2_RaidBossSpawner.Init();
+	RF2_ProvidenceShieldCrystal.Init();
+
+	#if defined DEVONLY
 	RF2_RaidBoss_Galleom.Init();
 	RF2_Companion_Base.Init();
 	RF2_Companion_HeavyBot.Init();
-	RF2_TankBoss.Init();
-	RF2_RobotButler.Init();
+	#endif
 }
 
 void HookMapStart(Function func)

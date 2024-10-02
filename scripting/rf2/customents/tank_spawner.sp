@@ -22,11 +22,11 @@ methodmap RF2_TankSpawner < CBaseEntity
 	public static void Init()
 	{
 		g_Factory = new CEntityFactory("rf2_tank_spawner", OnCreate);
-		g_Factory.DeriveFromBaseEntity();
+		g_Factory.DeriveFromBaseEntity(true);
 		g_Factory.BeginDataMapDesc()
 			.DefineBoolField("m_bUseForTankDestruction", _, "tank_destruction_spawnpoint")
 			.DefineIntField("m_iBaseHealthOverride", _, "base_health_override")
-			.DefineFloatField("m_flExtraHealthPercentPerPlayer", _, "health_percent_per_player")
+			.DefineIntField("m_iExtraBaseHealthPerPlayer", _, "extra_health_per_player")
 			.DefineFloatField("m_flSpeedOverride", _, "speed_override")
 			.DefineInputFunc("SpawnTank", InputFuncValueType_String, Input_SpawnTank)
 			.DefineInputFunc("SpawnBadassTank", InputFuncValueType_String, Input_SpawnBadassTank)
@@ -61,16 +61,16 @@ methodmap RF2_TankSpawner < CBaseEntity
 		}
 	}
 
-	property float ExtraHealthPercentPerPlayer
+	property int ExtraBaseHealthPerPlayer
 	{
 		public get()
 		{
-			return this.GetPropFloat(Prop_Data, "m_flExtraHealthPercentPerPlayer");
+			return this.GetProp(Prop_Data, "m_iExtraBaseHealthPerPlayer");
 		}
 		
-		public set(float value)
+		public set(int value)
 		{
-			this.SetPropFloat(Prop_Data, "m_flExtraHealthPercentPerPlayer", value);
+			this.SetProp(Prop_Data, "m_iExtraBaseHealthPerPlayer", value);
 		}
 	}
 	
@@ -91,16 +91,8 @@ methodmap RF2_TankSpawner < CBaseEntity
 	{
 		if (this.BaseHealthOverride > 0)
 		{
-			int health = RoundToFloor(float(this.BaseHealthOverride) * (1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvTankHealthScale.FloatValue)));
-			if (IsSingleplayer(false))
-			{
-				health = RoundToFloor(float(health) * 0.75);
-			}
-			else
-			{
-				health = RoundToFloor(float(health) * (1.0 + this.ExtraHealthPercentPerPlayer*float(RF2_GetSurvivorCount()-1)));
-			}
-			
+			int extraHealth = this.ExtraBaseHealthPerPlayer * (RF2_GetSurvivorCount()-1);
+			int health = RoundToFloor(float(this.BaseHealthOverride+extraHealth) * (1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvTankHealthScale.FloatValue)));
 			tank.MaxHealth = health;
 			tank.Health = health;
 		}
@@ -114,7 +106,7 @@ methodmap RF2_TankSpawner < CBaseEntity
 
 static void OnCreate(RF2_TankSpawner spawner)
 {
-	spawner.BaseHealthOverride = -1;
+	spawner.BaseHealthOverride = 0;
 	spawner.SpeedOverride = -1.0;
 }
 

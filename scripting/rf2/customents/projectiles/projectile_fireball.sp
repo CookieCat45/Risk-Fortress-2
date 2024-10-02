@@ -55,10 +55,16 @@ static void OnCreate(RF2_Projectile_Fireball fireball)
 
 static void OnCollide(RF2_Projectile_Fireball fireball, int other)
 {
+	// special case for old crown, don't explode if we hit world
+	if (!IsCombatChar(other) && GetEntItemProc(fireball.index) == Item_OldCrown)
+	{
+		return;
+	}
+
 	ArrayList hitEnts = fireball.Explode(DMG_BURN, true, true, true);
 	if (IsValidClient(other))
 	{
-		TF2_IgnitePlayer(other, fireball.Owner, 10.0);
+		TF2_IgnitePlayer(other, IsValidClient(fireball.Owner) ? fireball.Owner : other, 10.0);
 	}
 	
 	int entity;
@@ -68,7 +74,7 @@ static void OnCollide(RF2_Projectile_Fireball fireball, int other)
 		if (!IsValidClient(entity))
 			continue;
 		
-		TF2_IgnitePlayer(entity, fireball.Owner, 10.0);
+		TF2_IgnitePlayer(entity, IsValidClient(fireball.Owner) ? fireball.Owner : entity, 10.0);
 	}
 	
 	delete hitEnts;

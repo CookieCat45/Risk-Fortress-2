@@ -363,7 +363,23 @@ methodmap RF2_Object_Base < CBaseAnimating
 		}
 	}
 	
-	// Fixed from baseentity.inc
+	public void ScaleHitbox(float value)
+	{
+		float mins[3], maxs[3];
+		this.GetPropVector(Prop_Send, "m_vecMins", mins);
+		this.GetPropVector(Prop_Send, "m_vecMaxs", maxs);
+		ScaleVector(mins, value);
+		ScaleVector(maxs, value);
+		this.SetPropVector(Prop_Send, "m_vecMins", mins);
+		this.SetPropVector(Prop_Send, "m_vecMaxs", maxs);
+		this.SetPropVector(Prop_Send, "m_vecMinsPreScaled", mins);
+		this.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", maxs);
+		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMins", mins);
+		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMaxs", maxs);
+		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMinsPreScaled", mins);
+		this.SetPropVector(Prop_Send, "m_vecSpecifiedSurroundingMaxsPreScaled", maxs);
+	}
+
 	/**
 	 * Gets a network property as a color.
 	 *
@@ -485,20 +501,19 @@ static Action Timer_WorldText(Handle timer, int entity)
 	return Plugin_Continue;
 }
 
-static Action Timer_ResetGlow(Handle timer, int entity)
+static void Timer_ResetGlow(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
-		return Plugin_Continue;
+		return;
 	
 	if (RF2_Object_Teleporter(entity).IsValid() && RF2_Object_Teleporter(entity).EventState != TELE_EVENT_INACTIVE)
 	{
 		RF2_Object_Base(entity).GlowTimer = null;
-		return Plugin_Continue;
+		return;
 	}
 	
 	RF2_Object_Base(entity).SetGlow(false);
 	RF2_Object_Base(entity).GlowTimer = null;
-	return Plugin_Continue;
 }
 
 static void OnRemove(RF2_Object_Base obj)
@@ -534,7 +549,7 @@ static Action ObjectBase_OnInteract(int client, RF2_Object_Base obj)
 }
 
 // Note: Use SpawnCrate() for crate objects
-RF2_Object_Base CreateObject(const char[] classname, const float pos[3], bool spawn=true)
+RF2_Object_Base CreateObject(const char[] classname, const float pos[3], bool spawn=true, float zOffset=0.0)
 {
 	RF2_Object_Base obj = RF2_Object_Base(CreateEntityByName(classname));
 	if (!obj.IsValid())
@@ -553,6 +568,7 @@ RF2_Object_Base CreateObject(const char[] classname, const float pos[3], bool sp
 	angles[0] = 90.0;
 	Handle trace = TR_TraceRayFilterEx(pos, angles, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
 	TR_GetEndPosition(endPos, trace);
+	endPos[2] += zOffset;
 	delete trace;
 	if (!TR_PointOutsideWorld(endPos))
 	{

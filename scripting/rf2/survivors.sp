@@ -312,34 +312,30 @@ public int SortSurvivorListByPoints(int index1, int index2, ArrayList array, Han
 	return points1 > points2 ? -1 : 1;
 }
 
-public Action Timer_SurvivorTutorial(Handle timer, int client)
+public void Timer_SurvivorTutorial(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0)
-		return Plugin_Continue;
+	if (!(client = GetClientOfUserId(client)))
+		return;
 	
 	PrintKeyHintText(client, "%t", "SurvivorTutorial");
 	CreateTimer(13.0, Timer_SurvivorTutorial2, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-	return Plugin_Continue;
 }
 
-public Action Timer_SurvivorTutorial2(Handle timer, int client)
+public void Timer_SurvivorTutorial2(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0)
-		return Plugin_Continue;
+	if (!(client = GetClientOfUserId(client)))
+		return;
 	
 	PrintKeyHintText(client, "%t", "SurvivorTutorial2");
 	CreateTimer(13.0, Timer_SurvivorTutorial3, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-	
-	return Plugin_Continue;
 }
 
-public Action Timer_SurvivorTutorial3(Handle timer, int client)
+public void Timer_SurvivorTutorial3(Handle timer, int client)
 {
-	if ((client = GetClientOfUserId(client)) == 0)
-		return Plugin_Continue;
+	if (!(client = GetClientOfUserId(client)))
+		return;
 	
 	SetClientCookie(client, g_coTutorialSurvivor, "1");
-	return Plugin_Continue;
 }
 
 void LoadSurvivorInventory(int client, int index)
@@ -479,6 +475,9 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	RF2_Object_Crate crate;
 	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
+		if (!IsValidEntity2(entity))
+			continue;
+
 		if (entity > 0 && entity <= MaxClients && IsPlayerSurvivor(entity, false))
 			survivorCount++;
 		
@@ -843,7 +842,7 @@ bool IsItemSharingEnabled(bool liveCheck=true)
 		return false;
 	
 	// count bots for debugging purposes
-	if (GetPlayersOnTeam(TEAM_SURVIVOR, true, false) <= 1)
+	if (IsSingleplayer(false) || GetPlayersOnTeam(TEAM_SURVIVOR, true, false) <= 1)
 		return false;
 	
 	int loopCount = g_cvItemShareDisableLoopCount.IntValue;
@@ -890,7 +889,7 @@ bool DoesPlayerHaveEnoughItems(int client)
 	// player is taking too long to pick stuff up
 	if (!IsBossEventActive() || g_iTanksKilledObjective >= g_iTankKillRequirement)
 	{
-		if (g_flPlayerTimeSinceLastItemPickup[client]+50.0 < GetTickedTime())
+		if (g_flPlayerTimeSinceLastItemPickup[client]+g_cvItemShareMaxTime.FloatValue < GetTickedTime())
 		{
 			g_bPlayerItemShareExcluded[client] = true;
 			return true;

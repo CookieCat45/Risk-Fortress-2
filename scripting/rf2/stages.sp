@@ -13,11 +13,14 @@ char g_szStageBGM[PLATFORM_MAX_PATH];
 char g_szBossBGM[PLATFORM_MAX_PATH];
 char g_szUnderworldMap[PLATFORM_MAX_PATH];
 char g_szFinalMap[PLATFORM_MAX_PATH];
+bool g_bDisableEurekaTeleport;
+int g_iCurrentCustomTrack = -1;
+ArrayList g_hCustomTracks;
+ArrayList g_hCustomTracksDuration;
 
 float g_flGracePeriodTime = 30.0;
-//float g_flMinSpawnDistOverride = -1.0;
-//float g_flMaxSpawnDistOverride = -1.0;
 float g_flBossSpawnChanceBonus;
+float g_flMaxSpawnWaveTime;
 float g_flLoopMusicAt[MAXTF2PLAYERS] = {-1.0, ...};
 float g_flStageBGMDuration;
 float g_flBossBGMDuration;
@@ -96,6 +99,7 @@ void LoadMapSettings(const char[] mapName)
 			g_szEnemyPackName = "";
 			g_szBossPackName = "";
 			g_flGracePeriodTime = 30.0;
+			g_bDisableEurekaTeleport = false;
 			stageKv = 1;
 		}
 		else
@@ -112,7 +116,8 @@ void ReadMapKeys(KeyValues mapKey)
 	g_flStageBGMDuration = mapKey.GetFloat("theme_duration", 0.0);
 	mapKey.GetString("boss_theme", g_szBossBGM, sizeof(g_szBossBGM), NULL);
 	g_flBossBGMDuration = mapKey.GetFloat("boss_theme_duration", 0.0);
-	if (g_iLoopCount > 0 || g_cvDebugUseAltMapSettings.BoolValue)
+	bool useAlt = (g_iLoopCount > 0 || g_cvDebugUseAltMapSettings.BoolValue);
+	if (useAlt)
 	{
 		char stageTheme[PLATFORM_MAX_PATH], bossTheme[PLATFORM_MAX_PATH];
 		float stageThemeTime, bossThemeTime;
@@ -126,6 +131,50 @@ void ReadMapKeys(KeyValues mapKey)
 		g_flBossBGMDuration = mapKey.GetFloat("boss_theme_alt_duration", bossThemeTime);
 	}
 	
+	int i = 1;
+	char customTrackKey[32], customTrack[PLATFORM_MAX_PATH];
+	g_hCustomTracks.Clear();
+	g_hCustomTracksDuration.Clear();
+	for ( ;; )
+	{
+		float time;
+		FormatEx(customTrackKey, sizeof(customTrackKey), "custom_track_%d", i);
+
+		if (useAlt)
+		{
+			StrCat(customTrackKey, sizeof(customTrackKey), "_alt");
+			mapKey.GetString(customTrackKey, customTrack, sizeof(customTrack));
+			if (!customTrack[0])
+			{
+				// alt wasn't found, fall back to normal
+				ReplaceStringEx(customTrackKey, sizeof(customTrackKey), "_alt", "");
+				mapKey.GetString(customTrackKey, customTrack, sizeof(customTrack));
+				if (!customTrack[0])
+					break;
+			}
+
+			StrCat(customTrackKey, sizeof(customTrackKey), "_duration");
+			time = mapKey.GetFloat(customTrackKey);
+		}
+		else
+		{
+			mapKey.GetString(customTrackKey, customTrack, sizeof(customTrack));
+			if (!customTrack[0])
+				break;
+
+			StrCat(customTrackKey, sizeof(customTrackKey), "_duration");
+			time = mapKey.GetFloat(customTrackKey);
+		}
+		
+		g_hCustomTracks.Resize(i+1);
+		g_hCustomTracks.SetString(i, customTrack);
+		g_hCustomTracksDuration.Resize(i+1);
+		g_hCustomTracksDuration.Set(i, time);
+		AddSoundToDownloadsTable(customTrack);
+		PrintToServer("[RF2] Loaded custom music track %d: %s", i, customTrack);
+		i++;
+	}
+
 	if (g_szStageBGM[0])
 	{
 		AddSoundToDownloadsTable(g_szStageBGM);
@@ -160,7 +209,9 @@ void ReadMapKeys(KeyValues mapKey)
 	PrintToServer("[RF2] Enemies/bosses loaded: %i", g_iEnemyCount);
 	g_flGracePeriodTime = mapKey.GetFloat("grace_period_time", 30.0);
 	g_flBossSpawnChanceBonus = mapKey.GetFloat("boss_spawn_chance_bonus", 0.0);
+	g_flMaxSpawnWaveTime = mapKey.GetFloat("max_spawn_wave_time", 0.0);
 	g_bTankBossMode = asBool(mapKey.GetNum("tank_destruction", false));
+	g_bDisableEurekaTeleport = asBool(mapKey.GetNum("disable_eureka_teleport", false));
 }
 
 int FindMaxStages()
@@ -244,7 +295,7 @@ ArrayList GetMapsForStage(int stage)
 		if (mapKey.JumpToKey(mapId))
 		{
 			mapKey.GetString("name", mapName, sizeof(mapName));
-			if (!mapName[0])
+			if (!mapName[0] || !IsMapValid(mapName))
 			{
 				LogError("[GetMapsForStage] %s for stage %i (%s) is invalid!", mapId, stage, mapName);
 				continue;
@@ -320,15 +371,24 @@ bool IsInUnderworld()
 	return g_bInUnderworld;
 }
 
+bool IsInFinalMap()
+{
+	return g_bInFinalMap;
+}
+
 bool DoesUnderworldExist()
 {
 	return g_szUnderworldMap[0] && RF2_IsMapValid(g_szUnderworldMap);
 }
 
-public Action Timer_PlayMusicDelay(Handle timer)
+bool DoesFinalMapExist()
+{
+	return g_szFinalMap[0] && RF2_IsMapValid(g_szFinalMap);
+}
+
+public void Timer_PlayMusicDelay(Handle timer)
 {
 	PlayMusicTrackAll();
-	return Plugin_Continue;
 }
 
 void PlayMusicTrack(int client)
@@ -337,9 +397,23 @@ void PlayMusicTrack(int client)
 		return;
 	
 	StopMusicTrack(client);
-	GetCurrentMusicTrack(g_szClientBGM[client], sizeof(g_szClientBGM[]));
+	if (IsCustomTrackPlaying())
+	{
+		PlayCustomMusicTrack(client, g_iCurrentCustomTrack);
+		return;
+	}
+
+	bool bossEvent = IsBossEventActive();
+	if (bossEvent && g_szBossBGM[0])
+	{
+		strcopy(g_szClientBGM[client], sizeof(g_szClientBGM[]), g_szBossBGM);
+	}
+	else
+	{
+		strcopy(g_szClientBGM[client], sizeof(g_szClientBGM[]), g_szStageBGM);
+	}
 	
-	if ((!IsBossEventActive() || !g_szBossBGM[0]) && g_flStageBGMDuration > 0.0)
+	if ((!bossEvent || !g_szBossBGM[0]) && g_flStageBGMDuration > 0.0)
 	{
 		g_flLoopMusicAt[client] = GetEngineTime() + g_flStageBGMDuration+0.1;
 	}
@@ -352,19 +426,55 @@ void PlayMusicTrack(int client)
 	CreateTimer(0.1, Timer_PlayMusicDelaySingle, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
-public Action Timer_PlayMusicDelaySingle(Handle timer, int client)
+void PlayCustomMusicTrack(int client, int trackIndex)
+{
+	if (IsFakeClient(client) || !GetCookieBool(client, g_coMusicEnabled))
+		return;
+
+	StopMusicTrack(client);
+	char music[PLATFORM_MAX_PATH];
+	g_hCustomTracks.GetString(trackIndex, music, sizeof(music));
+	float time = g_hCustomTracksDuration.Get(trackIndex);
+	g_flLoopMusicAt[client] = GetEngineTime() + time+0.1;
+	strcopy(g_szClientBGM[client], sizeof(g_szClientBGM[]), music);
+	
+	#if defined DEVONLY
+	CPrintToChatAll("Playing custom music track %d: {yellow}%s {default}for {green}%.0f{default} seconds", trackIndex, music, time);
+	#endif
+	// delay because stopping the sound in the same frame or client lagging can sometimes end up with it not playing
+	CreateTimer(0.1, Timer_PlayMusicDelaySingle, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+}
+
+bool IsCustomTrackPlaying()
+{
+	return g_iCurrentCustomTrack >= 0;
+}
+
+bool IsMusicPaused()
+{
+	if (IsStageCleared())
+		return true;
+
+	RF2_GameRules gamerules = GetRF2GameRules();
+	if (gamerules.IsValid())
+	{
+		return gamerules.MusicPaused;
+	}
+
+	return false;
+}
+
+public void Timer_PlayMusicDelaySingle(Handle timer, int client)
 {
 	if (!(client = GetClientOfUserId(client)))
-		return Plugin_Continue;
+		return;
 	
 	EmitSoundToClient(client, g_szClientBGM[client]);
-	return Plugin_Continue;
 }
 
 void StopMusicTrack(int client)
 {
 	g_flLoopMusicAt[client] = -1.0;
-	
 	if (!g_bMapChanging && IsClientInGame(client) && !IsFakeClient(client))
 	{
 		StopSound(client, SNDCHAN_AUTO, g_szClientBGM[client]);
@@ -382,27 +492,39 @@ void PlayMusicTrackAll()
 	}
 }
 
+void PlayCustomMusicTrackAll(int trackIndex)
+{
+	// this will usually be called from map logic, so warn that the track doesn't exist instead of getting an array index error
+	if (trackIndex >= g_hCustomTracks.Length)
+	{
+		char map[PLATFORM_MAX_PATH];
+		GetCurrentMap(map, sizeof(map));
+		LogError("[PlayCustomMusicTrack] Track %d doesn't exist. Map: %s", trackIndex, map);
+		return;
+	}
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i))
+			continue;
+			
+		PlayCustomMusicTrack(i, trackIndex);
+	}
+
+	g_iCurrentCustomTrack = trackIndex;
+}
+
 void StopMusicTrackAll()
 {
 	for (int i = 1; i <= MAXTF2PLAYERS; i++)
 	{
 		if (i > MaxClients)
 			continue;
-			
+
 		StopMusicTrack(i);
 	}
-}
 
-void GetCurrentMusicTrack(char[] buffer, int size)
-{
-	if (IsBossEventActive() && g_szBossBGM[0])
-	{
-		strcopy(buffer, size, g_szBossBGM);
-	}
-	else
-	{
-		strcopy(buffer, size, g_szStageBGM);
-	}
+	g_iCurrentCustomTrack = -1;
 }
 
 bool IsStageCleared()
@@ -418,7 +540,7 @@ bool IsStageCleared()
 		return g_iTanksKilledObjective >= g_iTankKillRequirement;
 	}
 	
-	return GameRules_GetRoundState() == RoundState_TeamWin && GameRules_GetProp("m_iWinningTeam") == TEAM_SURVIVOR;
+	return false;
 }
 
 stock bool IsAboutToLoop()

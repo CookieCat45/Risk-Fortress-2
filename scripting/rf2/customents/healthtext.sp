@@ -182,6 +182,7 @@ static void OnSpawnPost(int entity)
 
 public void RF_UpdateText(int entity)
 {
+	int entref = entity;
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return;
 	
@@ -201,6 +202,19 @@ public void RF_UpdateText(int entity)
 			RemoveEntity2(text.index);
 			return;
 		}
+	}
+
+	RF2_ProvidenceShieldCrystal crystal = RF2_ProvidenceShieldCrystal(text.Target);
+	if (crystal.IsValid() && crystal.Destroyed)
+	{
+		static char time[16];
+		FormatEx(time, sizeof(time), "%.0f", FloatAbs(GetGameTime()-crystal.RegenerateAt));
+		SetVariantString(time);
+		text.AcceptInput("SetText");
+		SetVariantColor({255, 255, 255, 255});
+		text.AcceptInput("SetColor");
+		RequestFrame(RF_UpdateText, entref);
+		return;
 	}
 	
 	int health = imax(target.GetProp(Prop_Data, "m_iHealth"), 0);
@@ -244,5 +258,5 @@ public void RF_UpdateText(int entity)
 		text.AcceptInput("SetColor");
 	}
 	
-	RequestFrame(RF_UpdateText, EntIndexToEntRef(entity));
+	RequestFrame(RF_UpdateText, entref);
 }

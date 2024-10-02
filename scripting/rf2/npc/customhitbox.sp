@@ -36,6 +36,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 			.DefineFloatField("m_flDamage")
 			.DefineIntField("m_iDamageFlags")
 			.DefineBoolField("m_bReturnHitEnts")
+			.DefineFloatField("m_flBuildingDamageMult")
 			.DefineVectorField("m_vecDamageForce")
 			.DefineVectorField("m_vecCustomMins")
 			.DefineVectorField("m_vecCustomMaxs")
@@ -68,6 +69,19 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		public set(int value)
 		{
 			this.SetProp(Prop_Data, "m_iDamageFlags", value);
+		}
+	}
+
+	property float BuildingDamageMult
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flBuildingDamageMult");
+		}
+
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flBuildingDamageMult", value);
 		}
 	}
 	
@@ -165,21 +179,28 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		
 		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
-			if (!IsCombatChar(entity))
+			if (!IsValidEntity2(entity) || !IsCombatChar(entity))
 				continue;
 			
+			if (IsValidClient(entity) && !IsPlayerAlive(entity))
+				continue;
+
 			if (entity == owner || GetEntTeam(entity) == team)
 				continue;
 			
 			if (DoEntitiesIntersect(this.index, entity))
 			{
-				RF_TakeDamage(entity, this.Inflictor, this.Attacker, this.Damage, this.DamageFlags);
-				this.GetDamageForce(force);
-				if (VectorSum(force, true) > 0.0)
+				bool building = IsBuilding(entity);
+				RF_TakeDamage(entity, this.Inflictor, this.Attacker, building ? this.Damage*this.BuildingDamageMult : this.Damage, this.DamageFlags);
+				if (!building)
 				{
-					GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
-					AddVectors(force, vel, vel);
-					TeleportEntity(entity, _, _, vel);
+					this.GetDamageForce(force);
+					if (VectorSum(force, true) > 0.0)
+					{
+						GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
+						AddVectors(force, vel, vel);
+						TeleportEntity(entity, _, _, vel);
+					}
 				}
 				
 				g_hHitEntities.Push(entity);
@@ -191,6 +212,15 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 			RemoveEntity2(this.index);
 		}
 		
+		#if defined DEVONLY
+		float pos[3];
+		this.GetAbsOrigin(pos);
+		float mins[3], maxs[3];
+		this.GetMins(mins);
+		this.GetMaxs(maxs);
+		TE_DrawBoxAll(pos, pos, mins, maxs, 1.0, g_iBeamModel, {0, 255, 255, 255});
+		#endif
+
 		return this.ReturnHitEnts ? g_hHitEntities.Clone() : null;
 	}
 }

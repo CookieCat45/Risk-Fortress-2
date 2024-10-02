@@ -122,6 +122,9 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	
 	public static void StartVote(int client=INVALID_ENT, bool nextStageVote=false)
 	{
+		if (GameRules_GetRoundState() == RoundState_TeamWin)
+			return;
+
 		if (IsVoteInProgress())
 		{
 			if (client > 0)
@@ -150,11 +153,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		}
 		
 		Menu vote = new Menu(Menu_TeleporterVote);
-		#if defined PRERELEASE
 		bool final = nextStageVote && g_iLoopCount >= 1 && IsAboutToLoop() && RF2_IsMapValid(g_szFinalMap);
-		#else
-		bool final = false;
-		#endif
 		if (nextStageVote)
 		{
 			if (final)
@@ -231,7 +230,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsClientInGame(i))
+			if (!IsClientInGame(i) || IsFakeClient(i))
 				continue;
 			
 			oldFog[i] = GetEntPropEnt(i, Prop_Data, "m_hCtrl");
@@ -571,16 +570,15 @@ public int Menu_TeleporterVote(Menu menu, MenuAction action, int param1, int par
 	return 0;
 }
 
-public Action Timer_StartTeleporterEvent(Handle timer, int entity)
+static void Timer_StartTeleporterEvent(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
-		return Plugin_Stop;
+		return;
 	
 	RF2_Object_Teleporter(entity).Start();
-	return Plugin_Continue;
 }
 
-public Action Timer_TeleporterThink(Handle timer, int entity)
+static Action Timer_TeleporterThink(Handle timer, int entity)
 {
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT || g_bGameOver)
 		return Plugin_Stop;
@@ -665,7 +663,7 @@ public Action Timer_TeleporterThink(Handle timer, int entity)
 	return Plugin_Continue;
 }
 
-public Action Timer_DelayHalloweenBossSpawn(Handle timer, int entity)
+static void Timer_DelayHalloweenBossSpawn(Handle timer, int entity)
 {
 	DispatchSpawn(entity);
 	int health = 3000 + ((RF2_GetEnemyLevel()-1) * 500);
@@ -684,8 +682,6 @@ public Action Timer_DelayHalloweenBossSpawn(Handle timer, int entity)
 		text = CreateHealthText(entity, 120.0, 25.0, "MONOCULUS!");
 		text.SetHealthColor(HEALTHCOLOR_HIGH, {150, 0, 150, 255});
 	}
-	
-	return Plugin_Continue;
 }
 
 public void OnTeleporterVoteFinish(Menu menu, int numVotes, int numClients, const int[][] clientInfo, int numItems, const int[][] itemInfo)

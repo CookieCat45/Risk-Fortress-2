@@ -55,5 +55,11 @@ bool IsValidEntity2(int entity)
 	if (entity == 0)
 		return false;
 	
+	// Fun Fact: IsValidEntity() returns true for unconnected clients...
+	if (entity >= 1 && entity <= MaxClients && !IsClientInGame(entity))
+	{
+		return false;
+	}
+
 	return IsValidEntity(entity);
 }

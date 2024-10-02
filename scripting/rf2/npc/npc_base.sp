@@ -2,7 +2,23 @@
 #pragma semicolon 1
 
 static CEntityFactory g_Factory;
-#define SND_BOSS_DEATH "rf2/sfx/boss_death.wav"
+typedef OnActionCallback = function void(RF2_NPC_Base npc, const char[] action);
+
+enum TargetMethod
+{
+	TargetMethod_Closest,
+	TargetMethod_ClosestNew,
+}
+
+enum TargetType
+{
+	TargetType_Any,
+	TargetType_Player,
+	TargetType_Building,
+	TargetType_NoMinions,
+	TargetType_NoBuildings,
+	TargetType_NoMinionsOrBuildings,
+};
 
 methodmap RF2_NPC_Base < CBaseCombatCharacter
 {
@@ -13,7 +29,7 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 	
 	public bool IsValid()
 	{
-		if (!IsValidEntity2(this.index))
+		if (!IsValidEntity2(this.index) || this.BaseNpc == INVALID_NPC)
 		{
 			return false;
 		}
@@ -31,11 +47,18 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		g_Factory.BeginDataMapDesc()
 			.DefineEntityField("m_hTarget")
 			.DefineEntityField("m_hGlow")
+			.DefineEntityField("m_hRaidBossSpawner")
+			.DefineEntityField("m_hHealthText")
+			.DefineIntField("m_hOnDoAction")
 			.DefineBoolField("m_bDoUnstuckChecks")
+			.DefineBoolField("m_bCanBeHeadshot")
+			.DefineBoolField("m_bCanBeBackstabbed")
+			.DefineFloatField("m_flBaseBackstabDamage")
 			.DefineFloatField("m_flLastUnstuckTime")
 			.DefineFloatField("m_flDormantTime")
 			.DefineVectorField("m_vecStuckPos")
 			.DefineIntField("m_iDefendTeam", _, "defendteam") // we won't target this team
+			.DefineInputFunc("DoAction", InputFuncValueType_String, Input_DoAction)
 		.EndDataMapDesc();
 		g_Factory.Install();
 		HookMapStart(BaseNPC_OnMapStart);
@@ -62,6 +85,19 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		}
 	}
 
+	property RF2_HealthText HealthText
+    {
+        public get()
+        {
+            return view_as<RF2_HealthText>(this.GetPropEnt(Prop_Data, "m_hHealthText"));
+        }
+
+        public set(RF2_HealthText value)
+        {
+            this.SetPropEnt(Prop_Data, "m_hHealthText", value.index);
+        }
+    }
+
 	property int FollowerIndex
 	{
 		public get()
@@ -75,6 +111,32 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		}
 	}
 
+	property int RaidBossSpawner
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hRaidBossSpawner");
+		}
+
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hRaidBossSpawner", value);
+		}
+	}
+
+	property PrivateForward OnDoAction
+	{
+		public get()
+		{
+			return view_as<PrivateForward>(this.GetProp(Prop_Data, "m_hOnDoAction"));
+		}
+
+		public set(PrivateForward value)
+		{
+			this.SetProp(Prop_Data, "m_hOnDoAction", value);
+		}
+	}
+
 	property bool DoUnstuckChecks
 	{
 		public get()
@@ -85,6 +147,45 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		public set(bool value)
 		{
 			this.SetProp(Prop_Data, "m_bDoUnstuckChecks", value);
+		}
+	}
+
+	property bool CanBeHeadshot
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bCanBeHeadshot"));
+		}
+
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bCanBeHeadshot", value);
+		}
+	}
+
+	property bool CanBeBackstabbed
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bCanBeBackstabbed"));
+		}
+
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bCanBeBackstabbed", value);
+		}
+	}
+
+	property float BaseBackstabDamage
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flBaseBackstabDamage");
+		}
+
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flBaseBackstabDamage", value);
 		}
 	}
 
@@ -228,6 +329,11 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		}
 	}
 
+	public bool IsRaidBoss()
+	{
+		return IsValidEntity2(this.RaidBossSpawner);
+	}
+
 	public void SetSequence(const char[] sequence, float playbackrate=1.0)
 	{
 		int seq = this.LookupSequence(sequence);
@@ -260,8 +366,13 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 	{
 		return IsPlayingGesture(this.index, seq);
 	}
+
+	public bool IsTargetValid()
+	{
+		return IsValidEntity2(this.Target) && (!IsValidClient(this.Target) || IsPlayerAlive(this.Target));
+	}
 	
-	public int GetNewTarget(float maxDist=0.0)
+	public int GetNewTarget(TargetMethod method=TargetMethod_Closest, TargetType type=TargetType_Any, float maxDist=0.0)
 	{
 		float pos[3];
 		this.WorldSpaceCenter(pos);
@@ -272,12 +383,31 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		maxDist = sq(maxDist);
 		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
+			if (!IsValidEntity2(entity) || method == TargetMethod_ClosestNew && entity == this.Target)
+				continue;
+
 			if (!IsCombatChar(entity))
 				continue;
-			
+
 			if (IsValidClient(entity) && !IsPlayerAlive(entity))
 				continue;
 			
+			if (type != TargetType_Any)
+			{
+				bool valid = true;
+				switch (type)
+				{
+					case TargetType_Player: valid = IsValidClient(entity);
+					case TargetType_Building: valid = IsBuilding(entity);
+					case TargetType_NoBuildings: valid = !IsBuilding(entity);
+					case TargetType_NoMinions: valid = !IsNPC(entity) && (!IsValidClient(entity) || !IsPlayerMinion(entity));
+					case TargetType_NoMinionsOrBuildings: valid = (!IsValidClient(entity) || !IsPlayerMinion(entity)) && !IsBuilding(entity) && !IsNPC(entity);
+				}
+
+				if (!valid)
+					continue;
+			}
+
 			targetTeam = GetEntTeam(entity);
 			if (targetTeam == this.Team || targetTeam == this.DefendTeam)
 				continue;
@@ -299,7 +429,16 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 	public void ApproachEntity(int entity, float maxDist=0.0, bool walk=false)
 	{
 		float targetPos[3];
-		GetEntPos(entity, targetPos, true);
+		if (IsBuilding(entity) && GetEntProp(entity, Prop_Send, "m_bCarried"))
+		{
+			int builder = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
+			GetEntPos(builder, targetPos, true);
+		}
+		else
+		{
+			GetEntPos(entity, targetPos, true);
+		}
+
 		this.Path.ComputeToPos(this.Bot, targetPos, maxDist);
 		this.Path.Update(this.Bot);
 		walk ? this.Locomotion.Walk() : this.Locomotion.Run();
@@ -373,11 +512,32 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 			CreateTimer(GetRandomFloat(10.0, 18.0), Timer_DeleteEntity, EntIndexToEntRef(prop), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
+
+	public void HookOnAction(OnActionCallback callback)
+	{
+		if (!this.OnDoAction)
+		{
+			this.OnDoAction = new PrivateForward(ET_Ignore, Param_Any, Param_String);
+		}
+
+		this.OnDoAction.AddFunction(INVALID_HANDLE, callback);
+	}
+
+	public void DoAction(const char[] action)
+	{
+		if (!this.OnDoAction)
+			return;
+
+		Call_StartForward(this.OnDoAction);
+		Call_PushCell(this);
+		Call_PushString(action);
+		Call_Finish();
+	}
 }
 
 void BaseNPC_OnMapStart()
 {
-	PrecacheSound2(SND_BOSS_DEATH, true);
+	
 }
 
 CEntityFactory GetBaseNPCFactory()
@@ -390,19 +550,50 @@ static void OnCreate(RF2_NPC_Base npc)
 	SDKHook(npc.index, SDKHook_OnTakeDamageAlivePost, OnTakeDamageAlivePost);
 	SDKHook(npc.index, SDKHook_ThinkPost, ThinkPost);
 	SDKHook(npc.index, SDKHook_SpawnPost, OnSpawnPost);
+	SDKHook(npc.index, SDKHook_TraceAttack, Hook_OnTraceAttack);
+	npc.HookOnAction(OnAction);
+	npc.AddFlag(FL_NPC);
 	npc.DefendTeam = -1;
 	npc.DoUnstuckChecks = true;
+	npc.BaseBackstabDamage = 750.0;
 	npc.FollowerIndex = GetFreePathFollowerIndex(npc.index);
 }
 
 static void OnRemove(RF2_NPC_Base npc)
 {
+	if (npc.OnDoAction)
+	{
+		RequestFrame(RF_DeleteForward, npc.OnDoAction);
+		npc.OnDoAction = null;
+	}
+}
 
+static void RF_DeleteForward(PrivateForward fwd)
+{
+	delete fwd;
+}
+
+static void OnAction(RF2_NPC_Base npc, const char[] action)
+{
+	#if defined DEVONLY
+	char classname[128];
+	npc.GetClassname(classname, sizeof(classname));
+	CPrintToChatAll("{yellow}\"%s\" {default}doing action: {lightblue}\"%s\"", classname, action);
+	#endif
+
+	npc.Bot.OnCommandString(action);
 }
 
 static void ThinkPost(int entity)
 {
-	RF2_NPC_Base(entity).SetNextThink(GetGameTime());
+	RF2_NPC_Base npc = RF2_NPC_Base(entity);
+	npc.SetNextThink(GetGameTime());
+
+	// If we have a target, make sure it isn't a dead player
+	if (IsValidClient(npc.Target) && !IsPlayerAlive(npc.Target))
+	{
+		npc.Target = INVALID_ENT;
+	}
 }
 
 static void OnSpawnPost(int entity)
@@ -417,7 +608,7 @@ static void OnSpawnPost(int entity)
 	}
 }
 
-static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3])
+static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3], int damageCustom)
 {
 	RF2_NPC_Base npc = RF2_NPC_Base(victim);
 	int health = npc.GetProp(Prop_Data, "m_iHealth");
@@ -441,6 +632,11 @@ static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
 		}
 		
 		event.Fire();
+	}
+
+	if (npc.Health <= 0 && npc.IsRaidBoss())
+	{
+		RF2_RaidBossSpawner(npc.RaidBossSpawner).FireOutput("OnBossHealthDepleted");
 	}
 }
 
@@ -502,4 +698,9 @@ static Action Timer_UnstuckCheck(Handle timer, int entity)
 	}
 	
 	return Plugin_Continue;
+}
+
+public void Input_DoAction(int entity, int activator, int caller, const char[] value)
+{
+	RF2_NPC_Base(entity).DoAction(value);
 }

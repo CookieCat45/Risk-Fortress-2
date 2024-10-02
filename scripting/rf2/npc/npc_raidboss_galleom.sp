@@ -29,7 +29,7 @@ static CEntityFactory g_Factory;
 #include "actions/galleom/attack_tankram.sp"
 #include "actions/galleom/death.sp"
 
-#define GALLEOM_BASE_HEALTH 30000.0
+#define GALLEOM_BASE_HEALTH 100000.0
 
 methodmap RF2_RaidBoss_Galleom < RF2_NPC_Base
 {

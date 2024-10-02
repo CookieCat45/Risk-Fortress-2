@@ -8,8 +8,8 @@
 #pragma newdecls required
 
 #define MAX_SURVIVORS 8
-#define TEAM_SURVIVOR view_as<int>(TFTeam_Red)
-#define TEAM_ENEMY view_as<int>(TFTeam_Blue)
+#define TEAM_SURVIVOR 2
+#define TEAM_ENEMY 3
 
 // Items -------------------------------------------------------------------------------------------------------------------------------------
 #define MAX_ITEMS 200
@@ -117,6 +117,8 @@ enum
 	Item_BedouinBandana = 97,
 	Item_HauntedHat = 98,
 	ItemDemo_OldBrimstone = 99,
+	ItemMedic_MechaMedes = 100,
+	Item_OldCrown = 101,
 	Item_MaxValid,
 };
 
@@ -570,14 +572,13 @@ native bool RF2_IsTankDestructionMode();
  * @param damageForce		Velocity of damage force
  * @param damagePosition	Origin of damage
  * @param damageCustom		Custom damage type
- * @param critType			Crit type. 0 for none, 1 for minicrits, 2 for crits
  * @param attackerItem		Item associated with the attacker, usually only set if the attacker is a client
  * @param inflictorItem		Item associated with the inflictor, usually only set if the inflictor is something like a projectile triggered by an item
  * @param procCoeff			Proc coefficient
  * @return Plugin_Stop/Plugin_Handled to prevent damage, Plugin_Changed if any parameters are changed, Plugin_Continue otherwise
  */
 forward Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, 
-	float damageForce[3], float damagePosition[3], int damageCustom, int &critType, int attackerItem, int inflictorItem, float procCoeff);
+	float damageForce[3], float damagePosition[3], int damageCustom, int attackerItem, int inflictorItem, float &procCoeff);
 
 /**
  * Called when an item is loaded from a custom items file in the `configs/rf2/custom_items/` directory.
