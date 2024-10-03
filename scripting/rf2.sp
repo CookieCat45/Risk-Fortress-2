@@ -914,6 +914,8 @@ public void OnMapStart()
 		FindConVar("sv_tags").Flags = 0;
 		FindConVar("tv_enable").SetBool(true);
 		FindConVar("tv_transmitall").SetBool(true);
+		FindConVar("tv_delaymapchange").SetBool(true);
+		FindConVar("tv_delay").SetInt(10);
 		SetMVMPlayerCvar(GetDesiredPlayerCap());
 		
 		// Remove Goomba immunities on stunned players
@@ -6944,11 +6946,11 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 
 public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLATFORM_MAX_PATH], int& client, int& channel, float& volume, int& level, int& pitch, int& flags)
 {
-	if (!RF2_IsEnabled() || g_bWaitingForPlayers || !IsValidClient(client))
+	if (!RF2_IsEnabled() || g_bWaitingForPlayers || !g_bRoundActive || !IsValidClient(client))
 		return Plugin_Continue;
 	
 	int team = GetClientTeam(client);
-	if (team == TEAM_ENEMY && Enemy(client) == NULL_ENEMY)
+	if (team == TEAM_ENEMY && g_bGracePeriod)
 		return Plugin_Stop;
 
 	int originalPitch = pitch;
