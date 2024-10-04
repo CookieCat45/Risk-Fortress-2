@@ -349,6 +349,7 @@ ConVar g_cvWaitExtendTime;
 ConVar g_cvItemShareDisableThreshold;
 ConVar g_cvItemShareDisableLoopCount;
 ConVar g_cvRequiredStagesForStatue;
+ConVar g_cvEnableOneShotProtection;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -3565,6 +3566,12 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 			}
 
+			if (PlayerHasItem(i, Item_PointAndShoot) && g_iPlayerFireRateStacks[i] > 0)
+			{
+				Format(miscText, sizeof(miscText), "%sAttack Buff Stacks: %i/%i\n", miscText,
+					g_iPlayerFireRateStacks[i], CalcItemModInt(i, Item_PointAndShoot, 0));
+			}
+
 			TFClassType class = TF2_GetPlayerClass(i);
 			if (class == TFClass_Spy && g_flPlayerVampireSapperCooldown[i] > 0.0)
 			{
@@ -4026,9 +4033,22 @@ public Action Timer_PlayerTimer(Handle timer)
 			g_iPlayerShieldHealth[i] = CalcItemModInt(i, Item_MetalHelmet, 2);
 		}
 
-		if (g_flPlayerHealthRegenTime[i] <= 0.0 && g_flHeavyArmorPoints[i] < 100.0 && PlayerHasItem(i, ItemHeavy_Pugilist) && CanUseCollectorItem(i, ItemHeavy_Pugilist))
+		if (g_flPlayerHealthRegenTime[i] <= 0.0)
 		{
-			g_flHeavyArmorPoints[i] = fmin(g_flHeavyArmorPoints[i] + (CalcItemMod(i, ItemHeavy_Pugilist, 1)*0.1), 100.0);
+			if (g_flHeavyArmorPoints[i] < 100.0 && PlayerHasItem(i, ItemHeavy_Pugilist) && CanUseCollectorItem(i, ItemHeavy_Pugilist))
+			{
+				g_flHeavyArmorPoints[i] = fmin(g_flHeavyArmorPoints[i] + (CalcItemMod(i, ItemHeavy_Pugilist, 1)*0.1), 100.0);
+			}
+			
+			int maxShield = CalcItemModInt(i, Item_MetalHelmet, 2);
+			if (GetGameTime() >= g_flPlayerShieldRegenTime[i] 
+				&& g_iPlayerShieldHealth[i] > 0 && g_iPlayerShieldHealth[i] < maxShield 
+				&& PlayerHasItem(i, Item_MetalHelmet))
+			{
+				// slowly regenerate
+				g_iPlayerShieldHealth[i] = imin(
+					g_iPlayerShieldHealth[i]+RoundToCeil(float(maxShield)*GetItemMod(Item_MetalHelmet, 4)*0.1), maxShield);
+			}
 		}
 		
 		if (PlayerHasItem(i, ItemSpy_Showstopper) && CanUseCollectorItem(i, ItemSpy_Showstopper))
@@ -5617,16 +5637,11 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		}
 	}
 	
-	if (IsValidClient(victim) && g_iPlayerShieldHealth[victim] > 0 && PlayerHasItem(victim, Item_MetalHelmet))
+	if (IsValidClient(victim) && (PlayerHasItem(victim, Item_MetalHelmet) || PlayerHasItem(victim, ItemHeavy_Pugilist)))
 	{
-		if (rangedDamage)
-		{
-			damage *= GetItemMod(Item_MetalHelmet, 0);
-		}
-		
+		float baseDmg;
 		if (critType != CritType_None)
 		{
-			float baseDmg;
 			if (critType == CritType_Crit)
 			{
 				baseDmg = damage/3.0;
@@ -5635,19 +5650,46 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			{
 				baseDmg = damage/1.35;
 			}
-			
-			float dmgBonus = damage-baseDmg;
-			dmgBonus *= CalcItemMod_HyperbolicInverted(victim, Item_MetalHelmet, 1);
-			damage = baseDmg+dmgBonus;
+		}
+		else
+		{
+			baseDmg = damage;
 		}
 
-		if (!selfDamage)
+		if (!selfDamage && g_flHeavyArmorPoints[victim] > 0.0 && PlayerHasItem(victim, ItemHeavy_Pugilist) && CanUseCollectorItem(victim, ItemHeavy_Pugilist))
 		{
-			g_iPlayerShieldHealth[victim] = imax(0, g_iPlayerShieldHealth[victim]-RoundToFloor(damage));
-			if (g_iPlayerShieldHealth[victim] <= 0)
+			// Heavy Armor while spun up
+			if (TF2_IsPlayerInCondition(victim, TFCond_Slowed))
 			{
-				EmitGameSoundToClient(victim, "Player.ResistanceHeavy");
-				g_flPlayerShieldRegenTime[victim] = GetGameTime() + GetItemMod(Item_MetalHelmet, 3);
+				damage *= 1.0 - (GetItemMod(ItemHeavy_Pugilist, 0) * (g_flHeavyArmorPoints[victim]/100.0));
+				float maxHp = float(RF2_GetCalculatedMaxHealth(victim));
+				float armorDeduction = (100.0 * (1.0-(fmax(maxHp-baseDmg, 0.0) / maxHp))) * GetItemMod(ItemHeavy_Pugilist, 2);
+				g_flHeavyArmorPoints[victim] = fmax(g_flHeavyArmorPoints[victim]-armorDeduction, 0.0);
+			}
+		}
+
+		if (g_iPlayerShieldHealth[victim] > 0 && PlayerHasItem(victim, Item_MetalHelmet))
+		{
+			if (rangedDamage)
+			{
+				damage *= GetItemMod(Item_MetalHelmet, 0);
+			}
+			
+			if (critType != CritType_None)
+			{
+				float dmgBonus = damage-baseDmg;
+				dmgBonus *= CalcItemMod_HyperbolicInverted(victim, Item_MetalHelmet, 1);
+				damage = baseDmg+dmgBonus;
+			}
+
+			if (!selfDamage)
+			{
+				g_iPlayerShieldHealth[victim] = imax(0, g_iPlayerShieldHealth[victim]-RoundToFloor(baseDmg));
+				if (g_iPlayerShieldHealth[victim] <= 0)
+				{
+					EmitGameSoundToClient(victim, "Player.ResistanceHeavy");
+					g_flPlayerShieldRegenTime[victim] = GetGameTime() + GetItemMod(Item_MetalHelmet, 3);
+				}
 			}
 		}
 	}
@@ -6165,20 +6207,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	// Now for our resistances
 	if (victimIsClient && !ignoreResist)
 	{
-		// Calculate this first!
-		if (!selfDamage && g_flHeavyArmorPoints[victim] > 0.0 && PlayerHasItem(victim, ItemHeavy_Pugilist) && CanUseCollectorItem(victim, ItemHeavy_Pugilist))
-		{
-			// Heavy Armor while spun up
-			if (TF2_IsPlayerInCondition(victim, TFCond_Slowed))
-			{
-				float ogDamage = damage;
-				damage *= 1.0 - (GetItemMod(ItemHeavy_Pugilist, 0) * (g_flHeavyArmorPoints[victim]/100.0));
-				float maxHp = float(RF2_GetCalculatedMaxHealth(victim));
-				float armorDeduction = (100.0 * (1.0-(fmax(maxHp-ogDamage, 0.0) / maxHp))) * GetItemMod(ItemHeavy_Pugilist, 2);
-				g_flHeavyArmorPoints[victim] = fmax(g_flHeavyArmorPoints[victim]-armorDeduction, 0.0);
-			}
-		}
-
 		if (rangedDamage && PlayerHasItem(victim, Item_DarkHelm))
 		{
 			damage *= CalcItemMod_HyperbolicInverted(victim, Item_DarkHelm, 0);
@@ -6218,6 +6246,13 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	Call_PushFloatRef(proc);
 	Action result;
 	Call_Finish(result);
+
+	if (victimIsClient && DoesPlayerHaveOSP(victim))
+	{
+		// One-shot protection: if a Survivor is above 90% HP, damage cannot deal more than 90% of max HP.
+		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.9);
+	}
+
 	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
 	if (result != Plugin_Continue)
 		return result;

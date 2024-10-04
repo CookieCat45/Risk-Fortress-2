@@ -153,7 +153,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		}
 		
 		Menu vote = new Menu(Menu_TeleporterVote);
-		bool final = nextStageVote && g_iLoopCount >= 1 && IsAboutToLoop() && RF2_IsMapValid(g_szFinalMap);
+		bool final = nextStageVote && g_iLoopCount >= 1 && IsAboutToLoop() && !IsInUnderworld() && RF2_IsMapValid(g_szFinalMap);
 		if (nextStageVote)
 		{
 			if (final)
@@ -414,24 +414,12 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	public static void ToggleObjectsStatic(bool state)
 	{
 		int entity = MaxClients+1;
-		int r, g, b, a;
 		while ((entity = FindEntityByClassname(entity, "rf2_object*")) != INVALID_ENT)
 		{
 			if (RF2_Object_Teleporter(entity).IsValid())
 				continue;
 			
 			RF2_Object_Base(entity).Active = state;
-			if (!state)
-			{
-				SetEntityRenderMode(entity, RENDER_TRANSCOLOR);
-				GetEntityRenderColor(entity, r, g, b, a);
-				SetEntityRenderColor(entity, r, g, b, 75);
-			}
-			else
-			{
-				GetEntityRenderColor(entity, r, g, b, a);
-				SetEntityRenderColor(entity, r, g, b, 255);
-			}
 		}
 	}
 	

@@ -1,7 +1,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-//static PathFollower g_TFBotPathFollower[MAXTF2PLAYERS];
 static CNavArea g_TFBotGoalArea[MAXTF2PLAYERS];
 
 static int g_iTFBotFlags[MAXTF2PLAYERS];
@@ -476,7 +475,7 @@ void TFBot_Think(TFBot bot)
 				}
 				
 				bot.Mission = MISSION_CHASE;
-				TFBot_PathToPos(bot, threatPos, 3000.0, true);
+				TFBot_PathToEntity(bot, threat, 3000.0, true);
 			}
 		}
 	}

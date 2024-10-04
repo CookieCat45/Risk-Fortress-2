@@ -707,6 +707,9 @@ stock void DebugTinyBox(float pos[3], float duration=0.5)
 
 void SetEntItemProc(int entity, int item)
 {
+	if (entity <= 0 || entity >= MAX_EDICTS)
+		return;
+
 	g_iItemDamageProc[entity] = item;
 	if (item != Item_Null)
 	{
@@ -716,12 +719,18 @@ void SetEntItemProc(int entity, int item)
 
 int GetEntItemProc(int entity)
 {
+	if (entity <= 0 || entity >= MAX_EDICTS)
+		return Item_Null;
+
 	return g_iItemDamageProc[entity];
 }
 
 // Returns the last item damage proc that was set on the entity, since GetEntItemProc() commonly gets reset
 int GetLastEntItemProc(int entity)
 {
+	if (entity <= 0 || entity >= MAX_EDICTS)
+		return Item_Null;
+		
 	return g_iLastItemDamageProc[entity];
 }
 

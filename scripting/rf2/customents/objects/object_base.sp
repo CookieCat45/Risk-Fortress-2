@@ -88,13 +88,19 @@ methodmap RF2_Object_Base < CBaseAnimating
 		
 		public set(bool value)
 		{
+			int r, g, b, a;
 			if (value)
 			{
+				this.GetRenderColor(r, g, b, a);
+				this.SetRenderColor(r, g, b, 255);
 				this.Effects |= EF_ITEM_BLINK;
 			}
 			else
 			{
 				this.Effects &= ~EF_ITEM_BLINK;
+				this.SetRenderMode(RENDER_TRANSCOLOR);
+				this.GetRenderColor(r, g, b, a);
+				this.SetRenderColor(r, g, b, 75);
 			}
 			
 			this.SetProp(Prop_Data, "m_bActive", value);
@@ -592,6 +598,5 @@ RF2_Object_Base CreateObject(const char[] classname, const float pos[3], bool sp
 
 static void Input_SetActive(int entity, int activator, int caller, any value)
 {
-	RF2_Object_Base obj = RF2_Object_Base(entity);
-	obj.Active = value;
+	RF2_Object_Base(entity).Active = value;
 }

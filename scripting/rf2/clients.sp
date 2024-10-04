@@ -360,6 +360,7 @@ int GetPlayerLevel(int client)
 bool CanPlayerRegen(int client)
 {
 	return (IsPlayerSurvivor(client) || IsPlayerMinion(client) ||
+		TF2_IsPlayerInCondition(client, TFCond_RuneRegen) ||
 		PlayerHasItem(client, Item_Archimedes) ||
 		PlayerHasItem(client, Item_DapperTopper) ||
 		PlayerHasItem(client, Item_ClassCrown));
@@ -392,8 +393,9 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	int classMaxHealth = GetClassMaxHealth(TF2_GetPlayerClass(client));
 	// Max health changes from weapons should be added on top of base health too
 	Address attr = TF2Attrib_GetByDefIndex(client, 26);
+	int runeMaxHealth = GetRuneMaxHealth(client);
 	int healthAttrib = TF2Attrib_HookValueInt(0, "add_maxhealth", client) - RoundToFloor(attr ? TF2Attrib_GetValue(attr) : 0.0);
-	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)+healthAttrib) * healthScale);
+	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)+healthAttrib+runeMaxHealth) * healthScale);
 	
 	// Bosses have less health in single player
 	if (IsSingleplayer(false) && IsBoss(client))
@@ -444,8 +446,8 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 			}
 		}
 	}
-	
-	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth-healthAttrib)); // "max health additive bonus"
+
+	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth-healthAttrib-runeMaxHealth)); // "max health additive bonus"
 	int actualMaxHealth = SDK_GetPlayerMaxHealth(client);
 	g_iPlayerCalculatedMaxHealth[client] = actualMaxHealth;
 	if (fullHeal && GetClientHealth(client) < actualMaxHealth)
@@ -496,6 +498,29 @@ int CalculateBuildingMaxHealth(int client, int entity)
 
 	maxHealth = imax(maxHealth, 1); // prevent 0, causes division by zero crash on client
 	return maxHealth;
+}
+
+int GetRuneMaxHealth(int client)
+{
+	int runeMaxHealth;
+	if (TF2_IsPlayerInCondition(client, TFCond_KingRune))
+	{
+		runeMaxHealth = 100;
+	}
+	else if (TF2_IsPlayerInCondition(client, TFCond_RuneVampire))
+	{
+		runeMaxHealth = 80;
+	}
+	else if (TF2_IsPlayerInCondition(client, TFCond_RuneWarlock))
+	{
+		runeMaxHealth = 400 - GetClassMaxHealth(TF2_GetPlayerClass(client));
+	}
+	else if (TF2_IsPlayerInCondition(client, TFCond_RuneKnockout))
+	{
+		// Knockout is complicated... here we go.
+	}
+
+	return runeMaxHealth;
 }
 
 int SDK_GetPlayerMaxHealth(int client)
@@ -648,7 +673,7 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 		else if (StrContains(classname, "tf_weapon_flaregun") != -1 || StrContains(classname, "tf_weapon_sniperrifle") != -1)
 		{
 			// Use reload multipliers instead, makes more sense
-			return GetPlayerReloadMod(client);
+			return GetPlayerReloadMod(client, weapon);
 		}
 	}
 	
@@ -690,8 +715,8 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	else if (weapon > 0 && multiplier < 1.0)
 	{
 		if (strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_syringegun_medic")
-			|| strcmp2(classname, "tf_weapon_smg") || strcmp2(classname, "tf_weapon_pistol") 
-			|| strcmp2(classname, "tf_weapon_handgun_scout_secondary"))
+			|| strcmp2(classname, "tf_weapon_charged_smg") || strcmp2(classname, "tf_weapon_smg") 
+			|| strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_handgun_scout_secondary"))
 		{
 			const float penalty = 0.5;
 			multiplier = Pow(multiplier, penalty);
@@ -710,7 +735,7 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	return multiplier;
 }
 
-float GetPlayerReloadMod(int client)
+float GetPlayerReloadMod(int client, int weapon=INVALID_ENT)
 {
 	float multiplier = 1.0;
 	multiplier *= CalcItemMod_HyperbolicInverted(client, Item_RoundedRifleman, 0);
@@ -732,12 +757,46 @@ float GetPlayerReloadMod(int client)
 		multiplier *= (1.0 / (1.0 + (float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 3))));
 	}
 	
+	if (IsValidEntity2(weapon))
+	{
+		static char classname[64];
+		GetEntityClassname(weapon, classname, sizeof(classname));
+		bool singleReload = asBool(TF2Attrib_HookValueInt(0, "set_scattergun_no_reload_single", weapon))
+			|| strcmp2(classname, "tf_weapon_smg")
+			|| strcmp2(classname, "tf_weapon_charged_smg")
+			|| strcmp2(classname, "tf_weapon_pistol")
+			|| strcmp2(classname, "tf_weapon_handgun_scout_secondary")
+			|| strcmp2(classname, "tf_weapon_handgun_scout_primary");
+
+		// pistols, SMGs, and Scout weapons that reload their whole clip at once have a scaling penalty
+		if (singleReload)
+		{
+			const float penalty = 0.5;
+			multiplier = Pow(multiplier, penalty);
+		}
+	}
+
 	return multiplier;
 }
 
 int GetPlayerLuckStat(int client)
 {
 	return CalcItemModInt(client, Item_LuckyCatHat, 0) - CalcItemModInt(client, Item_MisfortuneFedora, 0);
+}
+
+bool DoesPlayerHaveOSP(int client)
+{
+	if (!g_cvEnableOneShotProtection.BoolValue || !IsPlayerSurvivor(client) || IsPlayerMinion(client))
+		return false;
+
+	// We're not doing Shaped Glass all over again
+	if (PlayerHasItem(client, Item_MisfortuneFedora))
+		return false;
+
+	if (float(GetClientHealth(client)) <= float(RF2_GetCalculatedMaxHealth(client))*0.9)
+		return false;
+
+	return true;
 }
 
 bool PingObjects(int client)

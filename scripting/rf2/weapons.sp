@@ -585,11 +585,13 @@ float GetWeaponProcCoefficient(int weapon)
 	{
 		return 0.2;
 	}
-	else if (strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_smg") || strcmp2(classname, "tf_weapon_handgun_scout_secondary"))
+	else if (strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_smg") 
+		|| strcmp2(classname, "tf_weapon_charged_smg") || strcmp2(classname, "tf_weapon_handgun_scout_secondary")
+		|| strcmp2(classname, "tf_weapon_raygun"))
 	{
 		return 0.35;
 	}
-	else if (strcmp2(classname, "tf_weapon_pipebomblauncher"))
+	else if (strcmp2(classname, "tf_weapon_pipebomblauncher")) // stickies, not grenade launcher
 	{
 		return 0.5;
 	}
@@ -700,7 +702,7 @@ public MRESReturn Detour_SetReloadTimer(int weapon, DHookParam params)
 		return MRES_Ignored;
 	
 	float reloadTime = params.Get(1);
-	float mult = GetPlayerReloadMod(owner);
+	float mult = GetPlayerReloadMod(owner, GetActiveWeapon(owner));
 	int viewModel = GetEntPropEnt(owner, Prop_Send, "m_hViewModel");
 	if (IsValidEntity2(viewModel))
 	{
