@@ -63,7 +63,7 @@ static void OnSpawnPost(int entity)
     RF2_Object_Barrel(entity).ScaleHitbox(2.0);
 }
 
-public Action Hook_OnBarrelHit(int entity, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, float damageForce[3], float damagePosition[3], int damageCustom)
+static Action Hook_OnBarrelHit(int entity, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, float damageForce[3], float damagePosition[3], int damageCustom)
 {
 	if (!(damageType & DMG_MELEE) || !IsValidClient(attacker) || !IsPlayerSurvivor(attacker) && !IsPlayerMinion(attacker))
 		return Plugin_Continue;

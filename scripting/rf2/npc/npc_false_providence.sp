@@ -377,7 +377,7 @@ static void OnAction(RF2_Providence boss, const char[] action)
 static Action Timer_UpdateCrystalBeams(Handle timer, int entity)
 {
     RF2_Providence boss = RF2_Providence(EntRefToEntIndex(entity));
-    if (!boss.IsValid())
+    if (!boss.IsValid() || !boss.Crystals)
         return Plugin_Stop;
 
     float pos1[3], pos2[3];

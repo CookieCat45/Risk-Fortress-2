@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "DEVONLY-1.0rc"
+#define PLUGIN_VERSION "DEVONLY-1.0.1"
 #else
-#define PLUGIN_VERSION "1.0"
+#define PLUGIN_VERSION "1.0.1"
 #endif
 
 #include <rf2>
@@ -738,7 +738,8 @@ void LoadGameData()
 	g_hDetourOnWeaponFired = DynamicDetour.FromConf(gamedata, "CTFBot::OnWeaponFired");
 	if (!g_hDetourOnWeaponFired || !g_hDetourOnWeaponFired.Enable(Hook_Pre, Detour_OnWeaponFired))
 	{
-		LogError("[DHooks] Failed to create detour for CTFBot::OnWeaponFired");
+		// TODO: Fix this goddamn Windows signature
+		//LogError("[DHooks] Failed to create detour for CTFBot::OnWeaponFired");
 	}
 	
 	
@@ -913,9 +914,6 @@ public void OnMapStart()
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("sv_tags").Flags = 0;
 		FindConVar("tv_enable").SetBool(true);
-		FindConVar("tv_transmitall").SetBool(true);
-		FindConVar("tv_delaymapchange").SetBool(true);
-		FindConVar("tv_delay").SetInt(10);
 		SetMVMPlayerCvar(GetDesiredPlayerCap());
 		
 		// Remove Goomba immunities on stunned players
@@ -992,10 +990,10 @@ public void OnMapStart()
 		}
 		
 		if (g_szUnderworldMap[0])
-			g_bInUnderworld = StrContains(g_szUnderworldMap, mapName, false) == 0;
+			g_bInUnderworld = StrContains(mapName, g_szUnderworldMap, false) == 0;
 
 		if (g_szFinalMap[0])
-			g_bInFinalMap = StrContains(g_szFinalMap, mapName, false) == 0;
+			g_bInFinalMap = StrContains(mapName, g_szFinalMap, false) == 0;
 		
 		if (g_bGameInitialized)
 		{
@@ -1298,7 +1296,6 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_mvm_defenders_team_size"));
 	ResetConVar(FindConVar("tf_mvm_max_connected_players"));
 	ResetConVar(FindConVar("tv_enable"));
-	ResetConVar(FindConVar("tv_transmitall"));
 	ConVar goombaBonk = FindConVar("goomba_bonked_immun");
 	ConVar goombaStun = FindConVar("goomba_stun_immun");
 	if (goombaBonk)
@@ -1354,7 +1351,7 @@ public void OnClientPutInServer(int client)
 		}
 		*/
 		
-		if (g_bRoundActive && !IsFakeClient(client) && !IsMusicPaused())
+		if (g_bRoundActive && !IsMusicPaused())
 		{
 			PlayMusicTrack(client);
 		}
@@ -4448,7 +4445,7 @@ public void Hook_PreThink(int client)
 	
 	float engineTime = GetEngineTime();
 	bool bot = IsFakeClient(client);
-	if (g_bRoundActive && !bot && !IsMusicPaused() && g_flLoopMusicAt[client] > 0.0 && engineTime >= g_flLoopMusicAt[client])
+	if (g_bRoundActive && (!bot || IsClientSourceTV(client)) && !IsMusicPaused() && g_flLoopMusicAt[client] > 0.0 && engineTime >= g_flLoopMusicAt[client])
 	{
 		RF2_Object_Teleporter teleporter = GetCurrentTeleporter();
 		if (IsCustomTrackPlaying() || !teleporter.IsValid() || teleporter.EventState != TELE_EVENT_PREPARING)
@@ -4460,6 +4457,7 @@ public void Hook_PreThink(int client)
 	if (IsInspectButtonPressed(client))
 	{
 		int target = INVALID_ENT;
+		if (IsPlayerAlive(client))
 		if (IsPlayerAlive(client))
 		{
 			target = GetClientAimTarget(client);
@@ -5344,27 +5342,27 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 					SDK_ApplyAbsVelocityImpulse(victim, vel);
 				}
 			}
-		}
 
-		bool afterburn = damageType & DMG_BURN && (damageCustom == TF_CUSTOM_BURNING || damageCustom == TF_CUSTOM_BURNING_FLARE 
-			|| damageCustom == TF_CUSTOM_BURNING_ARROW || damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING);
+			bool afterburn = damageType & DMG_BURN && (damageCustom == TF_CUSTOM_BURNING || damageCustom == TF_CUSTOM_BURNING_FLARE 
+				|| damageCustom == TF_CUSTOM_BURNING_ARROW || damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING);
 
-		if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
-		{
-			bool gas = TF2_IsPlayerInCondition(victim, TFCond_Gas);
-			bool primary = weapon == GetPlayerWeaponSlot(attacker, WeaponSlot_Primary);
-			bool shouldProcLastBreath = gas || validWeapon && (strcmp2(inflictorClassname, "tf_projectile_flare") || damageType & DMG_MELEE || !afterburn || GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary) == weapon);
-
-			if (victimIsClient && shouldProcLastBreath && (gas || !primary))
+			if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
 			{
-				if (validWeapon && !primary && TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeath) || TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeathSilent))
-				{
-					damage *= 1.0 + CalcItemMod(attacker, ItemPyro_LastBreath, 1);
-				}
+				bool gas = TF2_IsPlayerInCondition(victim, TFCond_Gas);
+				bool primary = weapon == GetPlayerWeaponSlot(attacker, WeaponSlot_Primary);
+				bool shouldProcLastBreath = gas || validWeapon && (strcmp2(inflictorClassname, "tf_projectile_flare") || damageType & DMG_MELEE || !afterburn || GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary) == weapon);
 
-				if (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro))
+				if (victimIsClient && shouldProcLastBreath && (gas || !primary))
 				{
-					TF2_AddCondition(victim, TFCond_MarkedForDeathSilent, CalcItemMod(attacker, ItemPyro_LastBreath, 0), attacker);
+					if (validWeapon && !primary && TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeath) || TF2_IsPlayerInCondition(victim, TFCond_MarkedForDeathSilent))
+					{
+						damage *= 1.0 + CalcItemMod(attacker, ItemPyro_LastBreath, 1);
+					}
+
+					if (TF2_IsPlayerInCondition(victim, TFCond_OnFire) || TF2_IsPlayerInCondition(victim, TFCond_BurningPyro))
+					{
+						TF2_AddCondition(victim, TFCond_MarkedForDeathSilent, CalcItemMod(attacker, ItemPyro_LastBreath, 0), attacker);
+					}
 				}
 			}
 		}
@@ -5683,11 +5681,6 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 		}
 	}
 
-	if (damageCustom == TF_CUSTOM_BACKSTAB && IsValidClient(victim) && IsPlayerSurvivor(victim) && !IsPlayerMinion(victim))
-	{
-		damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.35;
-	}
-
 	// Raid bosses never take more than 3.5% of their max HP from a backstab
 	if (damageType & DMG_MELEE && damageType & DMG_CRIT && damageType & DMG_SLASH && validWeapon && IsValidClient(attacker) && IsPlayerSurvivor(attacker) 
 		&& !IsPlayerMinion(attacker) && RF2_NPC_Base(victim).IsValid() && RF2_NPC_Base(victim).IsRaidBoss() && RF2_NPC_Base(victim).CanBeBackstabbed
@@ -5718,7 +5711,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (!g_bRoundActive)
 		return Plugin_Continue;
-	
+
 	float proc = g_flDamageProc;
 	bool attackerIsClient = IsValidClient(attacker);
 	bool inflictorIsBuilding = inflictor > 0 && IsBuilding(inflictor);
@@ -5741,7 +5734,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		return Plugin_Handled;
 	}
-	
+
 	float originalDamage = damage;
 	int originalDamageType = damageType;
 	bool ignoreResist;
@@ -5757,7 +5750,12 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	// backstabs first, before any damage modifiers get applied
 	if (damageCustom == TF_CUSTOM_BACKSTAB)
 	{
-		if (IsPlayerMinion(attacker))
+		if (IsPlayerSurvivor(victim) && !IsPlayerMinion(victim))
+		{
+			damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.35;
+			return Plugin_Changed;
+		}
+		else if (IsPlayerMinion(attacker))
 		{
 			damage = 200.0;
 		}

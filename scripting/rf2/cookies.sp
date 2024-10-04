@@ -54,7 +54,7 @@ public void OnClientCookiesCached(int client)
 	// If the round is active, we can play the music to our client now
 	if (g_bRoundActive && IsClientInGame(client) && !IsFakeClient(client) && !IsMusicPaused())
 	{
-		if (GetCookieBool(client, g_coMusicEnabled))
+		if (IsMusicEnabled(client))
 		{
 			if (IsCustomTrackPlaying())
 			{

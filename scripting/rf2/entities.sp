@@ -38,7 +38,7 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 			TR_TraceRayFilter(origin, pos, MASK_SOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
 			pos[2] -= 20.0;
 			origin[2] -= 20.0;
-
+			
 			if (TR_DidHit())
 				continue;
 		}
@@ -81,7 +81,11 @@ ArrayList GetNearestEntities(float origin[3], const char[] classname, float minD
 		}
 
 		nearestEnts.Push(entity);
-		
+	}
+
+	if (nearestEnts.Length <= 0)
+	{
+		return nearestEnts;
 	}
 
 	// sort the list by distance

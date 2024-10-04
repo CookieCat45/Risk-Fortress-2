@@ -461,6 +461,8 @@ static void OnSpawnPost(int entity)
 		PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
 	}
 	
+	// Because some props are marked as breakable and will break if shot without firing events. Very dumb.
+	obj.SetProp(Prop_Data, "m_takedamage", DAMAGE_EVENTS_ONLY);
 	CreateTimer(0.5, Timer_WorldText, EntIndexToEntRef(obj.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 

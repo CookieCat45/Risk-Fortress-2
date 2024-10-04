@@ -393,7 +393,7 @@ public void Timer_PlayMusicDelay(Handle timer)
 
 void PlayMusicTrack(int client)
 {
-	if (IsFakeClient(client) || !GetCookieBool(client, g_coMusicEnabled))
+	if (!IsMusicEnabled(client))
 		return;
 	
 	StopMusicTrack(client);
@@ -428,7 +428,7 @@ void PlayMusicTrack(int client)
 
 void PlayCustomMusicTrack(int client, int trackIndex)
 {
-	if (IsFakeClient(client) || !GetCookieBool(client, g_coMusicEnabled))
+	if (!IsMusicEnabled(client))
 		return;
 
 	StopMusicTrack(client);
@@ -475,7 +475,7 @@ public void Timer_PlayMusicDelaySingle(Handle timer, int client)
 void StopMusicTrack(int client)
 {
 	g_flLoopMusicAt[client] = -1.0;
-	if (!g_bMapChanging && IsClientInGame(client) && !IsFakeClient(client))
+	if (!g_bMapChanging && IsClientInGame(client) && (!IsFakeClient(client) || IsClientSourceTV(client)))
 	{
 		StopSound(client, SNDCHAN_AUTO, g_szClientBGM[client]);
 	}
@@ -490,6 +490,18 @@ void PlayMusicTrackAll()
 			
 		PlayMusicTrack(i);
 	}
+}
+
+bool IsMusicEnabled(int client)
+{
+	// Play music for SourceTV bot
+	if (IsClientSourceTV(client))
+		return true;
+
+	if (IsFakeClient(client))
+		return false;
+
+	return GetCookieBool(client, g_coMusicEnabled);
 }
 
 void PlayCustomMusicTrackAll(int trackIndex)
