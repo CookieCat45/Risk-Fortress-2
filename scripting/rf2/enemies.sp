@@ -936,7 +936,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		TF2Attrib_SetByDefIndex(client, 252, 0.2); // "damage force reduction"
 		TF2Attrib_SetByDefIndex(client, 329, 0.2); // "airblast vulnerability multiplier"
 		TF2Attrib_SetByDefIndex(client, 326, 1.35); // "increased jump height"
-		TF2Attrib_SetByDefIndex(client, 105, 0.0); // "overheal penalty"
+		TF2Attrib_SetByDefIndex(client, 800, 0.0); // "patient overheal penalty"
 		if (teleporterBoss)
 		{
 			CreateHealthText(client, 100.0*boss.ModelScale, 20.0, g_szEnemyName[type]);

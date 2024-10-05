@@ -141,13 +141,11 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 				ArrayList itemList = new ArrayList();
 				int randomItem;
 				int itemCount[MAX_ITEMS];
-				
 				for (int i = 1; i <= total; i++)
 				{
 					randomItem = GetRandomCollectorItem(class);
-					GiveItem(param1, randomItem, _, true);
+					GiveItem(param1, randomItem, 1, true);
 					itemCount[randomItem]++;
-					
 					if (itemList.FindValue(randomItem) == -1)
 					{
 						itemList.Push(randomItem);

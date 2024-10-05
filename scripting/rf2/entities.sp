@@ -590,7 +590,10 @@ bool reset=false, bool controlPoint=false, const float controlPointOffset[3]=NUL
 		else
 		{
 			for (int i = 0; i < clientAmount; i++)
+			{
 				TE_SendToClient(clientArray[i]);
+			}
+				
 		}
 	}
 	else
@@ -730,7 +733,7 @@ int GetLastEntItemProc(int entity)
 {
 	if (entity <= 0 || entity >= MAX_EDICTS)
 		return Item_Null;
-		
+
 	return g_iLastItemDamageProc[entity];
 }
 

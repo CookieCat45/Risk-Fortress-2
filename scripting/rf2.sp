@@ -3031,12 +3031,15 @@ public Action OnNpcHurt(Event event, const char[] name, bool dontBroadcast)
 	{
 		int npc = event.GetInt("entindex");
 		int attacker = GetClientOfUserId(event.GetInt("attacker_player"));
-		int clients[MAXTF2PLAYERS];
-		clients[0] = attacker;
-		float pos[3];
-		GetEntPos(npc, pos, true);
-		TE_TFParticle("crit_text", pos, _, _, _, _, _, _, clients, 1);
-		EmitGameSoundToClient(attacker, GSND_CRIT);
+		if (IsValidClient(attacker))
+		{
+			int clients[MAXTF2PLAYERS];
+			clients[0] = attacker;
+			float pos[3];
+			GetEntPos(npc, pos, true);
+			TE_TFParticle("crit_text", pos, _, _, _, _, _, _, clients, 1);
+			EmitGameSoundToClient(attacker, GSND_CRIT);
+		}
 	}
 
 	return Plugin_Continue;

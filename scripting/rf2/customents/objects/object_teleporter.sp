@@ -286,14 +286,12 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsClientInGame(i) || !IsPlayerAlive(i))
-			{
+			if (!IsClientInGame(i) || !IsPlayerSurvivor(i))
 				continue;
-			}
-				
-			if (PlayerHasItem(i, Item_HorsemannHead))
+			
+			if (PlayerHasItem(i, Item_HorsemannHead, true))
 			{
-				hhhSpawnCount += GetPlayerItemCount(i, Item_HorsemannHead);
+				hhhSpawnCount += GetPlayerItemCount(i, Item_HorsemannHead, true);
 				if (hhhSpawnCount > bossSpawnLimit)
 					hhhSpawnCount = bossSpawnLimit;
 				
@@ -301,9 +299,9 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 				g_hHHHTargets.Push(GetClientUserId(i));
 			}
 			
-			if (PlayerHasItem(i, Item_Monoculus))
+			if (PlayerHasItem(i, Item_Monoculus, true))
 			{
-				eyeSpawnCount += GetPlayerItemCount(i, Item_Monoculus);
+				eyeSpawnCount += GetPlayerItemCount(i, Item_Monoculus, true);
 				if (eyeSpawnCount > bossSpawnLimit)
 					eyeSpawnCount = bossSpawnLimit;
 
