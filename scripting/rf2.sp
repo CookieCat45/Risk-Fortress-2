@@ -113,7 +113,7 @@ char g_szHudDifficulty[128] = "Difficulty: Easy";
 char g_szObjectiveHud[MAXTF2PLAYERS][128];
 
 // g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i],
-// g_flPlayerNextLevelXP[i], g_flPlayerCash[i], g_szHudDifficulty, strangeItemInfo, miscText
+// g_flPlayerNextLevelXP[i], cashString, g_szHudDifficulty, strangeItemInfo, miscText
 char g_szSurvivorHudText[2048] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i | Your Level: %i\n%.0f/%.0f XP | Cash: %s\n%s\n%s";
 
 // g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo

@@ -204,6 +204,9 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	
 	public void Prepare()
 	{
+		if (this.EventState != TELE_EVENT_INACTIVE)
+			return;
+			
 		this.EventState = TELE_EVENT_PREPARING;
 		this.SetGlow(true);
 		RF2_PrintToChatAll("%t", "TeleporterActivated");
@@ -249,6 +252,9 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	
 	public void Start()
 	{
+		if (this.EventState == TELE_EVENT_ACTIVE || this.EventState == TELE_EVENT_COMPLETE)
+			return;
+
 		this.EventState = TELE_EVENT_ACTIVE;
 		this.TextSize = 20.0;
 		Call_StartForward(g_fwTeleEventStart);
@@ -362,6 +368,9 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	
 	public void End()
 	{
+		if (this.EventState == TELE_EVENT_COMPLETE)
+			return;
+
 		this.ToggleObjects(true);
 		this.EventState = TELE_EVENT_COMPLETE;
 		this.Effects = EF_ITEM_BLINK;
@@ -621,16 +630,16 @@ static Action Timer_TeleporterThink(Handle timer, int entity)
 					chargeToSet += chargeAdd;
 				}
 				
-				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Teleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
+				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "\nTeleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
 			}
 			else
 			{
-				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Get inside the Teleporter radius! (%.0f)\nBosses Left: %i", oldCharge, aliveBosses);
+				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "\nGet inside the Teleporter radius! (%.0f)\nBosses Left: %i", oldCharge, aliveBosses);
 			}
 		}
 		else
 		{
-			FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Teleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
+			FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "\nTeleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
 		}
 	}
 	
