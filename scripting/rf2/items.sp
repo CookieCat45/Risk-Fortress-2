@@ -609,7 +609,7 @@ int GetQualityEquipPriority(int quality)
 	return -1;
 }
 
-void UpdatePlayerItem(int client, int item)
+void UpdatePlayerItem(int client, int item, bool updateStats=true)
 {
 	Call_StartForward(g_fwOnPlayerItemUpdate);
 	Call_PushCell(client);
@@ -649,7 +649,10 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case Item_PrideScarf, Item_ClassCrown:
 		{
-			CalculatePlayerMaxHealth(client);
+			if (updateStats)
+			{
+				CalculatePlayerMaxHealth(client);
+			}
 		}
 		case Item_WhaleBoneCharm:
 		{
@@ -693,7 +696,10 @@ void UpdatePlayerItem(int client, int item)
 		}
 		case Item_RobinWalkers, Item_TripleA, Item_DarkHelm:
 		{
-			CalculatePlayerMaxSpeed(client);
+			if (updateStats)
+			{
+				CalculatePlayerMaxSpeed(client);
+			}
 		}
 		case Item_HorrificHeadsplitter:
 		{
@@ -728,7 +734,10 @@ void UpdatePlayerItem(int client, int item)
 				TF2_RemoveCondition(client, TFCond_Buffed);
 			}
 
-			CalculatePlayerMaxHealth(client);
+			if (updateStats)
+			{
+				CalculatePlayerMaxHealth(client);
+			}
 		}
 		case Item_UFO:
 		{
@@ -811,13 +820,14 @@ void UpdatePlayerItem(int client, int item)
 					if (PlayerHasItem(client, item))
 					{
 						float count = CalcItemMod(client, item, 0);
-						{
-							TF2Attrib_SetByDefIndex(minigun, 323, count); // "attack projectiles"
-						}
+						float revSpeed = CalcItemMod_HyperbolicInverted(client, item, 1);
+						TF2Attrib_SetByDefIndex(minigun, 323, count); // "attack projectiles"
+						TF2Attrib_SetByDefIndex(minigun, 87, revSpeed); // "minigun spinup time decreased"
 					}
 					else
 					{
 						TF2Attrib_RemoveByDefIndex(minigun, 323);
+						TF2Attrib_RemoveByDefIndex(minigun, 87);
 					}
 				}	
 			}
@@ -1247,6 +1257,14 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 		pack.WriteCell(attacker);
 		pack.WriteCell(victim);
 		RequestFrame(RF_DoHeadshotBonuses, pack);
+	}
+	else if (damageCustom == TF_CUSTOM_BACKSTAB)
+	{
+		if (PlayerHasItem(attacker, ItemSpy_NohMercy) && CanUseCollectorItem(attacker, ItemSpy_NohMercy))
+		{
+			RemoveAllRunes(attacker);
+			TF2_AddCondition(attacker, TFCond_RuneHaste, CalcItemMod(attacker, ItemSpy_NohMercy, 1));
+		}
 	}
 
 	if (PlayerHasItem(attacker, ItemSoldier_WarPig) && CanUseCollectorItem(attacker, ItemSoldier_WarPig) && IsValidEntity2(inflictor))
@@ -1873,6 +1891,7 @@ bool ActivateStrangeItem(int client)
 		
 		case ItemStrange_NastyNorsemann:
 		{
+			RemoveAllRunes(client);
 			char sound[PLATFORM_MAX_PATH];
 			TFCond rune = GetRandomMannpowerRune(sound, sizeof(sound));
 			TF2_AddCondition(client, rune, GetItemMod(ItemStrange_NastyNorsemann, 0));

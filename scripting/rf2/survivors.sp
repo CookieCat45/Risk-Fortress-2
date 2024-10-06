@@ -159,7 +159,6 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	g_flPlayerTimeSinceLastItemPickup[client] = GetTickedTime();
 	if (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == INVALID_ENT)
 	{
-		//LogError("Caught A-Pose bug on %N, attempting to fix", client);
 		TF2_RespawnPlayer(client);
 	}
 	
@@ -211,9 +210,11 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	}
 	else // we should still update our items in case this is a respawn
 	{
-		UpdateItemsForPlayer(client);
+		UpdateItemsForPlayer(client, false);
 	}
 	
+	CalculatePlayerMaxHealth(client, false, true);
+	CalculatePlayerMaxSpeed(client);
 	GiveCommunityItems(client);
 	if (!IsFakeClient(client) && !GetCookieBool(client, g_coTutorialSurvivor))
 	{
@@ -221,11 +222,11 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	}
 }
 
-void UpdateItemsForPlayer(int client)
+void UpdateItemsForPlayer(int client, bool updateStats=true)
 {
 	for (int i = 1; i < GetTotalItems(); i++)
 	{
-		UpdatePlayerItem(client, i);
+		UpdatePlayerItem(client, i, updateStats);
 	}
 }
 

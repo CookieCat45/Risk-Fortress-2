@@ -95,7 +95,6 @@ void ForceTeamWin(int team)
 {
 	int point;
 	point = FindEntityByClassname(point, "team_control_point_master");
-	
 	if (!IsValidEntity2(point))
 	{
 		point = CreateEntityByName("team_control_point_master");
@@ -268,6 +267,15 @@ void ReloadPlugin(bool changeMap=true)
 		ReplaceStringEx(fileName, sizeof(fileName), ".smx", "");
 		InsertServerCommand("sm plugins load_unlock; sm plugins reload %s; sm_reload_translations", fileName);
 	}
+}
+
+void ExtendWaitTime()
+{
+	ConVar waitTime = FindConVar("mp_waitingforplayers_time");
+	float oldWaitTime = waitTime.FloatValue;
+	waitTime.FloatValue = g_cvWaitExtendTime.FloatValue;
+	InsertServerCommand("mp_waitingforplayers_restart 1");
+	CreateTimer(1.2, Timer_ResetWaitTime, oldWaitTime, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 bool IsMapRunning()
@@ -939,4 +947,33 @@ bool IsServerAutoRestartEnabled()
 float GetTimeSinceServerStart()
 {
 	return GetEngineTime() - g_cvHiddenServerStartTime.FloatValue;
+}
+
+stock void DebugMsgNoSpam(const char[] message, any ...)
+{
+	#if defined DEVONLY
+	char buffer[512];
+	static char lastMessage[512];
+	VFormat(buffer, sizeof(buffer), message, 2);
+	static float lastTime;
+	float time = GetTickedTime();
+	bool newMsg = strlen(lastMessage) != strlen(buffer);
+	if (lastTime+0.8 <= time || newMsg)
+	{
+		PrintToChatAll("[DEBUG] %s", buffer);
+		PrintToServer("[DEBUG] %s", buffer);
+		strcopy(lastMessage, sizeof(lastMessage), buffer);
+		lastTime = time;
+	}
+	#endif
+}
+
+stock void DebugMsg(const char[] message, any ...)
+{
+	#if defined DEVONLY
+	char buffer[512];
+	VFormat(buffer, sizeof(buffer), message, 2);
+	PrintToChatAll("[DEBUG] %s", buffer);
+	PrintToServer("[DEBUG] %s", buffer);
+	#endif
 }

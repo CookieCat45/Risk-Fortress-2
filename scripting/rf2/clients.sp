@@ -27,6 +27,7 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerOpenedHelpMenu[client] = false;
 	g_bPlayerViewingItemDesc[client] = false;
 	g_bPlayerHealOnHitCooldown[client] = false;
+	g_bFullMinigunMoveSpeed[client] = false;
 	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;
@@ -81,7 +82,7 @@ void RefreshClient(int client, bool force=false)
 		g_flPlayerEquipmentItemCooldown[client] = 0.0;
 	}
 	
-	if (force || g_bMapChanging || !IsPlayerSurvivor(client))
+	if (force || g_bMapChanging || !IsPlayerSurvivor(client, false))
 	{
 		SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
 		g_flPlayerCash[client] = 0.0;
@@ -110,6 +111,7 @@ void RefreshClient(int client, bool force=false)
 	TFBot(client).Mission = MISSION_NONE;
 	TFBot(client).HasBuilt = false;
 	TFBot(client).AttemptingBuild = false;
+	TFBot(client).BuildAttempts = 0;
 	TFBot(client).SentryArea = view_as<CTFNavArea>(NULL_AREA);
 	TFBot(client).BuildingTarget = INVALID_ENT;
 	TFBot(client).RepairTarget = INVALID_ENT;
@@ -393,9 +395,8 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	int classMaxHealth = GetClassMaxHealth(TF2_GetPlayerClass(client));
 	// Max health changes from weapons should be added on top of base health too
 	Address attr = TF2Attrib_GetByDefIndex(client, 26);
-	int runeMaxHealth = GetRuneMaxHealth(client);
 	int healthAttrib = TF2Attrib_HookValueInt(0, "add_maxhealth", client) - RoundToFloor(attr ? TF2Attrib_GetValue(attr) : 0.0);
-	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)+healthAttrib+runeMaxHealth) * healthScale);
+	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)+healthAttrib) * healthScale);
 	
 	// Bosses have less health in single player
 	if (IsSingleplayer(false) && IsBoss(client))
@@ -447,19 +448,19 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		}
 	}
 
-	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth-healthAttrib-runeMaxHealth)); // "max health additive bonus"
+	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth-healthAttrib)); // "max health additive bonus"
 	int actualMaxHealth = SDK_GetPlayerMaxHealth(client);
 	g_iPlayerCalculatedMaxHealth[client] = actualMaxHealth;
 	if (fullHeal && GetClientHealth(client) < actualMaxHealth)
 	{
-		HealPlayer(client, actualMaxHealth+99999, false, _, false);
+		SetEntityHealth(client, actualMaxHealth);
 	}
 	else if (partialHeal)
 	{
 		int heal = actualMaxHealth - oldMaxHealth;
 		HealPlayer(client, heal, false);
 	}
-	
+
 	return actualMaxHealth;
 }
 
@@ -498,29 +499,6 @@ int CalculateBuildingMaxHealth(int client, int entity)
 
 	maxHealth = imax(maxHealth, 1); // prevent 0, causes division by zero crash on client
 	return maxHealth;
-}
-
-int GetRuneMaxHealth(int client)
-{
-	int runeMaxHealth;
-	if (TF2_IsPlayerInCondition(client, TFCond_KingRune))
-	{
-		runeMaxHealth = 100;
-	}
-	else if (TF2_IsPlayerInCondition(client, TFCond_RuneVampire))
-	{
-		runeMaxHealth = 80;
-	}
-	else if (TF2_IsPlayerInCondition(client, TFCond_RuneWarlock))
-	{
-		runeMaxHealth = 400 - GetClassMaxHealth(TF2_GetPlayerClass(client));
-	}
-	else if (TF2_IsPlayerInCondition(client, TFCond_RuneKnockout))
-	{
-		// Knockout is complicated... here we go.
-	}
-
-	return runeMaxHealth;
 }
 
 int SDK_GetPlayerMaxHealth(int client)
@@ -562,6 +540,15 @@ float CalculatePlayerMaxSpeed(int client)
 	{
 		speed *= 3.0; // bosses move at normal speed while crouched to avoid getting stuck
 	}
+
+	if (g_bFullMinigunMoveSpeed[client] && TF2_GetPlayerClass(client) == TFClass_Heavy)
+	{
+		// full minigun move speed
+		if (TF2_IsPlayerInCondition(client, TFCond_Slowed))
+		{
+			speed *= 1.5;
+		}
+	}
 	
 	float mult = speed / classMaxSpeed;
 	TF2Attrib_RemoveByDefIndex(client, 107);
@@ -572,6 +559,37 @@ float CalculatePlayerMaxSpeed(int client)
 	SDK_ForceSpeedUpdate(client);
 	g_flPlayerCalculatedMaxSpeed[client] = speed;
 	return GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
+}
+
+bool PlayerHasAnyRune(int client)
+{
+	for (int i = 90; i <= 97; i++)
+	{
+		if (TF2_IsPlayerInCondition(client, view_as<TFCond>(i)))
+			return true;
+	}
+
+	return TF2_IsPlayerInCondition(client, TFCond_RuneKnockout)
+		|| TF2_IsPlayerInCondition(client, TFCond_RuneImbalance)
+		|| TF2_IsPlayerInCondition(client, TFCond_CritRuneTemp)
+		|| TF2_IsPlayerInCondition(client, TFCond_KingRune)
+		|| TF2_IsPlayerInCondition(client, TFCond_SupernovaRune)
+		|| TF2_IsPlayerInCondition(client, TFCond_PlagueRune);
+}
+
+void RemoveAllRunes(int client)
+{
+	for (int i = 90; i <= 97; i++)
+	{
+		TF2_RemoveCondition(client, view_as<TFCond>(i));
+	}
+
+	TF2_RemoveCondition(client, TFCond_RuneKnockout);
+	TF2_RemoveCondition(client, TFCond_RuneImbalance);
+	TF2_RemoveCondition(client, TFCond_CritRuneTemp);
+	TF2_RemoveCondition(client, TFCond_KingRune);
+	TF2_RemoveCondition(client, TFCond_SupernovaRune);
+	TF2_RemoveCondition(client, TFCond_PlagueRune);
 }
 
 void CalculatePlayerMiscStats(int client)
@@ -1242,6 +1260,7 @@ TFCond GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0
 			case TFCond_RuneStrength: strcopy(soundBuffer, size, SND_RUNE_STRENGTH);
 			case TFCond_RuneVampire: strcopy(soundBuffer, size, SND_RUNE_VAMPIRE);
 			case TFCond_RuneWarlock: strcopy(soundBuffer, size, SND_RUNE_WARLOCK);
+			case TFCond_KingRune: strcopy(soundBuffer, size, SND_RUNE_KING);
 		}
 	}
 	
@@ -1484,7 +1503,7 @@ void ResetAFKTime(int client)
 {
 	if (IsClientInGame(client) && IsPlayerAFK(client))
 	{
-		if (g_bWaitingForPlayers && !GetCookieBool(client, g_coStayInSpecOnJoin))
+		if (g_bWaitingForPlayers/* && !GetCookieBool(client, g_coStayInSpecOnJoin)*/)
 		{
 			ChangeClientTeam(client, GetRandomInt(TEAM_SURVIVOR, TEAM_ENEMY));
 		}

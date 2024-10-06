@@ -145,10 +145,12 @@ public void OnClientCookiesCached(int client)
 		SetCookieBool(client, g_coEarnedAllAchievements, false);
 	}
 	
+	/*
 	if (!g_bRoundActive && !GetCookieBool(client, g_coStayInSpecOnJoin) && GetTotalHumans(false) > 1)
 	{
 		CreateTimer(1.0, Timer_ChangeTeam, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
+	*/
 	
 	GetClientCookie(client, g_coPingObjectsHint, buffer, sizeof(buffer));
 	if (!buffer[0])

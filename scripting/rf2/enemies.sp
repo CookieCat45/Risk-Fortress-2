@@ -1175,6 +1175,15 @@ void StunRadioWave()
 	{
 		if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ENEMY)
 		{
+			if (TF2_GetPlayerClass(i) == TFClass_Medic)
+			{
+				int medigun = GetPlayerWeaponSlot(i, WeaponSlot_Secondary);
+				if (medigun != INVALID_ENT)
+				{
+					SetEntPropFloat(medigun, Prop_Send, "m_flChargePercent", 0.0);
+				}
+			}
+
 			TF2_RemoveCondition(i, TFCond_MegaHeal);
 			TF2_AddCondition(i, TFCond_MVMBotRadiowave, 20.0);
 			aliveEnemies = true;

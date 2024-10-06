@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "DEVONLY-1.0.1"
+#define PLUGIN_VERSION "DEVONLY-1.0.2"
 #else
-#define PLUGIN_VERSION "1.0.1"
+#define PLUGIN_VERSION "1.0.2"
 #endif
 
 #include <rf2>
@@ -144,6 +144,7 @@ bool g_bPlayerViewingItemDesc[MAXTF2PLAYERS];
 bool g_bPlayerReviveActivated[MAXTF2PLAYERS];
 bool g_bPlayerItemShareExcluded[MAXTF2PLAYERS];
 bool g_bHauntedKeyDrop[MAXTF2PLAYERS];
+bool g_bFullMinigunMoveSpeed[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -171,6 +172,7 @@ float g_flPlayerCaberRechargeAt[MAXTF2PLAYERS];
 float g_flHeavyArmorPoints[MAXTF2PLAYERS] = {100.0, ...};
 float g_flPlayerShieldRegenTime[MAXTF2PLAYERS];
 float g_flSoldierRocketJumpTime[MAXTF2PLAYERS];
+float g_flLastTabPressTime[MAXTF2PLAYERS];
 
 int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
@@ -1335,6 +1337,11 @@ public void OnClientPutInServer(int client)
 {
 	RefreshClient(client);
 	GetClientName(client, g_szPlayerOriginalName[client], sizeof(g_szPlayerOriginalName[]));
+	if (g_bWaitingForPlayers)
+	{
+		ChangeClientTeam(client, GetRandomInt(TEAM_SURVIVOR, TEAM_ENEMY));
+	}
+
 	if (RF2_IsEnabled() && !IsSpecBot(client))
 	{
 		if (IsFakeClient(client))
@@ -2012,9 +2019,31 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	{
 		TF2_AddCondition(client, TFCond_HalloweenThriller);
 	}
+
+	if (g_bGracePeriod && IsPlayerSurvivor(client) && !IsPlayerMinion(client) && TF2_GetPlayerClass(client) == TFClass_Medic)
+	{
+		int medigun = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
+		if (medigun != INVALID_ENT)
+		{
+			// Medic spawns with full ubercharge so that he can go scout for boxes without having to build his uber
+			SetEntPropFloat(medigun, Prop_Send, "m_flChargeLevel", 1.0);
+		}
+	}
 	
 	// Initialize our stats (health, speed, kb resist) the next frame to ensure it's correct
 	RequestFrame(RF_InitStats, client);
+
+	if (g_bRoundActive && IsEnemy(client))
+	{
+		int powerUpLevel = IsBoss(client) ? g_cvBossPowerupLevel.IntValue : g_cvEnemyPowerupLevel.IntValue;
+		if (powerUpLevel > 0 && g_iEnemyLevel >= powerUpLevel && RandChanceInt(0, powerUpLevel*8, g_iEnemyLevel))
+		{
+			static char sound[PLATFORM_MAX_PATH];
+			TFCond rune = GetRandomMannpowerRune_Enemies(client, sound, sizeof(sound));
+			TF2_AddCondition(client, rune);
+			EmitSoundToAll(sound, client, _, _, _, 0.7);
+		}
+	}
 	
 	// Calculate max speed on a timer again to fix a... weird issue with players spawning in and being REALLY slow.
 	// I don't know why it happens, but this fixes it, so, cool I guess?
@@ -2034,25 +2063,14 @@ public void RF_InitStats(int client)
 {
 	if (IsClientInGame(client) && IsPlayerAlive(client))
 	{
-		CalculatePlayerMaxHealth(client, false, true);
-		CalculatePlayerMaxSpeed(client);
-		CalculatePlayerMiscStats(client);
 		if (!IsPlayerMinion(client))
 		{
 			UpdateItemsForPlayer(client);
 		}
-		
-		if (g_bRoundActive && GetClientTeam(client) == TEAM_ENEMY)
-		{
-			int powerUpLevel = IsBoss(client) ? g_cvBossPowerupLevel.IntValue : g_cvEnemyPowerupLevel.IntValue;
-			if (powerUpLevel > 0 && g_iEnemyLevel >= powerUpLevel && RandChanceInt(0, powerUpLevel*8, g_iEnemyLevel))
-			{
-				static char sound[PLATFORM_MAX_PATH];
-				TFCond rune = GetRandomMannpowerRune_Enemies(client, sound, sizeof(sound));
-				TF2_AddCondition(client, rune);
-				EmitSoundToAll(sound, client, _, _, _, 0.7);
-			}
-		}
+
+		CalculatePlayerMaxHealth(client, false, true);
+		CalculatePlayerMaxSpeed(client);
+		CalculatePlayerMiscStats(client);
 	}
 }
 
@@ -2289,12 +2307,13 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	}
 	else if (IsPlayerSurvivor(victim) && !IsPlayerMinion(victim))
 	{
-		if (!g_bGracePeriod)
+		RoundState state = GameRules_GetRoundState();
+		if (!g_bGracePeriod && state != RoundState_TeamWin)
 		{
 			CreateTimer(3.5, Timer_SurvivorDeath, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 		}
 		
-		if (!g_bGracePeriod && !GetRF2GameRules().DisableDeath)
+		if (!g_bGracePeriod && !GetRF2GameRules().DisableDeath && state != RoundState_TeamWin)
 		{
 			SaveSurvivorInventory(victim, g_iPlayerInventoryIndex[victim]);
 			PrintDeathMessage(victim, itemProc);
@@ -2357,7 +2376,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			TriggerAchievement(victim, ACHIEVEMENT_DIE);
 			TriggerAchievement(victim, ACHIEVEMENT_DIE100);
 		}
-		else if (!GetRF2GameRules().DisableDeath)
+		else if (!GetRF2GameRules().DisableDeath && state != RoundState_TeamWin)
 		{
 			float pos[3];
 			GetEntPos(victim, pos);
@@ -2370,7 +2389,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		}
 	}
 	
-	bool wasSurvivor = IsPlayerSurvivor(victim);
+	bool wasSurvivor = IsPlayerSurvivor(victim, false);
 	RefreshClient(victim);
 	if (wasSurvivor)
 	{
@@ -2693,6 +2712,15 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	int building = event.GetInt("index");
 	TFObjectType type = TF2_GetObjectType2(building);
 	bool carryDeploy = asBool(GetEntProp(building, Prop_Send, "m_bCarryDeploy"));
+
+	if (IsFakeClient(client) && g_hTFBotEngineerBuildings[client])
+	{
+		if (g_hTFBotEngineerBuildings[client].FindValue(EntIndexToEntRef(building)) == -1)
+		{
+			g_hTFBotEngineerBuildings[client].Push(EntIndexToEntRef(building));
+		}
+	}
+
 	if (!carryDeploy && (IsPlayerMinion(client) || GetPlayerBuildingCount(client, TFObject_Sentry, false) > 1))
 	{
 		SetEntPropFloat(building, Prop_Send, "m_flModelScale", 0.6);
@@ -3842,8 +3870,11 @@ public Action Timer_PlayerTimer(Handle timer)
 			{
 				missingItems = true;
 				index = RF2_GetSurvivorIndex(i);
-				Format(names, sizeof(names), "%s- %N (%i/%i) - %.0f\n", names, i, g_iItemsTaken[index], GetPlayerRequiredItems(i), 
-					FloatAbs((g_flPlayerTimeSinceLastItemPickup[i]+maxShareTime))-GetTickedTime());
+				if (!IsBossEventActive())
+				{
+					Format(names, sizeof(names), "%s- %N (%i/%i) - %.0f\n", names, i, g_iItemsTaken[index], GetPlayerRequiredItems(i), 
+						FloatAbs((g_flPlayerTimeSinceLastItemPickup[i]+maxShareTime))-GetTickedTime());
+				}
 			}
 			
 			if (g_iItemsTaken[RF2_GetSurvivorIndex(i)] < GetPlayerRequiredItems(i))
@@ -3955,26 +3986,20 @@ public Action Timer_PlayerTimer(Handle timer)
 			}
 		}
 		
-		// Make sure our max health is up to date (mainly for things like the GRU)
-		maxHealth = SDK_GetPlayerMaxHealth(i);
-		if (g_iPlayerCalculatedMaxHealth[i] != maxHealth)
-		{
-			g_iPlayerCalculatedMaxHealth[i] = maxHealth;
-		}
-		
 		// Health Regen
 		if (CanPlayerRegen(i))
 		{
 			if (g_flPlayerRegenBuffTime[i] > 0.0)
 				g_flPlayerRegenBuffTime[i] -= 0.1;
 			
-			g_flPlayerHealthRegenTime[i] -= 0.1;
-			if (g_flPlayerHealthRegenTime[i] <= 0.0 && !TF2_IsPlayerInCondition(i, TFCond_Overhealed))
+			// Regen rune does nothing outside of Mannpower, make it triple health regen and decrease health regen freeze time
+			bool regenRune = TF2_IsPlayerInCondition(i, TFCond_RuneRegen);
+			g_flPlayerHealthRegenTime[i] -= regenRune ? 0.3 : 0.1;
+			if (g_flPlayerHealthRegenTime[i] <= 0.0)
 			{
 				g_flPlayerHealthRegenTime[i] = 0.0;
 				health = GetClientHealth(i);
 				maxHealth = RF2_GetCalculatedMaxHealth(i);
-				
 				if (health < maxHealth)
 				{
 					healAmount = RoundToFloor(float(maxHealth) * 0.0025);
@@ -4007,6 +4032,11 @@ public Action Timer_PlayerTimer(Handle timer)
 						{
 							healAmount = RoundFloat(float(healAmount) * 1.5);
 						}
+					}
+
+					if (regenRune)
+					{
+						healAmount *= 3;
 					}
 					
 					healAmount = imax(healAmount, 1);
@@ -4111,7 +4141,9 @@ public Action Timer_PlayerTimer(Handle timer)
 	{
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!g_bPlayerViewingItemDesc[i] && IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_ENEMY 
+			if (!g_bPlayerViewingItemDesc[i] && IsClientInGame(i) 
+				&& !IsFakeClient(i) && GetClientTeam(i) != TEAM_ENEMY 
+				&& !IsBossEventActive()
 				&& (stageCleared || (GetCookieBool(i, g_coTutorialSurvivor) && GetCookieBool(i, g_coTutorialItemPickup)))
 				&& (stageCleared || GetCookieBool(i, g_coAlwaysShowItemCounts)))
 			{
@@ -4244,7 +4276,7 @@ Action OnCallForMedic(int client)
 	
 	if (IsPlayerSurvivor(client) || IsPlayerMinion(client))
 	{
-		if (GetClientButtons(client) & IN_SCORE)
+		if (g_flLastTabPressTime[client]+1.0 >= GetTickedTime())
 		{
 			ShowItemMenu(client); // shortcut
 			return Plugin_Handled;
@@ -4527,7 +4559,7 @@ public void Hook_PreThink(int client)
 		if (tickedTime >= g_flPlayerNextMetalRegen[client])
 		{
 			int metal;
-			if (GetClientTeam(client) == TEAM_ENEMY)
+			if (g_bGracePeriod || GetClientTeam(client) == TEAM_ENEMY)
 			{
 				metal = 999999;
 			}
@@ -4537,7 +4569,7 @@ public void Hook_PreThink(int client)
 			}
 			
 			GivePlayerAmmo(client, metal, TFAmmoType_Metal, true);
-			float time = g_bGracePeriod ? 0.2 : g_cvEngiMetalRegenInterval.FloatValue;
+			float time = g_bGracePeriod ? 0.1 : g_cvEngiMetalRegenInterval.FloatValue;
 			g_flPlayerNextMetalRegen[client] = tickedTime + time;
 		}
 	}
@@ -4646,7 +4678,8 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 		{
 			if (GetTickedTime()-g_flSoldierRocketJumpTime[client] >= GetItemMod(ItemSoldier_HawkWarrior, 0))
 			{
-				TF2_AddCondition(client, TFCond_SpeedBuffAlly, CalcItemMod(client, ItemSoldier_HawkWarrior, 1));
+				RemoveAllRunes(client);
+				TF2_AddCondition(client, TFCond_RuneHaste, CalcItemMod(client, ItemSoldier_HawkWarrior, 1));
 			}
 		}
 	}
@@ -4674,6 +4707,11 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	else if (condition == TFCond_RuneHaste || condition == TFCond_RuneAgility || condition == TFCond_SpeedBuffAlly
 	|| condition == TFCond_RegenBuffed || condition == TFCond_HalloweenSpeedBoost || condition == TFCond_Slowed || condition == TFCond_Dazed)
 	{
+		if (condition == TFCond_SpeedBuffAlly)
+		{
+			g_bFullMinigunMoveSpeed[client] = false;
+		}
+
 		CalculatePlayerMaxSpeed(client);
 	}
 }
@@ -4915,6 +4953,32 @@ public void TF2_OnWaitingForPlayersStart()
 	g_bWaitingForPlayers = true;
 	CreateTimer(0.1, Timer_GameRulesOutputDelay, _, TIMER_FLAG_NO_MAPCHANGE); // Delay to ensure map logic runs properly
 	PrintToServer("%T", "WaitingStart", LANG_SERVER);
+	float waitTime = FindConVar("mp_waitingforplayers_time").FloatValue;
+	CreateTimer(waitTime*0.8, Timer_ExtendWaitCheck, _, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public void Timer_ExtendWaitCheck(Handle timer)
+{
+	if (!g_bWaitingForPlayers || !ArePlayersConnecting())
+		return;
+
+	Menu vote = new Menu(Menu_ExtendWaitVote);
+	vote.SetTitle("It looks like %d player(s) are still connecting. Extend waiting for players?", GetTotalHumans(false)-GetTotalHumans(true));
+	vote.AddItem("Yes", "Yes");
+	vote.AddItem("No", "No");
+	vote.ExitButton = false;
+	int clients[MAXTF2PLAYERS];
+	int clientCount;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || GetClientTeam(i) <= 1 || IsFakeClient(i))
+			continue;
+		
+		clients[clientCount] = i;
+		clientCount++;
+	}
+	
+	vote.DisplayVote(clients, clientCount, 10);
 }
 
 public void Timer_GameRulesOutputDelay(Handle timer)
@@ -5880,8 +5944,10 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		}
 	}
 	
+	bool selfDamage = (attacker == victim || inflictor == victim);
 	// reduce damage taken in singleplayer since the player will usually be the target of all incoming fire
-	if (victimIsClient && IsSingleplayer(false) && IsPlayerSurvivor(victim))
+	if (victimIsClient && IsSingleplayer(false) && IsPlayerSurvivor(victim) 
+		&& (validWeapon || !selfDamage) && (IsCombatChar(attacker) || IsCombatChar(inflictor)))
 	{
 		damage *= 0.8;
 	}
@@ -5903,7 +5969,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		return Plugin_Handled;
 	}
 	
-	bool selfDamage = (attacker == victim || inflictor == victim);
 	bool rangedDamage = (damageType & DMG_BULLET || damageType & DMG_BUCKSHOT || damageType & DMG_BLAST || damageType & DMG_IGNITE || damageType & DMG_SONIC);
 	bool invuln = victimIsClient && IsInvuln(victim);
 	
@@ -6127,6 +6192,28 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				{
 					damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 0);
 				}
+
+				if (TF2_IsPlayerInCondition(attacker, TFCond_RuneKnockout))
+				{
+					// Knockout does nothing outside of Mannpower, so make it double melee damage and do heavy knockback
+					damage *= 2.0;
+					if (victimIsClient)
+					{
+						float vel[3], angles[3], pos1[3], pos2[3];
+						GetEntPos(attacker, pos1, true);
+						GetEntPos(victim, pos2, true);
+						GetVectorAnglesTwoPoints(pos1, pos2, angles);
+						angles[0] = -60.0;
+						GetAngleVectors(angles, vel, NULL_VECTOR, NULL_VECTOR);
+						NormalizeVector(vel, vel);
+						ScaleVector(vel, 500.0);
+						vel[0] = TF2Attrib_HookValueFloat(vel[0], "damage_force_reduction", victim);
+						vel[1] = TF2Attrib_HookValueFloat(vel[1], "damage_force_reduction", victim);
+						vel[2] = TF2Attrib_HookValueFloat(vel[2], "damage_force_reduction", victim);
+						SDK_ApplyAbsVelocityImpulse(victim, vel);
+						RemoveAllRunes(victim);
+					}
+				}
 			}
 			else
 			{
@@ -6250,7 +6337,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	Action result;
 	Call_Finish(result);
 
-	if (victimIsClient && DoesPlayerHaveOSP(victim))
+	if (victimIsClient && !selfDamage && DoesPlayerHaveOSP(victim))
 	{
 		// One-shot protection: if a Survivor is above 90% HP, damage cannot deal more than 90% of max HP.
 		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.9);
@@ -6297,7 +6384,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			}
 		}
 
-		if (!invuln)
+		if (!invuln && !g_bGracePeriod)
 		{
 			if (PlayerHasItem(victim, Item_PocketMedic) && !GetRF2GameRules().DisableDeath)
 			{
@@ -6321,7 +6408,8 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			}
 		}
 		
-		if (PlayerHasItem(victim, Item_CheatersLament) && GetClientHealth(victim) <= 0 && !GetRF2GameRules().DisableDeath)
+		if (PlayerHasItem(victim, Item_CheatersLament) && GetClientHealth(victim) <= 0 
+			&& !g_bGracePeriod && !GetRF2GameRules().DisableDeath)
 		{
 			SetEntityHealth(victim, RF2_GetCalculatedMaxHealth(victim));
 			TF2_AddCondition(victim, TFCond_UberchargedCanteen);
@@ -6393,23 +6481,31 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		g_iEntLastHitItemProc[victim] = procItem;
 		if (validWeapon)
 		{
-			if ((damageType & DMG_BULLET || damageType & DMG_BUCKSHOT) 
-				&& PlayerHasItem(attacker, ItemHeavy_GoneCommando) && CanUseCollectorItem(attacker, ItemHeavy_GoneCommando))
+			if ((damageType & DMG_BULLET || damageType & DMG_BUCKSHOT))
 			{
-				float chance = GetItemMod(ItemHeavy_GoneCommando, 3) * proc;
-				if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
+				if (PlayerHasItem(attacker, ItemHeavy_GoneCommando) && CanUseCollectorItem(attacker, ItemHeavy_GoneCommando))
 				{
-					int count = GetItemModInt(ItemHeavy_GoneCommando, 2);
-					float pos[3], angles[3];
-					GetEntPos(victim, pos, true);
-					angles[1] = GetRandomFloat(-179.0, 179.0);
-					float dmg = GetItemMod(ItemHeavy_GoneCommando, 0) + CalcItemMod(attacker, ItemHeavy_GoneCommando, 1, -1);
-					for (int i = 1; i <= count; i++)
+					float chance = GetItemMod(ItemHeavy_GoneCommando, 3) * proc;
+					if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
 					{
-						RF2_Projectile_Shrapnel shrapnel = RF2_Projectile_Shrapnel(ShootProjectile(attacker, "rf2_projectile_shrapnel", pos, angles, 1000.0, dmg));
-						shrapnel.AddIgnoredEnt(victim);
+						int count = GetItemModInt(ItemHeavy_GoneCommando, 2);
+						float pos[3], angles[3];
+						GetEntPos(victim, pos, true);
 						angles[1] = GetRandomFloat(-179.0, 179.0);
+						float dmg = GetItemMod(ItemHeavy_GoneCommando, 0) + CalcItemMod(attacker, ItemHeavy_GoneCommando, 1, -1);
+						for (int i = 1; i <= count; i++)
+						{
+							RF2_Projectile_Shrapnel shrapnel = RF2_Projectile_Shrapnel(ShootProjectile(attacker, "rf2_projectile_shrapnel", pos, angles, 1000.0, dmg));
+							shrapnel.AddIgnoredEnt(victim);
+							angles[1] = GetRandomFloat(-179.0, 179.0);
+						}
 					}
+				}
+
+				if (PlayerHasItem(attacker, ItemHeavy_ToughGuyToque) && CanUseCollectorItem(attacker, ItemHeavy_ToughGuyToque))
+				{
+					g_bFullMinigunMoveSpeed[attacker] = true;
+					TF2_AddCondition(attacker, TFCond_SpeedBuffAlly, CalcItemMod(attacker, ItemHeavy_ToughGuyToque, 2));
 				}
 			}
 			else
@@ -6757,6 +6853,11 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		action = TFBot_OnPlayerRunCmd(client, buttons, impulse);
 	}
 	
+	if (!bot && buttons & IN_SCORE)
+	{
+		g_flLastTabPressTime[client] = GetTickedTime();
+	}
+
 	if (!bot && buttons & IN_ATTACK)
 	{
 		if ((IsPlayerSurvivor(client) || IsPlayerMinion(client)) && g_flPlayerVampireSapperCooldown[client] <= 0.0 && TF2_GetPlayerClass(client) == TFClass_Spy)

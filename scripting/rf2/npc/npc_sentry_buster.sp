@@ -356,7 +356,7 @@ void CalculateMeleeDamageForce(float damage, const float vecMeleeDir[3], float s
 // Starts after grace period
 public Action Timer_BusterSpawnWave(Handle timer)
 {
-	if (!g_bRoundActive || IsStageCleared())
+	if (!g_bRoundActive || IsStageCleared() || IsInFinalMap())
 		return Plugin_Stop;
 	
 	if (g_bRaidBossMode || IsSentryBusterActive() || !GetRF2GameRules().AllowEnemySpawning)

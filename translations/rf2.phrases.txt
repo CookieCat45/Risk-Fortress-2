@@ -286,14 +286,14 @@
 	// Workbench
 	"UsedWorkbench" // No color tags
 	{
-		"#format"	"{1:d},{2:s},{3:s},{4:d},{5:s}"
-		"en"		"You traded {1} {2} for a {3}. You have {4} {5} left."
+		"#format"	"{1:d},{2:s},{3:s},{4:d},{5:s},{6:d}"
+		"en"		"You traded {1} {2} for {6} {3}. You have {4} {5} left."
 	}
 	
 	"UsedWorkbenchMulti"
 	{
-		"#format"	"{1:d},{2:s},{3:s}"
-		"en"		"You traded {1} {2} items for a {3}."
+		"#format"	"{1:d},{2:s},{3:s},{4:d}"
+		"en"		"You traded {1} {2} items for {4} {3}."
 	}
 	
 	"NoExchange" // No color tags

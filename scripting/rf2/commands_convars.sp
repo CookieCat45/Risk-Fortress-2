@@ -36,6 +36,7 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_endlevel", Command_EndLevel, "Starts the vote to end the level in Tank Destruction mode.");
 	RegConsoleCmd("rf2_reset_tutorial", Command_ResetTutorial, "Resets the tutorial.");
 	RegConsoleCmd("rf2_skipwait", Command_VoteSkipWait, "Starts a vote to skip the Waiting for Players sequence.");
+	RegConsoleCmd("rf2_skip_wait", Command_VoteSkipWait, "Starts a vote to skip the Waiting for Players sequence.");
 	RegConsoleCmd("rf2_survivorqueue", Command_SurvivorQueue, "Shows the Survivor queue list.");
 	RegConsoleCmd("rf2_itemlog", Command_ItemLog, "Shows a list of items that you've collected.");
 	RegConsoleCmd("rf2_logbook", Command_ItemLog, "Shows a list of items that you've collected.");
@@ -44,6 +45,7 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_interact", Command_Interact, "Functions identically to Call for Medic key, can be binded to a key from the console");
 	RegConsoleCmd("rf2_ping", Command_Ping, "Ping an object, meant to be binded to a key from the console");
 	RegConsoleCmd("rf2_extend_wait", Command_ExtendWait, "Extends Waiting for Players time significantly.");
+	RegConsoleCmd("rf2_extendwait", Command_ExtendWait, "Extends Waiting for Players time significantly.");
 	RegConsoleCmd("rf2_discord", Command_Discord, "Show link to the Risk Fortress 2 Discord server.");
 	RegConsoleCmd("rf2_helpmenu", Command_HelpMenu, "Shows the help menu.");
 	RegConsoleCmd("rf2_help", Command_HelpMenu, "Shows the help menu.");
@@ -686,11 +688,7 @@ public Action Command_ExtendWait(int client, int args)
 	{
 		if (GetTotalHumans(false) <= 1)
 		{
-			ConVar waitTime = FindConVar("mp_waitingforplayers_time");
-			float oldWaitTime = waitTime.FloatValue;
-			waitTime.FloatValue = g_cvWaitExtendTime.FloatValue;
-			InsertServerCommand("mp_waitingforplayers_restart 1");
-			CreateTimer(1.2, Timer_ResetWaitTime, oldWaitTime, TIMER_FLAG_NO_MAPCHANGE);
+			ExtendWaitTime();
 		}
 		else
 		{
@@ -712,7 +710,6 @@ public Action Command_ExtendWait(int client, int args)
 			
 			vote.DisplayVote(clients, clientCount, 10);
 		}
-		
 	}
 	else
 	{
@@ -730,11 +727,7 @@ public int Menu_ExtendWaitVote(Menu menu, MenuAction action, int param1, int par
 		{
 			if (param1 == 0 && g_bWaitingForPlayers)
 			{
-				ConVar waitTime = FindConVar("mp_waitingforplayers_time");
-				float oldWaitTime = waitTime.FloatValue;
-				waitTime.FloatValue = g_cvWaitExtendTime.FloatValue;
-				InsertServerCommand("mp_waitingforplayers_restart 1");
-				CreateTimer(1.2, Timer_ResetWaitTime, oldWaitTime, TIMER_FLAG_NO_MAPCHANGE);
+				ExtendWaitTime();
 			}
 		}
 		case MenuAction_End:
@@ -1508,8 +1501,8 @@ void ShowClientSettingsMenu(int client)
 	FormatEx(buffer, sizeof(buffer), "%t", "SpecOnDeath", GetCookieBool(client, g_coSpecOnDeath) ? on : off);
 	menu.AddItem("rf2_spec_on_death", buffer);
 	
-	FormatEx(buffer, sizeof(buffer), "%t", "StayInSpec", GetCookieBool(client, g_coStayInSpecOnJoin) ? on : off);
-	menu.AddItem("rf2_stay_in_spec", buffer);
+	//FormatEx(buffer, sizeof(buffer), "%t", "StayInSpec", GetCookieBool(client, g_coStayInSpecOnJoin) ? on : off);
+	//menu.AddItem("rf2_stay_in_spec", buffer);
 	
 	FormatEx(buffer, sizeof(buffer), "%t", "ToggleMusic", GetCookieBool(client, g_coMusicEnabled) ? on : off);
 	menu.AddItem("rf2_music_enabled", buffer);
@@ -1854,7 +1847,7 @@ public Action Command_MakeSurvivor(int client, int args)
 	{
 		for (int i = 0; i < matches; i++)
 		{
-			if (IsPlayerSurvivor(clients[i]))
+			if (IsPlayerSurvivor(clients[i]) && !IsPlayerMinion(clients[i]))
 			{
 				RF2_ReplyToCommand(client, "%t", "AlreadySurvivor", clients[i]);
 				continue;

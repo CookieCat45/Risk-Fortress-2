@@ -125,3 +125,5 @@ scripting/spcomp64
 scripting/damagetest.smx
 scripting/damagetest.sp
 scripting/ent_fire_dedicated.sp
+*.smx
+scripting/damagetest.sp

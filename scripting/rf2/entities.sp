@@ -593,7 +593,6 @@ bool reset=false, bool controlPoint=false, const float controlPointOffset[3]=NUL
 			{
 				TE_SendToClient(clientArray[i]);
 			}
-				
 		}
 	}
 	else

@@ -35,7 +35,9 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 			.DefineIntField("m_iItemQuality", _, "item_quality") // Quality of the item on the workbench
 			.DefineIntField("m_iTradeQuality", _, "trade_quality") // Quality of the items that must be traded in
 			.DefineIntField("m_iCustomItemCost", _, "custom_item_cost")
+			.DefineIntField("m_iCustomItemReward", _, "custom_item_reward")
 			.DefineIntField("m_iCost")
+			.DefineIntField("m_iReward")
 			.DefineEntityField("m_hDisplaySprite")
 		.EndDataMapDesc();
 		g_Factory.Install();
@@ -94,6 +96,19 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 		}
 	}
 
+	property int CustomItemReward
+	{
+		public get()
+		{
+			return this.GetProp(Prop_Data, "m_iCustomItemReward");
+		}
+		
+		public set (int value)
+		{
+			this.SetProp(Prop_Data, "m_iCustomItemReward", value);
+		}
+	}
+
 	property int Cost
 	{
 		public get()
@@ -104,6 +119,19 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 		public set (int value)
 		{
 			this.SetProp(Prop_Data, "m_iCost", value);
+		}
+	}
+
+	property int Reward
+	{
+		public get()
+		{
+			return this.GetProp(Prop_Data, "m_iReward");
+		}
+		
+		public set (int value)
+		{
+			this.SetProp(Prop_Data, "m_iReward", value);
 		}
 	}
 	
@@ -177,12 +205,13 @@ static void OnSpawnPost(int entity)
 		char text[256], qualityName[32];
 		GetQualityName(bench.TradeQuality, qualityName, sizeof(qualityName));
 		bench.Cost = bench.CustomItemCost > 1 ? bench.CustomItemCost : 1;
+		bench.Reward = bench.CustomItemReward > 1 ? bench.CustomItemReward : 1;
 		
-		FormatEx(text, sizeof(text), "Call for Medic to trade for 1 %s! (Requires %i %s %s)", 
+		FormatEx(text, sizeof(text), "Call for Medic\nTo trade for %i %s!\n(Requires %i %s %s)", bench.Reward,
 			g_szItemName[bench.Item], bench.Cost, qualityName, bench.Cost > 1 ? "items" : "item");
 		
 		bench.SetWorldText(text);
-		bench.TextZOffset = 90.0;
+		bench.TextZOffset = 100.0;
 		char name[256];
 		FormatEx(name, sizeof(name), "Workbench (%s)", g_szItemName[bench.Item]);
 		bench.SetObjectName(name);
@@ -293,16 +322,16 @@ static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 			lastItem = item;
 		}
 		
-		GiveItem(client, benchItem, 1, true);
+		GiveItem(client, benchItem, bench.Reward, true);
 		EmitSoundToAll(SND_USE_WORKBENCH, client);
 		ShowItemDesc(client, benchItem);
 		if (oneItem)
 		{
-			PrintCenterText(client, "%t", "UsedWorkbench", cost, g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item, true), g_szItemName[item]);
+			PrintCenterText(client, "%t", "UsedWorkbench", cost, g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item, true), g_szItemName[item], bench.Reward);
 		}
 		else
 		{
-			PrintCenterText(client, "%t", "UsedWorkbenchMulti", cost, qualityName, g_szItemName[benchItem]);
+			PrintCenterText(client, "%t", "UsedWorkbenchMulti", cost, qualityName, g_szItemName[benchItem], bench.Reward);
 		}
 	}
 	else
