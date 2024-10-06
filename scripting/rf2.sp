@@ -1438,7 +1438,7 @@ public void OnClientDisconnect(int client)
 		return;
 
 	StopMusicTrack(client);
-	if (g_bPlayerTimingOut[client] && IsPlayerSurvivor(client) && !IsPlayerMinion(client))
+	if (g_bPlayerTimingOut[client] && IsPlayerSurvivor(client, false) && !IsPlayerMinion(client))
 	{
 		RF2_PrintToChatAll("{yellow}%N {red}crashed or lost connection on RED and has 5 minutes to reconnect!", client);
 		PrintToServer("%N crashed or lost connection on RED and has 5 minutes to reconnect!", client);
@@ -1471,7 +1471,7 @@ public void OnClientDisconnect(int client)
 	
 	if (!g_bPlayerTimingOut[client] && !g_bPluginReloading && !IsFakeClient(client))
 	{
-		if (IsPlayerSurvivor(client))
+		if (IsPlayerSurvivor(client, false))
 		{
 			SaveSurvivorInventory(client, g_iPlayerInventoryIndex[client]);
 			if (g_bGracePeriod)
@@ -2305,7 +2305,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			}
 		}
 	}
-	else if (IsPlayerSurvivor(victim) && !IsPlayerMinion(victim))
+	else if (IsPlayerSurvivor(victim, false) && !IsPlayerMinion(victim))
 	{
 		RoundState state = GameRules_GetRoundState();
 		if (!g_bGracePeriod && state != RoundState_TeamWin)
