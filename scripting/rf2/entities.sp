@@ -83,7 +83,7 @@ ArrayList GetNearestEntities(float origin[3], const char[] classname, float minD
 		nearestEnts.Push(entity);
 	}
 
-	if (nearestEnts.Length <= 0)
+	if (nearestEnts.Length <= 1)
 	{
 		return nearestEnts;
 	}

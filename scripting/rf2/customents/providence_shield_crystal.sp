@@ -103,9 +103,9 @@ void Crystal_OnMapStart()
 static void OnCreate(RF2_ProvidenceShieldCrystal crystal)
 {
     crystal.DoUnstuckChecks = false;
+    crystal.Team = TEAM_ENEMY;
     crystal.SetModel(MODEL_CRYSTAL);
     crystal.SetProp(Prop_Send, "m_fEffects", crystal.GetProp(Prop_Send, "m_fEffects")|EF_ITEM_BLINK);
-    crystal.SetProp(Prop_Data, "m_iTeamNum", TEAM_ENEMY);
     crystal.HealthText = CreateHealthText(crystal.index, 65.0, 30.0, "SHIELD CRYSTAL");
     crystal.HealthText.SetHealthColor(HEALTHCOLOR_HIGH, {0, 255, 100, 255});
     crystal.BaseNpc.flGravity = 0.0;
@@ -139,7 +139,7 @@ static Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 		float damageForce[3], float damagePosition[3], int damagecustom)
 {
     RF2_ProvidenceShieldCrystal crystal = RF2_ProvidenceShieldCrystal(victim);
-    if (crystal.Destroyed)
+    if (crystal.Destroyed || GetEntTeam(attacker) == crystal.Team)
         return Plugin_Handled;
 
     return Plugin_Continue;
