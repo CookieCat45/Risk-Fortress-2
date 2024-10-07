@@ -382,13 +382,28 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 {
 	if (index < 0)
 		return;
-		
+	
+	int totalItems;
+	for (int i = 1; i < GetTotalItems(); i++)
+	{
+		if (IsEquipmentItem(i))
+			continue;
+
+		totalItems += GetPlayerItemCount(client, i, true, true);
+	}
+
+	// If we have no items and are level 1, DO. NOT. SAVE. ANYTHING. Because we can end up accidentally wiping someone's inventory.
+	if (g_iPlayerLevel[client] <= 1 && totalItems <= 0 && GetPlayerEquipmentItem(client) == Item_Null)
+	{
+		return;
+	}
+
 	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (IsEquipmentItem(i))
 			continue;
 		
-		g_iSavedItem[index][i] = GetPlayerItemCount(client, i, true);
+		g_iSavedItem[index][i] = GetPlayerItemCount(client, i, true, true);
 	}
 	
 	g_iSavedLevel[index] = g_iPlayerLevel[client];

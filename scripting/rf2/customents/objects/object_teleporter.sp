@@ -206,7 +206,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 	{
 		if (this.EventState != TELE_EVENT_INACTIVE)
 			return;
-			
+
 		this.EventState = TELE_EVENT_PREPARING;
 		this.SetGlow(true);
 		RF2_PrintToChatAll("%t", "TeleporterActivated");
@@ -297,7 +297,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			
 			if (PlayerHasItem(i, Item_HorsemannHead, true))
 			{
-				hhhSpawnCount += GetPlayerItemCount(i, Item_HorsemannHead, true);
+				hhhSpawnCount += GetPlayerItemCount(i, Item_HorsemannHead, true, true);
 				if (hhhSpawnCount > bossSpawnLimit)
 					hhhSpawnCount = bossSpawnLimit;
 				
@@ -307,7 +307,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			
 			if (PlayerHasItem(i, Item_Monoculus, true))
 			{
-				eyeSpawnCount += GetPlayerItemCount(i, Item_Monoculus, true);
+				eyeSpawnCount += GetPlayerItemCount(i, Item_Monoculus, true, true);
 				if (eyeSpawnCount > bossSpawnLimit)
 					eyeSpawnCount = bossSpawnLimit;
 

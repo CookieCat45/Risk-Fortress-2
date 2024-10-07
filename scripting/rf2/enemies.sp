@@ -1180,7 +1180,7 @@ void StunRadioWave()
 				int medigun = GetPlayerWeaponSlot(i, WeaponSlot_Secondary);
 				if (medigun != INVALID_ENT)
 				{
-					SetEntPropFloat(medigun, Prop_Send, "m_flChargePercent", 0.0);
+					SetEntPropFloat(medigun, Prop_Send, "m_flChargeLevel", 0.0);
 				}
 			}
 

@@ -447,7 +447,7 @@ void GiveItem(int client, int type, int amount=1, bool addToLogbook=false)
 	else
 	{
 		g_iPlayerItem[client][type] += amount;
-		if (GetPlayerItemCount(client, type, true) < 0)
+		if (GetPlayerItemCount(client, type, true, true) < 0)
 		{
 			g_iPlayerItem[client][type] = 0;
 		}
@@ -2521,9 +2521,9 @@ bool GetItemModBool(int item, int slot)
 }
 */
 
-int GetPlayerItemCount(int client, int item, bool allowMinions=false)
+int GetPlayerItemCount(int client, int item, bool allowMinions=false, bool allowDead=false)
 {
-	if (!allowMinions && IsPlayerMinion(client) || !IsPlayerAlive(client))
+	if (!allowMinions && IsPlayerMinion(client) || !allowDead && !IsPlayerAlive(client))
 		return 0;
 	
 	return g_iPlayerItem[client][item];
@@ -2705,14 +2705,14 @@ public int SortItemListByEquipPriority(int index1, int index2, ArrayList array, 
 	return strcmp(name1, name2);
 }
 
-bool PlayerHasItem(int client, int item, bool allowMinions=false)
+bool PlayerHasItem(int client, int item, bool allowMinions=false, bool allowDead=false)
 {
 	if (IsEquipmentItem(item))
 	{
 		return (GetPlayerEquipmentItem(client) == item);
 	}
 	
-	return (GetPlayerItemCount(client, item, allowMinions) > 0);
+	return (GetPlayerItemCount(client, item, allowMinions, allowDead) > 0);
 }
 
 bool IsScrapItem(int item)
