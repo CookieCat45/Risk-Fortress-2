@@ -1667,7 +1667,7 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 				}
 				else
 				{
-					PrintKeyHintText(param1, "You can't drop this item.");
+					PrintHintText(param1, "You can't drop this item.");
 					ShowItemMenu(param1);
 				}
 			}

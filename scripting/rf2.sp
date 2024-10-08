@@ -3767,7 +3767,7 @@ public Action Timer_PlayerHud(Handle timer)
 
 		if (g_szObjectiveHud[i][0])
 		{
-			SetHudTextParams(-1.0, -0.6, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
+			SetHudTextParams(-1.0, -0.64, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
 			ShowSyncHudText(i, g_hObjectiveHudSync, g_szObjectiveHud[i]);
 		}
 	}
@@ -5751,6 +5751,8 @@ float damageForce[3], float damagePosition[3], int damageCustom, CritType &critT
 			{
 				damage *= CalcItemMod_HyperbolicInverted(victim, Item_ApertureHat, 0);
 				g_flHardHatLastResistTime[victim] = GetTickedTime();
+				EmitGameSoundToClient(victim, "Player.ResistanceLight");
+				EmitGameSoundToClient(victim, "Player.ResistanceLight");
 			}
 		}
 	}
