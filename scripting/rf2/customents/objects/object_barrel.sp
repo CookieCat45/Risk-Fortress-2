@@ -73,7 +73,7 @@ static Action Hook_OnBarrelHit(int entity, int &attacker, int &inflictor, float 
     float pos[3];
     GetEntPos(entity, pos, true);
     pos[2] += 10.0;
-    float money = 35.0 * (1.0 + CalcItemMod(attacker, Item_BanditsBoots, 0));
+    float money = 35.0 * RF2_Object_Base.GetCostMultiplier() * (1.0 + CalcItemMod(attacker, Item_BanditsBoots, 0));
     SpawnCashDrop(money, pos, 2);
     SpawnInfoParticle("mvm_loot_explosion", pos, 3.0);
     EmitSoundToAll(SND_DROP_DEFAULT, entity);

@@ -220,11 +220,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 	{
 		float value = 1.0 + (g_flDifficultyCoeff / g_cvSubDifficultyIncrement.FloatValue);
 		value += FloatFraction(Pow(1.35, float(g_iStagesCompleted)));
-		
-		if (value < 1.0)
-			value = 1.0;
-			
-		return value;
+		return fmax(value, 1.0);
 	}
 	
 	public int GetWorldText(char[] buffer, int size)

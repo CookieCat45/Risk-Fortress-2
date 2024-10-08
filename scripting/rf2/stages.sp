@@ -13,17 +13,9 @@ char g_szStageBGM[PLATFORM_MAX_PATH];
 char g_szBossBGM[PLATFORM_MAX_PATH];
 char g_szUnderworldMap[PLATFORM_MAX_PATH];
 char g_szFinalMap[PLATFORM_MAX_PATH];
-bool g_bDisableEurekaTeleport;
 int g_iCurrentCustomTrack = -1;
 ArrayList g_hCustomTracks;
 ArrayList g_hCustomTracksDuration;
-
-float g_flGracePeriodTime = 30.0;
-float g_flBossSpawnChanceBonus;
-float g_flMaxSpawnWaveTime;
-float g_flLoopMusicAt[MAXTF2PLAYERS] = {-1.0, ...};
-float g_flStageBGMDuration;
-float g_flBossBGMDuration;
 
 void LoadMapSettings(const char[] mapName)
 {
@@ -99,7 +91,9 @@ void LoadMapSettings(const char[] mapName)
 			g_szEnemyPackName = "";
 			g_szBossPackName = "";
 			g_flGracePeriodTime = 30.0;
+			g_flStartMoneyMultiplier = 1.0;
 			g_bDisableEurekaTeleport = false;
+			g_bDisableItemDropping = false;
 			stageKv = 1;
 		}
 		else
@@ -208,10 +202,12 @@ void ReadMapKeys(KeyValues mapKey)
 	
 	PrintToServer("[RF2] Enemies/bosses loaded: %i", g_iEnemyCount);
 	g_flGracePeriodTime = mapKey.GetFloat("grace_period_time", 30.0);
+	g_flStartMoneyMultiplier = mapKey.GetFloat("start_money_multiplier", 1.0);
 	g_flBossSpawnChanceBonus = mapKey.GetFloat("boss_spawn_chance_bonus", 0.0);
 	g_flMaxSpawnWaveTime = mapKey.GetFloat("max_spawn_wave_time", 0.0);
 	g_bTankBossMode = asBool(mapKey.GetNum("tank_destruction", false));
 	g_bDisableEurekaTeleport = asBool(mapKey.GetNum("disable_eureka_teleport", false));
+	g_bDisableItemDropping = asBool(mapKey.GetNum("disable_item_dropping", false));
 }
 
 int FindMaxStages()

@@ -504,44 +504,48 @@ void TFBot_Think(TFBot bot)
 			CopyVectors(botPos, navPos);
 			navPos[2] += 30.0;
 			CNavArea area = TheNavMesh.GetNearestNavArea(navPos, true, 1000.0, false, true);
-			for (int i = 0; i < TheNavAreas.Count; i++)
+			if (area)
 			{
-				tfArea = view_as<CTFNavArea>(TheNavAreas.Get(i));
-				if (tfArea && tfArea.HasAttributeTF(SENTRY_SPOT))
+				for (int i = 0; i < TheNavAreas.Count; i++)
 				{
-					if (!TheNavMesh.BuildPath(area, tfArea, NULL_VECTOR, INVALID_FUNCTION))
-						continue;
-
-					// Does another bot own this area?
-					bool owned;
-					for (int b = 1; b <= MaxClients; b++)
+					tfArea = view_as<CTFNavArea>(TheNavAreas.Get(i));
+					if (tfArea && tfArea.HasAttributeTF(SENTRY_SPOT))
 					{
-						if (!IsClientInGame(b) || !IsFakeClient(b) || TF2_GetPlayerClass(b) != TFClass_Engineer)
+						if (!TheNavMesh.BuildPath(area, tfArea, NULL_VECTOR, INVALID_FUNCTION))
 							continue;
-							
-						if (g_TFBot[b].SentryArea == tfArea)
+
+						// Does another bot own this area?
+						bool owned;
+						for (int b = 1; b <= MaxClients; b++)
 						{
-							owned = true;
+							if (!IsClientInGame(b) || !IsFakeClient(b) || TF2_GetPlayerClass(b) != TFClass_Engineer)
+								continue;
+								
+							if (g_TFBot[b].SentryArea == tfArea)
+							{
+								owned = true;
+								break;
+							}
+						}
+						
+						// No one owns this area and there are no other things nearby, we can take it if we can get there.
+						tfArea.GetCenter(areaPos);
+						if (!owned && GetNearestEntity(areaPos, "obj_*", _, 300.0) == INVALID_ENT && GetNearestEntity(areaPos, "rf2_object*", _, 150.0) == INVALID_ENT) 
+						{
+							TFBot_PathToPos(bot, areaPos, 10000.0, true);
+							if (!bot.Follower.IsValid())
+								continue;
+
+							bot.Mission = MISSION_BUILD;
+							bot.SentryArea = tfArea;
+							bot.BuildAttempts = 0;
+							bot.AttemptingBuild = false;
 							break;
 						}
 					}
-					
-					// No one owns this area and there are no other things nearby, we can take it if we can get there.
-					tfArea.GetCenter(areaPos);
-					if (!owned && GetNearestEntity(areaPos, "obj_*", _, 300.0) == INVALID_ENT && GetNearestEntity(areaPos, "rf2_object*", _, 150.0) == INVALID_ENT) 
-					{
-						TFBot_PathToPos(bot, areaPos, 10000.0, true);
-						if (!bot.Follower.IsValid())
-							continue;
-
-						bot.Mission = MISSION_BUILD;
-						bot.SentryArea = tfArea;
-						bot.BuildAttempts = 0;
-						bot.AttemptingBuild = false;
-						break;
-					}
 				}
 			}
+			
 			
 			// We failed to find an area, try again after a bit
 			if (!bot.SentryArea)

@@ -28,6 +28,7 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerViewingItemDesc[client] = false;
 	g_bPlayerHealOnHitCooldown[client] = false;
 	g_bFullMinigunMoveSpeed[client] = false;
+	g_bPermaDeathMark[client] = false;
 	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;
@@ -590,6 +591,7 @@ void RemoveAllRunes(int client)
 	TF2_RemoveCondition(client, TFCond_KingRune);
 	TF2_RemoveCondition(client, TFCond_SupernovaRune);
 	TF2_RemoveCondition(client, TFCond_PlagueRune);
+	TF2_RemoveCondition(client, TFCond_PowerupModeDominant);
 }
 
 void CalculatePlayerMiscStats(int client)

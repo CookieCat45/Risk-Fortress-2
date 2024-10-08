@@ -543,7 +543,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		float dist;
 		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
-			if (!IsValidEntity2(entity) || !IsCombatChar(entity))
+			if (!IsValidEntity2(entity) || !IsCombatChar(entity) || GetEntityFlags(entity) & FL_NOTARGET)
 				continue;
 			
 			if (IsValidClient(entity))
@@ -725,7 +725,9 @@ public void OnVPhysicsUpdate(int entity)
 	
 	if (proj.Homing)
 	{
-		if (!IsValidEntity2(proj.HomingTarget) || !IsLOSClear(proj.index, proj.HomingTarget) || IsValidClient(proj.HomingTarget) && !IsPlayerAlive(proj.HomingTarget))
+		if (!IsValidEntity2(proj.HomingTarget) || GetEntityFlags(proj.HomingTarget) & FL_NOTARGET
+			|| !IsLOSClear(proj.index, proj.HomingTarget) 
+			|| IsValidClient(proj.HomingTarget) && !IsPlayerAlive(proj.HomingTarget))
 		{
 			proj.SelectHomingTarget();
 		}

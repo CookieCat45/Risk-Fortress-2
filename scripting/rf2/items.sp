@@ -27,6 +27,7 @@ char g_szItemUnusualEffectName[MAX_ITEMS][64];
 bool g_bItemInDropPool[MAX_ITEMS];
 bool g_bItemCanBeDropped[MAX_ITEMS] = {true, ...};
 bool g_bItemForceShowInInventory[MAX_ITEMS];
+bool g_bItemMultiplayerOnly[MAX_ITEMS];
 bool g_bLaserHitDetected[MAX_EDICTS];
 
 // Unusual effects
@@ -157,6 +158,7 @@ int LoadItems(const char[] customPath="")
 			g_bItemInDropPool[item] = asBool(itemKey.GetNum("in_item_pool", true));
 			g_bItemCanBeDropped[item] = asBool(itemKey.GetNum("can_be_dropped", true));
 			g_bItemForceShowInInventory[item] = asBool(itemKey.GetNum("force_show_inv", false));
+			g_bItemMultiplayerOnly[item] = asBool(itemKey.GetNum("multiplayer_only", false));
 			if (item == ItemScout_LongFallBoots)
 			{
 				g_bItemInDropPool[item] = IsGoombaAvailable();
@@ -336,6 +338,9 @@ int GetRandomItem(int normalWeight=0, int genuineWeight=0,
 		if (!g_bItemInDropPool[i] || GetItemQuality(i) == Quality_Collectors)
 			continue;
 		
+		if (g_bItemMultiplayerOnly[i] && IsSingleplayer(false))
+			continue;
+
 		if (GetItemQuality(i) == quality 
 			|| quality == Quality_Haunted && allowHauntedStrange && GetItemQuality(i) == Quality_HauntedStrange)
 		{
@@ -368,6 +373,9 @@ int GetRandomItemEx(int quality)
 		if (!g_bItemInDropPool[i])
 			continue;
 		
+		if (g_bItemMultiplayerOnly[i] && IsSingleplayer(false))
+			continue;
+
 		if (g_iItemQuality[i] == quality)
 			array.Push(i);
 	}
@@ -433,16 +441,25 @@ void GiveItem(int client, int type, int amount=1, bool addToLogbook=false)
 {
 	if (IsEquipmentItem(type))
 	{
-		int strangeItem = GetPlayerEquipmentItem(client);
-		if (strangeItem > Item_Null && IsPlayerSurvivor(client))
+		if (amount < 0)
 		{
-			float pos[3];
-			GetEntPos(client, pos);
-			pos[2] += 30.0;
-			DropItem(client, strangeItem, pos, _, 6.0);
+			if (g_iPlayerEquipmentItem[client] == type)
+				g_iPlayerEquipmentItem[client] = Item_Null;
+		}
+		else
+		{
+			int strangeItem = GetPlayerEquipmentItem(client);
+			if (strangeItem > Item_Null && IsPlayerSurvivor(client))
+			{
+				float pos[3];
+				GetEntPos(client, pos);
+				pos[2] += 30.0;
+				DropItem(client, strangeItem, pos, _, 6.0);
+			}
+			
+			g_iPlayerEquipmentItem[client] = type;
 		}
 		
-		g_iPlayerEquipmentItem[client] = type;
 	}
 	else
 	{
@@ -2071,6 +2088,66 @@ bool ActivateStrangeItem(int client)
 			}
 			
 			delete randomItems;
+		}
+
+		case ItemStrange_OneWayTicket:
+		{
+			if (g_bPermaDeathMark[client])
+			{
+				PrintCenterText(client, "You can't use this if you're already marked for death!");
+				EmitSoundToClient(client, SND_NOPE);
+				return false;
+			}
+
+			ArrayList deadAllies = new ArrayList();
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (i == client || !IsPlayerSurvivor(i, false) || !IsPlayerMinion(i) && IsPlayerAlive(i))
+					continue;
+				
+				deadAllies.Push(i);
+			}
+
+			if (deadAllies.Length <= 0)
+			{
+				PrintCenterText(client, "No allies are dead!");
+				EmitSoundToClient(client, SND_NOPE);
+				delete deadAllies;
+				return false;
+			}
+
+			int ally = deadAllies.Get(GetRandomInt(0, deadAllies.Length-1));
+			delete deadAllies;
+			if (IsPlayerAlive(ally))
+				SilentlyKillPlayer(ally);
+
+			float pos[3];
+			GetEntPos(client, pos, true);
+			SetVariantString("");
+			AcceptEntityInput(ally, "SetCustomModel");
+			TF2_RespawnPlayer(ally);
+			TeleportEntity(ally, pos);
+			TF2_AddCondition(ally, TFCond_UberchargedCanteen, 5.0);
+			g_bPermaDeathMark[client] = true;
+			TF2_AddCondition(client, TFCond_MarkedForDeathSilent);
+			GiveItem(client, ItemStrange_OneWayTicket, -1);
+			GiveItem(client, ItemStrange_LittleBuddy, 1, true);
+			EmitSoundToAll(SND_REVIVE, ally, _, SNDLEVEL_SCREAMING);
+			EmitSoundToAll(SND_MERASMUS_APPEAR, ally, _, SNDLEVEL_SCREAMING);
+			SpawnInfoParticle("eyeboss_death_vortex", pos, 10.0);
+			TE_TFParticle("ghost_appearation", pos);
+		}
+
+		case ItemStrange_LittleBuddy:
+		{
+			if (GetClientTeam(client) == TEAM_SURVIVOR)
+			{
+				CPrintToChatAll("{red}%N{default} :  Ahoy!", client);
+			}
+			else
+			{
+				CPrintToChatAll("{blue}%N{default} :  Ahoy!", client);
+			}
 		}
 	}
 	

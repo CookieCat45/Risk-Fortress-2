@@ -358,12 +358,7 @@ void LoadSurvivorInventory(int client, int index)
 	}
 	
 	float cashBonus = 1.0 + (2.0 * float(g_iLoopCount));
-	if (g_bTankBossMode)
-	{
-		cashBonus += 2.0;
-	}
-	
-	SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier() * cashBonus);
+	SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier() * cashBonus * g_flStartMoneyMultiplier);
 	g_iPlayerLevel[client] = g_iSavedLevel[index];
 	g_flPlayerXP[client] = g_flSavedXP[index];
 	g_iItemsTaken[RF2_GetSurvivorIndex(client)] = 0;

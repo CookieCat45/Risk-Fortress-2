@@ -119,6 +119,9 @@ enum
 	ItemDemo_OldBrimstone = 99,
 	ItemMedic_MechaMedes = 100,
 	Item_OldCrown = 101,
+	ItemStrange_OneWayTicket = 102,
+	ItemStrange_LittleBuddy = 103,
+	Item_ApertureHat = 104,
 	Item_MaxValid,
 };
 

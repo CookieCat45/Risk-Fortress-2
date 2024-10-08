@@ -30,6 +30,7 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_particle_test", Command_ParticleTest, ADMFLAG_SLAY, "For testing particle effects.\n/rf2_particle_test <effect name> <method>.\n0 = Spawn via TE, 1 = Spawn via info_particle system, 2 = Spawn via trigger_particle.");
 	RegAdminCmd("rf2_tp_to_altar", Command_AltarTeleport, ADMFLAG_SLAY, "Teleports to an altar if one exists");
 	RegAdminCmd("rf2_view_afk_times", Command_ViewAFKTimes, ADMFLAG_SLAY, "View player AFK times");
+	RegAdminCmd("rf2_trigger_achievement", Command_TriggerAchievement, ADMFLAG_SLAY, "Trigger an achievement for a player. /rf2_trigger_achievement <player> <achievement ID>");
 
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
@@ -1660,12 +1661,13 @@ public int Menu_Items(Menu menu, MenuAction action, int param1, int param2)
 			{
 				int item = StringToInt(info);
 				ShowItemDesc(param1, item);
-				if (g_bItemCanBeDropped[item] && GetItemQuality(item) != Quality_Community)
+				if (g_bItemCanBeDropped[item] && !g_bDisableItemDropping && GetItemQuality(item) != Quality_Community)
 				{
 					ShowItemDropMenu(param1, item);
 				}
 				else
 				{
+					PrintKeyHintText(param1, "You can't drop this item.");
 					ShowItemMenu(param1);
 				}
 			}
@@ -2108,6 +2110,45 @@ public Action Command_ViewAFKTimes(int client, int args)
 		if (IsClientInGame(i) && !IsFakeClient(i))
 		{
 			RF2_ReplyToCommand(client, "%N AFK Time: %.1f", i, g_flPlayerAFKTime[i]);
+		}
+	}
+
+	return Plugin_Handled;
+}
+
+public Action Command_TriggerAchievement(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+
+	int achievementId = GetCmdArgInt(2);
+	if (achievementId >= MAX_ACHIEVEMENTS || achievementId < 0)
+	{
+		RF2_ReplyToCommand(client, "Invalid achievement ID.");
+		return Plugin_Handled;
+	}
+	
+	char arg1[16], clientName[MAX_NAME_LENGTH];
+	bool multiLanguage;
+	int clients[MAXTF2PLAYERS];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
+	if (matches < 1)
+	{
+		ReplyToTargetError(client, matches);
+		return Plugin_Handled;
+	}
+	else if (matches >= 1)
+	{
+		for (int i = 0; i < matches; i++)
+		{
+			if (IsFakeClient(i))
+				continue;
+
+			TriggerAchievement(i, achievementId);
 		}
 	}
 

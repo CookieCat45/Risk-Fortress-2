@@ -296,6 +296,7 @@ enum // Move collide types
 #define SND_1UP "rf2/sfx/1up.wav"
 #define SND_HINT "ui/hint.wav"
 #define SND_LONGWAVE_USE "ui/cyoa_node_activate.wav"
+#define SND_REVIVE "misc/halloween/spell_skeleton_horde_rise.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
