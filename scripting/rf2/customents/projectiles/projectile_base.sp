@@ -59,6 +59,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			.DefineEntityField("m_hHomingTarget")
 			.DefineFloatField("m_flHomingSpeed")
 			.DefineFloatField("m_flLastHomingTime")
+			.DefineFloatField("m_flBuildingDamageMult")
 			.DefineStringField("m_szRedTrail")
 			.DefineStringField("m_szBlueTrail")
 			.DefineStringField("m_szCharImpactSound")
@@ -109,6 +110,19 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		public set(float value)
 		{
 			this.SetPropFloat(Prop_Data, "m_flBaseDamage", value);
+		}
+	}
+
+	property float BuildingDamageMult
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flBuildingDamageMult");
+		}
+
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flBuildingDamageMult", value);
 		}
 	}
 
@@ -615,6 +629,7 @@ static void OnCreate(RF2_Projectile_Base proj)
 	proj.HomingSpeed = 50.0;
 	proj.LastHomingTime = GetGameTime();
 	proj.LastVPhysicsUpdate = GetGameTime();
+	proj.BuildingDamageMult = 1.0;
 	proj.SetHitboxMins({-20.0, -20.0, -20.0});
 	proj.SetHitboxMaxs({20.0, 20.0, 20.0});
 	SetEntityCollisionGroup(proj.index, COLLISION_GROUP_PROJECTILE);

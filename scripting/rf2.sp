@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "DEVONLY-1.0.3"
+#define PLUGIN_VERSION "DEVONLY-1.0.4"
 #else
-#define PLUGIN_VERSION "1.0.3"
+#define PLUGIN_VERSION "1.0.4"
 #endif
 
 #include <rf2>
@@ -2326,7 +2326,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			}
 		}
 	}
-	else if (IsPlayerSurvivor(victim, false) && !IsPlayerMinion(victim))
+	else if (IsPlayerSurvivor(victim) && !IsPlayerMinion(victim))
 	{
 		RoundState state = GameRules_GetRoundState();
 		if (!g_bGracePeriod && state != RoundState_TeamWin)
@@ -2904,7 +2904,7 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 			shield.NextModelUpdateTime = GetGameTime()+0.25;
 		}
 		
-		if (GetGameTime() > shield.NextBatteryDrainTime)
+		if (!g_bGracePeriod && GetGameTime() > shield.NextBatteryDrainTime)
 		{
 			if (!shield.UserDisabled)
 			{
@@ -3777,6 +3777,7 @@ public Action Timer_PlayerHud(Handle timer)
 		{
 			SetHudTextParams(-1.0, -0.64, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
 			ShowSyncHudText(i, g_hObjectiveHudSync, g_szObjectiveHud[i]);
+			SetHudTextParams(-1.0, -1.3, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
 		}
 	}
 	
@@ -6372,6 +6373,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				damage *= CalcItemMod_HyperbolicInverted(victim, ItemSpy_CounterfeitBillycock, 1);
 			}
 		}
+	}
+
+	if (victimIsBuilding && RF2_Projectile_Base(inflictor).IsValid())
+	{
+		damage *= RF2_Projectile_Base(inflictor).BuildingDamageMult;
 	}
 
 	// self blast damage is reduced and capped

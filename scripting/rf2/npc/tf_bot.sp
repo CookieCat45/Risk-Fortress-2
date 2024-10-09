@@ -504,6 +504,7 @@ void TFBot_Think(TFBot bot)
 			CopyVectors(botPos, navPos);
 			navPos[2] += 30.0;
 			CNavArea area = TheNavMesh.GetNearestNavArea(navPos, true, 1000.0, false, true);
+			ArrayList sentryAreas = new ArrayList();
 			if (area)
 			{
 				for (int i = 0; i < TheNavAreas.Count; i++)
@@ -511,6 +512,7 @@ void TFBot_Think(TFBot bot)
 					tfArea = view_as<CTFNavArea>(TheNavAreas.Get(i));
 					if (tfArea && tfArea.HasAttributeTF(SENTRY_SPOT))
 					{
+						// Can we make it there?
 						if (!TheNavMesh.BuildPath(area, tfArea, NULL_VECTOR, INVALID_FUNCTION))
 							continue;
 
@@ -527,31 +529,60 @@ void TFBot_Think(TFBot bot)
 								break;
 							}
 						}
-						
-						// No one owns this area and there are no other things nearby, we can take it if we can get there.
-						tfArea.GetCenter(areaPos);
-						if (!owned && GetNearestEntity(areaPos, "obj_*", _, 300.0) == INVALID_ENT && GetNearestEntity(areaPos, "rf2_object*", _, 150.0) == INVALID_ENT) 
-						{
-							TFBot_PathToPos(bot, areaPos, 10000.0, true);
-							if (!bot.Follower.IsValid())
-								continue;
 
-							bot.Mission = MISSION_BUILD;
-							bot.SentryArea = tfArea;
-							bot.BuildAttempts = 0;
-							bot.AttemptingBuild = false;
-							break;
+						if (owned)
+							continue;
+
+						// can't have any other nearby buildings or objects
+						if (GetNearestEntity(areaPos, "obj_*", _, 300.0) != INVALID_ENT 
+							|| GetNearestEntity(areaPos, "rf2_object*", _, 150.0) != INVALID_ENT)
+						{
+							continue;
 						}
+
+						sentryAreas.Push(tfArea);
 					}
 				}
 			}
 			
-			
 			// We failed to find an area, try again after a bit
-			if (!bot.SentryArea)
+			if (sentryAreas.Length <= 0)
 			{
 				bot.EngiSearchRetryTime = tickedTime+0.8;
 			}
+			else
+			{
+				tfArea = view_as<CTFNavArea>(NULL_AREA);
+				while (!tfArea)
+				{
+					if (sentryAreas.Length <= 0)
+					{
+						bot.EngiSearchRetryTime = tickedTime+0.8;
+						break;
+					}
+
+					int index = GetRandomInt(0, sentryAreas.Length-1);
+					tfArea = sentryAreas.Get(index);
+					tfArea.GetCenter(areaPos);
+					TFBot_PathToPos(bot, areaPos, 10000.0, true);
+					if (bot.Follower.IsValid())
+					{
+						// We can get to this area, start going there to build
+						bot.Mission = MISSION_BUILD;
+						bot.SentryArea = tfArea;
+						bot.BuildAttempts = 0;
+						bot.AttemptingBuild = false;
+						break;
+					}
+					else
+					{
+						tfArea = view_as<CTFNavArea>(NULL_AREA);
+						sentryAreas.Erase(index);
+					}
+				}
+			}
+
+			delete sentryAreas;
 		}
 		else if (!bot.HasBuilt && bot.SentryArea && bot.Mission == MISSION_BUILD) // Should we try to build?
 		{

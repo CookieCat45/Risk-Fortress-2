@@ -52,15 +52,15 @@ static int Update(RF2_ProvidenceShockwaveAttack action, RF2_Providence boss, flo
 		action.DoAttackHitbox({50.0, 0.0, 0.0}, pos, {-75.0, -75.0, 0.0}, {75.0, 75.0, 180.0}, 400.0, DMG_CLUB|DMG_MELEE);
 
 		// Shockwave does no damage to buildings since it is arena wide
-		ArrayList hitEnts = action.DoAttackHitbox({50.0, 0.0, 0.0}, pos, {-2500.0, -2500.0, 0.0}, {2500.0, 2500.0, 66.0}, 
-			400.0, DMG_CLUB|DMG_MELEE, {0.0, 0.0, 850.0}, true, 0.0);
+		ArrayList hitEnts = action.DoAttackHitbox({50.0, 0.0, 0.0}, pos, {-2500.0, -2500.0, 0.0}, {2500.0, 2500.0, 60.0}, 
+			325.0, DMG_CLUB|DMG_MELEE, {0.0, 0.0, 850.0}, true, 0.0);
 
 		for (int i = 0; i < hitEnts.Length; i++)
 		{
 			int client = hitEnts.Get(i);
 			if (IsValidClient(client) && DistBetween(boss.index, client) <= 1000.0)
 			{
-				TF2_StunPlayer(client, 2.5, _, TF_STUNFLAG_BONKSTUCK);
+				TF2_StunPlayer(client, 2.2, _, TF_STUNFLAG_BONKSTUCK);
 			}
 		}
 		

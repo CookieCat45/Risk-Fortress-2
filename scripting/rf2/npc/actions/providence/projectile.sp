@@ -66,7 +66,8 @@ static int Update(RF2_ProvidenceProjectileAttack action, RF2_Providence boss, fl
                 case 3: angles[1] -= 60.0;
             }
 
-            ShootProjectile(boss.index, "rf2_projectile_fireball", pos, angles, 1500.0, 500.0);
+            RF2_Projectile_Fireball fireball = RF2_Projectile_Fireball(ShootProjectile(boss.index, "rf2_projectile_fireball", pos, angles, 1500.0, 500.0));
+            fireball.BuildingDamageMult = 0.3;
         }
 	}
 	
