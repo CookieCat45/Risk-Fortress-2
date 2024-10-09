@@ -1391,9 +1391,16 @@ public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam
 
 public MRESReturn DHook_ForceRespawn(int client)
 {
+	if (IsSpecBot(client))
+	{
+		LogStackTrace("Attempted to spawn SourceTV or Replay bot!");
+		ChangeClientTeam(client, 1);
+		return MRES_Supercede;
+	}
+
 	if (g_bWaitingForPlayers || g_bGameOver || g_bGameWon)
 		return MRES_Ignored;
-	
+
 	int team = GetClientTeam(client);
 	if (team == TEAM_ENEMY && (g_bGracePeriod || !IsEnemy(client)))
 	{

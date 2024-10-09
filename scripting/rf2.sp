@@ -1351,11 +1351,11 @@ public void OnClientPutInServer(int client)
 {
 	RefreshClient(client);
 	GetClientName(client, g_szPlayerOriginalName[client], sizeof(g_szPlayerOriginalName[]));
-	if (g_bWaitingForPlayers)
+	if (g_bWaitingForPlayers && !IsSpecBot(client))
 	{
 		if (IsPlayerAlive(client))
 			SilentlyKillPlayer(client);
-			
+
 		ChangeClientTeam(client, GetRandomInt(TEAM_SURVIVOR, TEAM_ENEMY));
 	}
 
