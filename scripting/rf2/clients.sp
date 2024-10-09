@@ -796,7 +796,7 @@ float GetPlayerReloadMod(int client, int weapon=INVALID_ENT)
 		}
 
 		int defIndex = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-		if (defIndex == 730) // Beggar's Bazooka
+		if (defIndex == 730) // Beggar's Bazooka also has a penalty
 		{
 			const float penalty = 0.5;
 			multiplier = Pow(multiplier, penalty);
