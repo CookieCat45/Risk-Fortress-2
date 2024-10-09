@@ -3639,6 +3639,14 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 			}
 
+			if (PlayerHasItem(i, ItemSoldier_HawkWarrior) && CanUseCollectorItem(i, ItemSoldier_HawkWarrior)
+				&& TF2_IsPlayerInCondition(i, TFCond_BlastJumping))
+			{
+				float time = FloatAbs(g_flSoldierRocketJumpTime[i]-GetTickedTime());
+				Format(miscText, sizeof(miscText), "%sRocket Jump Time: %.1f/%.1f\n", miscText, time,
+					GetItemMod(ItemSoldier_HawkWarrior, 0));
+			}
+
 			TFClassType class = TF2_GetPlayerClass(i);
 			if (class == TFClass_Spy && g_flPlayerVampireSapperCooldown[i] > 0.0)
 			{
@@ -6370,7 +6378,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	if (victimIsClient && selfDamage && rangedDamage && (validWeapon || inflictorIsBuilding) && IsPlayerSurvivor(victim))
 	{
 		damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.13;
-		damage *= fmax(0.35, GetPlayerFireRateMod(victim) * GetPlayerReloadMod(victim));
+		damage *= fmax(0.5, GetPlayerFireRateMod(victim) * GetPlayerReloadMod(victim));
 	}
 
 	g_flDamageProc = proc; // carry over to other damage hooks
