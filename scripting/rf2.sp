@@ -1353,6 +1353,9 @@ public void OnClientPutInServer(int client)
 	GetClientName(client, g_szPlayerOriginalName[client], sizeof(g_szPlayerOriginalName[]));
 	if (g_bWaitingForPlayers)
 	{
+		if (IsPlayerAlive(client))
+			SilentlyKillPlayer(client);
+			
 		ChangeClientTeam(client, GetRandomInt(TEAM_SURVIVOR, TEAM_ENEMY));
 	}
 
@@ -5053,8 +5056,9 @@ public void TF2_OnWaitingForPlayersEnd()
 	PrintToServer("%T", "WaitingEnd", LANG_SERVER);
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && IsFakeClient(i) && !IsSpecBot(i))
+		if (IsClientInGame(i) && IsFakeClient(i) && !IsSpecBot(i) && GetClientTeam(i) != TEAM_ENEMY)
 		{
+			SilentlyKillPlayer(i);
 			ChangeClientTeam(i, TEAM_ENEMY);
 		}
 	}
@@ -7157,11 +7161,11 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 
 public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLATFORM_MAX_PATH], int& client, int& channel, float& volume, int& level, int& pitch, int& flags)
 {
-	if (!RF2_IsEnabled() || g_bWaitingForPlayers || !g_bRoundActive || !IsValidClient(client))
+	if (!RF2_IsEnabled() || g_bWaitingForPlayers || !IsValidClient(client))
 		return Plugin_Continue;
 	
 	int team = GetClientTeam(client);
-	if (team == TEAM_ENEMY && g_bGracePeriod)
+	if (team == TEAM_ENEMY && (g_bGracePeriod || !g_bRoundActive))
 		return Plugin_Stop;
 
 	int originalPitch = pitch;

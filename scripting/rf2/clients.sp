@@ -1512,7 +1512,7 @@ void ResetAFKTime(int client)
 {
 	if (IsClientInGame(client) && IsPlayerAFK(client))
 	{
-		if (g_bWaitingForPlayers/* && !GetCookieBool(client, g_coStayInSpecOnJoin)*/)
+		if (g_bWaitingForPlayers)
 		{
 			ChangeClientTeam(client, GetRandomInt(TEAM_SURVIVOR, TEAM_ENEMY));
 		}

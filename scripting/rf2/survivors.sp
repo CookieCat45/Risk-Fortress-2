@@ -70,7 +70,8 @@ bool CreateSurvivors()
 	ArrayList survivorList = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || IsPlayerSpectator(i) || humanCount > 1 && (AreClientCookiesCached(i) && !GetCookieBool(i, g_coBecomeSurvivor)))
+		if (!IsClientInGame(i) || IsPlayerSpectator(i) || IsSpecBot(i)
+			|| humanCount > 1 && (AreClientCookiesCached(i) && !GetCookieBool(i, g_coBecomeSurvivor)))
 			continue;
 			
 		if (IsFakeClient(i))
@@ -98,9 +99,7 @@ bool CreateSurvivors()
 		if (GetClientTeam(i) != TEAM_ENEMY)
 		{
 			if (IsPlayerAlive(i))
-			{
 				SilentlyKillPlayer(i);
-			}
 			
 			ChangeClientTeam(i, TEAM_ENEMY);
 		}
@@ -150,7 +149,13 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	g_flPlayerMaxSpeed[client] = g_flSurvivorMaxSpeed[class];
 	TF2Attrib_RemoveAll(client);
 	SetClassAttributes(client);
-	ChangeClientTeam(client, TEAM_SURVIVOR);
+
+	if (IsPlayerAlive(client))
+		SilentlyKillPlayer(client);
+	
+	if (GetClientTeam(client) != TEAM_SURVIVOR)
+		ChangeClientTeam(client, TEAM_SURVIVOR);
+
 	TF2_RemoveAllWeapons(client);
 	TF2_RemoveAllWearables(client);
 	TF2_RespawnPlayer(client);
