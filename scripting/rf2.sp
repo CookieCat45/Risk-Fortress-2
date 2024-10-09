@@ -6087,7 +6087,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			procItem = GetEntItemProc(inflictor);
 		}
 		
-		if (!selfDamage || procItem != ItemStrange_DemonicDome && procItem != Item_HorrificHeadsplitter)
+		if (!selfDamage)
 		{
 			damage *= GetPlayerDamageMult(attacker);
 		}

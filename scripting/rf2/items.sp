@@ -2034,7 +2034,7 @@ bool ActivateStrangeItem(int client)
 			
 			ClientPlayGesture(client, "ACT_MP_THROW");
 			EmitSoundToAll(SND_SPELL_FIREBALL, client);
-			RF_TakeDamage(client, client, client, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE, ItemStrange_DemonicDome);
+			SDKHooks_TakeDamage(client, client, client, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE);
 		}
 		
 		case ItemStrange_ModestHat:

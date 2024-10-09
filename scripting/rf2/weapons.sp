@@ -687,7 +687,9 @@ public void RF_MissCheck(int client)
 	g_bMeleeMiss[client] = false;
 	if (missed)
 	{
-		RF_TakeDamage(client, client, client, CalcItemMod(client, Item_HorrificHeadsplitter, 1), DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE, Item_HorrificHeadsplitter);
+		// don't trigger damage hooks
+		float damage = CalcItemMod(client, Item_HorrificHeadsplitter, 1);
+		SDKHooks_TakeDamage(client, client, client, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE);
 		TF2_MakeBleed(client, client, 5.0);
 	}
 }
