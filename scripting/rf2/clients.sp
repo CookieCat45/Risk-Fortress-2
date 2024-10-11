@@ -1394,7 +1394,7 @@ public MRESReturn DHook_ForceRespawn(int client)
 	if (IsSpecBot(client))
 	{
 		LogStackTrace("Attempted to spawn SourceTV or Replay bot!");
-		ChangeClientTeam(client, 1);
+		ChangeClientTeam(client, 0);
 		return MRES_Supercede;
 	}
 

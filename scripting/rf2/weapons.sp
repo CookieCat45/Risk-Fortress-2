@@ -296,7 +296,7 @@ public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index
 
 public void RF_MeleeSmackHook(int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+	if (!g_hHookMeleeSmack || (entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return;
 	
 	int client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");

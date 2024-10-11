@@ -470,7 +470,7 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 void PickupCash(int client, int entity)
 {
 	// If client is 0 or below, the cash is most likely being collected automatically.
-	if (client < 1 || IsPlayerSurvivor(client))
+	if (client < 1 || IsPlayerSurvivor(client) || IsPlayerMinion(client))
 	{
 		ArrayList clientArray = new ArrayList();
 		for (int i = 1; i <= MaxClients; i++)

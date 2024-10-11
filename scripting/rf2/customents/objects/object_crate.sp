@@ -124,7 +124,14 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 		switch (this.Type)
 		{
 			case Crate_Normal: cost = g_cvObjectBaseCost.FloatValue * costMult;
-			case Crate_Large, Crate_Collectors: cost = g_cvObjectBaseCost.FloatValue * costMult * 2.0;
+			case Crate_Large, Crate_Collectors: 
+			{
+				cost = g_cvObjectBaseCost.FloatValue * costMult * 2.0;
+				
+				// The cost of large and collectors crates goes up in multiplayer to discourage hogging unusual/collector items
+				cost *= 1.0 + (0.2 * float(RF2_GetSurvivorCount()-1));
+			}
+
 			case Crate_Strange: cost = g_cvObjectBaseCost.FloatValue * costMult * 1.5;
 			case Crate_Unusual: cost = g_cvObjectBaseCost.FloatValue * costMult * 16.0;
 		}

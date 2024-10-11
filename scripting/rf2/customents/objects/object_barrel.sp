@@ -70,6 +70,11 @@ static Action Hook_OnBarrelHit(int entity, int &attacker, int &inflictor, float 
 	
 	SetEntProp(attacker, Prop_Send, "m_iKillCountSinceLastDeploy", 1); // Remove honorbound
 	g_bMeleeMiss[attacker] = false;
+	if (!RF2_Object_Barrel(entity).Active)
+	{
+		return Plugin_Continue;
+	}
+
     float pos[3];
     GetEntPos(entity, pos, true);
     pos[2] += 10.0;

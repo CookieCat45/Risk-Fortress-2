@@ -929,7 +929,7 @@ public void OnMapStart()
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("sv_tags").Flags = 0;
-		FindConVar("tv_enable").SetBool(true);
+		FindConVar("tv_enable").SetBool(false);
 		SetMVMPlayerCvar(GetDesiredPlayerCap());
 		
 		// Remove Goomba immunities on stunned players
@@ -2056,18 +2056,6 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	
 	// Initialize our stats (health, speed, kb resist) the next frame to ensure it's correct
 	RequestFrame(RF_InitStats, client);
-
-	if (g_bRoundActive && IsEnemy(client))
-	{
-		int powerUpLevel = IsBoss(client) ? g_cvBossPowerupLevel.IntValue : g_cvEnemyPowerupLevel.IntValue;
-		if (powerUpLevel > 0 && g_iEnemyLevel >= powerUpLevel && RandChanceInt(0, powerUpLevel*8, g_iEnemyLevel))
-		{
-			static char sound[PLATFORM_MAX_PATH];
-			TFCond rune = GetRandomMannpowerRune_Enemies(client, sound, sizeof(sound));
-			TF2_AddCondition(client, rune);
-			EmitSoundToAll(sound, client, _, _, _, 0.7);
-		}
-	}
 	
 	// Calculate max speed on a timer again to fix a... weird issue with players spawning in and being REALLY slow.
 	// I don't know why it happens, but this fixes it, so, cool I guess?
@@ -2095,6 +2083,18 @@ public void RF_InitStats(int client)
 		CalculatePlayerMaxHealth(client, false, true);
 		CalculatePlayerMaxSpeed(client);
 		CalculatePlayerMiscStats(client);
+	}
+
+	if (g_bRoundActive && IsEnemy(client))
+	{
+		int powerUpLevel = IsBoss(client) ? g_cvBossPowerupLevel.IntValue : g_cvEnemyPowerupLevel.IntValue;
+		if (powerUpLevel > 0 && g_iEnemyLevel >= powerUpLevel && RandChanceInt(0, powerUpLevel*8, g_iEnemyLevel))
+		{
+			static char sound[PLATFORM_MAX_PATH];
+			TFCond rune = GetRandomMannpowerRune_Enemies(client, sound, sizeof(sound));
+			TF2_AddCondition(client, rune);
+			EmitSoundToAll(sound, client, _, _, _, 0.7);
+		}
 	}
 }
 
@@ -4320,7 +4320,7 @@ Action OnCallForMedic(int client)
 	
 	if (IsPlayerSurvivor(client) || IsPlayerMinion(client))
 	{
-		if (g_flLastTabPressTime[client]+1.0 >= GetTickedTime())
+		if (g_flLastTabPressTime[client]+0.6 >= GetTickedTime())
 		{
 			ShowItemMenu(client); // shortcut
 			return Plugin_Handled;
@@ -7071,7 +7071,8 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		
 		if (canPing)
 		{
-			if (IsPlayerSurvivor(client) && g_flPlayerTimeSinceLastPing[client]+PING_COOLDOWN < GetTickedTime())
+			if ((IsPlayerSurvivor(client) || IsPlayerMinion(client)) 
+				&& g_flPlayerTimeSinceLastPing[client]+PING_COOLDOWN < GetTickedTime())
 			{
 				if (PingObjects(client))
 				{

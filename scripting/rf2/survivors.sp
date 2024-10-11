@@ -19,7 +19,12 @@ float g_flSurvivorMaxSpeed[TF_CLASSES];
 float g_flSavedXP[MAX_INVENTORIES];
 float g_flTotalXP[MAX_INVENTORIES];
 float g_flSavedNextLevelXP[MAX_INVENTORIES] = {BASE_NEXT_LEVEL_XP, ...};
-
+/*
+int g_iSurvivorMinionWeaponCount[TF_CLASSES];
+int g_iSurvivorMinionWeaponIndex[TF_CLASSES][MAX_WEAPONS];
+char g_szSurvivorMinionWeaponAttributes[TF_CLASSES][MAX_WEAPONS][MAX_ATTRIBUTE_STRING_LENGTH];
+bool g_bSurvivorMinionWeaponStaticAttrs[TF_CLASSES][MAX_WEAPONS];
+*/
 char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
 bool g_bSurvivorInventoryClaimed[MAX_INVENTORIES];
 StringMap g_hPlayerSteamIDToInventoryIndex;
@@ -51,6 +56,15 @@ void LoadSurvivorStats()
 				g_flSurvivorMaxSpeed[class] = survivorKey.GetFloat("speed", 300.0);
 				survivorKey.GetString("attributes", g_szSurvivorAttributes[class], sizeof(g_szSurvivorAttributes[]));
 				firstKey = false;
+				if (survivorKey.JumpToKey("minion_weapons"))
+				{
+					firstKey = true;
+					while (firstKey ? survivorKey.GotoFirstSubKey() : survivorKey.GotoNextKey())
+					{
+						firstKey = false;
+
+					}
+				}
 			}
 		}
 	}
