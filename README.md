@@ -11,7 +11,7 @@ This assumes the following:
 
    
 [MetaMod+SourceMod Installation Guide](https://www.youtube.com/watch?v=QF7urRJIgrE)   
-[Private Server Setup Guide](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)
+[Private Server Setup Guide (For AFTER you get the server up and running)](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)
 
 ### REQUIRED Plugins/Extensions
 [CBaseNPC](https://github.com/TF2-DMB/CBaseNPC/releases)   
