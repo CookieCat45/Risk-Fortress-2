@@ -54,7 +54,7 @@ A tip to prevent this from happening in the first place is to use `tools/toolscl
 <br/><br/>
 
 ### Gargoyle Altar Spawn Points
-`rf2_altar_spawn` is another spawn point entity that is used to define spawn points for Gargoyle Altars and works similarly to `rf2_teleporter_spawn`. Gargoyle Altars serve as entrances to the special Underworld shop map where players can buy and trade for items in peace. They are meant to be placed in hidden or hard to reach locations. Ideally, every map should have altar spawn points, though it is not a requirement.
+`rf2_altar_spawn` is another spawn point entity that is used to define spawn points for Gargoyle Altars and works similarly to `rf2_teleporter_spawn`. Gargoyle Altars serve as entrances to the special Underworld shop map where players can buy and trade for items. They are meant to be placed in hidden or hard to reach locations. Ideally, most maps should have altar spawn points, though it is not a requirement.
 <br/><br/>
 
 ### Important Knowledge/Tips
