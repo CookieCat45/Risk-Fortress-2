@@ -4,11 +4,6 @@
 ### SOURCEMOD 1.12 OR NEWER IS REQUIRED! SOURCEMOD 1.12 IS CURRENTLY UNSTABLE, SO PLEASE GRAB ONE OF THE DEVELOPMENT BUILDS FROM THE WEBSITE, AND NOT THE STABLE BUILDS!
 [SourceMod Development Builds](https://www.sourcemod.net/downloads.php?branch=dev)   
 
-This assumes the following:
-- You have already set up or purchased a TF2 dedicated server.
-- You have MetaMod and SourceMod installed on your server.
-- You know how to install plugins and extensions for SourceMod on your server.   
-
 Here are some useful tutorials to help you set up a local dedicated server:   
 [Dedicated Server Setup Guide (Windows)](https://wiki.teamfortress.com/wiki/Windows_dedicated_server)   
 [Dedicated Server Setup Guide (Linux)](https://wiki.teamfortress.com/wiki/Linux_dedicated_server)   
