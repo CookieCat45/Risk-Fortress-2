@@ -1,6 +1,9 @@
 # Risk Fortress 2
 
 ### Installation
+### SOURCEMOD 1.12 OR NEWER IS REQUIRED! SOURCEMOD 1.12 IS CURRENTLY UNSTABLE, SO PLEASE GRAB ONE OF THE DEVELOPMENT BUILDS FROM THE WEBSITE, AND NOT THE STABLE BUILDS!
+[SourceMod Development Builds](https://www.sourcemod.net/downloads.php?branch=dev)   
+
 This assumes the following:
 - You have already set up or purchased a TF2 dedicated server.
 - You have MetaMod and SourceMod installed on your server.
