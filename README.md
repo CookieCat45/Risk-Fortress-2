@@ -10,7 +10,7 @@ This assumes the following:
 - You know how to install plugins and extensions for SourceMod on your server.   
 
    
-[MetaMod+SourceMod Installation Guide](https://www.youtube.com/watch?v=QF7urRJIgrE)
+[MetaMod+SourceMod Installation Guide](https://www.youtube.com/watch?v=QF7urRJIgrE)   
 [Private Server Setup Guide](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)
 
 ### REQUIRED Plugins/Extensions
