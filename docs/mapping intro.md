@@ -60,7 +60,7 @@ A tip to prevent this from happening in the first place is to use `tools/toolscl
 ### Important Knowledge/Tips
 - `func_respawnroom` and `func_regenerate` entities should not be used, and will be removed by the plugin when the map is running. Risk Fortress by nature does not utilize respawn rooms. If you need `func_respawnroomvisualizer`, use `func_forcefield` instead.
 - Despite the above, `info_player_teamspawn` entities should still be placed in your map for both teams. BLU Team (robots) will spawn randomly around the map but at least one `info_player_teamspawn` entity is still required for them to spawn. RED Team (survivors) will always spawn at `info_player_teamspawn` entities.
-- Health and ammo kits shouldn't be placed either, as players have infinite reserve ammo and regenerate health automatically.
+- Health and ammo kits shouldn't be placed, as players have infinite reserve ammo and regenerate health automatically.
 - Make sure that doorways or tight passages in your map are spacious enough for giant robots to fit through.
 - For map layouts in general, maps that are very spacious and open are ideal, as this will give lots of room for objects/enemies to spawn, as well as more room for players to kite around enemies. Cramped maps, maps with low ceilings, maps that are too small, or otherwise non-spacious maps should be avoided.
 <br/><br/>
