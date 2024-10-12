@@ -9,9 +9,13 @@ This assumes the following:
 - You have MetaMod and SourceMod installed on your server.
 - You know how to install plugins and extensions for SourceMod on your server.   
 
-   
+Here are some useful tutorials to help you set up a local dedicated server:   
+[Dedicated Server Setup Guide (Windows)](https://wiki.teamfortress.com/wiki/Windows_dedicated_server)   
+[Dedicated Server Setup Guide (Linux)](https://wiki.teamfortress.com/wiki/Linux_dedicated_server)   
 [MetaMod+SourceMod Installation Guide](https://www.youtube.com/watch?v=QF7urRJIgrE)   
-[Private Server Setup Guide (For AFTER you get the server up and running)](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)
+[Private Server Setup Guide (For AFTER you get the server up and running)](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)   
+   
+Of course, you can just rent a server instead if you wish to do so.
 
 ### REQUIRED Plugins/Extensions
 [CBaseNPC](https://github.com/TF2-DMB/CBaseNPC/releases)   
