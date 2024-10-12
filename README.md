@@ -22,5 +22,5 @@ This assumes the following:
 ### RECOMMENDED Plugins/Extensions
 [SteamWorks](https://github.com/KyleSanderson/SteamWorks/releases) - Required to display info about Risk Fortress 2 in the server browser.   
 [Goomba Stomp](https://forums.alliedmods.net/showthread.php?t=111893) - Required for a certain Scout item to function. Make sure that you install BOTH Goomba Core and Goomba TF2.   
-[SourceScramble](https://github.com/nosoop/SMExt-SourceScramble/releases) + [TF2 Move Speed Unlock SourceScramble Patch](https://github.com/Mikusch/SourceScramble-Patches) - Required to remove TF2's movement speed cap of 520.   
+[SourceScramble](https://github.com/nosoop/SMExt-SourceScramble/releases) + [TF2 Move Speed Unlock Patch](https://github.com/Mikusch/SourceScramble-Patches) - Required to remove TF2's movement speed cap of 520.   
 [Timescale Windows Fix](https://forums.alliedmods.net/showthread.php?t=324264) - For Windows servers only. Fixes a desynchronization issue with host_timescale on Windows servers.
