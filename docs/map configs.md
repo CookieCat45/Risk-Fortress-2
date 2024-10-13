@@ -1,111 +1,13 @@
 # Risk Fortress 2 Mapping: Map Configs
 Risk Fortress does not use a map cycle file. Instead, it uses configuration files in SourceMod's config directory
-to define the maps that will be used in the game, as well as for configuring what kinds
-of enemies and bosses will appear in said maps.<br/>
-The map configuration file is located in `addons/sourcemod/configs/rf2/maps.cfg`, while configuration files
-for enemies and bosses that appear in maps are normally located in `addons/sourcemod/configs/rf2/enemies/`.
+to define the maps that will be used in the game, as well as for configuring what kinds of robots will appear in said maps.<br/>
+Map configuration files are located in directories inside of `addons/sourcemod/configs/rf2/maps/`, while configuration files
+for robots that appear in maps are normally located in `addons/sourcemod/configs/rf2/enemies/`.<br><br>
+Each stage has its own individual folder, e.g. `rf2/maps/stage1/`, `rf2/maps/stage2/`, and so on, with some special ones such as `rf2/maps/underworld/`. Each of the .cfg files in these individual folders have a filename that matches the name of the map they are associated with, e.g. `rf2_sawmill_r1.cfg`. If there are multiple map configs in a given stage folder, one will be chosen at random when transitioning to that stage.<br>
 Let's go over a brief example of how the map configuration file works:
-<br/><br/>
-
-```
-"stages"
-{
-	"stage1"
-	{
-		"map1"
-		{
-			"name"					"rf2_sawmill"
-			
-			"enemy_pack"			"enemies/sawmill/sawmill_enemies"
-			"boss_pack"				"enemies/sawmill/sawmill_bosses"
-			"enemy_pack_loop"		"enemies/sawmill/sawmill_enemies_loop"
-			"boss_pack_loop"		"enemies/sawmill/sawmill_bosses_loop"
-			
-			"theme"						"rf2/music/bgm1.mp3"
-			"theme_duration"			"180"
-			"boss_theme"				"rf2/music/boss_bgm1.mp3"
-			"boss_theme_duration"		"135"
-			
-			"theme_alt"					"rf2/music/bgm1alt.mp3"
-			"theme_alt_duration"		"171"
-			"boss_theme_alt"			"rf2/music/boss_bgm1alt.mp3"
-			"boss_theme_alt_duration"	"206"
-			
-			"grace_period_time"		"30.0"
-		}
-	}
-
-	"stage2"
-	{
-		"map1"
-		{
-			"name"					"rf2_isolation"
-			
-			"enemy_pack"			"enemies/isolation/isolation_enemies"
-			"boss_pack"				"enemies/isolation/isolation_bosses"
-			"enemy_pack_loop"		"enemies/isolation/isolation_enemies_loop"
-			"boss_pack_loop"		"enemies/isolation/isolation_bosses_loop"
-			
-			"theme"					"rf2/music/bgm2.mp3"
-			"theme_duration"		"300"
-			"boss_theme"			"rf2/music/boss_bgm2.mp3"
-			"boss_theme_duration"	"184"
-			
-			"grace_period_time"		"30.0"
-		}
-		"map2"
-		{
-			"name"					"rf2_tropics"
-
-			"enemy_pack"			"enemies/tropics/tropics_enemies"
-			"boss_pack"				"enemies/tropics/tropics_bosses"
-			"enemy_pack_loop"		"enemies/tropics/tropics_enemies_loop"
-			"boss_pack_loop"		"enemies/tropics/tropics_bosses_loop"
-			
-			"theme"						"rf2/music/bgm6.mp3"
-			"theme_duration"			"164"
-			"boss_theme"				"rf2/music/boss_bgm6.mp3"
-			"boss_theme_duration"		"134"
-			
-			"theme_alt"					"rf2/music/bgm6alt.mp3"
-			"theme_alt_duration"		"267"
-			"boss_theme_alt"			"rf2/music/boss_bgm6alt.mp3"
-			"boss_theme_alt_duration"	"188.5"
-			
-			"grace_period_time"		"30.0"
-		}
-	}
-
-  "special"
-	{
-		"underworld"
-		{
-			"name"					"rf2_hellscape_r1"
-			"grace_period_time"		"-1.0"
-		}
-		"final"
-		{
-			"name"					"rf2_robotfactory"
-			
-			"enemy_pack"			"enemies/robotfactory/robotfactory_enemies"
-			"boss_pack"				"enemies/robotfactory/robotfactory_bosses"
-		}
-	}
-}
-```
-<br/>
-As you can see, maps are grouped into categories called "stages". Each stage can define multiple different maps,
-one of which will be chosen at random when the game transitions to the stage.
-Whenever the last stage in the sequence is reached, it will loop back to Stage 1.<br/>
-
-The `special` section is reserved for maps that can only be reached when specific conditions are met, such as Hellscape.
-Entries in this section need to be implemented in the plugin to work. Currently, there is only `underworld` and `final`.
-<br/><br/>
 
 # Map Settings
 Maps have a few settings that you can tweak in their own sections:<br/>
-
-- `name`: The file name of the map, without the extension. You don't have to use the full name of the map, using only part of it works too.<br/>
 
 - `enemy_pack`: The enemy pack to use for this map. We'll get into how to create and use these shortly. **Don't include the .cfg file extension**.<br/>
 
@@ -123,4 +25,14 @@ Maps have a few settings that you can tweak in their own sections:<br/>
 
 - `theme_alt`/`boss_theme_alt`/`theme_alt_duration`/`boss_theme_alt_duration`: Same as above, but used in place of the normal music tracks if the game has looped at least once.<br/>
 
-- `tank_destruction`: Special keyvalue. 1 to enable Tank Destruction mode. The map needs to have `rf2_tank_spawner` entities placed for this to work.
+- `tank_destruction`: 1 to enable Tank Destruction mode. The map needs to have `rf2_tank_spawner` entities placed for this to work.
+
+- `max_spawn_wave_time`: The maximum amount of time in seconds between robot spawn waves. If unspecified, the spawn timer will behave as normal.
+
+- `boss_spawn_chance_bonus`: Can increase the chance for bosses to randomly spawn. Starting at enemy level 20, there will be a 1 in 250 chance for a boss to spawn in place of a regular robot, which increases by 1 every 4 levels onwards, but this keyvalue can be used to add to this chance value.
+
+- `disable_eureka_teleport`: Disables the Eureka Effect's teleport ability.
+
+- `disable_item_dropping`: Prevent players from dropping their items.
+
+- `start_money_multiplier`: Multiplier for the amount of money that players begin the map with.
