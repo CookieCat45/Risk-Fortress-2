@@ -19,12 +19,15 @@ float g_flSurvivorMaxSpeed[TF_CLASSES];
 float g_flSavedXP[MAX_INVENTORIES];
 float g_flTotalXP[MAX_INVENTORIES];
 float g_flSavedNextLevelXP[MAX_INVENTORIES] = {BASE_NEXT_LEVEL_XP, ...};
-/*
+
+int g_iSurvivorMinionHealth[TF_CLASSES];
+float g_flSurvivorMinionSpeed[TF_CLASSES];
 int g_iSurvivorMinionWeaponCount[TF_CLASSES];
-int g_iSurvivorMinionWeaponIndex[TF_CLASSES][MAX_WEAPONS];
-char g_szSurvivorMinionWeaponAttributes[TF_CLASSES][MAX_WEAPONS][MAX_ATTRIBUTE_STRING_LENGTH];
-bool g_bSurvivorMinionWeaponStaticAttrs[TF_CLASSES][MAX_WEAPONS];
-*/
+int g_iSurvivorMinionWeaponIndex[TF_CLASSES][8];
+char g_szSurvivorMinionWeaponClass[TF_CLASSES][8][128];
+char g_szSurvivorMinionWeaponAttributes[TF_CLASSES][8][MAX_ATTRIBUTE_STRING_LENGTH];
+bool g_bSurvivorMinionWeaponStaticAttrs[TF_CLASSES][8];
+
 char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
 bool g_bSurvivorInventoryClaimed[MAX_INVENTORIES];
 StringMap g_hPlayerSteamIDToInventoryIndex;
@@ -54,6 +57,8 @@ void LoadSurvivorStats()
 			{
 				g_iSurvivorBaseHealth[class] = survivorKey.GetNum("health", 450);
 				g_flSurvivorMaxSpeed[class] = survivorKey.GetFloat("speed", 300.0);
+				g_iSurvivorMinionHealth[class] = survivorKey.GetNum("minion_health", 375);
+				g_flSurvivorMinionSpeed[class] = survivorKey.GetFloat("minion_speed", 360.0);
 				survivorKey.GetString("attributes", g_szSurvivorAttributes[class], sizeof(g_szSurvivorAttributes[]));
 				firstKey = false;
 				if (survivorKey.JumpToKey("minion_weapons"))
@@ -62,7 +67,15 @@ void LoadSurvivorStats()
 					while (firstKey ? survivorKey.GotoFirstSubKey() : survivorKey.GotoNextKey())
 					{
 						firstKey = false;
+						int count = g_iSurvivorMinionWeaponCount[class];
+						g_iSurvivorMinionWeaponIndex[class][count] = survivorKey.GetNum("index");
+						g_bSurvivorMinionWeaponStaticAttrs[class][count] = asBool(survivorKey.GetNum("static_attributes"));
+						survivorKey.GetString("classname", g_szSurvivorMinionWeaponClass[class][count],
+							sizeof(g_szSurvivorMinionWeaponClass[][]));
+						survivorKey.GetString("attributes", g_szSurvivorMinionWeaponAttributes[class][count],
+							sizeof(g_szSurvivorMinionWeaponAttributes[][]));
 
+						g_iSurvivorMinionWeaponCount[class]++;
 					}
 				}
 			}
@@ -688,94 +701,38 @@ void SpawnMinion(int client)
 	g_iPlayerVoiceType[client] = VoiceType_Robot;
 	g_iPlayerVoicePitch[client] = SNDPITCH_HIGH;
 	g_iPlayerFootstepType[client] = FootstepType_Robot;
+	g_iPlayerBaseHealth[client] = g_iSurvivorMinionHealth[class];
+	g_flPlayerMaxSpeed[client] = g_flSurvivorMinionSpeed[class];
 	TeleportEntity(client, pos);
+	for (int i = 0; i < g_iSurvivorMinionWeaponCount[class]; i++)
+	{
+		if (StrContains(g_szSurvivorMinionWeaponClass[class][i], "tf_wearable") == 0)
+		{
+			CreateWearable(client, g_szSurvivorMinionWeaponClass[class][i], 
+				g_iSurvivorMinionWeaponIndex[class][i],
+				g_szSurvivorMinionWeaponAttributes[class][i],
+				g_bSurvivorMinionWeaponStaticAttrs[class][i]);
+		}
+		else
+		{
+			CreateWeapon(client, g_szSurvivorMinionWeaponClass[class][i], 
+				g_iSurvivorMinionWeaponIndex[class][i],
+				g_szSurvivorMinionWeaponAttributes[class][i],
+				g_bSurvivorMinionWeaponStaticAttrs[class][i]);
+		}
+	}
+
 	switch (class)
 	{
-		case TFClass_Scout:
-		{
-			SetVariantString(MODEL_BOT_SCOUT);
-			CreateWeapon(client, "tf_weapon_lunchbox_drink", 1145, _, true);
-			CreateWeapon(client, "tf_weapon_bat_wood", 44, "218 = 1", true);
-			g_iPlayerBaseHealth[client] = 315;
-			g_flPlayerMaxSpeed[client] = 420.0;
-		}
-		
-		case TFClass_Soldier:
-		{
-			SetVariantString(MODEL_BOT_SOLDIER);
-			CreateWeapon(client, "tf_weapon_shotgun_soldier", 10, "3 = 0.7");
-			CreateWeapon(client, "tf_weapon_shovel", 447, _, true);
-			g_iPlayerBaseHealth[client] = 500;
-			g_flPlayerMaxSpeed[client] = 280.0;
-		}
-		
-		case TFClass_Pyro:
-		{
-			SetVariantString(MODEL_BOT_PYRO);
-			CreateWeapon(client, "tf_weapon_rocketpack", 1179, _, true);
-			CreateWeapon(client, "tf_weapon_fireaxe", 348, _, true);
-			g_iPlayerBaseHealth[client] = 450;
-			g_flPlayerMaxSpeed[client] = 320.0;
-		}
-		
-		case TFClass_DemoMan:
-		{
-			SetVariantString(MODEL_BOT_DEMO);
-			CreateWeapon(client, "tf_weapon_sword", 404, _, true);
-			CreateWearable(client, "tf_wearable_demoshield", 1099, _, true);
-			g_iPlayerBaseHealth[client] = 450;
-			g_flPlayerMaxSpeed[client] = 300.0;
-		}
-		
-		case TFClass_Heavy:
-		{
-			SetVariantString(MODEL_BOT_HEAVY);
-			CreateWeapon(client, "tf_weapon_fists", 5, "2 = 1.2");
-			CreateWeapon(client, "tf_weapon_lunchbox", 863, _, true);
-			g_iPlayerBaseHealth[client] = 800;
-			g_flPlayerMaxSpeed[client] = 260.0;
-		}
-		
-		case TFClass_Engineer:
-		{
-			SetVariantString(MODEL_BOT_ENGINEER);
-			CreateWeapon(client, "tf_weapon_wrench", 7, "276 = 1 ; 345 = 3.0");
-			CreateWeapon(client, "tf_weapon_pda_engineer_build", 25);
-			CreateWeapon(client, "tf_weapon_pda_engineer_destroy", 26);
-			CreateWeapon(client, "tf_weapon_builder", 28);
-			g_iPlayerBaseHealth[client] = 300;
-			g_flPlayerMaxSpeed[client] = 320.0;
-		}
-		
-		case TFClass_Medic:
-		{
-			SetVariantString(MODEL_BOT_MEDIC);
-			CreateWeapon(client, "tf_weapon_crossbow", 1079, "1 = 0.5", true);
-			CreateWeapon(client, "tf_weapon_medigun", 411, "314 = -3 ; 7 = 0.6", true);
-			CreateWeapon(client, "tf_weapon_bonesaw", 1143, "1 = 0.8");
-			g_iPlayerBaseHealth[client] = 375;
-			g_flPlayerMaxSpeed[client] = 360.0;
-		}
-		
-		case TFClass_Sniper:
-		{
-			SetVariantString(MODEL_BOT_SNIPER);
-			CreateWeapon(client, "tf_weapon_jar", 1105, "278 = 2.0");
-			CreateWeapon(client, "tf_weapon_club", 3);
-			g_iPlayerBaseHealth[client] = 300;
-			g_flPlayerMaxSpeed[client] = 320.0;
-		}
-		
-		case TFClass_Spy:
-		{
-			SetVariantString(MODEL_BOT_SPY);
-			CreateWeapon(client, "tf_weapon_knife", 892);
-			CreateWeapon(client, "tf_weapon_pda_spy", 27);
-			CreateWeapon(client, "tf_weapon_invis", 30);
-			CreateWeapon(client, "tf_weapon_sapper", 810, _, true);
-			g_iPlayerBaseHealth[client] = 300;
-			g_flPlayerMaxSpeed[client] = 360.0;
-		}
+		case TFClass_Scout: SetVariantString(MODEL_BOT_SCOUT);
+		case TFClass_Soldier: SetVariantString(MODEL_BOT_SOLDIER);
+		case TFClass_Pyro: SetVariantString(MODEL_BOT_PYRO);
+		case TFClass_DemoMan: SetVariantString(MODEL_BOT_DEMO);
+		case TFClass_Heavy: SetVariantString(MODEL_BOT_HEAVY);
+		case TFClass_Engineer: SetVariantString(MODEL_BOT_ENGINEER);
+		case TFClass_Medic: SetVariantString(MODEL_BOT_MEDIC);
+		case TFClass_Sniper: SetVariantString(MODEL_BOT_SNIPER);
+		case TFClass_Spy: SetVariantString(MODEL_BOT_SPY);
 	}
 	
 	AcceptEntityInput(client, "SetCustomModel");
@@ -788,10 +745,12 @@ void SpawnMinion(int client)
 	if (g_iLoopCount >= 1)
 	{
 		TF2_AddCondition(client, TFCond_DefenseBuffed);
-		TF2_AddCondition(client, TFCond_RuneStrength);
+		TF2_AddCondition(client, TFCond_Buffed);
+		TF2_AddCondition(client, TFCond_RuneHaste);
 		TF2_AddCondition(client, TFCond_SpeedBuffAlly);
 		TF2Attrib_SetByDefIndex(client, 326, 2.0);
 		TF2Attrib_SetByDefIndex(client, 610, 2.0);
+		TF2Attrib_SetByDefIndex(client, 206, 0.5);
 	}
 }
 

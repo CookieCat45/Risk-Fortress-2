@@ -4,16 +4,16 @@
 int g_iWeaponCount[TF_CLASSES];
 
 // These are for Survivors, not enemies or bosses.
-int g_iWeaponIndexReplacement[TF_CLASSES][MAX_WEAPONS];
+int g_iWeaponIndexReplacement[TF_CLASSES][64];
 
-char g_szWeaponIndexIdentifier[TF_CLASSES][MAX_WEAPONS][PLATFORM_MAX_PATH];
-char g_szWeaponAttributes[TF_CLASSES][MAX_WEAPONS][MAX_ATTRIBUTE_STRING_LENGTH];
-char g_szWeaponClassnameReplacement[TF_CLASSES][MAX_WEAPONS][64];
+char g_szWeaponIndexIdentifier[TF_CLASSES][64][PLATFORM_MAX_PATH];
+char g_szWeaponAttributes[TF_CLASSES][64][MAX_ATTRIBUTE_STRING_LENGTH];
+char g_szWeaponClassnameReplacement[TF_CLASSES][64][64];
 
-bool g_bWeaponStripAttributes[TF_CLASSES][MAX_WEAPONS];
-bool g_bWeaponHasStringAttributes[TF_CLASSES][MAX_WEAPONS];
-char g_szWeaponStringAttributeName[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][128];
-char g_szWeaponStringAttributeValue[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][PLATFORM_MAX_PATH];
+bool g_bWeaponStripAttributes[TF_CLASSES][64];
+bool g_bWeaponHasStringAttributes[TF_CLASSES][64];
+char g_szWeaponStringAttributeName[TF_CLASSES][64][MAX_STRING_ATTRIBUTES][128];
+char g_szWeaponStringAttributeValue[TF_CLASSES][64][MAX_STRING_ATTRIBUTES][PLATFORM_MAX_PATH];
 
 void LoadWeapons()
 {

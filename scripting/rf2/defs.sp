@@ -346,7 +346,6 @@ enum
 
 // Weapons -------------------------------------------------------------------------------------------------------------------------------------
 #define MAX_STRING_ATTRIBUTES 8
-#define MAX_WEAPONS 256
 #define TF_WEAPON_SLOTS 10
 #define MAX_ATTRIBUTES 20
 #define MAX_STATIC_ATTRIBUTES 16
