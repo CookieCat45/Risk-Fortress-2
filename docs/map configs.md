@@ -4,10 +4,31 @@ to define the maps that will be used in the game, as well as for configuring wha
 Map configuration files are located in directories inside of `addons/sourcemod/configs/rf2/maps/`, while configuration files
 for robots that appear in maps are normally located in `addons/sourcemod/configs/rf2/enemies/`.<br><br>
 Each stage has its own individual folder, e.g. `rf2/maps/stage1/`, `rf2/maps/stage2/`, and so on, with some special ones such as `rf2/maps/underworld/`. Each of the .cfg files in these individual folders have a filename that matches the name of the map they are associated with, e.g. `rf2_sawmill_r1.cfg`. If there are multiple map configs in a given stage folder, one will be chosen at random when transitioning to that stage.<br>
-Let's go over a brief example of how the map configuration file works:
+### This is what a map configuration file normally looks like
+```
+"map"
+{
+    "enemy_pack       "enemies/sawmill/sawmill_enemies"
+    "boss_pack"       "enemies/sawmill/sawmill_bosses"
+    "enemy_pack_loop" "enemies/sawmill/sawmill_enemies_loop"
+    "boss_pack_loop"  "enemies/sawmill/sawmill_bosses_loop"
+
+    "theme"                     "rf2/music/bgm1.mp3"
+    "theme_duration"            "180"
+    "boss_theme"                "rf2/music/boss_bgm1.mp3"
+    "boss_theme_duration"       "135"
+
+    "theme_alt"                 "rf2/music/bgm1alt.mp3"
+    "theme_alt_duration"        "171"
+    "boss_theme_alt"            "rf2/music/boss_bgm1alt.mp3"
+    "boss_theme_alt_duration"   "206"
+
+    "grace_period_time"         "30.0"
+}
+
+```
 
 # Map Settings
-Maps have a few settings that you can tweak in their own sections:<br/>
 
 - `enemy_pack`: The enemy pack to use for this map. We'll get into how to create and use these shortly. **Don't include the .cfg file extension**.<br/>
 
@@ -25,7 +46,7 @@ Maps have a few settings that you can tweak in their own sections:<br/>
 
 - `theme_alt`/`boss_theme_alt`/`theme_alt_duration`/`boss_theme_alt_duration`: Same as above, but used in place of the normal music tracks if the game has looped at least once.<br/>
 
-- `tank_destruction`: 1 to enable Tank Destruction mode. The map needs to have `rf2_tank_spawner` entities placed for this to work.
+- `tank_destruction`: Enables Tank Destruction mode. The map needs to have `rf2_tank_spawner` entities placed for this to work.
 
 - `max_spawn_wave_time`: The maximum amount of time in seconds between robot spawn waves. If unspecified, the spawn timer will behave as normal.
 
