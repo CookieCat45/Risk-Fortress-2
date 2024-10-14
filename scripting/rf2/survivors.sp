@@ -63,10 +63,10 @@ void LoadSurvivorStats()
 				firstKey = false;
 				if (survivorKey.JumpToKey("minion_weapons"))
 				{
-					firstKey = true;
-					while (firstKey ? survivorKey.GotoFirstSubKey() : survivorKey.GotoNextKey())
+					bool firstKey2 = true;
+					while (firstKey2 ? survivorKey.GotoFirstSubKey() : survivorKey.GotoNextKey())
 					{
-						firstKey = false;
+						firstKey2 = false;
 						int count = g_iSurvivorMinionWeaponCount[class];
 						g_iSurvivorMinionWeaponIndex[class][count] = survivorKey.GetNum("index");
 						g_bSurvivorMinionWeaponStaticAttrs[class][count] = asBool(survivorKey.GetNum("static_attributes"));
@@ -77,8 +77,12 @@ void LoadSurvivorStats()
 
 						g_iSurvivorMinionWeaponCount[class]++;
 					}
+
+					survivorKey.GoBack();
 				}
 			}
+
+			survivorKey.GoBack();
 		}
 	}
 	

@@ -1398,7 +1398,7 @@ public MRESReturn DHook_ForceRespawn(int client)
 		return MRES_Supercede;
 	}
 
-	if (g_bWaitingForPlayers || g_bGameOver || g_bGameWon)
+	if (!g_bRoundActive || g_bWaitingForPlayers || g_bGameOver || g_bGameWon)
 		return MRES_Ignored;
 
 	int team = GetClientTeam(client);

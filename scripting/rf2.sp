@@ -930,6 +930,8 @@ public void OnMapStart()
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("sv_tags").Flags = 0;
 		FindConVar("tv_enable").SetBool(false);
+		FindConVar("mp_tournament_redteamname").SetString("SURVIVORS");
+		FindConVar("mp_tournament_blueteamname").SetString("ROBOTS");
 		SetMVMPlayerCvar(GetDesiredPlayerCap());
 		
 		// Remove Goomba immunities on stunned players
@@ -1184,6 +1186,15 @@ void CleanUp()
 			delete RF2_Projectile_Base(entity).OnCollide;
 		}
 	}
+
+	ConVar tournament = FindConVar("mp_tournament");
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i))
+		{
+			SendConVarValue(i, tournament, "0");
+		}
+	}
 }
 
 void LoadAssets()
@@ -1313,6 +1324,8 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_mvm_defenders_team_size"));
 	ResetConVar(FindConVar("tf_mvm_max_connected_players"));
 	ResetConVar(FindConVar("tv_enable"));
+	ResetConVar(FindConVar("mp_tournament_redteamname"));
+	ResetConVar(FindConVar("mp_tournament_blueteamname"));
 	ConVar goombaBonk = FindConVar("goomba_bonked_immun");
 	ConVar goombaStun = FindConVar("goomba_stun_immun");
 	if (goombaBonk)
@@ -1367,14 +1380,13 @@ public void OnClientPutInServer(int client)
 			TFBot(client).FollowerIndex = GetFreePathFollowerIndex(client);
 			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_TFBotWeaponCanSwitch);
 		}
-		/*
-		else if (g_bExtraAdminSlot && GetTotalHumans(false) < GetDesiredPlayerCap()+1)
+		else
 		{
-			// remove extra admin slot
-			ToggleHiddenSlot(false);
-			g_bExtraAdminSlot = false;
+			// required for custom team names
+			// needs to be 0 in preround or else the tournament hud will show
+			ConVar tournament = FindConVar("mp_tournament");
+			SendConVarValue(client, tournament, g_bRoundActive ? "1" : "0");
 		}
-		*/
 		
 		if (g_bRoundActive && !IsMusicPaused())
 		{
@@ -1715,6 +1727,15 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 				obj.SetProp(Prop_Send, "m_nSolidType", SOLID_OBB);
 				SetEntityCollisionGroup(obj.index, COLLISION_GROUP_DEBRIS_TRIGGER);
 			}
+		}
+	}
+
+	ConVar tournament = FindConVar("mp_tournament");
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i))
+		{
+			SendConVarValue(i, tournament, "1");
 		}
 	}
 	
@@ -5114,6 +5135,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	if (!RF2_IsEnabled() || entity < 0 || entity >= MAX_EDICTS)
 		return;
 	
+	//DebugMsg(classname);
 	g_bProjectileIgnoreShields[entity] = false;
 	g_hEntityGlowResetTimer[entity] = null;
 	g_flCashValue[entity] = 0.0;

@@ -200,7 +200,6 @@ enum // Move collide types
 #define ItemConfig "items.cfg"
 #define SurvivorConfig "survivors.cfg"
 #define WeaponConfig "weapons.cfg"
-#define MapConfig "maps.cfg"
 
 
 // Models/Sprites -------------------------------------------------------------------------------------------------------------------------------------

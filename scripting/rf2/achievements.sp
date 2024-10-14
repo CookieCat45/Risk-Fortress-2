@@ -89,7 +89,7 @@ int GetAchievementGoal(int achievement)
 	{
 		case ACHIEVEMENT_FULLITEMLOG:
 		{
-			ArrayList list = GetSortedItemList();
+			ArrayList list = GetSortedItemList(_, _, _, _, false);
 			int total = list.Length;
 			delete list;
 			return total;

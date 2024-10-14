@@ -28,6 +28,7 @@ bool g_bItemInDropPool[MAX_ITEMS];
 bool g_bItemCanBeDropped[MAX_ITEMS] = {true, ...};
 bool g_bItemForceShowInInventory[MAX_ITEMS];
 bool g_bItemMultiplayerOnly[MAX_ITEMS];
+bool g_bItemExcludeFromLog[MAX_ITEMS];
 bool g_bLaserHitDetected[MAX_EDICTS];
 
 // Unusual effects
@@ -159,6 +160,7 @@ int LoadItems(const char[] customPath="")
 			g_bItemCanBeDropped[item] = asBool(itemKey.GetNum("can_be_dropped", true));
 			g_bItemForceShowInInventory[item] = asBool(itemKey.GetNum("force_show_inv", false));
 			g_bItemMultiplayerOnly[item] = asBool(itemKey.GetNum("multiplayer_only", false));
+			g_bItemExcludeFromLog[item] = asBool(itemKey.GetNum("exclude_from_log", false));
 			if (item == ItemScout_LongFallBoots)
 			{
 				g_bItemInDropPool[item] = IsGoombaAvailable();
@@ -2361,12 +2363,14 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 		}
 	}
 	
-	
 	// hitbox
 	float mins[3], maxs[3];
 	mins[0] = -size; mins[1] = -size; mins[2] = -size;
 	maxs[0] = size; maxs[1] = size; maxs[2] = size;
 	TR_TraceHullFilter(pos, end, mins, maxs, MASK_PLAYERSOLID_BRUSHONLY, TraceFilter_BeamHitbox, attacker);
+	#if defined DEVONLY
+	TE_DrawBox(attacker, pos, end, mins, maxs, 0.9, g_iBeamModel, {255, 255, 255, 255});
+	#endif
 	int team = GetEntTeam(attacker);
 	int entity = INVALID_ENT;
 	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
@@ -2667,16 +2671,22 @@ float GetItemProcCoeff(int item)
 }
 
 // Returns a list of items sorted by quality
-ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true, bool allowCommunity=false, bool byPriority=false)
+ArrayList GetSortedItemList(bool poolOnly=true, bool allowMetals=true, 
+	bool allowCommunity=false, bool byPriority=false,
+	bool allowLogExcluded=true)
 {
 	ArrayList items = new ArrayList();
 	for (int i = 1; i < GetTotalItems(); i++)
 	{
+		if (!allowLogExcluded && g_bItemExcludeFromLog[i])
+			continue;
+
 		if (!g_bItemForceShowInInventory[i])
 		{
-			if (poolOnly && !g_bItemInDropPool[i] && !IsScrapItem(i) && (!allowCommunity || GetItemQuality(i) != Quality_Community))
+			if (poolOnly && !g_bItemInDropPool[i] 
+				&& !IsScrapItem(i) && (!allowCommunity || GetItemQuality(i) != Quality_Community))
 				continue;
-		
+
 			if (!allowMetals && IsScrapItem(i))
 				continue;
 		}
@@ -2842,7 +2852,7 @@ void AddItemToLogbook(int client, int item)
 
 bool IsItemInLogbook(int client, int item)
 {
-	if (item <= Item_Null || item >= Item_MaxValid || !AreClientCookiesCached(client))
+	if (item <= Item_Null || item >= Item_MaxValid || g_bItemExcludeFromLog[item] || !AreClientCookiesCached(client))
 		return false;
 	
 	char buffer[2048], itemId[16];

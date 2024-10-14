@@ -849,7 +849,7 @@ void ShowItemLogbook(int client, int position=0)
 {
 	Menu logbook = new Menu(Menu_ItemLog);
 	char info[16], display[MAX_NAME_LENGTH], quality[32];
-	ArrayList items = GetSortedItemList(_, _, _, true);
+	ArrayList items = GetSortedItemList(_, _, _, true, false);
 	int item, count;
 	for (int i = 0; i < items.Length; i++)
 	{

@@ -214,7 +214,7 @@ public void Timer_GameOver(Handle timer)
 	
 	if (g_iStagesCompleted == 0 && !IsInUnderworld())
 	{
-		InsertServerCommand("mp_waitingforplayers_restart 1");
+		InsertServerCommand("mp_waitingforplayers_restart 1; tf_bot_kick all");
 		CreateTimer(1.2, Timer_ReloadPluginNoMapChange, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else
@@ -224,9 +224,10 @@ public void Timer_GameOver(Handle timer)
 }
 
 void ReloadPlugin(bool changeMap=true)
-{
+{	
 	if (!g_bMapChanging)
 	{
+		ConVar tournament = FindConVar("mp_tournament");
 		for (int i = 1; i <= MaxClients; i++)
 		{
 			if (!IsClientInGame(i) || IsSpecBot(i))
@@ -240,6 +241,11 @@ void ReloadPlugin(bool changeMap=true)
 				TF2_RemoveAllWeapons(i);
 				TF2_RemoveAllWearables(i);
 				SilentlyKillPlayer(i);
+			}
+
+			if (!IsFakeClient(i))
+			{
+				SendConVarValue(i, tournament, "0");
 			}
 		}
 		

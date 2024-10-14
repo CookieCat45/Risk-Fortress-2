@@ -632,8 +632,9 @@ static void OnCreate(RF2_Projectile_Base proj)
 	proj.BuildingDamageMult = 1.0;
 	proj.SetHitboxMins({-20.0, -20.0, -20.0});
 	proj.SetHitboxMaxs({20.0, 20.0, 20.0});
+	proj.KeyValue("nodamageforces", "1"); // otherwise bullets and explosions push us around
 	SetEntityCollisionGroup(proj.index, COLLISION_GROUP_PROJECTILE);
-	proj.AddFlag(FL_GRENADE); // so airblasting works
+	proj.AddFlag(FL_GRENADE);
 	proj.OnCollide = new PrivateForward(ET_Hook, Param_Any, Param_Cell);
 	proj.HookOnCollide(Projectile_OnCollide);
 	SDKHook(proj.index, SDKHook_SpawnPost, OnSpawnPost);
