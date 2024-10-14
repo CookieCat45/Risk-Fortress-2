@@ -41,8 +41,6 @@ enum
 	MAX_ACHIEVEMENTS,
 }
 
-static int g_Achievement[MAXTF2PLAYERS][MAX_ACHIEVEMENTS];
-
 void TriggerAchievement(int client, int achievement)
 {
 	if (IsFakeClient(client) || IsAchievementUnlocked(client, achievement))
@@ -57,39 +55,32 @@ void TriggerAchievement(int client, int achievement)
 	}
 	
 	progress = imin(progress, cap);
-	g_Achievement[client][achievement] = progress;
-	UpdateSQLAchievement(client, achievement, progress);
+	char buffer[16];
+	IntToString(progress, buffer, sizeof(buffer));
+	g_coAchievementCookies[achievement].Set(client, buffer);
 }
 
-void SetAchievementProgress(int client, int achievement, int progress, bool updateDB = true)
+void SetAchievementProgress(int client, int achievement, int progress)
 {
-	if (IsFakeClient(client))
-	{
+	if (IsFakeClient(client) || IsAchievementUnlocked(client, achievement))
 		return;
-	}
-
+	
 	int cap = GetAchievementGoal(achievement);
 	progress = imin(progress, cap);
-	g_Achievement[client][achievement] = progress;
-
-	if (IsAchievementUnlocked(client, achievement))
+	char buffer[16];
+	IntToString(progress, buffer, sizeof(buffer));
+	g_coAchievementCookies[achievement].Set(client, buffer);
+	if (progress >= cap)
 	{
-		return;
-	}
-
-	if (updateDB)
-	{
-		UpdateSQLAchievement(client, achievement, progress);
-		if (progress >= cap)
-		{
-			OnAchievementUnlocked(client, achievement);
-		}
+		OnAchievementUnlocked(client, achievement);
 	}
 }
 
 int GetAchievementProgress(int client, int achievement)
 {
-	return g_Achievement[client][achievement];
+	char buffer[16];
+	g_coAchievementCookies[achievement].Get(client, buffer, sizeof(buffer));
+	return StringToInt(buffer);
 }
 
 int GetAchievementGoal(int achievement)
@@ -248,152 +239,6 @@ int GetAchievementInternalName(int achievement, char[] buffer, int size)
 		LogError("[GetAchievementInternalName] Achievement ID %i is missing!", achievement);
 	}
 	
-	return 0;
-}
-
-int GetAchievementFromName(const char[] name)
-{
-	if (strcmp(name, "ACHIEVEMENT_BIGDAMAGE") == 0)
-	{
-		return ACHIEVEMENT_BIGDAMAGE;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_FULLITEMLOG") == 0)
-	{
-		return ACHIEVEMENT_FULLITEMLOG;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_DIE") == 0)
-	{
-		return ACHIEVEMENT_DIE;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_DIE100") == 0)
-	{
-		return ACHIEVEMENT_DIE100;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_MARKETGARDEN") == 0)
-	{
-		return ACHIEVEMENT_MARKETGARDEN;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_GOOMBA") == 0)
-	{
-		return ACHIEVEMENT_GOOMBA;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_AIRJUMPS") == 0)
-	{
-		return ACHIEVEMENT_AIRJUMPS;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_BLOODHOUND") == 0)
-	{
-		return ACHIEVEMENT_BLOODHOUND;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_HEADSPLITTER") == 0)
-	{
-		return ACHIEVEMENT_HEADSPLITTER;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_SAXTON") == 0)
-	{
-		return ACHIEVEMENT_SAXTON;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_HALLOWEENBOSSES") == 0)
-	{
-		return ACHIEVEMENT_HALLOWEENBOSSES;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_POCKETMEDIC") == 0)
-	{
-		return ACHIEVEMENT_POCKETMEDIC;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_SENTRIES") == 0)
-	{
-		return ACHIEVEMENT_SENTRIES;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_BADMAGIC") == 0)
-	{
-		return ACHIEVEMENT_BADMAGIC;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_TELEPORTER") == 0)
-	{
-		return ACHIEVEMENT_TELEPORTER;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_TANKBUSTER") == 0)
-	{
-		return ACHIEVEMENT_TANKBUSTER;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_DAMAGECAP") == 0)
-	{
-		return ACHIEVEMENT_DAMAGECAP;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_FIRERATECAP") == 0)
-	{
-		return ACHIEVEMENT_FIRERATECAP;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_THUNDER") == 0)
-	{
-		return ACHIEVEMENT_THUNDER;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_LUCKY") == 0)
-	{
-		return ACHIEVEMENT_LUCKY;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_DANCE") == 0)
-	{
-		return ACHIEVEMENT_DANCE;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_TEMPLESECRET") == 0)
-	{
-		return ACHIEVEMENT_TEMPLESECRET;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_SCOUTSTUN") == 0)
-	{
-		return ACHIEVEMENT_SCOUTSTUN;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_KILL10K") == 0)
-	{
-		return ACHIEVEMENT_KILL10K;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_KILL10K") == 0)
-	{
-		return ACHIEVEMENT_KILL10K;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_KILL100K") == 0)
-	{
-		return ACHIEVEMENT_KILL100K;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_GOOMBACHAIN") == 0)
-	{
-		return ACHIEVEMENT_GOOMBACHAIN;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_RECYCLER") == 0)
-	{
-		return ACHIEVEMENT_RECYCLER;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_HITMERASMUS") == 0)
-	{
-		return ACHIEVEMENT_HITMERASMUS;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_GARGOYLE") == 0)
-	{
-		return ACHIEVEMENT_GARGOYLE;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_OBLITERATE") == 0)
-	{
-		return ACHIEVEMENT_OBLITERATE;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_BEATGAME") == 0)
-	{
-		return ACHIEVEMENT_BEATGAME;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_BEATGAMESTEEL") == 0)
-	{
-		return ACHIEVEMENT_BEATGAMESTEEL;
-	}
-	else if (strcmp(name, "ACHIEVEMENT_BEATGAMETITANIUM") == 0)
-	{
-		return ACHIEVEMENT_BEATGAMETITANIUM;
-	}
-	else
-	{
-		LogError("[GetAchievementFromName] Achievement name %s is missing!", name);
-	}
-
 	return 0;
 }
 

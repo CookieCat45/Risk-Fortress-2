@@ -236,3 +236,17 @@ int GetItemLogCookie(int client, char[] buffer, int size)
 	ImplodeStrings(buffers, sizeof(buffers), "", buffer, size);
 	return total;
 }
+
+void SetItemLogCookie(int client, const char[] value)
+{
+	char cookie[MAX_COOKIE_LENGTH], buffer[512];
+	strcopy(buffer, sizeof(buffer), value);
+	for (int i = 0; i < sizeof(g_coItemsCollected); i++)
+	{
+		SetClientCookie(client, g_coItemsCollected[i], buffer);
+		GetClientCookie(client, g_coItemsCollected[i], cookie, sizeof(cookie));
+		ReplaceStringEx(buffer, sizeof(buffer), cookie, "");
+		if (strlen(buffer) <= 0)
+			break;
+	}
+}
