@@ -12,7 +12,7 @@ void CreateSQL()
 	if (SQL_CheckConfig("rf2_database"))
 	{
 		base = SQL_Connect("rf2_database", true, error, sizeof(error));
-		if (base == null)
+		if (!base)
 		{
 			LogError(error);
 			return;
@@ -21,7 +21,7 @@ void CreateSQL()
 	else
 	{
 		base = SQLite_UseDatabase("rf2_database", error, sizeof(error));
-		if (base == null)
+		if (!base)
 		{
 			LogError(error);
 			return;
@@ -130,7 +130,7 @@ static void Database_Setup(Database db, any data, int numQueries, DBResultSet[] 
 		{
 			GetAchievementInternalName(i, name, sizeof(name));
 			int value;
-			if (g_coAchievementCookies[i] != null) // DEV NOTE: When we get rid of cookies, just delete this if statement
+			if (g_coAchievementCookies[i]) // DEV NOTE: When we get rid of cookies, just delete this if statement
 			{
 				char buffer[16];
 				g_coAchievementCookies[i].Get(client, buffer, sizeof(buffer));
@@ -150,7 +150,7 @@ static void Database_Setup(Database db, any data, int numQueries, DBResultSet[] 
 			if (results[1].FetchRow() && results[1].FetchInt(2) != 0)
 			{
 				results[1].FetchString(1, formatter, sizeof(formatter));
-				if (g_hObtainedItems[client] == null)
+				if (!g_hObtainedItems[client])
 				{
 					g_hObtainedItems[client] = new ArrayList(ByteCountToCells(64));
 				}
@@ -173,7 +173,7 @@ static void Database_Setup(Database db, any data, int numQueries, DBResultSet[] 
 				GetSteamAccountID(client), g_szItemSectionName[i], view_as<int>(IsItemInLogbookCookie(client, i)));
 			if (IsItemInLogbookCookie(client, i))
 			{
-				if (g_hObtainedItems[client] == null)
+				if (!g_hObtainedItems[client])
 				{
 					g_hObtainedItems[client] = new ArrayList(ByteCountToCells(64));
 				}
@@ -207,7 +207,7 @@ void DataBase_OnDisconnected(int client)
 	int id = GetSteamAccountID(client);
 	if (id == 0)
 	{
-		if (g_hObtainedItems[client] != null)
+		if (g_hObtainedItems[client])
 		{
 			delete g_hObtainedItems[client];
 		}
