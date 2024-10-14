@@ -426,6 +426,10 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	}
 	
 	crate.Active = false;
+	int r, g, b, a;
+	crate.Effects |= EF_ITEM_BLINK;
+	crate.GetRenderColor(r, g, b, a);
+	crate.SetRenderColor(r, g, b, 255);
 	SpawnInfoParticle(effectName, pos, particleRemoveTime);
 	DataPack pack;
 	CreateDataTimer(removeTime, Timer_SpawnItem, pack, TIMER_FLAG_NO_MAPCHANGE);

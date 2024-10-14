@@ -2367,23 +2367,16 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 	float mins[3], maxs[3];
 	mins[0] = -size; mins[1] = -size; mins[2] = -size;
 	maxs[0] = size; maxs[1] = size; maxs[2] = size;
-	TR_TraceHullFilter(pos, end, mins, maxs, MASK_PLAYERSOLID_BRUSHONLY, TraceFilter_BeamHitbox, attacker);
-	#if defined DEVONLY
-	TE_DrawBox(attacker, pos, end, mins, maxs, 0.9, g_iBeamModel, {255, 255, 255, 255});
-	#endif
-	int team = GetEntTeam(attacker);
-	int entity = INVALID_ENT;
-	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
-	{
-		if (IsValidEntity2(entity) && entity > 0 && g_bLaserHitDetected[entity])
-		{
-			g_bLaserHitDetected[entity] = false;
-			if (GetEntTeam(entity) == team)
-				continue;
-			
-			RF_TakeDamage(entity, attacker, attacker, damage, damageFlags, item);
-		}
-	}
+	maxs[0] += GetVectorDistance(pos, end);
+	RF2_CustomHitbox hitbox = RF2_CustomHitbox.Create(attacker);
+	hitbox.Damage = damage;
+	hitbox.DamageFlags = damageFlags;
+	hitbox.ItemProc = item;
+	hitbox.SetMins(mins);
+	hitbox.SetMaxs(maxs);
+	hitbox.Teleport(pos, angles);
+	hitbox.Spawn();
+	hitbox.DoDamage();
 }
 
 public bool TraceFilter_BeamHitbox(int entity, int mask, int self)

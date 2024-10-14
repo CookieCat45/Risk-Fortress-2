@@ -35,6 +35,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		g_Factory.BeginDataMapDesc()
 			.DefineFloatField("m_flDamage")
 			.DefineIntField("m_iDamageFlags")
+			.DefineIntField("m_iItemProc")
 			.DefineBoolField("m_bReturnHitEnts")
 			.DefineFloatField("m_flBuildingDamageMult")
 			.DefineVectorField("m_vecDamageForce")
@@ -69,6 +70,19 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		public set(int value)
 		{
 			this.SetProp(Prop_Data, "m_iDamageFlags", value);
+		}
+	}
+
+	property int ItemProc
+	{
+		public get()
+		{
+			return this.GetProp(Prop_Data, "m_iItemProc");
+		}
+
+		public set(int value)
+		{
+			this.SetProp(Prop_Data, "m_iItemProc", value);
 		}
 	}
 
@@ -156,7 +170,6 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 	
 	public ArrayList DoDamage(bool remove=true)
 	{
-		int entity = MaxClients+1;
 		int owner = GetEntPropEnt(this.index, Prop_Data, "m_hOwnerEntity");
 		if (!IsValidEntity2(this.Attacker))
 		{
@@ -175,8 +188,9 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		{
 			g_hHitEntities = new ArrayList();
 		}
+
 		g_hHitEntities.Clear();
-		
+		int entity = MaxClients+1;
 		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
 			if (!IsValidEntity2(entity) || !IsCombatChar(entity))
@@ -191,7 +205,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 			if (DoEntitiesIntersect(this.index, entity))
 			{
 				bool building = IsBuilding(entity);
-				RF_TakeDamage(entity, this.Inflictor, this.Attacker, building ? this.Damage*this.BuildingDamageMult : this.Damage, this.DamageFlags);
+				RF_TakeDamage(entity, this.Inflictor, this.Attacker, building ? this.Damage*this.BuildingDamageMult : this.Damage, this.DamageFlags, this.ItemProc);
 				if (!building)
 				{
 					this.GetDamageForce(force);
@@ -227,7 +241,9 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 
 static void OnCreate(RF2_CustomHitbox box)
 {
+	box.BuildingDamageMult = 1.0;
 	SDKHook(box.index, SDKHook_SpawnPost, OnSpawnPost);
+	SetEntityCollisionGroup(box.index, TFCOLLISION_GROUP_ROCKETS);
 	box.SetProp(Prop_Send, "m_nSolidType", SOLID_OBB);
 	box.SetModel(MODEL_CRATE);
 	box.SetRenderMode(RENDER_NONE);
@@ -243,5 +259,5 @@ static void OnSpawnPost(int entity)
 	box.SetPropVector(Prop_Send, "m_vecMinsPreScaled", mins);
 	box.SetPropVector(Prop_Send, "m_vecMaxs", maxs);
 	box.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", maxs);
-	SetEntityCollisionGroup(box.index, COLLISION_GROUP_DEBRIS_TRIGGER);
+	//SetEntityCollisionGroup(box.index, COLLISION_GROUP_DEBRIS_TRIGGER);
 }
