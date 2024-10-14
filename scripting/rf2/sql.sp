@@ -180,6 +180,7 @@ static void Database_Setup(Database db, any data, int numQueries, DBResultSet[] 
 
 				g_hObtainedItems[client].PushString(g_szItemSectionName[i]);
 			}
+			
 			action.AddQuery(formatter);
 		}
 	}
