@@ -650,6 +650,21 @@ public MRESReturn DHook_MeleeSmack(int weapon)
 		SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_NONE);
 		SetEntityCollisionGroup(entity, COLLISION_GROUP_NONE);
 	}
+
+	if (IsValidClient(owner))
+	{
+		// also goes through friendly NPCs
+		entity = MaxClients+1;
+		int team = GetClientTeam(owner);
+		while ((entity = FindEntityByClassname(entity, "rf2_npc*")) != INVALID_ENT)
+		{
+			if (team != GetEntTeam(entity))
+				continue;
+
+			SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_NONE);
+			SetEntityCollisionGroup(entity, COLLISION_GROUP_NONE);
+		}
+	}
 	
 	// Don't hit teammates (note: only works for BLU team(?), but that's what we want anyway)
 	GameRules_SetProp("m_bPlayingMannVsMachine", true);
@@ -672,6 +687,20 @@ public MRESReturn DHook_MeleeSmackPost(int weapon)
 	{
 		SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_VPHYSICS);
 		SetEntityCollisionGroup(entity, TFCOLLISION_GROUP_COMBATOBJECT);
+	}
+
+	if (IsValidClient(owner))
+	{
+		entity = MaxClients+1;
+		int team = GetClientTeam(owner);
+		while ((entity = FindEntityByClassname(entity, "rf2_npc*")) != INVALID_ENT)
+		{
+			if (team != GetEntTeam(entity))
+				continue;
+				
+			SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_BBOX);
+			SetEntityCollisionGroup(entity, TFCOLLISION_GROUP_TANK);
+		}
 	}
 	
 	GameRules_SetProp("m_bPlayingMannVsMachine", false);

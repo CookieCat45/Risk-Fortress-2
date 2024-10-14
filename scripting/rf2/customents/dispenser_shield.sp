@@ -341,7 +341,7 @@ public bool Hook_DispenserShieldShouldCollide(int entity, int collisionGroup, in
 	return originalResult;
 }
 
-static MRESReturn DHook_IsCombatItem(int entity, DHookReturn returnVal)
+public MRESReturn DHook_IsCombatItem(int entity, DHookReturn returnVal)
 {
 	// true to allow bullets/projectiles from my team to pass through the shield.
 	returnVal.Value = true;

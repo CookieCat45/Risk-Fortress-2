@@ -5211,6 +5211,10 @@ public void OnEntityCreated(int entity, const char[] classname)
 		SDKHook(entity, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamageAlive);
 		SDKHook(entity, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
 		SDKHook(entity, SDKHook_SpawnPost, Hook_NPCSpawnPost);
+		if (IsSkeleton(entity))
+		{
+			SDKHook(entity, SDKHook_OnTakeDamage, Hook_SkeletonFriendlyFireFix);
+		}
 	}
 	else if (IsEntityBlacklisted(classname))
 	{
@@ -6813,6 +6817,17 @@ public void RF_WidowmakerAmmo(DataPack pack)
 	int metal = pack.ReadCell();
 	delete pack;
 	GivePlayerAmmo(attacker, metal, TFAmmoType_Metal, true);
+}
+
+public Action Hook_SkeletonFriendlyFireFix(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
+		float damageForce[3], float damagePosition[3], int damageCustom)
+{
+	if (IsValidClient(attacker) && GetClientTeam(attacker) == GetEntTeam(victim))
+	{
+		return Plugin_Handled;
+	}
+
+	return Plugin_Continue;
 }
 
 public void Timer_ExecutionerBleedCooldown(Handle timer, int client)

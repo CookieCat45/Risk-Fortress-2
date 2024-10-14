@@ -557,6 +557,10 @@ static void OnCreate(RF2_NPC_Base npc)
 	npc.DoUnstuckChecks = true;
 	npc.BaseBackstabDamage = 750.0;
 	npc.FollowerIndex = GetFreePathFollowerIndex(npc.index);
+
+	// Stop friendly NPCs from colliding with player bullets and projectiles
+	SDKHook(npc.index, SDKHook_ShouldCollide, Hook_DispenserShieldShouldCollide);
+	g_hHookIsCombatItem.HookEntity(Hook_Pre, npc.index, DHook_IsCombatItem);
 }
 
 static void OnRemove(RF2_NPC_Base npc)
@@ -700,7 +704,7 @@ static Action Timer_UnstuckCheck(Handle timer, int entity)
 	return Plugin_Continue;
 }
 
-public void Input_DoAction(int entity, int activator, int caller, const char[] value)
+static void Input_DoAction(int entity, int activator, int caller, const char[] value)
 {
 	RF2_NPC_Base(entity).DoAction(value);
 }
