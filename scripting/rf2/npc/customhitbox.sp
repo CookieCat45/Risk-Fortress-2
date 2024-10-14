@@ -167,6 +167,63 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 	{
 		this.SetPropVector(Prop_Data, "m_vecCustomMaxs", vec);
 	}
+
+	public void Visualize(float time=2.0)
+	{
+		float pos[3], angles[3], mins[3], maxs[3], fwd[3], right[3];
+		this.GetAbsOrigin(pos);
+		this.GetAbsAngles(angles);
+		this.GetMins(mins);
+		this.GetMaxs(maxs);
+		GetAngleVectors(angles, fwd, right, NULL_VECTOR);
+		NormalizeVector(fwd, fwd);
+		NormalizeVector(right, right);
+		float pos1[3], pos2[3], pos3[3];
+		pos1 = pos;
+		pos2 = pos;
+		pos3 = pos;
+		float minsDist = GetVectorLength(mins);
+		pos1[0] += minsDist * right[0];
+		pos1[1] += minsDist * right[1];
+		pos1[2] += minsDist * right[2] - minsDist;
+		pos2[0] += minsDist * -right[0];
+		pos2[1] += minsDist * -right[1];
+		pos2[2] += minsDist * -right[2] - minsDist;
+		pos3[0] += minsDist * right[0];
+		pos3[1] += minsDist * right[1];
+		pos3[2] += minsDist * right[2] + minsDist;
+		float pos4[3], pos5[3], pos6[3];
+		pos4 = pos1;
+		pos5 = pos2;
+		pos6 = pos3;
+		float maxsDist = GetVectorLength(maxs);
+		pos4[0] += maxsDist * fwd[0];
+		pos4[1] += maxsDist * fwd[1];
+		pos4[2] += maxsDist * fwd[2];
+		pos5[0] += maxsDist * fwd[0];
+		pos5[1] += maxsDist * fwd[1];
+		pos5[2] += maxsDist * fwd[2];
+		pos6[0] += maxsDist * fwd[0];
+		pos6[1] += maxsDist * fwd[1];
+		pos6[2] += maxsDist * fwd[2];
+		TE_SendBeamAll(pos1, pos2, time, g_iBeamModel, {0, 255, 255, 255});
+		TE_SendBeamAll(pos1, pos3, time, g_iBeamModel, {0, 255, 255, 255});
+		TE_SendBeamAll(pos1, pos4, time, g_iBeamModel, {0, 255, 255, 255});
+		TE_SendBeamAll(pos2, pos5, time, g_iBeamModel, {0, 255, 255, 255});
+		TE_SendBeamAll(pos3, pos6, time, g_iBeamModel, {0, 255, 255, 255});
+		TE_SendBeamAll(pos4, pos5, time, g_iBeamModel, {0, 255, 255, 255});
+		float oldPos2[3], oldPos5[3];
+		oldPos2 = pos2;
+		oldPos5 = pos5;
+		pos2[2] += minsDist * 2.0;
+		pos5[2] += minsDist * 2.0;
+		TE_SendBeamAll(oldPos2, pos2, time, g_iBeamModel, {0, 255, 255, 255});
+		TE_SendBeamAll(oldPos5, pos5, time, g_iBeamModel, {0, 255, 255, 255});
+		TE_SendBeamAll(pos2, pos5, time, g_iBeamModel, {0, 255, 255, 255});
+		TE_SendBeamAll(pos2, pos3, time, g_iBeamModel, {0, 255, 255, 255});
+		TE_SendBeamAll(pos5, pos6, time, g_iBeamModel, {0, 255, 255, 255});
+		TE_SendBeamAll(pos4, pos6, time, g_iBeamModel, {0, 255, 255, 255});
+	}
 	
 	public ArrayList DoDamage(bool remove=true)
 	{
@@ -227,12 +284,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		}
 		
 		#if defined DEVONLY
-		float pos[3];
-		this.GetAbsOrigin(pos);
-		float mins[3], maxs[3];
-		this.GetMins(mins);
-		this.GetMaxs(maxs);
-		TE_DrawBoxAll(pos, pos, mins, maxs, 1.0, g_iBeamModel, {0, 255, 255, 255});
+		this.Visualize();
 		#endif
 
 		return this.ReturnHitEnts ? g_hHitEntities.Clone() : null;

@@ -645,17 +645,8 @@ stock void TE_DrawBox(int client, const float origin[3], const float endOrigin[3
 	float mins[3], maxs[3];
 	CopyVectors(constMins, mins);
 	CopyVectors(constMaxs, maxs);
-	if( mins[0] == maxs[0] && mins[1] == maxs[1] && mins[2] == maxs[2] )
-	{
-		mins = {-15.0, -15.0, -15.0};
-		maxs = {15.0, 15.0, 15.0};
-	}
-	else
-	{
-		AddVectors(endOrigin, maxs, maxs);
-		AddVectors(origin, mins, mins);
-	}
-
+	AddVectors(endOrigin, maxs, maxs);
+	AddVectors(origin, mins, mins);
 	float pos1[3], pos2[3], pos3[3], pos4[3], pos5[3], pos6[3];
 	pos1 = maxs;
 	pos1[0] = mins[0];
@@ -696,10 +687,21 @@ stock void TE_DrawBoxAll(const float origin[3], const float endOrigin[3], const 
 	}
 }
 
-stock void TE_SendBeam(int client, const float mins[3], const float maxs[3], float duration = 0.1, int laserIndex, const int color[4])
+stock void TE_SendBeam(int client, const float start[3], const float end[3], float duration = 0.1, int laserIndex, const int color[4])
 {
-	TE_SetupBeamPoints(mins, maxs, laserIndex, laserIndex, 0, 30, duration, 1.0, 1.0, 1, 0.0, color, 30);
+	TE_SetupBeamPoints(start, end, laserIndex, laserIndex, 0, 30, duration, 3.0, 3.0, 1, 0.0, color, 30);
 	TE_SendToClient(client);
+}
+
+stock void TE_SendBeamAll(const float start[3], const float end[3], float duration = 0.1, int laserIndex, const int color[4])
+{
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i))
+		{
+			TE_SendBeam(i, start, end, duration, laserIndex, color);
+		}
+	}
 }
 
 stock void DebugTinyBox(float pos[3], float duration=0.5)

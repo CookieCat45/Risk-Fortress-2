@@ -1882,7 +1882,6 @@ bool ActivateStrangeItem(int client)
 			float eyePos[3], angles[3], direction[3];
 			GetClientEyePosition(client, eyePos);
 			GetClientEyeAngles(client, angles);
-			
 			GetAngleVectors(angles, direction, NULL_VECTOR, NULL_VECTOR);
 			NormalizeVector(direction, direction);
 			eyePos[0] += direction[0] * 10.0;
