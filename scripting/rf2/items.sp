@@ -1739,7 +1739,7 @@ bool ActivateStrangeItem(int client)
 						sound = SND_SPELL_FIREBALL;
 						
 						// TLK_PLAYER_CAST_FIREBALL doesn't work for some reason. This is better than nothing.
-						response = "TLK_PLAYER_CAST_MERASMUS_ZAP";
+						response = "TLK_PLAYER_CAST_FIREBALL";
 					}
 					case 4, 5, 6:
 					{
@@ -1748,11 +1748,17 @@ bool ActivateStrangeItem(int client)
 						response = "TLK_PLAYER_CAST_MERASMUS_ZAP";
 						projectileArc = true;
 					}
-					case 10, 11, 12:
+					case 7, 8, 9:
 					{
 						spellType = "Overheal";
 						sound = SND_SPELL_OVERHEAL;
 						response = "TLK_PLAYER_CAST_SELF_HEAL";
+					}
+					case 10, 11, 12:
+					{
+						spellType = "BlastJump";
+						sound = SND_SPELL_JUMP;
+						response = "TLK_PLAYER_CAST_BLAST_JUMP";
 					}
 					case 13:
 					{
@@ -2812,22 +2818,12 @@ int GetTotalItems()
 
 void AddItemToLogbook(int client, int item)
 {
-	if (item <= Item_Null || item >= Item_MaxValid || !AreClientCookiesCached(client) || IsItemInLogbook(client, item))
+	if (item <= Item_Null || item >= Item_MaxValid || GetItemLogSQL(client) == null || IsItemInLogbook(client, item))
+	{
 		return;
-	
-	char buffer[2048], itemId[16];
-	GetItemLogCookie(client, buffer, sizeof(buffer));
-	FormatEx(itemId, sizeof(itemId), ";%i;", item);
-	if (!buffer[0])
-	{
-		strcopy(buffer, sizeof(buffer), itemId);
 	}
-	else
-	{
-		StrCat(buffer, sizeof(buffer), itemId);
-	}
-	
-	SetItemLogCookie(client, buffer);
+
+	AddItemToSQL(client, item);
 	ArrayList items = GetSortedItemList();
 	int count;
 	for (int i = 0; i < items.Length; i++)
@@ -2837,12 +2833,22 @@ void AddItemToLogbook(int client, int item)
 			count++;
 		}
 	}
-	
+
 	SetAchievementProgress(client, ACHIEVEMENT_FULLITEMLOG, count);
 	delete items;
 }
 
 bool IsItemInLogbook(int client, int item)
+{
+	if (item <= Item_Null || item >= Item_MaxValid || g_bItemExcludeFromLog[item] || GetItemLogSQL(client) == null)
+	{
+		return false;
+	}
+
+	return GetItemLogSQL(client).FindString(g_szItemSectionName[item]) != -1;
+}
+
+bool IsItemInLogbookCookie(int client, int item)
 {
 	if (item <= Item_Null || item >= Item_MaxValid || g_bItemExcludeFromLog[item] || !AreClientCookiesCached(client))
 		return false;

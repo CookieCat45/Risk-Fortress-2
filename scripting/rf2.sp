@@ -441,6 +441,7 @@ int g_iThrillerRepeatCount;
 #include "rf2/customents/projectiles/projectile_shrapnel.sp"
 
 #include "rf2/cookies.sp"
+#include "rf2/sql.sp"
 #include "rf2/weapons.sp"
 #include "rf2/general_funcs.sp"
 #include "rf2/clients.sp"
@@ -483,6 +484,7 @@ public void OnPluginStart()
 	LoadCommandsAndCvars();
 	InstallEnts();
 	BakeCookies();
+	CreateSQL();
 	LoadTranslations("common.phrases");
 	LoadTranslations("rf2.phrases");
 	LoadTranslations("rf2_achievements.phrases");
@@ -1496,6 +1498,7 @@ public void OnClientDisconnect(int client)
 		{
 			CheckRedTeam(client);
 		}
+		DataBase_OnDisconnected(client);
 	}
 	
 	if (!g_bPlayerTimingOut[client] && !g_bPluginReloading && !IsFakeClient(client))
