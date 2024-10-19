@@ -576,7 +576,7 @@ RF2_Object_Base CreateObject(const char[] classname, const float pos[3], bool sp
 	delete trace;
 	if (!TR_PointOutsideWorld(endPos))
 	{
-		if (!RF2_Object_Workbench(obj.index).IsValid())
+		if (!RF2_Object_Workbench(obj.index).IsValid() && !RF2_Object_Pedestal(obj.index).IsValid())
 		{
 			angles[0] = GetRandomFloat(-25.0, 25.0);
 			angles[1] = GetRandomFloat(-180.0, 180.0);

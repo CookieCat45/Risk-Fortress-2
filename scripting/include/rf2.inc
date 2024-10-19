@@ -35,7 +35,7 @@ enum
 	Item_Law = 15,
 	ItemStrange_VirtualViewfinder = 16,
 	Item_RoBro = 17,
-	ItemStrange_Spellbook = 18,
+	Item_Horace = 18,
 	Item_HorsemannHead = 19,
 	Item_Monoculus = 20,
 	Item_SaxtonHat = 21,
@@ -122,6 +122,10 @@ enum
 	ItemStrange_OneWayTicket = 102,
 	ItemStrange_LittleBuddy = 103,
 	Item_ApertureHat = 104,
+	Item_Capacitor = 105,
+	Item_Ballcap = 106,
+	Item_Hachimaki = 107,
+	Item_LilBitey = 108,
 	Item_MaxValid,
 };
 

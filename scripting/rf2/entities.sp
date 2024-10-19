@@ -298,7 +298,7 @@ int ShootProjectile(int owner=INVALID_ENT, const char[] classname, const float p
 */
 ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int item=Item_Null,
 	float baseDamage, int damageFlags, float radius, float minFalloffMult=0.3, 
-	bool allowSelfDamage=false, ArrayList blacklist=null, bool returnHitEnts=false, float buildingDamageMult=1.0)
+	bool allowSelfDamage=false, ArrayList blacklist=null, bool returnHitEnts=false, float buildingDamageMult=1.0, int limit=0)
 {
 	float enemyPos[3];
 	float distance, falloffMultiplier, calculatedDamage;
@@ -310,6 +310,7 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 		hitEnts = new ArrayList();
 	}
 	
+	int hitCount;
 	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 	{
 		if (!IsValidEntity2(entity) || !allowSelfDamage && entity == attacker)
@@ -333,7 +334,7 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 			if (!TR_DidHit())
 			{
 				// check for shields as well
-				TR_TraceRayFilter(pos, enemyPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(attacker), TRACE_ENTITIES_ONLY);
+				TR_TraceRayFilter(pos, enemyPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, attackerTeam, TRACE_ENTITIES_ONLY);
 				if (!TR_DidHit())
 				{
 					falloffMultiplier = 1.0 - distance / radius;
@@ -353,6 +354,10 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 					{
 						hitEnts.Push(entity);
 					}
+
+					hitCount++;
+					if (limit > 0 && hitCount >= limit)
+						break;
 				}
 			}
 		}

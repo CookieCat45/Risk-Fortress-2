@@ -640,7 +640,7 @@ public MRESReturn DHook_MeleeSmack(int weapon)
 	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
 	if (IsValidClient(owner) && PlayerHasItem(owner, Item_HorrificHeadsplitter))
 	{
-		g_bMeleeMiss[owner] = true;
+		g_bPlayerMeleeMiss[owner] = true;
 	}
 	
 	// Melee goes through bubble shields (still makes the sound of hitting it but whatever)
@@ -674,7 +674,7 @@ public MRESReturn DHook_MeleeSmack(int weapon)
 public MRESReturn DHook_MeleeSmackPost(int weapon)
 {
 	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
-	if (IsValidClient(owner) && g_bMeleeMiss[owner])
+	if (IsValidClient(owner) && g_bPlayerMeleeMiss[owner])
 	{
 		if (PlayerHasItem(owner, Item_HorrificHeadsplitter))
 		{
@@ -712,8 +712,8 @@ public void RF_MissCheck(int client)
 	if (!(client = GetClientOfUserId(client)))
 		return;
 	
-	bool missed = g_bMeleeMiss[client];
-	g_bMeleeMiss[client] = false;
+	bool missed = g_bPlayerMeleeMiss[client];
+	g_bPlayerMeleeMiss[client] = false;
 	if (missed)
 	{
 		// don't trigger damage hooks

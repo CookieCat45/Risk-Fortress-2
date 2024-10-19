@@ -402,14 +402,14 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, f
 		int index = RF2_GetSurvivorIndex(client);
 		if (GetItemQuality(type) == Quality_Unusual)
 		{
-			g_iItemsTaken[index] -= 3;
+			g_iPlayerItemsTaken[index] -= 3;
 		}
 		else
 		{
-			g_iItemsTaken[index]--;
+			g_iPlayerItemsTaken[index]--;
 		}
 		
-		g_iItemsTaken[index] = imax(0, g_iItemsTaken[index]);
+		g_iPlayerItemsTaken[index] = imax(0, g_iPlayerItemsTaken[index]);
 	}
 	
 	return item;
@@ -432,15 +432,15 @@ bool PickupItem(int client)
 		// hotfix
 		if (GetPlayersOnTeam(TEAM_SURVIVOR, false, false) <= 1)
 		{
-			g_iItemLimit[survivorIndex] = 0;
+			g_iPlayerItemLimit[survivorIndex] = 0;
 		}
 		
 		// Strange items do not count towards the limit.
-		if (itemShare && g_iItemLimit[survivorIndex] > 0 && (!dropped || !item.BelongsToPlayer(client, true))
-			&& g_iItemsTaken[survivorIndex] >= g_iItemLimit[survivorIndex] && !IsEquipmentItem(type))
+		if (itemShare && g_iPlayerItemLimit[survivorIndex] > 0 && (!dropped || !item.BelongsToPlayer(client, true))
+			&& g_iPlayerItemsTaken[survivorIndex] >= g_iPlayerItemLimit[survivorIndex] && !IsEquipmentItem(type))
 		{
 			EmitSoundToClient(client, SND_NOPE);
-			PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[survivorIndex]);
+			PrintCenterText(client, "%t", "ItemShareLimit", g_iPlayerItemLimit[survivorIndex]);
 			return true;
 		}
 		
@@ -494,17 +494,17 @@ bool PickupItem(int client)
 			{
 				if (quality == Quality_Unusual)
 				{
-					g_iItemsTaken[survivorIndex] += 3;
+					g_iPlayerItemsTaken[survivorIndex] += 3;
 				}
 				else
 				{
-					g_iItemsTaken[survivorIndex]++;
+					g_iPlayerItemsTaken[survivorIndex]++;
 				}
 				
 				// Notify our player that they've reached their limit.
-				if (itemShare && g_iItemLimit[survivorIndex] > 0 && g_iItemsTaken[survivorIndex] >= g_iItemLimit[survivorIndex])
+				if (itemShare && g_iPlayerItemLimit[survivorIndex] > 0 && g_iPlayerItemsTaken[survivorIndex] >= g_iPlayerItemLimit[survivorIndex])
 				{
-					PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[survivorIndex]);
+					PrintCenterText(client, "%t", "ItemShareLimit", g_iPlayerItemLimit[survivorIndex]);
 				}
 			}
 		}

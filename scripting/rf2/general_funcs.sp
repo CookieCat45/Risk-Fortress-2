@@ -214,7 +214,7 @@ public void Timer_GameOver(Handle timer)
 	
 	if (g_iStagesCompleted == 0 && !IsInUnderworld())
 	{
-		InsertServerCommand("mp_waitingforplayers_restart 1; tf_bot_kick all");
+		InsertServerCommand("mp_waitingforplayers_restart 1; tf_bot_quota 0; tf_bot_kick all");
 		CreateTimer(1.2, Timer_ReloadPluginNoMapChange, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else

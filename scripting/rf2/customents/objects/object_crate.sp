@@ -345,7 +345,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	}
 	
 	SetEntProp(attacker, Prop_Send, "m_iKillCountSinceLastDeploy", 1); // Remove honorbound
-	g_bMeleeMiss[attacker] = false;
+	g_bPlayerMeleeMiss[attacker] = false;
 	RF2_Object_Crate crate = RF2_Object_Crate(entity);
 	if (!crate.Active)
 	{

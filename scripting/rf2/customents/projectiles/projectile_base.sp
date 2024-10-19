@@ -535,7 +535,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		
 		float pos[3];
 		this.WorldSpaceCenter(pos);
-		hitEnts = DoRadiusDamage(this.Owner, this.index, pos, GetEntItemProc(this.index), 
+		hitEnts = DoRadiusDamage(IsValidEntity2(this.Owner) ? this.Owner : this.index, this.index, pos, GetEntItemProc(this.index), 
 			this.Damage, DMG_BLAST, this.Radius, this.FalloffMult, this.DamageOwner, blacklist, returnHitEnts);
 		
 		if (blacklist)

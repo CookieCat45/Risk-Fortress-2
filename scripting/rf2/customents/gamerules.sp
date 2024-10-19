@@ -429,7 +429,8 @@ int SpawnObjects()
 	
 	// Non-crate object weights are separate
 	int workbenchWeight = 20;
-	int scrapperWeight = 12;
+	int scrapperWeight = 5;
+	int rouletteWeight = 5;
 	int graveWeight = 3;
 	int pumpkinWeight = 1;
 	
@@ -445,7 +446,7 @@ int SpawnObjects()
 	
 	char name[128];
 	int count;
-	const int objectCount = 10;
+	const int objectCount = 11;
 	for (int i = 1; i <= objectCount; i++)
 	{
 		switch (i-1)
@@ -466,6 +467,7 @@ int SpawnObjects()
 			case CrateType_Max+1: strcopy(name, sizeof(name), "rf2_object_scrapper"), count = scrapperWeight;
 			case CrateType_Max+2: strcopy(name, sizeof(name), "rf2_object_gravestone"), count = graveWeight;
 			case CrateType_Max+3: strcopy(name, sizeof(name), "rf2_object_pumpkin"), count = pumpkinWeight;
+			case CrateType_Max+4: strcopy(name, sizeof(name), "rf2_object_pedestal"), count = rouletteWeight;
 		}
 		
 		for (int j = 1; j <= count; j++)

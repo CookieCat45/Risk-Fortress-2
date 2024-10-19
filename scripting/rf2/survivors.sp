@@ -397,7 +397,7 @@ void LoadSurvivorInventory(int client, int index)
 	SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier() * cashBonus * g_flStartMoneyMultiplier);
 	g_iPlayerLevel[client] = g_iSavedLevel[index];
 	g_flPlayerXP[client] = g_flSavedXP[index];
-	g_iItemsTaken[RF2_GetSurvivorIndex(client)] = 0;
+	g_iPlayerItemsTaken[RF2_GetSurvivorIndex(client)] = 0;
 	
 	if (g_iPlayerLevel[client] > 1)
 	{
@@ -546,12 +546,12 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	{
 		if (survivorCount == 1)
 		{
-			g_iItemLimit[i] = 99999;
+			g_iPlayerItemLimit[i] = 99999;
 			break;
 		}
 		else
 		{
-			g_iItemLimit[i] = itemShare;
+			g_iPlayerItemLimit[i] = itemShare;
 		}	
 	}
 	
@@ -559,7 +559,7 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	{
 		if (IsClientInGame(i) && IsPlayerSurvivor(i, false))
 		{
-			g_iItemLimit[RF2_GetSurvivorIndex(i)] += GetPlayerCrateBonus(i);
+			g_iPlayerItemLimit[RF2_GetSurvivorIndex(i)] += GetPlayerCrateBonus(i);
 		}
 	}
 }
@@ -889,7 +889,7 @@ bool DoesPlayerHaveEnoughItems(int client)
 		}
 	}
 	
-	if (g_cvItemShareDisableThreshold.FloatValue <= 0.0 || g_iItemsTaken[RF2_GetSurvivorIndex(client)] >= GetPlayerRequiredItems(client))
+	if (g_cvItemShareDisableThreshold.FloatValue <= 0.0 || g_iPlayerItemsTaken[RF2_GetSurvivorIndex(client)] >= GetPlayerRequiredItems(client))
 		return true;
 	
 	// don't bother with AFK players
@@ -910,7 +910,7 @@ bool DoesPlayerHaveEnoughItems(int client)
 
 int GetPlayerRequiredItems(int client)
 {
-	return RoundFloat(float(g_iItemLimit[RF2_GetSurvivorIndex(client)]) * g_cvItemShareDisableThreshold.FloatValue);
+	return RoundFloat(float(g_iPlayerItemLimit[RF2_GetSurvivorIndex(client)]) * g_cvItemShareDisableThreshold.FloatValue);
 }
 
 bool AreAnyPlayersLackingItems()

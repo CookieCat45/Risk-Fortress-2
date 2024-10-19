@@ -73,9 +73,9 @@ int LoadItems(const char[] customPath="")
 			delete effectKey;
 			ThrowError("File %s does not exist", config);
 		}
+
 		g_iUnusualEffectCount = 0;
 		effectKey.GetSectionName(buffer, sizeof(buffer));
-		
 		if (strcmp2(buffer, "items"))
 		{
 			effectKey.GotoNextKey();
@@ -718,6 +718,10 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			if (updateStats)
 			{
 				CalculatePlayerMaxSpeed(client);
+				if (item == Item_DarkHelm)
+				{
+					CalculatePlayerMaxHealth(client);
+				}
 			}
 		}
 		case Item_HorrificHeadsplitter:
@@ -893,7 +897,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				if (g_iPlayerEquipmentItemCharges[client] < maxCharges)
 				{
 					g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
-					g_bEquipmentCooldownActive[client] = true;
+					g_bPlayerEquipmentCooldownActive[client] = true;
 					CreateTimer(0.1, Timer_EquipmentCooldown, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 				}
 			}
@@ -1722,167 +1726,6 @@ bool ActivateStrangeItem(int client)
 			CreateTimer(GetItemMod(ItemStrange_SpecialRing, 1), Timer_EndRingBonus, _, TIMER_FLAG_NO_MAPCHANGE);
 		}
 		
-		case ItemStrange_Spellbook:
-		{
-			char spellType[64], response[64], sound[PLATFORM_MAX_PATH];
-			bool projectileArc;
-			
-			// This item may cast a spell beneficial to the user, or backfire and harm them instead.
-			int luck = GetPlayerLuckStat(client);
-			if (RandChanceFloatEx(client, 1.0, 5.0, 4.0+(float(luck)*0.2)))
-			{
-				switch (GetRandomInt(1 + imin(luck, 13), 15))
-				{
-					case 1, 2, 3:
-					{
-						spellType = "tf_projectile_spellfireball";
-						sound = SND_SPELL_FIREBALL;
-						
-						// TLK_PLAYER_CAST_FIREBALL doesn't work for some reason. This is better than nothing.
-						response = "TLK_PLAYER_CAST_FIREBALL";
-					}
-					case 4, 5, 6:
-					{
-						spellType = "tf_projectile_spellbats";
-						sound = SND_SPELL_BATS;
-						response = "TLK_PLAYER_CAST_MERASMUS_ZAP";
-						projectileArc = true;
-					}
-					case 7, 8, 9:
-					{
-						spellType = "Overheal";
-						sound = SND_SPELL_OVERHEAL;
-						response = "TLK_PLAYER_CAST_SELF_HEAL";
-					}
-					case 10, 11, 12:
-					{
-						spellType = "BlastJump";
-						sound = SND_SPELL_JUMP;
-						response = "TLK_PLAYER_CAST_BLAST_JUMP";
-					}
-					case 13:
-					{
-						spellType = "tf_projectile_spellmeteorshower";
-						sound = SND_SPELL_METEOR;
-						response = "TLK_PLAYER_CAST_METEOR_SWARM";
-						projectileArc = true;
-					}
-					case 14:
-					{
-						spellType = "tf_projectile_spellspawnboss";
-						response = "TLK_PLAYER_CAST_MONOCULOUS";
-					}
-					case 15:
-					{
-						spellType = "tf_projectile_lightningorb";
-						sound = SND_SPELL_LIGHTNING;
-						response = "TLK_PLAYER_CAST_LIGHTNING_BALL";
-					}
-				}
-				
-				float eyePos[3], eyeAng[3];
-				GetClientEyePosition(client, eyePos);
-				GetClientEyeAngles(client, eyeAng);
-				float speed = 1100.0;
-				if (strcmp2(spellType, "tf_projectile_lightningorb"))
-				{
-					speed = 500.0;
-				}
-				
-				float arc;
-				if (projectileArc)
-					arc = -15.0;
-				
-				// Try shooting our projectile. If it's an invalid entity, we have a non-projectile spell.
-				int entity = ShootProjectile(client, spellType, eyePos, eyeAng, speed, _, arc);
-				
-				if (!IsValidEntity2(entity))
-				{
-					if (strcmp2(spellType, "BlastJump"))
-					{
-						float velocity[3];
-						GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", velocity);
-						if (velocity[2] < 600.0)
-						{
-							velocity[2] = 600.0 * 1.5;
-						}
-						else
-						{
-							velocity[2] *= 1.5;
-						}
-	
-						TeleportEntity(client, _, _, velocity);
-					}
-					else if (strcmp2(spellType, "Overheal"))
-					{
-						TF2_AddCondition(client, TFCond_HalloweenQuickHeal, 3.0);
-						TF2_AddCondition(client, TFCond_UberchargedOnTakeDamage, 1.0);
-					}
-					else if (strcmp2(spellType, "Stealth"))
-					{
-						TF2_AddCondition(client, TFCond_Stealthed, 8.0);
-					}
-				}
-				
-				if (TF2_GetClientTeam(client) == TFTeam_Red)
-				{
-					TE_TFParticle("spell_cast_wheel_red", NULL_VECTOR, client, PATTACH_ABSORIGIN_FOLLOW);
-				}
-				else
-				{
-					TE_TFParticle("spell_cast_wheel_blue", NULL_VECTOR, client, PATTACH_ABSORIGIN_FOLLOW);
-				}
-				
-				if (sound[0])
-				{
-					EmitSoundToAll(sound, client);
-				}
-				
-				if (response[0])
-				{
-					SpeakResponseConcept(client, response);
-				}
-			}
-			else // Backfire!
-			{
-				switch (GetRandomInt(1, 4))
-				{
-					case 1: // BURN!
-					{
-						TF2_IgnitePlayer(client, client, 10.0);
-					}
-					case 2: // "Bloody piss..."
-					{
-						TF2_MakeBleed(client, client, 5.0);
-						TF2_AddCondition(client, TFCond_Jarated, 10.0, client);
-					}
-					case 3: // Admin slaps.
-					{
-						SlapPlayer(client, 1);
-						SlapPlayer(client, 1);
-						SlapPlayer(client, 67);
-					}
-					case 4:
-					{
-						if (GetRandomInt(1, 100) == 1)
-						{
-							// Dance, dance, DANCE!!!
-							float eyePos[3];
-							GetClientEyePosition(client, eyePos);
-							StartThrillerDance(eyePos);
-							TriggerAchievement(client, ACHIEVEMENT_DANCE);
-						}
-						else // Just a stun, then.
-						{
-							TF2_StunPlayer(client, 4.0, _, TF_STUNFLAGS_GHOSTSCARE, client);
-						}
-					}
-				}
-				
-				TriggerAchievement(client, ACHIEVEMENT_BADMAGIC);
-			}
-		}
-		
 		case ItemStrange_VirtualViewfinder:
 		{
 			float eyePos[3], angles[3], direction[3];
@@ -2099,7 +1942,7 @@ bool ActivateStrangeItem(int client)
 
 		case ItemStrange_OneWayTicket:
 		{
-			if (g_bPermaDeathMark[client])
+			if (g_bPlayerPermaDeathMark[client])
 			{
 				PrintCenterText(client, "You can't use this if you're already marked for death!");
 				EmitSoundToClient(client, SND_NOPE);
@@ -2135,7 +1978,7 @@ bool ActivateStrangeItem(int client)
 			TF2_RespawnPlayer(ally);
 			TeleportEntity(ally, pos);
 			TF2_AddCondition(ally, TFCond_UberchargedCanteen, 5.0);
-			g_bPermaDeathMark[client] = true;
+			g_bPlayerPermaDeathMark[client] = true;
 			TF2_AddCondition(client, TFCond_MarkedForDeathSilent);
 			GiveItem(client, ItemStrange_OneWayTicket, -1);
 			GiveItem(client, ItemStrange_LittleBuddy, 1, true);
@@ -2164,7 +2007,7 @@ bool ActivateStrangeItem(int client)
 	{
 		if (g_flPlayerEquipmentItemCooldown[client] <= 0.0)
 		{
-			g_bEquipmentCooldownActive[client] = true;
+			g_bPlayerEquipmentCooldownActive[client] = true;
 			CreateTimer(0.1, Timer_EquipmentCooldown, GetClientUserId(client), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 		
@@ -2301,7 +2144,7 @@ public Action Timer_EquipmentCooldown(Handle timer, int client)
 	if ((client = GetClientOfUserId(client)) == 0 || !g_bGracePeriod && !IsPlayerAlive(client))
 		return Plugin_Stop;
 	
-	g_bEquipmentCooldownActive[client] = true;
+	g_bPlayerEquipmentCooldownActive[client] = true;
 	g_flPlayerEquipmentItemCooldown[client] -= 0.1;
 	if (g_flPlayerEquipmentItemCooldown[client] <= 0.0)
 	{
@@ -2317,13 +2160,13 @@ public Action Timer_EquipmentCooldown(Handle timer, int client)
 			}
 			else
 			{
-				g_bEquipmentCooldownActive[client] = false;
+				g_bPlayerEquipmentCooldownActive[client] = false;
 				return Plugin_Stop;
 			}
 		}
 		else
 		{
-			g_bEquipmentCooldownActive[client] = false;
+			g_bPlayerEquipmentCooldownActive[client] = false;
 			return Plugin_Stop;
 		}
 	}
@@ -2395,116 +2238,6 @@ public bool TraceFilter_BeamHitbox(int entity, int mask, int self)
 	}
 	
 	return false;
-}
-
-void StartThrillerDance(const float pos[3])
-{
-	g_bThrillerActive = true;
-	
-	float spawnPos[3];
-	CNavArea area = GetSpawnPoint(pos, spawnPos, 300.0, 1400.0, -1, false);
-	if (!area)
-	{
-		GetWorldCenter(spawnPos);
-	}
-	
-	int merasmus = CreateEntityByName("prop_dynamic_override");
-	DispatchKeyValue(merasmus, "model", MODEL_MERASMUS);
-	DispatchKeyValue(merasmus, "DefaultAnim", "Stand_MELEE");
-	TeleportEntity(merasmus, spawnPos);
-	DispatchSpawn(merasmus);
-	AcceptEntityInput(merasmus, "DisableCollision");
-	
-	EmitAmbientSound(SND_MERASMUS_APPEAR, spawnPos, _, SNDLEVEL_TRAIN);
-	TE_TFParticle("merasmus_spawn", spawnPos);
-	
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!IsClientInGame(i) || !IsPlayerAlive(i))
-			continue;
-		
-		SetVariantInt(1);
-		AcceptEntityInput(i, "SetForcedTauntCam");
-		TF2_AddCondition(i, TFCond_HalloweenThriller);
-	}
-	
-	StopMusicTrackAll();
-	FindConVar("nb_stop").SetInt(1);
-	CreateTimer(2.0, Timer_HalloweenThriller, merasmus, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-}
-
-public Action Timer_HalloweenThriller(Handle timer, int merasmus)
-{
-	switch (g_iThrillerRepeatCount)
-	{
-		case 1, 3:
-		{
-			if (g_iThrillerRepeatCount == 1)
-			{
-				switch (GetRandomInt(1, 3))
-				{
-					case 1: EmitSoundToAll(SND_MERASMUS_DANCE1);
-					case 2: EmitSoundToAll(SND_MERASMUS_DANCE2);
-					case 3: EmitSoundToAll(SND_MERASMUS_DANCE3);
-				}
-			}
-			
-			for (int i = 1; i <= MaxClients; i++)
-			{
-				if (!IsClientInGame(i) || !IsPlayerAlive(i))
-					continue;
-				
-				FakeClientCommand(i, "taunt");
-			}
-			
-			SetVariantString("taunt06");
-			AcceptEntityInput(merasmus, "SetAnimation");
-		}
-		case 5:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-			{
-				if (!IsClientInGame(i) || IsSpecBot(i))
-					continue;
-				
-				if (IsPlayerAlive(i))
-				{
-					TF2_RemoveCondition(i, TFCond_HalloweenThriller);
-				}
-				
-				SetVariantInt(0);
-				AcceptEntityInput(i, "SetForcedTauntCam");
-			}
-			
-			float pos[3];
-			GetEntPos(merasmus, pos);
-			EmitAmbientSound(SND_MERASMUS_DISAPPEAR, pos, _, SNDLEVEL_TRAIN);
-			TE_TFParticle("merasmus_spawn", pos);
-			
-			RemoveEntity2(merasmus);
-			FindConVar("nb_stop").SetInt(0);
-			
-			PlayMusicTrackAll();
-			g_bThrillerActive = false;
-			g_iThrillerRepeatCount = 0;
-			return Plugin_Stop;
-		}
-	}
-	
-	g_iThrillerRepeatCount++;
-	return Plugin_Continue;
-}
-
-public void Timer_RestoreRage(Handle timer, DataPack pack)
-{
-	pack.Reset();
-	int client = GetClientOfUserId(pack.ReadCell());
-	int team = pack.ReadCell();
-	if (!client || !IsClientInGame(client) || !IsPlayerAlive(client) || GetClientTeam(client) != team)
-		return;
-	
-	SetEntProp(client, Prop_Send, "m_bRageDraining", false);
-	SetEntPropFloat(client, Prop_Send, "m_flRageMeter", pack.ReadFloat());
 }
 
 int GetQualityColorTag(int quality, char[] buffer, int size)

@@ -815,7 +815,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMaxsPreScaled", maxs);
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMins", mins);
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMaxs", maxs);
-	
+	//SetEntityCollisionGroup(client, TFCOLLISION_GROUP_TANK);	
 	TF2_RemoveAllWeapons(client);
 	char name[128], attributes[MAX_ATTRIBUTE_STRING_LENGTH];
 	int activeWeapon = INVALID_ENT;

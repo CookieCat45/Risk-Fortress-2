@@ -20,6 +20,7 @@ void InstallEnts()
 	RF2_Object_Statue.Init();
 	RF2_Object_Tree.Init();
 	RF2_Object_Barrel.Init();
+	RF2_Object_Pedestal.Init();
 	RF2_Trigger_Exit.Init();
 	RF2_Projectile_Base.Init();
 	RF2_Projectile_Shuriken.Init();

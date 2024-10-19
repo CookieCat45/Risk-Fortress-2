@@ -87,8 +87,14 @@ void LoadCommandsAndCvars()
 	g_cvEnemyMaxSpawnWaveCount = CreateConVar("rf2_enemy_spawn_max_count", "8", "The absolute maximum amount of enemies that can spawn in a single spawn wave.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyMinSpawnWaveTime = CreateConVar("rf2_enemy_spawn_min_wave_time", "2.0", "The minimum amount of time that must pass between enemy spawn waves.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyBaseSpawnWaveTime = CreateConVar("rf2_enemy_spawn_base_wave_time", "30.0", "The base amount of time that passes between spawn waves. Affected by many different factors.", FCVAR_NOTIFY, true, 0.1);
-	g_cvEnemyPowerupLevel = CreateConVar("rf2_enemy_powerup_level", "100", "The level at which enemies will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
-	g_cvBossPowerupLevel = CreateConVar("rf2_boss_powerup_level", "300", "The level at which bosses will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
+	g_cvEnemyPowerupLevel = CreateConVar("rf2_enemy_powerup_level", "10", "The level at which enemies will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
+	g_cvBossPowerupLevel = CreateConVar("rf2_boss_powerup_level", "100", "The level at which bosses will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
+	g_cvPowerupLevelChanceMult = CreateConVar("rf2_powerup_chance_mult", "30", "The formula for the chance of an enemy spawning with a powerup is N in (P*this) where N is enemy level and P is powerup level.");
+	g_cvPowerupRegenLevel = CreateConVar("rf2_enemy_powerup_regen_level", "0");
+	g_cvPowerupHasteLevel = CreateConVar("rf2_enemy_powerup_haste_level", "20");
+	g_cvPowerupVampireLevel = CreateConVar("rf2_enemy_powerup_vampire_level", "35");
+	g_cvPowerupResistLevel = CreateConVar("rf2_enemy_powerup_resist_level", "50");
+	g_cvPowerupStrengthLevel = CreateConVar("rf2_enemy_powerup_strength_level", "80");
 	g_cvBossStabDamageType = CreateConVar("rf2_boss_backstab_damage_type", "0", "Determines how bosses take backstab damage. 0 - raw damage. 1 - percentage.\nBoth benefit from any damage bonuses, excluding crits.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamagePercent = CreateConVar("rf2_boss_backstab_damage_percentage", "0.12", "If rf2_boss_backstab_damage_type is 1, how much health, in decimal percentage, is subtracted from the boss upon backstab.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamageAmount = CreateConVar("rf2_boss_backstab_damage_multiplier", "750.0", "If rf2_boss_backstab_damage_type is 0, the base damage that is dealt to a boss upon backstab.", FCVAR_NOTIFY, true, 0.0);
@@ -128,7 +134,6 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_hiddenslot_test", Command_TestHiddenSlot, ADMFLAG_ROOT);
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
 	RegAdminCmd("rf2_debug_entitycount", Command_EntityCount, ADMFLAG_SLAY, "Shows the total number of networked entities (edicts) in the server.");
-	RegAdminCmd("rf2_debug_thriller_test", Command_ThrillerTest, ADMFLAG_ROOT, "\"Darkness falls across the land, the dancing hour is close at hand...\"");
 	RegAdminCmd("rf2_debug_unlock_achievements", Command_UnlockAllAchievements, ADMFLAG_ROOT, "Unlocks every achievement.");
 	g_cvDebugNoMapChange = CreateConVar("rf2_debug_skip_map_change", "0", "If nonzero, prevents the map from changing on round end.", FCVAR_NOTIFY, true, 0.0);
 	g_cvDebugShowObjectSpawns = CreateConVar("rf2_debug_show_object_spawns", "0", "If nonzero, when an object spawns, its name and location will be printed to the console.", FCVAR_NOTIFY, true, 0.0);
@@ -259,7 +264,7 @@ public Action Command_GiveItem(int client, int args)
 			if (IsPlayerSurvivor(clients[i]))
 			{
 				// count towards item share for debugging purposes
-				g_iItemsTaken[RF2_GetSurvivorIndex(clients[i])] += amount;
+				g_iPlayerItemsTaken[RF2_GetSurvivorIndex(clients[i])] += amount;
 			}
 			
 			if (IsEquipmentItem(item))
@@ -1202,26 +1207,6 @@ public Action Command_StartTeleporterEvent(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action Command_ThrillerTest(int client, int args)
-{
-	if (!RF2_IsEnabled())
-	{
-		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
-		return Plugin_Handled;
-	}
-	
-	if (client == 0)
-	{
-		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
-		return Plugin_Handled;
-	}
-	
-	float eyePos[3];
-	GetClientEyePosition(client, eyePos);
-	StartThrillerDance(eyePos);
-	return Plugin_Handled;
-}
-
 public Action Command_ForceBoss(int client, int args)
 {
 	if (!RF2_IsEnabled())
@@ -1591,7 +1576,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 	if (IsItemSharingEnabled() && target != inspectTarget)
 	{
 		int index = RF2_GetSurvivorIndex(target);
-		menu.SetTitle("%t", "YourItemsShareEnabled", g_iItemsTaken[index], g_iItemLimit[index]);
+		menu.SetTitle("%t", "YourItemsShareEnabled", g_iPlayerItemsTaken[index], g_iPlayerItemLimit[index]);
 	}
 	else
 	{

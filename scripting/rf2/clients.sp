@@ -10,7 +10,6 @@ public const TFCond g_MannpowerRunes[] =
 {
 	TFCond_RuneAgility,
 	TFCond_RuneHaste,
-	TFCond_RuneKnockout,
 	TFCond_RunePrecision,
 	TFCond_RuneRegen,
 	TFCond_RuneResist,
@@ -27,8 +26,8 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerOpenedHelpMenu[client] = false;
 	g_bPlayerViewingItemDesc[client] = false;
 	g_bPlayerHealOnHitCooldown[client] = false;
-	g_bFullMinigunMoveSpeed[client] = false;
-	g_bPermaDeathMark[client] = false;
+	g_bPlayerFullMinigunMoveSpeed[client] = false;
+	g_bPlayerPermaDeathMark[client] = false;
 	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;
@@ -38,6 +37,7 @@ void RefreshClient(int client, bool force=false)
 	g_iPlayerBossSpawnType[client] = -1;
 	g_iPlayerShieldHealth[client] = 0;
 	g_flPlayerRegenBuffTime[client] = 0.0;
+	g_flPlayerDelayedHealTime[client] = 0.0;
 	g_flPlayerRifleHeadshotBonusTime[client] = 0.0;
 	g_flPlayerGravityJumpBonusTime[client] = 0.0;
 	g_flPlayerTimeSinceLastItemPickup[client] = 0.0;
@@ -46,13 +46,13 @@ void RefreshClient(int client, bool force=false)
 	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
-	g_bEquipmentCooldownActive[client] = false;
+	g_bPlayerEquipmentCooldownActive[client] = false;
 	g_bPlayerLawCooldown[client] = false;
 	g_bPlayerTookCollectorItem[client] = false;
-	g_bExecutionerBleedCooldown[client] = false;
+	g_bPlayerExecutionerBleedCooldown[client] = false;
 	g_bPlayerHealBurstCooldown[client] = false;
 	g_bPlayerRifleAutoFire[client] = false;
-	g_bMeleeMiss[client] = false;
+	g_bPlayerMeleeMiss[client] = false;
 	g_szObjectiveHud[client] = "";
 	
 	if (!g_bMapChanging && IsClientInGame(client) && !IsSpecBot(client))
@@ -91,7 +91,7 @@ void RefreshClient(int client, bool force=false)
 		g_iPlayerUnusualsUnboxed[client] = 0;
 		g_iPlayerLevel[client] = 1;
 		g_flPlayerXP[client] = 0.0;
-		g_bHauntedKeyDrop[client] = false;
+		g_bPlayerHauntedKeyDrop[client] = false;
 		g_flPlayerNextLevelXP[client] = g_cvSurvivorBaseXpRequirement.FloatValue;
 	}
 	
@@ -415,6 +415,11 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		maxHealth += CalcItemModInt(client, Item_ClassCrown, 0);
 	}
 
+	if (PlayerHasItem(client, Item_DarkHelm))
+	{
+		maxHealth += CalcItemModInt(client, Item_DarkHelm, 2);
+	}
+
 	if (PlayerHasItem(client, Item_MisfortuneFedora))
 	{
 		maxHealth = RoundToFloor(float(maxHealth) * CalcItemMod_HyperbolicInverted(client, Item_MisfortuneFedora, 2));
@@ -542,7 +547,7 @@ float CalculatePlayerMaxSpeed(int client)
 		speed *= 3.0; // bosses move at normal speed while crouched to avoid getting stuck
 	}
 
-	if (g_bFullMinigunMoveSpeed[client] && TF2_GetPlayerClass(client) == TFClass_Heavy)
+	if (g_bPlayerFullMinigunMoveSpeed[client] && TF2_GetPlayerClass(client) == TFClass_Heavy)
 	{
 		// full minigun move speed
 		if (TF2_IsPlayerInCondition(client, TFCond_Slowed))
@@ -578,6 +583,42 @@ bool PlayerHasAnyRune(int client)
 		|| TF2_IsPlayerInCondition(client, TFCond_PlagueRune);
 }
 
+TFCond GetPlayerRune(int client)
+{
+	for (int i = 90; i <= 97; i++)
+	{
+		if (TF2_IsPlayerInCondition(client, view_as<TFCond>(i)))
+			return view_as<TFCond>(i);
+	}
+
+	if (TF2_IsPlayerInCondition(client, TFCond_RuneKnockout))
+	{
+		return TFCond_RuneKnockout;
+	}
+	else if (TF2_IsPlayerInCondition(client, TFCond_RuneImbalance))
+	{
+		return TFCond_RuneImbalance;
+	}
+	else if (TF2_IsPlayerInCondition(client, TFCond_CritRuneTemp))
+	{
+		return TFCond_CritRuneTemp;
+	}
+	else if (TF2_IsPlayerInCondition(client, TFCond_KingRune))
+	{
+		return TFCond_KingRune;
+	}
+	else if (TF2_IsPlayerInCondition(client, TFCond_SupernovaRune))
+	{
+		return TFCond_SupernovaRune;
+	}
+	else if (TF2_IsPlayerInCondition(client, TFCond_PlagueRune))
+	{
+		return TFCond_PlagueRune;
+	}
+
+	return view_as<TFCond>(-1);
+}
+
 void RemoveAllRunes(int client)
 {
 	for (int i = 90; i <= 97; i++)
@@ -592,6 +633,10 @@ void RemoveAllRunes(int client)
 	TF2_RemoveCondition(client, TFCond_SupernovaRune);
 	TF2_RemoveCondition(client, TFCond_PlagueRune);
 	TF2_RemoveCondition(client, TFCond_PowerupModeDominant);
+	if (IsEnemy(client))
+	{
+		SetEntityRenderColor(client, 255, 255, 255);
+	}
 }
 
 void CalculatePlayerMiscStats(int client)
@@ -608,6 +653,16 @@ void CalculatePlayerMiscStats(int client)
 		TF2Attrib_SetByDefIndex(client, 252, kbRes); // "damage force reduction"
 	}
 	
+	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+	{
+		int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
+		if (wrench != INVALID_ENT)
+		{
+			float repairRate = fmax(1.0, Pow(GetPlayerHealthMult(client), 0.4));
+			TF2Attrib_SetByDefIndex(wrench, 94, repairRate);
+		}
+	}
+
 	if (IsPlayerSurvivor(client))
 	{
 		SetClassAttributes(client);
@@ -1279,24 +1334,43 @@ TFCond GetRandomMannpowerRune(char soundBuffer[PLATFORM_MAX_PATH]="", int size=0
 TFCond GetRandomMannpowerRune_Enemies(int client, char soundBuffer[PLATFORM_MAX_PATH]="", int size=0)
 {
 	ArrayList runes = new ArrayList();
-	for (int i = 0; i < sizeof(g_MannpowerRunes); i++)
+	int levelRequirement;
+	if (IsBoss(client))
 	{
-		runes.Push(g_MannpowerRunes[i]);
+		levelRequirement += g_cvBossPowerupLevel.IntValue;
 	}
-	
-	// Enemies cannot have Reflect at all, and crit boosted enemies cannot have Strength
-	runes.Erase(runes.FindValue(TFCond_RuneWarlock));
-	if (IsPlayerCritBoosted(client))
+
+	if (g_iEnemyLevel >= g_cvPowerupRegenLevel.IntValue+levelRequirement)
 	{
-		runes.Erase(runes.FindValue(TFCond_RuneStrength));
+		runes.Push(TFCond_RuneRegen);
 	}
-	
-	// Knockout is pointless if the enemy doesn't have a melee weapon
-	if (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == INVALID_ENT)
+
+	if (g_iEnemyLevel >= g_cvPowerupHasteLevel.IntValue+levelRequirement)
 	{
-		runes.Erase(runes.FindValue(TFCond_RuneKnockout));
+		runes.Push(TFCond_RuneHaste);
 	}
-	
+
+	if (g_iEnemyLevel >= g_cvPowerupVampireLevel.IntValue+levelRequirement)
+	{
+		runes.Push(TFCond_RuneVampire);
+	}
+
+	if (g_iEnemyLevel >= g_cvPowerupResistLevel.IntValue+levelRequirement)
+	{
+		runes.Push(TFCond_RuneResist);
+	}
+
+	if (g_iEnemyLevel >= g_cvPowerupStrengthLevel.IntValue+levelRequirement && !IsPlayerCritBoosted(client))
+	{
+		runes.Push(TFCond_RuneStrength);
+	}
+
+	if (runes.Length <= 0)
+	{
+		delete runes;
+		return view_as<TFCond>(-1);
+	}
+
 	TFCond rune = runes.Get(GetRandomInt(0, runes.Length-1));
 	delete runes;
 	if (size > 0)
@@ -1405,11 +1479,15 @@ public MRESReturn DHook_ForceRespawn(int client)
 	if (team == TEAM_ENEMY && (g_bGracePeriod || !IsEnemy(client)))
 	{
 		// Block spawn because grace period is active or no enemy index
+		TF2_RemoveAllWeapons(client);
+		TF2_RemoveAllWearables(client);
 		return MRES_Supercede;
 	}
 	else if (team == TEAM_SURVIVOR && !IsPlayerSurvivor(client, false) && !IsPlayerMinion(client))
 	{
 		// Block spawn because client is not a Survivor nor a minion
+		TF2_RemoveAllWeapons(client);
+		TF2_RemoveAllWearables(client);
 		ChangeClientTeam(client, TEAM_ENEMY);
 		return MRES_Supercede;
 	}

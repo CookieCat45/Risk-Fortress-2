@@ -785,7 +785,7 @@ bool TFBot_ShouldUseEquipmentItem(TFBot bot)
 		
 		switch (item)
 		{
-			case ItemStrange_VirtualViewfinder, ItemStrange_Spellbook, ItemStrange_PartyHat, ItemStrange_RobotChicken: 
+			case ItemStrange_VirtualViewfinder, ItemStrange_PartyHat, ItemStrange_RobotChicken: 
 			{
 				return threat > 0 && !invuln && vision.IsLookingAtTarget(threat);
 			}
