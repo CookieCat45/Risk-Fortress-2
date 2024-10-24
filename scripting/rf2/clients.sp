@@ -878,6 +878,9 @@ bool DoesPlayerHaveOSP(int client)
 	if (float(GetClientHealth(client)) <= float(RF2_GetCalculatedMaxHealth(client))*0.9)
 		return false;
 
+	if (GetRF2GameRules().DisableDeath)
+		return false;
+
 	return true;
 }
 

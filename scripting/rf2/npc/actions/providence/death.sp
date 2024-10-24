@@ -27,7 +27,7 @@ static int OnStart(RF2_ProvidenceDeathAction action, RF2_Providence boss, NextBo
         if (crystal.IsValid())
         {
             SDKHooks_TakeDamage(crystal.index, 0, 0, 99999999.0, DMG_PREVENT_PHYSICS_FORCE);
-            RemoveEntity2(crystal.index);
+            RemoveEntity(crystal.index);
         }
     }
 
@@ -92,5 +92,5 @@ static void Timer_ProvidenceDeathExplosion(Handle timer, int entity)
 		UTIL_ScreenFade(i, {255, 255, 255, 255}, 0.3, 0.1, FFADE_PURGE);
 	}
 	
-	RemoveEntity2(entity);
+	RemoveEntity(entity);
 }

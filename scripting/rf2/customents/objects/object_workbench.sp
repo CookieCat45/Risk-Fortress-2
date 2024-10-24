@@ -245,7 +245,7 @@ static void OnRemove(RF2_Object_Workbench bench)
 {
 	if (bench.Sprite.IsValid())
 	{
-		RemoveEntity2(bench.Sprite.index);
+		RemoveEntity(bench.Sprite.index);
 	}
 }
 

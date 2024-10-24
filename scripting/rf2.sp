@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "DEVONLY-1.1"
+#define PLUGIN_VERSION "DEVONLY-1.2"
 #else
-#define PLUGIN_VERSION "1.1"
+#define PLUGIN_VERSION "1.2"
 #endif
 
 #include <rf2>
@@ -1004,6 +1004,11 @@ public void OnMapStart()
 		g_hObjectiveHudSync = CreateHudSynchronizer();
 		g_hMiscHudSync = CreateHudSynchronizer();
 		g_iMaxStages = FindMaxStages();
+		if (!g_szUnderworldMap[0])
+			FindSpecialMap(SpecialMap_Underworld);
+		if (!g_szFinalMap[0])
+			FindSpecialMap(SpecialMap_Final);
+
 		LoadMapSettings(mapName);
 		g_bTropicsMapExists = RF2_IsMapValid("rf2_tropics"); // For ACHIEVEMENT_TEMPLESECRET - hide it if the map doesn't exist
 		if (GetTotalItems() <= 0)
@@ -1073,7 +1078,7 @@ public void OnConfigsExecuted()
 		UpdateBotQuota();
 		char class[32];
 		GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
-		FindConVar("tf_bot_force_class").SetString(class);
+		FindConVar("tf_bot_force_class").SetString("engineer");
 		FindConVar("tf_bot_quota_mode").SetString("normal");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
@@ -1816,7 +1821,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 			
 			if (GetEntProp(entity, Prop_Send, "m_nState") == 0)
 			{
-				RemoveEntity2(entity);
+				RemoveEntity(entity);
 				break;
 			}
 		}
@@ -2282,6 +2287,12 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			}
 			
 			cashAmount *= 1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvEnemyCashDropScale.FloatValue);
+			if (PlayerHasAnyRune(victim))
+			{
+				// Elites drop much more money
+				cashAmount *= 3.0;
+			}
+
 			if (IsValidClient(attacker) && PlayerHasItem(attacker, Item_BanditsBoots))
 			{
 				cashAmount *= 1.0 + CalcItemMod(attacker, Item_BanditsBoots, 0);
@@ -2546,7 +2557,7 @@ public void Timer_KillFog(Handle timer, int fog)
 		return;
 
 	AcceptEntityInput(fog, "TurnOff");
-	RemoveEntity2(fog);
+	RemoveEntity(fog);
 }
 
 public void Timer_RestorePlayerFog(Handle timer, DataPack pack)
@@ -2576,7 +2587,7 @@ public void RF_DeleteRagdoll(int client)
 	{
 		if (GetEntPropEnt(entity, Prop_Send, "m_hPlayer") == client)
 		{
-			RemoveEntity2(entity);
+			RemoveEntity(entity);
 			break;
 		}
 	}
@@ -2894,7 +2905,7 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 	if (!shield.IsValid() || !IsValidEntity2(shield.Dispenser))
 	{
 		if (shield.IsValid())
-			RemoveEntity2(shield.index);
+			RemoveEntity(shield.index);
 		
 		return Plugin_Stop;
 	}
@@ -3153,7 +3164,7 @@ public Action Output_GraceTimerFinished(const char[] output, int caller, int act
 		return Plugin_Continue;
 	
 	EndGracePeriod();
-	RemoveEntity2(caller);
+	RemoveEntity(caller);
 	return Plugin_Continue;
 }
 
@@ -4046,13 +4057,16 @@ public Action Timer_PlayerTimer(Handle timer)
 				SilentlyKillPlayer(i);
 				if (IsFakeClient(i))
 				{
-					// move bots to blue if they somehow join red when they shouldn't
-					ChangeClientTeam(i, TEAM_ENEMY);
+					KickClient(i);
 				}
 			}
 			else if (team == TEAM_ENEMY && (g_bGracePeriod || !IsEnemy(i)))
 			{
 				SilentlyKillPlayer(i);
+				if (IsFakeClient(i))
+				{
+					KickClient(i);
+				}
 			}
 		}
 		
@@ -4368,7 +4382,7 @@ public void Timer_DeleteEntity(Handle timer, int entity)
 {
 	entity = EntRefToEntIndex(entity);
 	if (entity != INVALID_ENT)
-		RemoveEntity2(entity);
+		RemoveEntity(entity);
 }
 
 public Action Timer_AFKManager(Handle timer)
@@ -5117,7 +5131,7 @@ public Action Hook_ProjectileForceDamage(int entity, int other)
 {
 	if (!IsValidClient(other) && !IsNPC(other) && !IsBuilding(other))
 	{
-		RemoveEntity2(entity);
+		RemoveEntity(entity);
 		return Plugin_Handled;
 	}
 	
@@ -5135,7 +5149,7 @@ public Action Hook_ProjectileForceDamage(int entity, int other)
 	}
 	
 	RF_TakeDamage(other, entity, owner, damage, damageFlags);
-	RemoveEntity2(entity);
+	RemoveEntity(entity);
 	return Plugin_Handled;
 }
 
@@ -5295,7 +5309,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 		}
 		else
 		{
-			RemoveEntity2(entity);
+			RemoveEntity(entity);
 		}
 	}
 	else if (strcmp2(classname, "tf_projectile_balloffire") || strcmp2(classname, "tf_projectile_energy_ring"))
@@ -5316,7 +5330,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 		if (IsInUnderworld())
 		{
 			// hotfix
-			RemoveEntity2(entity);
+			RemoveEntity(entity);
 		}
 	}
 	else if (IsBuilding(entity))
@@ -5343,7 +5357,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	}
 	else if (IsEntityBlacklisted(classname))
 	{
-		RemoveEntity2(entity);
+		RemoveEntity(entity);
 	}
 }
 
@@ -5408,7 +5422,7 @@ public void RF_CollideWithShields(int entity)
 	TR_TraceHullFilter(pos, pos, mins, maxs, MASK_SOLID, TraceFilter_DispenserShield, GetEntTeam(entity), TRACE_ENTITIES_ONLY);
 	if (TR_DidHit())
 	{
-		RemoveEntity2(entity);
+		RemoveEntity(entity);
 		return;
 	}
 	
@@ -5486,7 +5500,7 @@ public void Hook_HealthKitSpawnPost(int entity)
 	// make sure we don't accidentally delete thrown lunchbox items
 	if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") <= 0)
 	{
-		RemoveEntity2(entity);
+		RemoveEntity(entity);
 	}
 	else
 	{
@@ -5513,7 +5527,7 @@ public void Hook_CashSpawnPost(int entity)
 		// remove cash drops spawned by tank_boss and base_boss
 		if (StrContains(classname, "tank_boss") != -1 || strcmp2(classname, "base_boss"))
 		{
-			RemoveEntity2(entity);
+			RemoveEntity(entity);
 		}
 	}
 }
@@ -5578,7 +5592,9 @@ public Action Hook_OnTakeDamage(int victim, int &attacker, int &inflictor, float
 	bool victimIsClient = IsValidClient(victim);
 	if (victimIsClient)
 	{
-		if (attacker != victim && !IsInvuln(victim) && PlayerHasItem(victim, Item_Horace))
+		// this gets called for friendly fire -.-
+		if (IsValidEntity2(attacker) && attacker != victim && GetEntTeam(victim) != GetEntTeam(attacker) 
+			&& !IsInvuln(victim) && PlayerHasItem(victim, Item_Horace))
 		{
 			if (GetTickedTime()-g_flPlayerLastBlockTime[victim] >= GetItemMod(Item_Horace, 0))
 			{
@@ -6003,11 +6019,6 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				}
 			}
 		}
-	}
-
-	if (damage > 0.0 && victimIsClient && PlayerHasItem(victim, Item_SpiralSallet))
-	{
-		damage = fmax(damage-CalcItemMod(victim, Item_SpiralSallet, 0), 1.0);
 	}
 
 	if (IsValidClient(attacker))
@@ -6509,9 +6520,10 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		if (strcmp2(inflictorClassname, "headless_hatman")) // this guy does 80% of victim HP by default, that is a big nono
 		{
 			damage = 250.0 * GetEnemyDamageMult();
-			if (victimIsClient && IsPlayerSurvivor(victim))
+			if (victimIsClient && IsPlayerSurvivor(victim) && !PlayerHasItem(victim, Item_HorsemannHead))
 			{
-				damage *= 0.75;
+				// reduce damage to players that aren't carrying the item
+				damage *= 0.5;
 			}
 		}
 		else
@@ -6530,9 +6542,10 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				damage *= GetEnemyDamageMult();
 			}
 			
-			if (monoculus && victimIsClient && IsPlayerSurvivor(victim))
+			if (monoculus && victimIsClient && IsPlayerSurvivor(victim) && !PlayerHasItem(victim, Item_Monoculus))
 			{
-				damage *= 0.75;
+				// reduce damage to players that aren't carrying the item
+				damage *= 0.5;
 			}
 		}
 	}
@@ -6553,6 +6566,13 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				damage *= CalcItemMod_HyperbolicInverted(victim, ItemSpy_CounterfeitBillycock, 1);
 			}
 		}
+
+		if (damage > 0.0 && PlayerHasItem(victim, Item_SpiralSallet))
+		{
+			damage -= CalcItemMod(victim, Item_SpiralSallet, 0);
+		}
+
+		damage = fmax(damage, 1.0);
 	}
 
 	if (victimIsBuilding && RF2_Projectile_Base(inflictor).IsValid())
@@ -6565,6 +6585,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.13;
 		damage *= fmax(0.5, GetPlayerFireRateMod(victim) * GetPlayerReloadMod(victim));
+		damage = fmax(damage, 25.0);
 	}
 
 	g_flDamageProc = proc; // carry over to other damage hooks

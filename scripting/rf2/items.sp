@@ -1925,7 +1925,7 @@ bool ActivateStrangeItem(int client)
 				newItem.Spawn();
 				EmitSoundToAll(SND_USE_WORKBENCH, newItem.index);
 				TE_TFParticle("mvm_loot_smoke", pos);
-				RemoveEntity2(item.index);
+				RemoveEntity(item.index);
 				if (quality == Quality_Unusual)
 				{
 					TriggerAchievement(client, ACHIEVEMENT_RECYCLER);

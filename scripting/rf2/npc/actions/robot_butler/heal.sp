@@ -31,7 +31,7 @@ static int OnStart(RF2_RobotButlerHealAction action, RF2_RobotButler bot, NextBo
 	action.StartTime = GetGameTime();
 	if (IsValidEntity2(bot.HeldItem))
 	{
-		RemoveEntity2(bot.HeldItem);
+		RemoveEntity(bot.HeldItem);
 	}
 	
 	bot.HeldItem = CreateEntityByName("prop_dynamic_override");
@@ -50,7 +50,7 @@ static void OnEnd(NextBotAction action, RF2_RobotButler bot, NextBotAction nextA
 {
 	if (IsValidEntity2(bot.HeldItem))
 	{
-		RemoveEntity2(bot.HeldItem);
+		RemoveEntity(bot.HeldItem);
 	}
 	
 	bot.Target = INVALID_ENT;

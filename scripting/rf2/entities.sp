@@ -435,7 +435,7 @@ public void Timer_DeleteCash(Handle timer, int entity)
 	float pos[3];
 	GetEntPos(entity, pos);
 	TE_TFParticle("mvm_cash_explosion", pos);
-	RemoveEntity2(entity);
+	RemoveEntity(entity);
 }
 
 public Action Timer_CashMagnet(Handle timer, int entity)
@@ -516,7 +516,7 @@ void PickupCash(int client, int entity)
 		}
 		
 		delete clientArray;
-		RemoveEntity2(entity);
+		RemoveEntity(entity);
 	}
 }
 

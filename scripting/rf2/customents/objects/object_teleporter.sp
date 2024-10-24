@@ -378,7 +378,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		this.SetWorldText("Call for Medic to go to the next stage!");
 		
 		if (IsValidEntity2(this.Bubble.index))
-			RemoveEntity2(this.Bubble.index);
+			RemoveEntity(this.Bubble.index);
 		
 		EmitSoundToAll(SND_TELEPORTER_CHARGED);
 		StopMusicTrackAll();
@@ -400,6 +400,10 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			if (entity == this.index)
 				continue;
 			
+			RF2_Object_Pedestal pedestal = RF2_Object_Pedestal(entity);
+			if (pedestal.IsValid() && pedestal.Spinning)
+				continue;
+
 			if (DistBetween(this.index, entity) > this.Radius)
 			{
 				RF2_Object_Base(entity).Active = state;
@@ -426,6 +430,10 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			if (RF2_Object_Teleporter(entity).IsValid())
 				continue;
 			
+			RF2_Object_Pedestal pedestal = RF2_Object_Pedestal(entity);
+			if (pedestal.IsValid() && pedestal.Spinning)
+				continue;
+
 			RF2_Object_Base(entity).Active = state;
 		}
 	}
@@ -530,7 +538,7 @@ static void OnRemove(RF2_Object_Teleporter teleporter)
 {
 	if (teleporter.Bubble.IsValid())
 	{
-		RemoveEntity2(teleporter.Bubble.index);
+		RemoveEntity(teleporter.Bubble.index);
 	}
 }
 

@@ -337,7 +337,7 @@ public Action Timer_UpdateItems(Handle timer)
 		{
 			if (IsValidEntity2(item.WorldText))
 			{
-				RemoveEntity2(item.WorldText);
+				RemoveEntity(item.WorldText);
 				item.WorldText = INVALID_ENT;
 			}
 			
@@ -457,7 +457,7 @@ bool PickupItem(int client)
 		}
 		
 		GiveItem(client, type, 1, true);
-		RemoveEntity2(item.index);
+		RemoveEntity(item.index);
 		ShowItemDesc(client, type);
 		char qualityTag[32], itemName[128], qualityName[32];
 		GetItemName(type, itemName, sizeof(itemName));

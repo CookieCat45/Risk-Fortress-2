@@ -73,7 +73,7 @@ static Action OnInteract(int client, RF2_Object_Altar altar)
 		UTIL_ScreenShake(pos, 15.0, 10.0, 5.0, 9000000.0, SHAKE_START, true);
 		PrintCenterTextAll("%t", "AltarActivated");
 		EmitSoundToAll(SND_ALTAR);
-		RemoveEntity2(altar.index);
+		RemoveEntity(altar.index);
 		g_bEnteringUnderworld = true;
 		TriggerAchievement(client, ACHIEVEMENT_GARGOYLE);
 		int entity = MaxClients+1;
@@ -81,7 +81,7 @@ static Action OnInteract(int client, RF2_Object_Altar altar)
 		{
 			GetEntPos(entity, pos, true);
 			TE_TFParticle("pumpkin_explode", pos);
-			RemoveEntity2(entity);
+			RemoveEntity(entity);
 		}
 	}
 	else

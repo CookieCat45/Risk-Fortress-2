@@ -461,7 +461,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 	
 	public void Remove()
 	{
-		RemoveEntity2(this.index);
+		RemoveEntity(this.index);
 	}
 	
 	public void PlaySound(int type, int channel=SNDCHAN_AUTO, int level=SNDLEVEL_NORMAL, int flags=SND_NOFLAGS, float volume=SNDVOL_NORMAL, int pitch=SNDPITCH_NORMAL)
@@ -662,7 +662,7 @@ static void OnRemove(RF2_Projectile_Base proj)
 	
 	if (IsValidEntity2(proj.Thruster))
 	{
-		RemoveEntity2(proj.Thruster);
+		RemoveEntity(proj.Thruster);
 	}
 }
 

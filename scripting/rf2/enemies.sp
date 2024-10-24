@@ -41,6 +41,7 @@ static bool g_bEnemyBotUberOnSight[MAX_ENEMIES];
 static bool g_bEnemyWeaponUseStaticAttributes[MAX_ENEMIES][TF_WEAPON_SLOTS];
 static bool g_bEnemyWeaponVisible[MAX_ENEMIES][TF_WEAPON_SLOTS];
 static bool g_bEnemyWeaponFirstActive[MAX_ENEMIES][TF_WEAPON_SLOTS];
+static bool g_bEnemyWeaponStartWithEmptyClip[MAX_ENEMIES][TF_WEAPON_SLOTS];
 static int g_iEnemyWeaponIndex[MAX_ENEMIES][TF_WEAPON_SLOTS];
 static int g_iEnemyWeaponAmount[MAX_ENEMIES];
 static char g_szEnemyWeaponName[MAX_ENEMIES][TF_WEAPON_SLOTS][128];
@@ -279,6 +280,16 @@ methodmap Enemy
 	{
 		g_bEnemyWeaponUseStaticAttributes[this.Index][slot] = value;
 	}
+
+	public bool WeaponStartWithEmptyClip(int slot)
+	{
+		return g_bEnemyWeaponStartWithEmptyClip[this.Index][slot];
+	}
+
+	public void SetWeaponStartWithEmptyClip(int slot, bool value)
+	{
+		g_bEnemyWeaponStartWithEmptyClip[this.Index][slot] = value;
+	}
 	
 	public bool WeaponVisible(int slot)
 	{
@@ -481,11 +492,49 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy = EnemyByIndex(e);
 		enemy.IsBoss = bosses;
 		
+		// TF class, health, and speed
+		enemy.BaseHealth = enemyKey.GetNum("health", 150);
+		enemy.BaseSpeed = enemyKey.GetFloat("speed", 300.0);
+		char classType[16];
+		enemyKey.GetString("class", classType, sizeof(classType), "");
+		enemy.Class = TF2_GetClass(classType);
+		if (enemy.Class == TFClass_Unknown)
+		{
+			enemy.Class = view_as<TFClassType>(enemyKey.GetNum("class", 1));
+		}
+
 		// name, model, description
 		enemyKey.GetString("name", g_szEnemyName[e], sizeof(g_szEnemyName[]), "unnamed");
-		enemyKey.GetString("model", g_szEnemyModel[e], sizeof(g_szEnemyModel[]), "models/player/soldier.mdl");
 		enemyKey.GetString("group", g_szEnemyGroup[e], sizeof(g_szEnemyGroup[]));
 		enemy.ModelScale = enemyKey.GetFloat("model_scale", enemy.IsBoss ? 1.75 : 1.0);
+		enemyKey.GetString("model", g_szEnemyModel[e], sizeof(g_szEnemyModel[]));
+		if (!g_szEnemyModel[e])
+		{
+			// default to class based model
+			switch (enemy.Class)
+			{
+				case TFClass_Scout: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), 
+					enemy.IsBoss ? MODEL_GIANT_SCOUT : MODEL_BOT_SCOUT);
+
+				case TFClass_Soldier: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), 
+					enemy.IsBoss ? MODEL_GIANT_SOLDIER : MODEL_BOT_SOLDIER);
+
+				case TFClass_Pyro: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), 
+					enemy.IsBoss ? MODEL_GIANT_PYRO : MODEL_BOT_PYRO);
+
+				case TFClass_DemoMan: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), 
+					enemy.IsBoss ? MODEL_GIANT_DEMO : MODEL_BOT_DEMO);
+
+				case TFClass_Heavy: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), 
+					enemy.IsBoss ? MODEL_GIANT_HEAVY : MODEL_BOT_HEAVY);
+
+				case TFClass_Engineer: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), MODEL_BOT_ENGINEER);
+				case TFClass_Medic: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), MODEL_BOT_MEDIC);
+				case TFClass_Sniper: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), MODEL_BOT_SNIPER);
+				case TFClass_Spy: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), MODEL_BOT_SPY);
+			}
+		}
+		
 		if (FileExists(g_szEnemyModel[e], true))
 		{
 			AddModelToDownloadsTable(g_szEnemyModel[e]);
@@ -495,11 +544,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			LogError("[LoadEnemiesFromPack] Model %s for enemy \"%s\" could not be found!", g_szEnemyModel[e], g_szLoadedEnemies[e]);
 			enemy.SetModel(MODEL_ERROR);
 		}
-		
-		// TF class, health, and speed
-		enemy.Class = view_as<TFClassType>(enemyKey.GetNum("class", 1));
-		enemy.BaseHealth = enemyKey.GetNum("health", 150);
-		enemy.BaseSpeed = enemyKey.GetFloat("speed", 300.0);
 		
 		// bot stuff
 		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotSkill_Normal);
@@ -535,6 +579,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemy.SetWeaponVisible(w, asBool(enemyKey.GetNum("visible", true)));
 			enemy.SetWeaponUseStaticAtts(w, asBool(enemyKey.GetNum("static_attributes", false)));
 			enemy.SetWeaponIsFirstActive(w, asBool(enemyKey.GetNum("active_weapon", false)));
+			enemy.SetWeaponStartWithEmptyClip(w, asBool(enemyKey.GetNum("empty_clip", false)));
 			enemy.WeaponCount++;
 			enemyKey.GoBack();
 		}
@@ -815,7 +860,6 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMaxsPreScaled", maxs);
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMins", mins);
 	SetEntPropVector(client, Prop_Send, "m_vecSpecifiedSurroundingMaxs", maxs);
-	//SetEntityCollisionGroup(client, TFCOLLISION_GROUP_TANK);	
 	TF2_RemoveAllWeapons(client);
 	char name[128], attributes[MAX_ATTRIBUTE_STRING_LENGTH];
 	int activeWeapon = INVALID_ENT;
@@ -825,9 +869,24 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		enemy.GetWeaponName(i, name, sizeof(name));
 		enemy.GetWeaponAttributes(i, attributes, sizeof(attributes));
 		weapon = CreateWeapon(client, name, enemy.WeaponIndex(i), attributes, enemy.WeaponUseStaticAtts(i), enemy.WeaponVisible(i));
-		if (activeWeapon == -1 && IsValidEntity2(weapon) && enemy.WeaponIsFirstActive(i))
+		if (IsValidEntity2(weapon))
 		{
-			activeWeapon = weapon;
+			if (activeWeapon == INVALID_ENT && enemy.WeaponIsFirstActive(i))
+			{
+				activeWeapon = weapon;
+			}
+
+			if (enemy.WeaponStartWithEmptyClip(i))
+			{
+				if (IsEnergyWeapon(weapon))
+				{
+					SetEntPropFloat(weapon, Prop_Send, "m_flEnergy", 0.0);
+				}
+				else
+				{
+					SetEntProp(weapon, Prop_Send, "m_iClip1", 0);
+				}
+			}
 		}
 	}
 	
@@ -837,7 +896,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		{
 			if (GetPlayerWeaponSlot(client, i) == activeWeapon)
 			{
-				ClientCommand(client, "slot%i", i+1);
+				ForceWeaponSwitch(client, i);
 				break;
 			}
 		}

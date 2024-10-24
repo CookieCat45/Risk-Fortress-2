@@ -241,7 +241,7 @@ methodmap RF2_RobotButler < RF2_NPC_Base
 		EmitAmbientGameSound("Weapon_TackyGrendadier.Explode", pos);
 		DoExplosionEffect(pos);
 		DoRadiusDamage(IsValidClient(this.Master) ? this.Master : this.index, this.index, pos, ItemStrange_Botler, this.BombDamage, DMG_BLAST, this.BombRadius);
-		RemoveEntity2(this.index);
+		RemoveEntity(this.index);
 	}
 	
 	public void UpdateTimerText()

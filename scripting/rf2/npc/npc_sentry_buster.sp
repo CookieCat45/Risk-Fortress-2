@@ -124,7 +124,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		
 		if (!success)
 		{
-			RemoveEntity2(buster.index);
+			RemoveEntity(buster.index);
 		}
 		else
 		{
@@ -264,7 +264,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		}
 		
 		delete playerList;
-		RemoveEntity2(this.index);
+		RemoveEntity(this.index);
 	}
 }
 

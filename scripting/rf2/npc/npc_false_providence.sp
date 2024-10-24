@@ -225,7 +225,7 @@ methodmap RF2_Providence < RF2_NPC_Base
         }
         else if (IsValidEntity2(this.RegenParticle))
         {
-            RemoveEntity2(this.RegenParticle);
+            RemoveEntity(this.RegenParticle);
             this.RegenParticle = INVALID_ENT;
         }
 
@@ -241,7 +241,7 @@ methodmap RF2_Providence < RF2_NPC_Base
         }
         else if (IsValidEntity2(this.ResistParticle))
         {
-            RemoveEntity2(this.ResistParticle);
+            RemoveEntity(this.ResistParticle);
             this.ResistParticle = INVALID_ENT;
         }
     }

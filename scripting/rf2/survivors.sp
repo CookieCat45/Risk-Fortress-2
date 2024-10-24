@@ -63,6 +63,7 @@ void LoadSurvivorStats()
 				firstKey = false;
 				if (survivorKey.JumpToKey("minion_weapons"))
 				{
+					g_iSurvivorMinionWeaponCount[class] = 0;
 					bool firstKey2 = true;
 					while (firstKey2 ? survivorKey.GotoFirstSubKey() : survivorKey.GotoNextKey())
 					{

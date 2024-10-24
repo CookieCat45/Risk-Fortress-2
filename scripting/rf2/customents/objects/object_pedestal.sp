@@ -157,7 +157,7 @@ static Action OnInteract(int client, RF2_Object_Pedestal pedestal)
         SpawnItem(pedestal.ItemType, pos, client, 10.0);
         EmitGameSoundToAll("Halloween.spelltick_set", pedestal.index);
         if (IsValidEntity2(pedestal.ItemSprite))
-            RemoveEntity2(pedestal.ItemSprite);
+            RemoveEntity(pedestal.ItemSprite);
 
         return Plugin_Handled;
     }
@@ -195,7 +195,7 @@ static void Timer_SpinRoulette(Handle timer, int entity)
         pedestal.SetWorldText("Call for Medic\nStart Roulette");
         pedestal.Cost = 0.0;
         if (IsValidEntity2(pedestal.ItemSprite))
-            RemoveEntity2(pedestal.ItemSprite);
+            RemoveEntity(pedestal.ItemSprite);
 
         return;
     }
@@ -203,7 +203,7 @@ static void Timer_SpinRoulette(Handle timer, int entity)
     int item = GetRandomItem(150, 49, 1);
     pedestal.ItemType = item;
     if (IsValidEntity2(pedestal.ItemSprite))
-        RemoveEntity2(pedestal.ItemSprite);
+        RemoveEntity(pedestal.ItemSprite);
 
     pedestal.ItemSprite = CreateEntityByName("env_sprite");
     DispatchKeyValue(pedestal.ItemSprite, "model", g_szItemSprite[item]);

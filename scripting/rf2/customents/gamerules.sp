@@ -619,14 +619,14 @@ void DespawnObjects(bool force=false)
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "rf2_item")) != INVALID_ENT)
 	{
-		RemoveEntity2(entity);
+		RemoveEntity(entity);
 	}
 	
 	while ((entity = FindEntityByClassname(entity, "rf2_object*")) != INVALID_ENT)
 	{
 		if (force || !RF2_Object_Base(entity).MapPlaced)
 		{
-			RemoveEntity2(entity);
+			RemoveEntity(entity);
 		}
 	}
 }

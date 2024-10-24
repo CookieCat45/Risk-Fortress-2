@@ -83,6 +83,6 @@ static Action Hook_OnBarrelHit(int entity, int &attacker, int &inflictor, float 
     SpawnInfoParticle("mvm_loot_explosion", pos, 3.0);
     EmitSoundToAll(SND_DROP_DEFAULT, entity);
     EmitSoundToAll(SND_CASH, entity);
-    RemoveEntity2(entity);
+    RemoveEntity(entity);
     return Plugin_Continue;
 }

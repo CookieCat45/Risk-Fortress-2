@@ -90,5 +90,5 @@ static void Timer_GalleomDeathExplosion(Handle timer, int entity)
 		UTIL_ScreenFade(i, {255, 255, 255, 255}, 0.3, 0.1, FFADE_PURGE);
 	}
 	
-	RemoveEntity2(entity);
+	RemoveEntity(entity);
 }

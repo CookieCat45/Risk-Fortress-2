@@ -4,8 +4,13 @@
 #define MAX_STAGE_MAPS 16
 #define MAX_STAGES 32
 
-int g_iMaxStages;
+enum
+{
+	SpecialMap_Underworld,
+	SpecialMap_Final,
+};
 
+int g_iMaxStages;
 char g_szEnemyPackName[64];
 char g_szBossPackName[64];
 char g_szClientBGM[MAXTF2PLAYERS][PLATFORM_MAX_PATH];
@@ -17,6 +22,49 @@ int g_iCurrentCustomTrack = -1;
 ArrayList g_hCustomTracks;
 ArrayList g_hCustomTracksDuration;
 
+bool FindSpecialMap(int type)
+{
+	char path[PLATFORM_MAX_PATH];
+	switch (type)
+	{
+		case SpecialMap_Underworld: BuildPath(Path_SM, path, sizeof(path), "%s/maps/underworld", ConfigPath);
+		case SpecialMap_Final: BuildPath(Path_SM, path, sizeof(path), "%s/maps/final", ConfigPath);
+		default: return false;
+	}
+	
+	DirectoryListing directory = OpenDirectory(path);
+	if (!directory)
+		return false;
+
+	char map[128];
+	FileType fileType;
+	while (directory.GetNext(map, sizeof(map), fileType))
+	{
+		if (fileType != FileType_File)
+			continue;
+
+		if (StrContains(map, ".cfg", false) != -1)
+		{
+			ReplaceString(map, sizeof(map), ".cfg", "", false);
+			if (!IsMapValid(map))
+				return false;
+
+			switch (type)
+			{
+				case SpecialMap_Underworld: strcopy(g_szUnderworldMap, sizeof(g_szUnderworldMap), map);
+				case SpecialMap_Final: strcopy(g_szFinalMap, sizeof(g_szFinalMap), map);
+			}
+			
+			PrintToServer("[RF2] Found special map type %i: %s", type, map);
+			delete directory;
+			return true;
+		}
+	}
+
+	delete directory;
+	return false;
+}
+
 void LoadMapSettings(const char[] mapName)
 {
 	char path[PLATFORM_MAX_PATH];
@@ -27,19 +75,8 @@ void LoadMapSettings(const char[] mapName)
 	char underworld[PLATFORM_MAX_PATH], final[PLATFORM_MAX_PATH];
 	FormatEx(underworld, sizeof(underworld), "%s/underworld/%s.cfg", path, mapName);
 	FormatEx(final, sizeof(final), "%s/final/%s.cfg", path, mapName);
-	bool isUnderworld = mapKey.ImportFromFile(underworld);
-	bool isFinal = mapKey.ImportFromFile(final);
-	if (isUnderworld || isFinal)
+	if (mapKey.ImportFromFile(underworld) || mapKey.ImportFromFile(final))
 	{
-		if (isUnderworld)
-		{
-			strcopy(g_szUnderworldMap, sizeof(g_szUnderworldMap), mapName);
-		}
-		else if (isFinal)
-		{
-			strcopy(g_szFinalMap, sizeof(g_szFinalMap), mapName);
-		}
-
 		PrintToServer("[RF2] Loading settings for SPECIAL map: %s", mapName);
 		ReadMapKeys(mapKey);
 		delete mapKey;

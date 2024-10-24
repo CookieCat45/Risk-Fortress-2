@@ -6,17 +6,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-public void RemoveEntity2(int entity)
-{
-	if (entity == 0)
-	{
-		LogStackTrace("RemoveEntity2 with entity index 0, aborting to prevent server crash!");
-		return;
-	}
-	
-	RemoveEntity(entity);
-}
-
 bool PrecacheSound2(const char[] sound, bool preload=false)
 {
 	if (!sound[0])

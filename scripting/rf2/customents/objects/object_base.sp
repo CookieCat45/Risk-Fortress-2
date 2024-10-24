@@ -478,7 +478,7 @@ static Action Timer_WorldText(Handle timer, int entity)
 	{
 		if (IsValidEntity2(obj.WorldText))
 		{
-			RemoveEntity2(obj.WorldText);
+			RemoveEntity(obj.WorldText);
 		}
 		
 		return Plugin_Continue;
@@ -498,7 +498,7 @@ static Action Timer_WorldText(Handle timer, int entity)
 	{
 		if (GetCurrentTeleporter().index != obj.index || RF2_Object_Teleporter(obj.index).EventState != TELE_EVENT_ACTIVE)
 		{
-			RemoveEntity2(obj.WorldText);
+			RemoveEntity(obj.WorldText);
 		}
 	}
 	

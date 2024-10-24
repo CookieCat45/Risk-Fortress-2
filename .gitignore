@@ -127,3 +127,7 @@ scripting/damagetest.sp
 scripting/ent_fire_dedicated.sp
 *.smx
 scripting/damagetest.sp
+scripting/unresolved_steamid_kick.sp
+scripting/include/connect.inc
+scripting/damagetest.sp
+scripting/damagetest.smx

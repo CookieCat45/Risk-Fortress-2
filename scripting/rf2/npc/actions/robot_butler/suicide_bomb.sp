@@ -30,7 +30,7 @@ static int OnStart(RF2_RobotButlerSuicideBombAction action, RF2_RobotButler bot,
 	action.StartTime = GetGameTime();
 	if (IsValidEntity2(bot.HeldItem))
 	{
-		RemoveEntity2(bot.HeldItem);
+		RemoveEntity(bot.HeldItem);
 	}
 	else
 	{
@@ -52,7 +52,7 @@ static void OnEnd(NextBotAction action, RF2_RobotButler bot, NextBotAction nextA
 	/*
 	if (IsValidEntity2(bot.HeldItem))
 	{
-		RemoveEntity2(bot.HeldItem);
+		RemoveEntity(bot.HeldItem);
 	}
 	*/
 	

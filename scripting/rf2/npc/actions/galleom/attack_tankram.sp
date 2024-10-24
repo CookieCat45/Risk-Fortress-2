@@ -89,8 +89,8 @@ static int Update(RF2_GalleomTankRamAttack action, RF2_RaidBoss_Galleom boss, fl
 		{
 			boss.BaseNpc.flAcceleration = 2000.0;
 			boss.SetHitboxSize({-150.0, -150.0, 0.0}, {150.0, 150.0, 300.0});
-			RemoveEntity2(action.RocketTrailL.index);
-			RemoveEntity2(action.RocketTrailR.index);
+			RemoveEntity(action.RocketTrailL.index);
+			RemoveEntity(action.RocketTrailR.index);
 			return action.Done("I'm done running people over.");
 		}
 	}

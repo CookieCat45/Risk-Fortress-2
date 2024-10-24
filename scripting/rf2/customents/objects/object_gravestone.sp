@@ -142,7 +142,7 @@ static Action Gravestone_OnInteract(int client, RF2_Object_Gravestone grave)
 		}
 		else
 		{
-			RemoveEntity2(grave.index);
+			RemoveEntity(grave.index);
 		}
 	}
 	else
@@ -166,7 +166,7 @@ public void RF_GraveSpawnRetry(int entity)
 	}
 	else
 	{
-		RemoveEntity2(grave.index);
+		RemoveEntity(grave.index);
 	}
 }
 

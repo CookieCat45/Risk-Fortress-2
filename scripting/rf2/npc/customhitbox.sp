@@ -280,7 +280,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		
 		if (remove)
 		{
-			RemoveEntity2(this.index);
+			RemoveEntity(this.index);
 		}
 		
 		#if defined DEVONLY

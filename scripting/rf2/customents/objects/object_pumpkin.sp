@@ -77,7 +77,7 @@ static Action Pumpkin_OnInteract(int client, RF2_Object_Pumpkin pumpkin)
 		float pos[3];
 		pumpkin.WorldSpaceCenter(pos);
 		TE_TFParticle("pumpkin_explode", pos);
-		RemoveEntity2(pumpkin.index);
+		RemoveEntity(pumpkin.index);
 	}
 	else
 	{

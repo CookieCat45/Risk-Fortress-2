@@ -196,7 +196,7 @@ static Action Timer_VoteCheck(Handle timer, int entity)
 	
 	if (GameRules_GetRoundState() == RoundState_TeamWin)
 	{
-		RemoveEntity2(entity);
+		RemoveEntity(entity);
 		return Plugin_Stop;
 	}
 	
