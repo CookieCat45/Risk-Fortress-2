@@ -167,7 +167,7 @@ static void Database_Setup(Database db, any data, int numQueries, DBResultSet[] 
 			action = new Transaction();
 		}
 
-		for (int i = 1; i < Item_MaxValid; i++)
+		for (int i = 1; i < GetTotalItems(); i++)
 		{
 			FormatEx(formatter, sizeof(formatter), "INSERT INTO item_log (steamid, name, obtained) VALUES ('%d', '%s', '%d')", 
 				GetSteamAccountID(client), g_szItemSectionName[i], view_as<int>(IsItemInLogbookCookie(client, i)));
@@ -230,7 +230,7 @@ void DataBase_OnDisconnected(int client)
 		action.AddQuery(formatter);
 	}
 
-	for (int i = 1; i < Item_MaxValid; i++)
+	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		int index = -1;
 		if (g_hObtainedItems[client])

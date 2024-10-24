@@ -534,7 +534,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 				case TFClass_Spy: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), MODEL_BOT_SPY);
 			}
 		}
-		
+
 		if (FileExists(g_szEnemyModel[e], true))
 		{
 			AddModelToDownloadsTable(g_szEnemyModel[e]);
@@ -611,8 +611,8 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 				if (item == 1 && enemyKey.GotoFirstSubKey(false) || enemyKey.GotoNextKey(false))
 				{
 					enemyKey.GetSectionName(sectionName, sizeof(sectionName));
-					
-					if ((itemId = StringToInt(sectionName)) > Item_Null)
+					itemId = GetItemFromSectionName(sectionName);
+					if (itemId > Item_Null)
 					{
 						enemy.SetItem(itemId, enemyKey.GetNum(NULL_STRING));
 					}

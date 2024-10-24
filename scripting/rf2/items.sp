@@ -2666,6 +2666,19 @@ bool IsHauntedItem(int item)
 	return GetItemQuality(item) == Quality_Haunted || GetItemQuality(item) == Quality_HauntedStrange;
 }
 
+int GetItemFromSectionName(const char[] name)
+{
+	for (int i = 1; i < GetTotalItems(); i++)
+	{
+		if (strcmp2(g_szItemSectionName[i], name))
+		{
+			return i;
+		}
+	}
+
+	return Item_Null;
+}
+
 static int g_iLastShownItem[MAXTF2PLAYERS];
 Handle g_hPlayerItemDescTimer[MAXTF2PLAYERS];
 void ShowItemDesc(int client, int item)
