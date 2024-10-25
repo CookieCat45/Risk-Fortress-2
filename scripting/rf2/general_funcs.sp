@@ -563,10 +563,17 @@ void UpdateGameDescription()
 	#if defined _SteamWorks_Included
 	if (GetExtensionFileStatus("SteamWorks.ext") == 1)
 	{
-		char desc[256], difficultyName[32];
-		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
-		FormatEx(desc, sizeof(desc), "Risk Fortress 2 (Stage %d - %s)", g_iStagesCompleted+1, difficultyName);
-		SteamWorks_SetGameDescription(desc);
+		if (g_bGameInitialized)
+		{
+			char desc[256], difficultyName[32];
+			GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
+			FormatEx(desc, sizeof(desc), "Risk Fortress 2 (Stage %d - %s)", g_iStagesCompleted+1, difficultyName);
+			SteamWorks_SetGameDescription(desc);
+		}
+		else
+		{
+			SteamWorks_SetGameDescription("Risk Fortress 2 (Waiting for Players...)");
+		}
 	}
 	#endif
 }

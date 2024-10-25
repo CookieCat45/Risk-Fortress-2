@@ -1383,9 +1383,9 @@ public void OnClientPutInServer(int client)
 {
 	RefreshClient(client);
 	GetClientName(client, g_szPlayerOriginalName[client], sizeof(g_szPlayerOriginalName[]));
-	if (g_bWaitingForPlayers && !IsSpecBot(client) && !IsFakeClient(client))
+	if (!g_bRoundActive && !IsSpecBot(client) && !IsFakeClient(client))
 	{
-		CreateTimer(0.8, Timer_PlayerJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(1.5, Timer_PlayerJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
 
 	if (RF2_IsEnabled() && !IsSpecBot(client))
@@ -1720,6 +1720,7 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	{
 		CreateTimer(2.0, Timer_DifficultyVote, _, TIMER_FLAG_NO_MAPCHANGE);
 		g_bGameInitialized = true;
+		UpdateGameDescription();
 	}
 	
 	g_flRoundStartSeconds = g_flSecondsPassed;
