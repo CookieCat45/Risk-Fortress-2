@@ -5629,6 +5629,27 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 	bool victimIsClient = IsValidClient(victim);
 	int attackerProc = GetEntItemProc(attacker);
 	int inflictorProc = IsValidEntity2(inflictor) && inflictor < MAX_EDICTS ? GetEntItemProc(inflictor) : Item_Null;
+	Call_StartForward(g_fwOnTakeDamage);
+	Call_PushCell(victim);
+	Call_PushCellRef(attacker);
+	Call_PushCellRef(inflictor);
+	Call_PushFloatRef(damage);
+	Call_PushCellRef(damageType);
+	Call_PushCellRef(weapon);
+	Call_PushArray(damageForce, 3);
+	Call_PushArray(damagePosition, 3);
+	Call_PushCell(damageCustom);
+	Call_PushCell(attackerProc);
+	Call_PushCell(inflictorProc);
+	Call_PushCellRef(critType);
+	Call_PushFloatRef(proc);
+	Action result;
+	Call_Finish(result);
+	if (result == Plugin_Handled || result == Plugin_Stop)
+	{
+		return result;
+	}
+
 	static char inflictorClassname[64];
 	if (inflictor > 0)
 	{
@@ -6523,7 +6544,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			if (victimIsClient && IsPlayerSurvivor(victim) && !PlayerHasItem(victim, Item_HorsemannHead))
 			{
 				// reduce damage to players that aren't carrying the item
-				damage *= 0.5;
+				damage *= 0.4;
 			}
 		}
 		else
@@ -6545,7 +6566,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			if (monoculus && victimIsClient && IsPlayerSurvivor(victim) && !PlayerHasItem(victim, Item_Monoculus))
 			{
 				// reduce damage to players that aren't carrying the item
-				damage *= 0.5;
+				damage *= 0.4;
 			}
 		}
 	}
@@ -6589,23 +6610,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	}
 
 	g_flDamageProc = proc; // carry over to other damage hooks
-	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
-	Call_StartForward(g_fwOnTakeDamage);
-	Call_PushCell(victim);
-	Call_PushCellRef(attacker);
-	Call_PushCellRef(inflictor);
-	Call_PushFloatRef(damage);
-	Call_PushCellRef(damageType);
-	Call_PushCellRef(weapon);
-	Call_PushArray(damageForce, 3);
-	Call_PushArray(damagePosition, 3);
-	Call_PushCell(damageCustom);
-	Call_PushCell(GetEntItemProc(attacker));
-	Call_PushCell(GetEntItemProc(inflictor));
-	Call_PushFloatRef(proc);
-	Action result;
-	Call_Finish(result);
-
 	if (victimIsClient && !selfDamage && DoesPlayerHaveOSP(victim))
 	{
 		// One-shot protection: if a Survivor is above 90% HP, damage cannot deal more than 90% of max HP.
@@ -6613,9 +6617,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	}
 
 	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
-	if (result != Plugin_Continue)
-		return result;
-
 	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;
 }
 

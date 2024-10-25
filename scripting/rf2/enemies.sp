@@ -508,7 +508,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemyKey.GetString("group", g_szEnemyGroup[e], sizeof(g_szEnemyGroup[]));
 		enemy.ModelScale = enemyKey.GetFloat("model_scale", enemy.IsBoss ? 1.75 : 1.0);
 		enemyKey.GetString("model", g_szEnemyModel[e], sizeof(g_szEnemyModel[]));
-		if (!g_szEnemyModel[e])
+		if (!g_szEnemyModel[e][0])
 		{
 			// default to class based model
 			switch (enemy.Class)

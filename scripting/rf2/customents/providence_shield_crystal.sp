@@ -30,6 +30,7 @@ methodmap RF2_ProvidenceShieldCrystal < RF2_NPC_Base
             .DefineBoolField("m_bDestroyed")
             .DefineFloatField("m_flRegenerateAt")
             .DefineEntityField("m_hBoss")
+            .DefineVectorField("m_vecSpawnLocation")
 		.EndDataMapDesc();
 		g_Factory.Install();
         HookMapStart(Crystal_OnMapStart);
@@ -133,6 +134,17 @@ static void SpawnPost(int entity)
     const float baseHealth = 2350.0;
     crystal.MaxHealth = RoundToFloor(baseHealth * playerMult * GetEnemyHealthMult());
     crystal.Regenerate();
+    RequestFrame(RF_SetSpawnLocation, crystal);
+}
+
+static void RF_SetSpawnLocation(RF2_ProvidenceShieldCrystal crystal)
+{
+    if (crystal.IsValid())
+    {
+        float pos[3];
+        crystal.GetAbsOrigin(pos);
+        crystal.SetPropVector(Prop_Data, "m_vecSpawnLocation", pos);
+    }
 }
 
 static Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
@@ -213,8 +225,11 @@ static void ThinkPost(int entity)
         crystal.SetLocalAngles(angles);
     }
 
-    // zero out velocity so we never move
+    // never move
     crystal.Locomotion.SetVelocity({0.0, 0.0, 0.0});
+    float pos[3];
+    crystal.GetPropVector(Prop_Data, "m_vecSpawnLocation", pos);
+    crystal.SetAbsOrigin(pos);
 }
 
 static void Timer_ResetRenderColor(Handle timer, int entity)

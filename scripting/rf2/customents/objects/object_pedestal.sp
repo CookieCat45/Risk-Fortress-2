@@ -156,9 +156,7 @@ static Action OnInteract(int client, RF2_Object_Pedestal pedestal)
         pos[2] += 45.0;
         SpawnItem(pedestal.ItemType, pos, client, 10.0);
         EmitGameSoundToAll("Halloween.spelltick_set", pedestal.index);
-        if (IsValidEntity2(pedestal.ItemSprite))
-            RemoveEntity(pedestal.ItemSprite);
-
+        RemoveEntity(pedestal.index);
         return Plugin_Handled;
     }
 

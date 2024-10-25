@@ -493,7 +493,8 @@ native ArrayList RF2_DoRadiusDamage(int attacker, int inflictor, const float pos
 	float radius, float minFalloffMult=0.3, bool allowSelfDamage=false, ArrayList blacklist=null, bool returnHitEnts=false);
 
 /**
- * Applies damage to an entity, using an item.
+ * Applies damage to an entity. 
+ * Can associate an item with the damage dealt using the `procItem` parameter.
  *
  * @param entity         Entity index taking damage
  * @param inflictor      Inflictor entity index
@@ -571,7 +572,7 @@ native bool RF2_IsTankDestructionMode();
  * Called when an entity takes damage.
  * 
  * @param victim			Entity taking damage
- * @param attacker 			Entity responsible for the daamge
+ * @param attacker 			Entity responsible for the damage
  * @param inflictor 		Entity dealing the damage
  * @param damage			Damage being dealt
  * @param damageType		Damage flags
@@ -579,20 +580,21 @@ native bool RF2_IsTankDestructionMode();
  * @param damageForce		Velocity of damage force
  * @param damagePosition	Origin of damage
  * @param damageCustom		Custom damage type
- * @param attackerItem		Item associated with the attacker, usually only set if the attacker is a client
- * @param inflictorItem		Item associated with the inflictor, usually only set if the inflictor is something like a projectile triggered by an item
+ * @param attackerItem		Item associated with the attacker, usually set if the attacker is a client
+ * @param inflictorItem		Item associated with the inflictor, usually set if the inflictor is something like a projectile triggered by an item
+ * @param critType			Crit type. 0 = none, 1 = crit, 2 = mini-crit
  * @param procCoeff			Proc coefficient
  * @return Plugin_Stop/Plugin_Handled to prevent damage, Plugin_Changed if any parameters are changed, Plugin_Continue otherwise
  */
 forward Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, 
-	float damageForce[3], float damagePosition[3], int damageCustom, int attackerItem, int inflictorItem, float &procCoeff);
+	float damageForce[3], float damagePosition[3], int damageCustom, int attackerItem, int inflictorItem, int &critType, float &procCoeff);
 
 /**
  * Called when an item is loaded from a custom items file in the `configs/rf2/custom_items/` directory.
  * 
  * @param fileName			The name of the custom items file, with the .cfg extension included.
  * @param sectionName		The item's section name in the file.
- * @param index				The item's index. Note that this is not the item_type key, but a value assigned at load time. You should cache this value globally.
+ * @param index				The item's index. Note that this is NOT the item_type key, but a value assigned at runtime. You should cache this value globally.
  */
 forward void RF2_OnCustomItemLoaded(const char[] fileName, const char[] sectionName, int index);
 
