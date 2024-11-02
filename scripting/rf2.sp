@@ -3558,7 +3558,7 @@ public Action Timer_PlayerHud(Handle timer)
 			else
 			{
 				victoryMessageTime += 0.1;
-				if (victoryMessageTime < 7.0)
+				if (victoryMessageTime < 11.0)
 				{
 					text = "\n\n\n\n\n...and so they left, still with a thirst for bolts and blood.";
 				}
@@ -5587,7 +5587,7 @@ public Action Hook_OnTraceAttack(int victim, int &attacker, int &inflictor, floa
 public Action Hook_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
 	float damageForce[3], float damagePosition[3], int damageCustom)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive)
+	if (!RF2_IsEnabled() || !g_bRoundActive || attacker >= MAX_EDICTS)
 		return Plugin_Continue;
 
 	bool victimIsClient = IsValidClient(victim);
@@ -5616,7 +5616,7 @@ float g_flDamageProc;
 public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
 	float damageForce[3], float damagePosition[3], int damageCustom, CritType &critType)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive)
+	if (!RF2_IsEnabled() || !g_bRoundActive || attacker >= MAX_EDICTS)
 		return Plugin_Continue;
 	
 	CritType originalCritType = critType;
@@ -5663,7 +5663,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 		procItem = GetEntItemProc(inflictor);
 	}
 
-	if (validWeapon)
+	if (validWeapon && IsValidClient(attacker))
 	{
 		proc *= GetWeaponProcCoefficient(weapon);
 		if (victimIsClient)
@@ -6087,7 +6087,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 public Action Hook_OnTakeDamageAlive(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
 float damageForce[3], float damagePosition[3], int damageCustom)
 {
-	if (!RF2_IsEnabled())
+	if (!RF2_IsEnabled() || attacker >= MAX_EDICTS)
 		return Plugin_Continue;
 	
 	if (IsValidClient(victim))
@@ -6624,6 +6624,9 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 public void Hook_OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damageType, int weapon,
 const float damageForce[3], const float damagePosition[3], int damageCustom)
 {
+	if (!RF2_IsEnabled() || attacker >= MAX_EDICTS)
+		return Plugin_Continue;
+
 	bool attackerIsClient = IsValidClient(attacker);
 	bool victimIsClient = IsValidClient(victim);
 	bool invuln = victimIsClient && IsInvuln(victim);
@@ -7053,6 +7056,8 @@ public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflicto
 	Call_PushCell(damageCustom);
 	Call_PushCell(GetEntItemProc(attacker));
 	Call_PushCell(GetEntItemProc(inflictor));
+	int dummy;
+	Call_PushCellRef(dummy);
 	Call_PushFloatRef(g_flDamageProc);
 	Call_Finish(result);
 	damage = fmin(damage, 32767.0);
