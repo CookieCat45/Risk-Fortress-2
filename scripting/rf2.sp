@@ -4944,7 +4944,6 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	RequestFrame(RF_NextPrimaryAttack, GetClientUserId(client));
 	
 	// Use our own crit logic
-	// we already do flamethrowers in our damage hook
 	if (!result)
 	{
 		if (TF2Attrib_HookValueInt(1, "mult_crit_chance", weapon) != 0
