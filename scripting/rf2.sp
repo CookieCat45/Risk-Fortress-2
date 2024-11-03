@@ -4760,6 +4760,25 @@ public void Hook_PreThink(int client)
 	}
 	else if (class == TFClass_Scout)
 	{
+		int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+		if (primary != INVALID_ENT)
+		{
+			if (GetEntProp(primary, Prop_Send, "m_iItemDefinitionIndex") == 448
+				&& !TF2_IsPlayerInCondition(client, TFCond_CritHype))
+			{
+				// Soda Popper behaves like pre gun mettle
+				float vel1[3], vel2[3], angles[3];
+				GetClientAbsAngles(client, angles);
+				GetAngleVectors(angles, vel1, NULL_VECTOR, NULL_VECTOR);
+				NormalizeVector(vel1, vel1);
+				GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", vel2);
+				NormalizeVector(vel2, vel2);
+				float dot = FloatAbs(GetVectorDotProduct(vel1, vel2));
+				float hype = GetEntPropFloat(client, Prop_Send, "m_flHypeMeter");
+				SetEntPropFloat(client, Prop_Send, "m_flHypeMeter", fmin(100.0, hype+(dot*0.08)));
+			}
+		}
+
 		if ((GetEntityFlags(client) & FL_ONGROUND))
 		{
 			g_iPlayerAirDashCounter[client] = 0;
@@ -5700,9 +5719,15 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 
 			if (PlayerHasItem(attacker, ItemPyro_LastBreath) && CanUseCollectorItem(attacker, ItemPyro_LastBreath))
 			{
+				if (afterburn)
+				{
+					damage *= 1.0 + CalcItemMod(attacker, ItemPyro_LastBreath, 2);
+				}
+
 				bool gas = TF2_IsPlayerInCondition(victim, TFCond_Gas);
 				bool primary = weapon == GetPlayerWeaponSlot(attacker, WeaponSlot_Primary);
-				bool shouldProcLastBreath = gas || validWeapon && (strcmp2(inflictorClassname, "tf_projectile_flare") || damageType & DMG_MELEE || !afterburn || GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary) == weapon);
+				bool shouldProcLastBreath = gas || validWeapon && (strcmp2(inflictorClassname, "tf_projectile_flare") || damageType & DMG_MELEE 
+					|| !afterburn || GetPlayerWeaponSlot(attacker, WeaponSlot_Secondary) == weapon);
 
 				if (victimIsClient && shouldProcLastBreath && (gas || !primary))
 				{
@@ -5847,7 +5872,10 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 		
 		if (validWeapon)
 		{
-			if (critType == CritType_Crit && !rolledCrit && IsValidClient(attacker) && IsPlayerSurvivor(attacker))
+			if (critType == CritType_Crit && !rolledCrit 
+				&& IsValidClient(attacker) 
+				&& IsPlayerSurvivor(attacker)
+				&& !IsPlayerCritBoosted(attacker))
 			{
 				// Crit weapons nerf (Phlog, Backburner, Frontier Justice, Diamondback)
 				if (TF2Attrib_HookValueInt(0, "burn_damage_earns_rage", weapon)
@@ -6624,7 +6652,7 @@ public void Hook_OnTakeDamageAlivePost(int victim, int attacker, int inflictor, 
 const float damageForce[3], const float damagePosition[3], int damageCustom)
 {
 	if (!RF2_IsEnabled() || attacker >= MAX_EDICTS)
-		return Plugin_Continue;
+		return;
 
 	bool attackerIsClient = IsValidClient(attacker);
 	bool victimIsClient = IsValidClient(victim);
