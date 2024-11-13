@@ -534,7 +534,11 @@ float CalculatePlayerMaxSpeed(int client)
 	
 	if (PlayerHasItem(client, Item_DarkHelm))
 	{
-		speed *= CalcItemMod_HyperbolicInverted(client, Item_DarkHelm, 1);
+		speed *= 1.0 - GetItemMod(Item_DarkHelm, 1);
+		if (GetPlayerItemCount(client, Item_DarkHelm) > 1)
+		{
+			speed *= CalcItemMod_HyperbolicInverted(client, Item_DarkHelm, 3, -1);
+		}
 	}
 	
 	if (PlayerHasItem(client, ItemSpy_StealthyScarf) && CanUseCollectorItem(client, ItemSpy_StealthyScarf) && TF2_IsPlayerInCondition(client, TFCond_Cloaked))

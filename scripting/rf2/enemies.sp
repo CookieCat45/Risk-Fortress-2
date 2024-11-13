@@ -601,7 +601,9 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		}
 		
 		for (int i = 1; i < GetTotalItems(); i++)
+		{
 			enemy.SetItem(i, 0);
+		}
 		
 		int itemId;
 		if (enemyKey.JumpToKey("items"))
@@ -1025,7 +1027,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 
 void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 {
-	int bossCount = 1 + ((GetPlayersOnTeam(TEAM_SURVIVOR, true)-1)/2) + RoundToFloor(g_flDifficultyCoeff/(g_cvSubDifficultyIncrement.FloatValue*2.5));
+	int bossCount = 1 + ((RF2_GetSurvivorCount()-1)/2) + RoundToFloor(g_flDifficultyCoeff/(g_cvSubDifficultyIncrement.FloatValue*2.5));
 	bossCount = imin(imax(bossCount, 1), GetPlayersOnTeam(TEAM_ENEMY));
 	ArrayList players = FindBestPlayersToSpawn(bossCount, true);
 	float time;

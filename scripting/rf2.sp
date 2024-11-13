@@ -452,6 +452,7 @@ public const char g_szTeddyBearSounds[][] =
 #include "rf2/customents/projectiles/projectile_skull.sp"
 #include "rf2/customents/projectiles/projectile_homingrocket.sp"
 #include "rf2/customents/projectiles/projectile_shrapnel.sp"
+#include "rf2/customents/customhitbox.sp"
 
 #include "rf2/cookies.sp"
 #include "rf2/sql.sp"
@@ -465,7 +466,6 @@ public const char g_szTeddyBearSounds[][] =
 #include "rf2/achievements.sp"
 #include "rf2/npc/nav.sp"
 #include "rf2/npc/tf_bot.sp"
-#include "rf2/npc/customhitbox.sp"
 #include "rf2/npc/npc_base.sp"
 #include "rf2/npc/actions/baseattack.sp"
 #include "rf2/npc/npc_tank_boss.sp"
@@ -1853,7 +1853,23 @@ void StartDifficultyVote()
 	menu.AddItem("0", "Scrap (Easy)");
 	menu.AddItem("1", "Iron (Normal)");
 	menu.AddItem("2", "Steel (Hard)");
-	if (GetRandomInt(1, 20) == 1 || g_cvAlwaysAllowTitaniumVoting.BoolValue || DoesSteelVictoryFlagExist())
+
+	bool achievement = true;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i) && IsPlayerSurvivor(i))
+		{
+			if (!IsAchievementUnlocked(i, ACHIEVEMENT_BEATGAMESTEEL)
+				&& !IsAchievementUnlocked(i, ACHIEVEMENT_BEATGAMETITANIUM))
+			{
+				// Every player needs to have either of these achievements for Titanium to always show up
+				achievement = false;
+				break;
+			}
+		}
+	}
+	
+	if (achievement || GetRandomInt(1, 20) == 1 || g_cvAlwaysAllowTitaniumVoting.BoolValue || DoesSteelVictoryFlagExist())
 	{
 		menu.AddItem("3", "Titanium (Expert)");
 	}
@@ -1982,7 +1998,8 @@ public void Timer_ConvertXP(Handle timer, int client)
 	if (!(client = GetClientOfUserId(client)) || !IsPlayerSurvivor(client, false))
 		return;
 
-	UpdatePlayerXP(client, GetPlayerCash(client)/3.0);
+	const float maxXp = 60000.0;
+	UpdatePlayerXP(client, fmin(maxXp, GetPlayerCash(client)/3.0));
 	SetPlayerCash(client, 0.0);
 }
 
@@ -5621,6 +5638,7 @@ public Action Hook_OnTakeDamage(int victim, int &attacker, int &inflictor, float
 				TE_TFParticle("miss_text", damagePosition);
 				EmitSoundToAll(g_szTeddyBearSounds[GetRandomInt(0, sizeof(g_szTeddyBearSounds)-1)], victim);
 				HealPlayer(victim, CalcItemModInt(victim, Item_Horace, 1));
+				TF2_AddCondition(victim, TFCond_UberchargedHidden, GetItemMod(Item_Horace, 2));
 				g_flPlayerLastBlockTime[victim] = GetTickedTime();
 				return Plugin_Handled;
 			}
@@ -5778,9 +5796,15 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				}
 				else if (validWeapon)
 				{
-					if (PlayerHasItem(attacker, ItemSoldier_Compatriot) && CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
+					if (victimIsClient && !IsBoss(victim) && !IsPlayerStunned(victim)
+						&& PlayerHasItem(attacker, ItemSoldier_Compatriot) 
+						&& CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
 					{
-						damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_Compatriot, 0);
+						float chance = CalcItemMod_Hyperbolic(attacker, ItemSoldier_Compatriot, 0);
+						if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
+						{
+							TF2_StunPlayer(victim, GetItemMod(ItemSoldier_Compatriot, 1), _, TF_STUNFLAG_BONKSTUCK, attacker);
+						}
 					}
 				}
 			}
@@ -6068,6 +6092,8 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				}
 			}
 		}
+
+		damage = fmax(1.0, damage);
 	}
 
 	if (IsValidClient(attacker))
@@ -6632,9 +6658,29 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	// self blast damage is reduced and capped
 	if (victimIsClient && selfDamage && rangedDamage && (validWeapon || inflictorIsBuilding) && IsPlayerSurvivor(victim))
 	{
-		damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.13;
-		damage *= fmax(0.5, GetPlayerFireRateMod(victim) * GetPlayerReloadMod(victim));
-		damage = fmax(damage, 25.0);
+		damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.15;
+
+		// Special damage reduction rules for Soldier
+		if (TF2_GetPlayerClass(victim) == TFClass_Soldier)
+		{
+			if ((GetEntityFlags(victim) & FL_ONGROUND
+				|| !TF2_IsPlayerInCondition(victim, TFCond_BlastJumping)))
+			{
+				// Reduce self damage based on fire+reload rate IF we are not rocket jumping.
+				damage *= fmax(0.5, Pow(GetPlayerFireRateMod(victim) * GetPlayerReloadMod(victim), 0.75));
+			}
+			else
+			{
+				// Rocket jumping extends health regen time a bit
+				g_flPlayerHealthRegenTime[victim] += 1.5;
+				g_flPlayerHealthRegenTime[victim] = fmin(g_flPlayerHealthRegenTime[victim], 5.0);
+			}
+		}
+		
+		if (damageType & DMG_BLAST && validWeapon)
+		{
+			damage = fmax(damage, 30.0);
+		}
 	}
 
 	g_flDamageProc = proc; // carry over to other damage hooks
@@ -6665,24 +6711,10 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 	{
 		if (CanPlayerRegen(victim) && damage > 0.0 && !invuln)
 		{
-			const float regenTimeMin  = 0.5;
-			const float regenTimeMax  = 5.0;
-			
-			float seconds = 5.0 * (damage / float(RF2_GetCalculatedMaxHealth(victim)));
-			if (seconds > regenTimeMax)
-			{
-				seconds = regenTimeMax;
-			}
-			else if (seconds < regenTimeMin)
-			{
-				seconds = regenTimeMin;
-			}
-			
-			g_flPlayerHealthRegenTime[victim] += seconds;
-			if (g_flPlayerHealthRegenTime[victim] > regenTimeMax)
-			{
-				g_flPlayerHealthRegenTime[victim] = regenTimeMax;
-			}
+			const float regenTimeMin = 0.5;
+			const float regenTimeMax = 5.0;
+			float seconds = fmax(5.0 * (damage / float(RF2_GetCalculatedMaxHealth(victim))), regenTimeMin);
+			g_flPlayerHealthRegenTime[victim] = fmin(g_flPlayerHealthRegenTime[victim]+seconds, regenTimeMax);
 		}
 
 		if (!invuln && !g_bGracePeriod)

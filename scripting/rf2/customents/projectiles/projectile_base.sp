@@ -718,14 +718,8 @@ public void OnVPhysicsUpdate(int entity)
 		proj.GetAbsOrigin(pos);
 		proj.GetHitboxMins(mins);
 		proj.GetHitboxMaxs(maxs);
-		TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID|MASK_NPCSOLID, TraceFilter_Projectile, proj, TRACE_ENTITIES_ONLY);
+		TR_TraceHullFilter(pos, pos, mins, maxs, MASK_SOLID|MASK_PLAYERSOLID|MASK_NPCSOLID, TraceFilter_Projectile, proj, TRACE_ENTITIES_ONLY);
 		int hitEntity = TR_GetEntityIndex();
-		if (hitEntity <= 0)
-		{
-			TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID|MASK_NPCSOLID, TraceFilter_DispenserShield, _, TRACE_ENTITIES_ONLY);
-			hitEntity = TR_GetEntityIndex();
-		}
-		
 		if (hitEntity > 0)
 		{
 			// the dhook doesn't seem to work properly on players/npcs, so pretend we're colliding with them
@@ -842,16 +836,11 @@ public void Projectile_OnCollide(RF2_Projectile_Base proj, int other)
 
 public bool TraceFilter_Projectile(int entity, int mask, RF2_Projectile_Base self)
 {
-	if (entity == self.index || !IsValidClient(entity) && !IsNPC(entity))
+	if (entity == self.index || !IsValidClient(entity) && !IsNPC(entity) && !RF2_DispenserShield(entity).IsValid())
 		return false;
 	
 	if (self.Team == GetEntTeam(entity) || self.Owner == entity)
 		return false;
-	
-	if (RF2_DispenserShield(entity).IsValid())
-	{
-		return true;
-	}
 
 	return true;
 }

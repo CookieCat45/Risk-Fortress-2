@@ -295,7 +295,7 @@ static void OnCreate(RF2_CustomHitbox box)
 {
 	box.BuildingDamageMult = 1.0;
 	SDKHook(box.index, SDKHook_SpawnPost, OnSpawnPost);
-	SetEntityCollisionGroup(box.index, TFCOLLISION_GROUP_ROCKETS);
+	SetEntityCollisionGroup(box.index, TFCOLLISION_GROUP_ROCKET_BUT_NOT_WITH_OTHER_ROCKETS);
 	box.SetProp(Prop_Send, "m_nSolidType", SOLID_OBB);
 	box.SetModel(MODEL_CRATE);
 	box.SetRenderMode(RENDER_NONE);
@@ -311,5 +311,4 @@ static void OnSpawnPost(int entity)
 	box.SetPropVector(Prop_Send, "m_vecMinsPreScaled", mins);
 	box.SetPropVector(Prop_Send, "m_vecMaxs", maxs);
 	box.SetPropVector(Prop_Send, "m_vecMaxsPreScaled", maxs);
-	//SetEntityCollisionGroup(box.index, COLLISION_GROUP_DEBRIS_TRIGGER);
 }

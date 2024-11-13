@@ -95,10 +95,13 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 			.DefineFloatField("m_flNextLaserCannonAttack")
 			.DefineFloatField("m_flLaserCannonChargeTime")
 			.DefineFloatField("m_flLaserCannonEndTime")
+			.DefineFloatField("m_flSpawnTime")
+			.DefineFloatField("m_flShieldTime")
 			.DefineIntField("m_iSpecialAttack")
 			.DefineIntField("m_iActualMaxHealth")
 			.DefineBoolField("m_bSuperBadass", _, "superbadass")
 			.DefineBoolField("m_bFiringLaserCannon")
+			.DefineEntityField("m_hShieldEntity")
 		.EndDataMapDesc();
 		g_Factory.Install();
 		HookMapStart(BadassTank_OnMapStart);
@@ -233,6 +236,32 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 			this.SetPropFloat(Prop_Data, "m_flNextLaserShot", value);
 		}
 	}
+
+	property float SpawnTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flSpawnTime");
+		}
+
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flSpawnTime", value);
+		}
+	}
+
+	property float ShieldTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flShieldTime");
+		}
+
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flShieldTime", value);
+		}
+	}
 	
 	property float Speed
 	{
@@ -317,6 +346,19 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 			g_bTankDeploying[this.index] = value;
 		}
 	}
+
+	property int ShieldEntity
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hShieldEntity");
+		}
+
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hShieldEntity", value);
+		}
+	}
 	
 	public void SetPathTrackNode(int entity)
 	{
@@ -333,6 +375,35 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 		{
 			SDKCall(g_hSDKTankSetStartNode, this.index, name);
 		}
+	}
+
+	public void ToggleShield(bool state)
+	{
+		float pos[3];
+		this.WorldSpaceCenter(pos);
+		if (!state)
+		{
+			if (IsValidEntity2(this.ShieldEntity))
+			{
+				RemoveEntity(this.ShieldEntity);
+				EmitAmbientGameSound("WeaponMedigun.HealingDetachTarget", pos);
+			}
+
+			return;
+		}
+
+		this.ShieldEntity = CreateEntityByName("prop_dynamic_override");
+		SetEntityModel2(this.ShieldEntity, MODEL_DISPENSER_SHIELD_L1);
+		TeleportEntity(this.ShieldEntity, pos);
+		DispatchSpawn(this.ShieldEntity);
+		ParentEntity(this.ShieldEntity, this.index);
+		AcceptEntityInput(this.ShieldEntity, "DisableCollision");
+		DispatchKeyValueInt(this.ShieldEntity, "solid", 0);
+		SetEntityCollisionGroup(this.ShieldEntity, COLLISION_GROUP_NONE);
+		DispatchKeyValueInt(this.ShieldEntity, "skin", 1);
+		SetEntityRenderMode(this.ShieldEntity, RENDER_TRANSCOLOR);
+		SetEntityRenderColor(this.ShieldEntity, 255, 255, 255, 150);
+		EmitAmbientGameSound("WeaponMedi_Shield.Deploy", pos);
 	}
 }
 
@@ -413,6 +484,7 @@ static void Hook_BadassTankSpawnPost(int entity)
 	tank.MaxHealth = maxHealth;
 	tank.SetProp(Prop_Data, "m_iMaxHealth", 0);
 	tank.SetSequence("movement");
+	tank.SpawnTime = GetGameTime();
 }
 
 void BeginTankDestructionMode()
@@ -481,7 +553,7 @@ static int SpawnTanks()
 	spawnCount += RoundToFloor(g_flDifficultyCoeff/(subIncrement*1.2));
 	spawnCount = imin(spawnCount, maxTanks);
 	float time = 10.0;
-	int badassTankCount;
+	int badassTankCount = subDifficulty >= SubDifficulty_Hard ? 1 : 0;
 	if (subDifficulty >= SubDifficulty_Insane)
 	{
 		badassTankCount += subDifficulty/4;
@@ -493,7 +565,7 @@ static int SpawnTanks()
 		
 		if (i == 1)
 		{
-			CreateTankBoss(TankType_Normal);
+			CreateTankBoss(badass ? TankType_Badass : TankType_Normal);
 		}
 		else // delay the rest of the spawns
 		{
@@ -621,7 +693,8 @@ static void Hook_TankBossThink(int entity)
 		}
 		
 		float value = g_cvTankSpeedBoost.FloatValue;
-		if (!tank.SpeedBoosted && value > 1.0 && RF2_GetDifficulty() >= g_cvTankBoostDifficulty.IntValue)
+		if (!tank.SpeedBoosted && !IsValidEntity2(tank.ShieldEntity) 
+			&& value > 1.0 && RF2_GetDifficulty() >= g_cvTankBoostDifficulty.IntValue)
 		{
 			if (tank.Health < RoundToFloor(float(tank.MaxHealth) * g_cvTankBoostHealth.FloatValue))
 			{
@@ -700,6 +773,36 @@ static Action Hook_BadassTankOnTakeDamageAlive(int victim, int &attacker, int &i
 		action = Plugin_Changed;
     }
 
+	if (tank.SpawnTime+20.0 >= GetGameTime())
+	{
+		// activate shield if we lose HP too quickly after spawning
+		if (tank.ShieldTime <= 0.0 && tank.Health <= tank.MaxHealth/2)
+		{
+			tank.ToggleShield(true);
+			float timeSinceSpawn = FloatAbs(tank.SpawnTime-GetGameTime());
+			float time = fmin(20.0, 40.0-timeSinceSpawn);
+			tank.ShieldTime = GetGameTime()+time;
+
+			// Instantly retaliate with missiles as well
+			if (tank.SpecialAttack == SPECIAL_NONE)
+			{
+				tank.NextBarrageAttack = 0.0;
+			}
+		}
+	}
+
+	if (IsValidEntity2(tank.ShieldEntity))
+	{
+		if (damagetype & DMG_CRIT)
+		{
+			damage /= 3.0;
+		}
+
+		damagetype &= ~DMG_CRIT;
+		damage *= 0.15;
+		action = Plugin_Changed;
+	}
+
     return action;
 }
 
@@ -707,6 +810,11 @@ static void Hook_BadassTankThink(int entity)
 {
 	RF2_TankBoss tank = RF2_TankBoss(entity);
 	float gameTime = GetGameTime();
+	if (IsValidEntity2(tank.ShieldEntity) && GetGameTime() >= tank.ShieldTime)
+	{
+		tank.ToggleShield(false);
+	}
+
 	int special = tank.SpecialAttack;
 	if (special != SPECIAL_BARRAGE)
 	{
@@ -783,7 +891,6 @@ static void Hook_BadassTankThink(int entity)
 			}
 			else
 			{
-				// both are ready? decide randomly
 				newSpecial = gameTime >= nextLaserAttack ? SPECIAL_LASER : SPECIAL_BARRAGE;
 			}
 			

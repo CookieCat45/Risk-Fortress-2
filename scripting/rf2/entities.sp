@@ -366,18 +366,27 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 	return hitEnts;
 }
 
-void DoExplosionEffect(const float pos[3], bool sound=true)
+void DoExplosionEffect(const float pos[3], bool sound=true, float delay=0.0)
 {
 	int explosion = CreateEntityByName("env_explosion");
+	DispatchKeyValueInt(explosion, "spawnflags", 6144);
 	DispatchKeyValueFloat(explosion, "iMagnitude", 0.0);
 	if (!sound)
 	{
-		DispatchKeyValueInt(explosion, "spawnflags", 64);
+		DispatchKeyValueInt(explosion, "spawnflags", 6144+64);
 	}
 	
 	TeleportEntity(explosion, pos);
 	DispatchSpawn(explosion);
-	AcceptEntityInput(explosion, "Explode");
+	CreateTimer(delay, Timer_ExplodeDelay, EntIndexToEntRef(explosion), TIMER_FLAG_NO_MAPCHANGE);
+}
+
+static void Timer_ExplodeDelay(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+		return;
+
+	AcceptEntityInput(entity, "Explode");
 }
 
 void SetEntityMoveCollide(int entity, int moveCollide)
