@@ -693,7 +693,7 @@ static void Hook_TankBossThink(int entity)
 		}
 		
 		float value = g_cvTankSpeedBoost.FloatValue;
-		if (!tank.SpeedBoosted && !IsValidEntity2(tank.ShieldEntity) 
+		if (!tank.SpeedBoosted && (!tank.IsBadass() || !IsValidEntity2(tank.ShieldEntity))
 			&& value > 1.0 && RF2_GetDifficulty() >= g_cvTankBoostDifficulty.IntValue)
 		{
 			if (tank.Health < RoundToFloor(float(tank.MaxHealth) * g_cvTankBoostHealth.FloatValue))
