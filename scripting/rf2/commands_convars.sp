@@ -1419,15 +1419,11 @@ public Action Command_AFK(int client, int args)
 	{
 		if (g_bGracePeriod)
 		{
-			if (!IsSingleplayer())
-			{
-				ReshuffleSurvivor(client, view_as<int>(TFTeam_Spectator));
-			}
-			else
+			if (IsSingleplayer())
 			{
 				return Plugin_Handled;
 			}
-			
+
 			RefreshClient(client, true);
 			CheckRedTeam(client);
 		}

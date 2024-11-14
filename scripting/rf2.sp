@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "DEVONLY-1.2.1"
+#define PLUGIN_VERSION "DEVONLY-1.2.2"
 #else
-#define PLUGIN_VERSION "1.2.1"
+#define PLUGIN_VERSION "1.2.2"
 #endif
 
 #include <rf2>
@@ -1530,11 +1530,6 @@ public void OnClientDisconnect(int client)
 		if (IsPlayerSurvivor(client, false))
 		{
 			SaveSurvivorInventory(client, g_iPlayerInventoryIndex[client]);
-			if (g_bGracePeriod)
-			{
-				ReshuffleSurvivor(client, -1);
-			}
-
 			CalculateSurvivorItemShare();
 		}
 	}
@@ -1612,74 +1607,6 @@ void CheckRedTeam(int client)
 	{
 		RF2_PrintToChatAll("%t", "AllHumansDisconnected");
 		GameOver();
-	}
-}
-
-void ReshuffleSurvivor(int client, int teamChange=TEAM_ENEMY)
-{
-	int index = RF2_GetSurvivorIndex(client);
-	RefreshClient(client, true);
-	if (IsClientInGame(client) && teamChange >= 0)
-	{
-		ChangeClientTeam(client, teamChange);
-	}
-	
-	bool allowBots = g_cvBotsCanBeSurvivor.BoolValue;
-	int points[MAXTF2PLAYERS], playerPoints[MAXTF2PLAYERS];
-	bool valid[MAXTF2PLAYERS];
-	
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (i == client || !IsClientInGame(i) || IsPlayerSurvivor(i) || AreClientCookiesCached(i) && !GetCookieBool(i, g_coBecomeSurvivor) || GetClientTeam(i) <= 1)
-			continue;
-		
-		// If we are allowing bots, they lose points in favor of players.
-		if (IsFakeClient(i))
-		{
-			if (!allowBots)
-				continue;
-			
-			points[i] -= 2500;
-		}
-		
-		if (IsPlayerAFK(i))
-			points[i] -= 999;
-		
-		// Dead players and non-bosses have higher priority.
-		if (!IsPlayerAlive(i))
-		{
-			points[i] += 5000;
-		}
-		else if (IsEnemy(i) && !IsBoss(i))
-		{
-			points[i] += 500;
-		}
-		
-		points[i] += GetRandomInt(1, 150);
-		playerPoints[i] = points[i];
-		valid[i] = true;
-	}
-	
-	SortIntegers(points, sizeof(points), Sort_Descending);
-	int highestPoints = points[0];
-	
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!valid[i] || i == client || !IsClientInGame(i) || IsFakeClient(i) && !allowBots)
-			continue;
-		
-		// We've found our winner
-		if (playerPoints[i] == highestPoints)
-		{
-			// Lucky you - your points won't be getting reset.
-			MakeSurvivor(i, index, false);
-			float pos[3], angles[3];
-			GetEntPos(client, pos);
-			GetClientEyeAngles(client, angles);
-			TeleportEntity(i, pos, angles);
-			RF2_PrintToChat(i, "%t", "DisconnectChosenAsSurvivor", client);
-			break;
-		}
 	}
 }
 
@@ -4612,10 +4539,6 @@ public Action OnChangeTeam(int client, const char[] command, int args)
 		{
 			RF2_PrintToChat(client, "%t", "NoChangeTeam");
 			return Plugin_Handled;
-		}
-		else if (IsPlayerSurvivor(client))
-		{
-			ReshuffleSurvivor(client, newTeam);
 		}
 	}
 	

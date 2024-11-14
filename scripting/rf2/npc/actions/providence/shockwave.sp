@@ -58,8 +58,9 @@ static int Update(RF2_ProvidenceShockwaveAttack action, RF2_Providence boss, flo
 		for (int i = 0; i < hitEnts.Length; i++)
 		{
 			int client = hitEnts.Get(i);
-			if (IsValidClient(client) && DistBetween(boss.index, client) <= 1000.0)
+			if (IsValidClient(client) && DistBetween(boss.index, client) <= 1000.0 && GetEntityFlags(client) & FL_ONGROUND)
 			{
+				// only stun players who are actually touching the ground
 				TF2_StunPlayer(client, 2.0, _, TF_STUNFLAG_BONKSTUCK);
 			}
 		}

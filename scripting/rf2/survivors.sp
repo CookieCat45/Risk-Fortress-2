@@ -102,7 +102,7 @@ bool CreateSurvivors()
 	ArrayList survivorList = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || IsPlayerSpectator(i) || IsSpecBot(i)
+		if (!IsClientInGame(i) || TF2_GetClientTeam(i) == TFTeam_Spectator || IsSpecBot(i)
 			|| humanCount > 1 && (AreClientCookiesCached(i) && !GetCookieBool(i, g_coBecomeSurvivor)))
 			continue;
 			
