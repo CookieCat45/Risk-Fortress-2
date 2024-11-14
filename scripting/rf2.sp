@@ -360,6 +360,7 @@ ConVar g_cvTankBaseSpeed;
 ConVar g_cvTankSpeedBoost;
 ConVar g_cvTankBoostHealth;
 ConVar g_cvTankBoostDifficulty;
+ConVar g_cvTankSpawnCap;
 ConVar g_cvSurvivorQuickBuild;
 ConVar g_cvEnemyQuickBuild;
 ConVar g_cvMeleeCritChanceBonus;

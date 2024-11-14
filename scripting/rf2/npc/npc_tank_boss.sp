@@ -549,9 +549,8 @@ static int SpawnTanks()
 	int subDifficulty = RF2_GetSubDifficulty();
 	float subIncrement = g_cvSubDifficultyIncrement.FloatValue;
 	int spawnCount = 1;
-	const int maxTanks = 15;
 	spawnCount += RoundToFloor(g_flDifficultyCoeff/(subIncrement*1.2));
-	spawnCount = imin(spawnCount, maxTanks);
+	spawnCount = imin(spawnCount, g_cvTankSpawnCap.IntValue);
 	float time = 10.0;
 	int badassTankCount = subDifficulty >= SubDifficulty_Hard ? 1 : 0;
 	if (subDifficulty >= SubDifficulty_Insane)
