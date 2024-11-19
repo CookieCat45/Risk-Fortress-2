@@ -467,7 +467,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
 			RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
 			PrintCenterText(i, "%t", "GotItemReward", name);
-			if (PlayerHasItem(i, Item_CheatersLament_Recharging) && !g_bPlayerReviveActivated[i])
+			if (PlayerHasItem(i, Item_CheatersLament_Recharging, true, true) && !g_bPlayerReviveActivated[i])
 			{
 				GiveItem(i, Item_CheatersLament, 1, true);
 				GiveItem(i, Item_CheatersLament_Recharging, -1);
