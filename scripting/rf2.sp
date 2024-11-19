@@ -4362,7 +4362,8 @@ public Action Timer_AFKManager(Handle timer)
 			}
 		}
 		
-		if ((!survivorsOnly || IsPlayerSurvivor(i, false)) && g_bRoundActive && managerEnabled && !IsSingleplayer(false) && g_flPlayerAFKTime[i] >= afkKickTime && humanCount > 1)
+		if ((!survivorsOnly || IsPlayerSurvivor(i, false)) && g_bRoundActive 
+			&& managerEnabled && !IsSingleplayer(false) && g_flPlayerAFKTime[i] >= afkKickTime && humanCount > 1)
 		{
 			if (kickAdmins || GetUserAdmin(i) == INVALID_ADMIN_ID)
 			{

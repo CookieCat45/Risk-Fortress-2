@@ -253,7 +253,7 @@ ArrayList GetMapsForStage(int stage)
 	DirectoryListing directory = OpenDirectory(path);
 	if (!directory)
 		return mapList;
-
+	
 	char map[128];
 	FileType type;
 	while (directory.GetNext(map, sizeof(map), type))
