@@ -31,38 +31,10 @@ methodmap RF2_ProvidenceShieldCrystal < RF2_NPC_Base
             .DefineFloatField("m_flRegenerateAt")
             .DefineEntityField("m_hBoss")
             .DefineVectorField("m_vecSpawnLocation")
-            .DefineIntField("m_iTimesDestroyed")
-            .DefineIntField("m_iMaxHealthReduction")
 		.EndDataMapDesc();
 		g_Factory.Install();
         HookMapStart(Crystal_OnMapStart);
 	}
-
-    property int TimesDestroyed
-    {
-        public get()
-        {
-            return this.GetProp(Prop_Data, "m_iTimesDestroyed");
-        }
-
-        public set(int value)
-        {
-            this.SetProp(Prop_Data, "m_iTimesDestroyed", value);
-        }
-    }
-
-    property int MaxHealthReduction
-    {
-        public get()
-        {
-            return this.GetProp(Prop_Data, "m_iMaxHealthReduction");
-        }
-
-        public set(int value)
-        {
-            this.SetProp(Prop_Data, "m_iMaxHealthReduction", value);
-        }
-    }
 
     property float RegenerateAt
     {
@@ -161,7 +133,6 @@ static void SpawnPost(int entity)
     float playerMult = 1.0 + (0.25 * float(RF2_GetSurvivorCount()-1));
     const float baseHealth = 2350.0;
     crystal.MaxHealth = RoundToFloor(baseHealth * playerMult * GetEnemyHealthMult());
-    crystal.MaxHealthReduction = RoundToFloor(float(crystal.MaxHealth) * 0.12);
     crystal.Regenerate();
     RequestFrame(RF_SetSpawnLocation, crystal);
 }
@@ -218,12 +189,6 @@ static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
     {
         crystal.Health = 1; // Never actually die, just disappear for a while
         crystal.Destroyed = true;
-        if (crystal.TimesDestroyed < 3)
-        {
-            crystal.MaxHealth -= crystal.MaxHealthReduction;
-        }
-
-        crystal.TimesDestroyed++;
         crystal.SetRenderColor(1, 1, 1, 80);
         crystal.AddFlag(FL_NOTARGET);
         crystal.SetProp(Prop_Send, "m_fEffects", crystal.GetProp(Prop_Send, "m_fEffects") & ~EF_ITEM_BLINK);
@@ -232,7 +197,7 @@ static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
         crystal.WorldSpaceCenter(pos);
         DoExplosionEffect(pos);
         EmitGameSoundToAll(GSND_SECONDLIFE_EXPLODE, crystal.index);
-        const float time = 60.0;
+        const float time = 50.0;
         crystal.RegenerateAt = GetGameTime()+time;
         if (crystal.Boss.IsValid())
         {
