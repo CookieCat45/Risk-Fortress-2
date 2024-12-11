@@ -399,12 +399,6 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	int healthAttrib = TF2Attrib_HookValueInt(0, "add_maxhealth", client) - RoundToFloor(attr ? TF2Attrib_GetValue(attr) : 0.0);
 	int maxHealth = RoundToFloor(float(RF2_GetBaseMaxHealth(client)+healthAttrib) * healthScale);
 	
-	// Bosses have less health in single player
-	if (IsSingleplayer(false) && IsBoss(client))
-	{
-		maxHealth = RoundToFloor(float(maxHealth) * 0.75);
-	}
-	
 	if (PlayerHasItem(client, Item_PrideScarf))
 	{
 		maxHealth += CalcItemModInt(client, Item_PrideScarf, 0);
@@ -427,7 +421,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
-		TF2Attrib_SetByDefIndex(client, 286, healthScale); // building health
+		TF2Attrib_SetByName(client, "engy building health bonus", healthScale);
 		
 		// If we have any buildings up, update their max health now
 		int buildingMaxHealth, oldBuildingMaxHealth;
@@ -453,8 +447,8 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 			}
 		}
 	}
-
-	TF2Attrib_SetByDefIndex(client, 26, float(maxHealth-classMaxHealth-healthAttrib)); // "max health additive bonus"
+	
+	TF2Attrib_SetByName(client, "max health additive bonus", float(maxHealth-classMaxHealth-healthAttrib));
 	int actualMaxHealth = SDK_GetPlayerMaxHealth(client);
 	g_iPlayerCalculatedMaxHealth[client] = actualMaxHealth;
 	if (fullHeal && GetClientHealth(client) < actualMaxHealth)
@@ -561,10 +555,11 @@ float CalculatePlayerMaxSpeed(int client)
 	}
 	
 	float mult = speed / classMaxSpeed;
-	TF2Attrib_RemoveByDefIndex(client, 107);
-	
+	TF2Attrib_RemoveByName(client, "move speed bonus");
 	if (mult != 1.0)
-		TF2Attrib_SetByDefIndex(client, 107, mult); // "move speed bonus"
+	{
+		TF2Attrib_SetByName(client, "move speed bonus", mult);
+	}
 	
 	SDK_ForceSpeedUpdate(client);
 	g_flPlayerCalculatedMaxSpeed[client] = speed;
@@ -654,7 +649,7 @@ void CalculatePlayerMiscStats(int client)
 			kbRes *= 0.75; // Survivors get a bit more
 		}
 		
-		TF2Attrib_SetByDefIndex(client, 252, kbRes); // "damage force reduction"
+		TF2Attrib_SetByName(client, "damage force reduction", kbRes);
 	}
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
@@ -663,10 +658,10 @@ void CalculatePlayerMiscStats(int client)
 		if (wrench != INVALID_ENT)
 		{
 			float repairRate = fmax(1.0, Pow(GetPlayerHealthMult(client), 0.4));
-			TF2Attrib_SetByDefIndex(wrench, 94, repairRate);
+			TF2Attrib_SetByName(wrench, "Repair rate increased", repairRate);
 		}
 	}
-
+	
 	if (IsPlayerSurvivor(client))
 	{
 		SetClassAttributes(client);
@@ -1296,7 +1291,7 @@ int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-
 	return count;
 }
 
-int GetPlayerShield(int client)
+stock int GetPlayerShield(int client)
 {
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "tf_wearable_demoshield")) != INVALID_ENT)

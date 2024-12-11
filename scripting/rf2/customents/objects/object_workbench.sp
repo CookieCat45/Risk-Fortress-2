@@ -199,7 +199,43 @@ static void OnSpawnPost(int entity)
 		// choose a random item if mapper doesn't force a specific one
 		if (bench.Item == Item_Null)
 		{
-			bench.Item = GetRandomItemEx(forcedTradeQuality ? bench.TradeQuality : bench.ItemQuality);
+			int quality = forcedTradeQuality ? bench.TradeQuality : bench.ItemQuality;
+			ArrayList validItems = GetSortedItemList(true, false);
+			for (int i = validItems.Length-1; i >= 0; i--)
+			{
+				if (GetItemQuality(validItems.Get(i)) != quality)
+				{
+					validItems.Erase(i);
+				}
+			}
+
+			// try not to have duplicates
+			int other = MaxClients+1;
+			int index = -1;
+			RF2_Object_Workbench otherBench;
+			while ((other  = FindEntityByClassname(other, "rf2_object_workbench")) != INVALID_ENT)
+			{
+				otherBench = RF2_Object_Workbench(other);
+				if (otherBench.Item != Item_Null)
+				{
+					index = validItems.FindValue(otherBench.Item);
+					if (index != -1)
+					{
+						validItems.Erase(index);
+					}
+				}
+			}
+
+			if (validItems.Length > 0)
+			{
+				bench.Item = validItems.Get(GetRandomInt(0, validItems.Length-1));
+			}
+			else
+			{
+				bench.Item = GetRandomItemEx(quality);
+			}
+
+			delete validItems;
 		}
 		
 		char text[256], qualityName[32];

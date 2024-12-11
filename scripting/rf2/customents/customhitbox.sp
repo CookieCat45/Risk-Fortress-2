@@ -38,6 +38,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 			.DefineIntField("m_iItemProc")
 			.DefineBoolField("m_bReturnHitEnts")
 			.DefineFloatField("m_flBuildingDamageMult")
+			.DefineFloatField("m_flFriendlyFireMult")
 			.DefineVectorField("m_vecDamageForce")
 			.DefineVectorField("m_vecCustomMins")
 			.DefineVectorField("m_vecCustomMaxs")
@@ -96,6 +97,19 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 		public set(float value)
 		{
 			this.SetPropFloat(Prop_Data, "m_flBuildingDamageMult", value);
+		}
+	}
+
+	property float FriendlyFireMult
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flFriendlyFireMult");
+		}
+
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flFriendlyFireMult", value);
 		}
 	}
 	
@@ -248,6 +262,7 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 
 		g_hHitEntities.Clear();
 		int entity = MaxClients+1;
+		bool friendlyFire = this.FriendlyFireMult > 0.0;
 		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
 		{
 			if (!IsValidEntity2(entity) || !IsCombatChar(entity))
@@ -256,13 +271,24 @@ methodmap RF2_CustomHitbox < CBaseAnimating
 			if (IsValidClient(entity) && !IsPlayerAlive(entity))
 				continue;
 
-			if (entity == owner || GetEntTeam(entity) == team)
+			if (entity == owner || !friendlyFire && GetEntTeam(entity) == team)
 				continue;
 			
 			if (DoEntitiesIntersect(this.index, entity))
 			{
+				float damage = this.Damage;
+				if (friendlyFire && GetEntTeam(entity) == team)
+				{
+					damage *= this.FriendlyFireMult;
+				}
+
 				bool building = IsBuilding(entity);
-				RF_TakeDamage(entity, this.Inflictor, this.Attacker, building ? this.Damage*this.BuildingDamageMult : this.Damage, this.DamageFlags, this.ItemProc);
+				if (building)
+				{
+					damage *= this.BuildingDamageMult;
+				}
+
+				RF_TakeDamage(entity, this.Inflictor, this.Attacker, damage, this.DamageFlags, this.ItemProc);
 				if (!building)
 				{
 					this.GetDamageForce(force);

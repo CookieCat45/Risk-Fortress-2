@@ -158,10 +158,10 @@ static void SpawnPost(int entity)
     float maxs[3] = {35.0, 35.0, 60.0};
     crystal.SetHitboxSize(mins, maxs);
     crystal.SetMoveType(MOVETYPE_NONE);
-    float playerMult = 1.0 + (0.25 * float(RF2_GetSurvivorCount()-1));
+    float playerMult = 1.0 + (0.25 * float(GetAliveSurvivors()-1));
     const float baseHealth = 2350.0;
     crystal.MaxHealth = RoundToFloor(baseHealth * playerMult * GetEnemyHealthMult());
-    crystal.MaxHealthReduction = RoundToFloor(float(crystal.MaxHealth) * 0.12);
+    crystal.MaxHealthReduction = RoundToFloor(float(crystal.MaxHealth) * 0.15);
     crystal.Regenerate();
     RequestFrame(RF_SetSpawnLocation, crystal);
 }
@@ -218,11 +218,12 @@ static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
     {
         crystal.Health = 1; // Never actually die, just disappear for a while
         crystal.Destroyed = true;
-        if (crystal.TimesDestroyed < 3)
+        if (crystal.TimesDestroyed < 2)
         {
             crystal.MaxHealth -= crystal.MaxHealthReduction;
         }
-
+        
+        float time = 50.0 + (float(crystal.TimesDestroyed) * 12.0);
         crystal.TimesDestroyed++;
         crystal.SetRenderColor(1, 1, 1, 80);
         crystal.AddFlag(FL_NOTARGET);
@@ -232,7 +233,6 @@ static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
         crystal.WorldSpaceCenter(pos);
         DoExplosionEffect(pos);
         EmitGameSoundToAll(GSND_SECONDLIFE_EXPLODE, crystal.index);
-        const float time = 60.0;
         crystal.RegenerateAt = GetGameTime()+time;
         if (crystal.Boss.IsValid())
         {

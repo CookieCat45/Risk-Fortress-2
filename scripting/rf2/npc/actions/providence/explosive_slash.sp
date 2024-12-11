@@ -65,7 +65,10 @@ static int Update(RF2_ProvidenceExplosiveSlashAttack action, RF2_Providence boss
 	if (action.TimeSinceAttack >= 0.5 && action.HitCounter < 1)
 	{
         EmitSoundToAll(SND_SWORD_IMPACT, boss.index, _, SNDLEVEL_SCREAMING);
-		action.DoAttackHitbox({50.0, 0.0, 0.0}, _, {-100.0, -100.0, 0.0}, {150.0, 100.0, 180.0}, 450.0, DMG_SLASH|DMG_MELEE, _, true);
+		action.DoAttackHitbox({50.0, 0.0, 0.0}, _, {-100.0, -100.0, 0.0}, {150.0, 100.0, 180.0}, 
+            350.0, 
+            DMG_SLASH|DMG_MELEE, _, true);
+            
         const int count = 30;
         float explodePos[3], dir[3];
         boss.GetAbsOrigin(pos);

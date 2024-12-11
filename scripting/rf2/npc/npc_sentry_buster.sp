@@ -105,7 +105,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 					spawnPoints.Push(spawnPoint);
 				}
 			}
-
+			
 			if (spawnPoints.Length > 0)
 			{
 				spawnPoint = spawnPoints.Get(GetRandomInt(0, spawnPoints.Length-1));
@@ -113,10 +113,10 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 				buster.Teleport(pos);
 				success = true;
 			}
-
+			
 			delete spawnPoints;
 		}
-		else if (GetSpawnPoint(targetPos, pos, 2500.0, 25000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID_BRUSHONLY, 50.0, true))
+		else if (GetSpawnPoint(targetPos, pos, 2500.0, 25000.0, TEAM_SURVIVOR, true, mins, maxs, MASK_NPCSOLID_BRUSHONLY, 50.0, target))
 		{
 			buster.Teleport(pos);
 			success = true;

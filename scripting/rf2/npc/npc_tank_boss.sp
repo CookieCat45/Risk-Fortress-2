@@ -631,16 +631,10 @@ RF2_TankBoss CreateTankBoss(int type, RF2_TankSpawner spawnPoint=view_as<RF2_Tan
 	{
 		tank.SuperBadass = type == TankType_SuperBadass;
 	}
-		
-	int health = RoundToFloor(float(g_cvTankBaseHealth.IntValue) * (1.0 + (float(RF2_GetEnemyLevel()-1) * g_cvTankHealthScale.FloatValue)));
-	if (IsSingleplayer(false))
-	{
-		health = RoundToFloor(float(health) * 0.75);
-	}
-	else
-	{
-		health = RoundToFloor(float(health) * (1.0 + 0.15*float(RF2_GetSurvivorCount()-1)));
-	}
+	
+	float mult = g_cvTankHealthScale.FloatValue + (float(RF2_GetSurvivorCount()-1) * 0.01);
+	int health = RoundToFloor(
+		float(g_cvTankBaseHealth.IntValue) * (1.0 + (float(RF2_GetEnemyLevel()-1) * mult)));
 	
 	tank.Health = health;
 	tank.SetProp(Prop_Data, "m_iMaxHealth", health);
@@ -1142,7 +1136,8 @@ static void Hook_BadassTankThink(int entity)
 				color[1] = GetRandomInt(75, 255);
 				color[2] = GetRandomInt(75, 255);
 				color[3] = 255;
-				FireLaser(tank.index, _, pos, angles, true, _, 75.0, DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE|DMG_IGNITE, 55.0, color, _, false, false, 0.3);
+				FireLaser(tank.index, _, pos, angles, true, _, 75.0, 
+					DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE|DMG_IGNITE, 55.0, color, _, false, false, 0.3, 1.0);
 				if (gameTime >= tank.LaserCannonEndTime)
 				{
 					tank.SpecialAttack = SPECIAL_NONE;

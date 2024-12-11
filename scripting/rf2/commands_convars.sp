@@ -52,6 +52,8 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_help", Command_HelpMenu, "Shows the help menu.");
 	RegConsoleCmd("rf2_menu", Command_HelpMenu, "Shows the help menu.");
 	RegConsoleCmd("rf2", Command_HelpMenu, "Shows the help menu.");
+	RegConsoleCmd("rf2_forfeit_items", Command_ForfeitItems, "Forfeit all of your items to others in multiplayer.");
+	RegConsoleCmd("rf2_forfeit", Command_ForfeitItems, "Forfeit all of your items to others in multiplayer.");
 	
 	char buffer[8];
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
@@ -110,13 +112,13 @@ void LoadCommandsAndCvars()
 	g_cvItemShareDisableLoopCount = CreateConVar("rf2_item_share_disable_loop_count", "0", "Disable item sharing after this many loops if rf2_item_share_enabled is set to 1. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvItemShareDisableThreshold = CreateConVar("rf2_item_share_disable_threshold", "0.6", "If rf2_item_share_enabled is set to 1, disable item sharing after all players have filled at least this much of their item cap. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvItemShareMaxTime = CreateConVar("rf2_item_share_max_time", "50.0", "If a player hasn't picked up a new item after this many seconds, they will be ignored by the item share system.", FCVAR_NOTIFY, true, 0.0);
-	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "6000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
-	g_cvTankHealthScale = CreateConVar("rf2_tank_health_scale", "0.1", "How much a Tank's health will scale per enemy level, in decimal percentage.");
+	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "5000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
+	g_cvTankHealthScale = CreateConVar("rf2_tank_health_scale", "0.08", "How much a Tank's health will scale per enemy level, in decimal percentage.");
 	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "75.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTankSpeedBoost = CreateConVar("rf2_tank_speed_boost", "1.5", "When a Tank falls below 50 percent health, speed it up by this much if the difficulty is above or equal to rf2_tank_boost_difficulty.", FCVAR_NOTIFY, true, 1.0);
 	g_cvTankBoostHealth = CreateConVar("rf2_tank_boost_health_threshold", "0.5", "If the Tank can gain a speed boost, do so when it falls below this much health.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvTankBoostDifficulty = CreateConVar("rf2_tank_boost_difficulty", "2", "For a Tank to gain a speed boost on lower health, the difficulty (not sub difficulty) level must be at least this value.", FCVAR_NOTIFY, true, 0.0, true, float(DIFFICULTY_TITANIUM));
-	g_cvTankSpawnCap = CreateConVar("rf2_tank_spawn_cap", "10", "Maximum number of tanks that can spawn in Tank Destruction mode", FCVAR_NOTIFY, true, 1.0);
+	g_cvTankSpawnCap = CreateConVar("rf2_tank_spawn_cap", "12", "Maximum number of tanks that can spawn in Tank Destruction mode", FCVAR_NOTIFY, true, 1.0);
 	g_cvSurvivorQuickBuild = CreateConVar("rf2_survivor_quick_build", "1", "If nonzero, Survivor team Engineer buildings will deploy instantly", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvEnemyQuickBuild = CreateConVar("rf2_enemy_quick_build", "1", "If nonzero, enemy team Engineer buildings will deploy instantly", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvMeleeCritChanceBonus = CreateConVar("rf2_melee_crit_chance_bonus", "1.0", "Critical hit chance bonus for melee weapons.", FCVAR_NOTIFY, true, 0.0);
@@ -1718,10 +1720,10 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 			ReplaceStringEx(itemIndex, sizeof(itemIndex), "_", ""); // Item index
 			int item = StringToInt(itemIndex);
 			
-			if (GetPlayerDroppedItemCount(param1) >= 100)
+			if (GetPlayerDroppedItemCount(param1) >= 25)
 			{
 				EmitSoundToClient(param1, SND_NOPE);
-				PrintCenterText(param1, "You've dropped too many items at once!");
+				PrintCenterText(param1, "You've dropped too many items at once!\nIf you're dropping items for others because you're leaving,\nyou can use the /rf2_forfeit command instead.");
 			}
 			else if (StringToInt(info) == 0) // 0 means we don't care
 			{
@@ -2046,6 +2048,181 @@ public int Menu_Tutorial(Menu menu, MenuAction action, int param1, int param2)
 	}
 
 	return 0;
+}
+
+public Action Command_ForfeitItems(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	if (!g_bRoundActive)
+	{
+		RF2_ReplyToCommand(client, "%t", "WaitForRoundStart");
+		return Plugin_Handled;
+	}
+	
+	if (!IsPlayerSurvivor(client, false) || IsSingleplayer(false) /*|| g_bDisableItemDropping*/)
+	{
+		RF2_ReplyToCommand(client, "%t", "CannotBeUsed");
+		return Plugin_Handled;
+	}
+
+	Menu confirm = new Menu(Menu_ForfeitConfirm);
+	confirm.SetTitle("!!! You are about to COMPLETELY EMPTY YOUR ENTIRE INVENTORY and give all of your items to other players !!!\nAre you absolutely sure you want to do this?");
+	confirm.AddItem("y", "Yes");
+	confirm.AddItem("n", "No");
+	confirm.Display(client, MENU_TIME_FOREVER);
+
+	return Plugin_Handled;
+}
+
+public int Menu_ForfeitConfirm(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			char info[8];
+			menu.GetItem(param2, info, sizeof(info));
+			if (info[0] == 'y')
+			{
+				ForfeitItems(param1);
+			}
+		}
+
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+
+	return 0;
+}
+
+void ForfeitItems(int client)
+{
+	int itemCounts[MAXTF2PLAYERS][Quality_MaxValid];
+	ArrayList players = new ArrayList();
+	for (int i = 1; i < Quality_MaxValid; i++)
+	{
+		if (i == Quality_Community)
+			continue;
+
+		// Compile all items into a big list
+		ArrayList itemPool = new ArrayList();
+		for (int item = 1; item < GetTotalItems(); item++)
+		{
+			int count = GetPlayerItemCount(client, item, true, true);
+			if (GetItemQuality(item) == i && count > 0)
+			{
+				while (count > 0)
+				{
+					itemPool.Push(item);
+					itemPool.SwapAt(GetRandomInt(0, itemPool.Length-1), GetRandomInt(0, itemPool.Length-1));
+					count--;
+				}
+
+				if (i == Quality_Strange || i == Quality_HauntedStrange)
+				{
+					break; // we can stop at this point since we can only have one of these anyways
+				}
+			}
+		}
+		
+		// Distribute items starting with the player who has the least total of this quality
+		while (itemPool.Length > 0)
+		{
+			int poorestPlayer = INVALID_ENT;
+			int lowestCount = -1;
+			for (int c = 1; c <= MaxClients; c++)
+			{
+				if (client == c || !IsClientInGame(c) || !IsPlayerSurvivor(c, false))
+					continue;
+				
+				players.Push(c);
+				players.SwapAt(GetRandomInt(0, players.Length-1), GetRandomInt(0, players.Length-1));
+				int count = GetPlayerItemsOfQuality(c, i);
+				if (poorestPlayer == INVALID_ENT || count < lowestCount)
+				{
+					poorestPlayer = c;
+					lowestCount = count;
+				}
+			}
+
+			if (poorestPlayer != INVALID_ENT)
+			{
+				int chosenItem;
+				if (i == Quality_Collectors)
+				{
+					chosenItem = GetRandomCollectorItem(TF2_GetPlayerClass(poorestPlayer));
+				}
+				else if (i == Quality_Haunted || i == Quality_HauntedStrange)
+				{
+					// haunted items get converted back into keys
+					chosenItem = Item_HauntedKey;
+				}
+				else
+				{
+					chosenItem = itemPool.Get(0);
+				}
+
+				itemPool.Erase(0);
+				GiveItem(poorestPlayer, chosenItem);
+				itemCounts[poorestPlayer][i]++;
+			}
+		}
+
+		delete itemPool;
+	}
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (client == i || !IsClientInGame(i) || !IsPlayerSurvivor(i, false))
+			continue;
+
+		for (int q = 1; q < Quality_MaxValid; q++)
+		{
+			if (itemCounts[i][q] > 0)
+			{
+				char colorTag[32], qualityName[32];
+				GetQualityColorTag(q, colorTag, sizeof(colorTag));
+				GetQualityName(q, qualityName, sizeof(qualityName));
+				RF2_PrintToChat(i, "You received {yellow}%i{default} %s%s {default}items from {yellow}%N's{default} forfeit", 
+					itemCounts[i][q], colorTag, qualityName, client);
+			}
+		}
+	}
+	
+	// If we have a strange item, give it to a random player who does not have one
+	int equipment = GetPlayerEquipmentItem(client);
+	if (equipment != Item_Null)
+	{
+		while (players.Length > 0)
+		{
+			int randomPlayer = players.Get(GetRandomInt(0, players.Length-1));
+			players.Erase(players.FindValue(randomPlayer));
+			if (GetPlayerEquipmentItem(randomPlayer) == Item_Null)
+			{
+				GiveItem(randomPlayer, equipment, 1);
+				break;
+			}
+		}
+	}
+	
+	delete players;
+	g_iPlayerEquipmentItem[client] = Item_Null;
+	SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
+	UpdateItemsForPlayer(client);
+	PrintCenterTextAll("%N has forfeited their items to other players.", client);
 }
 
 public Action Command_AltarTeleport(int client, int args)

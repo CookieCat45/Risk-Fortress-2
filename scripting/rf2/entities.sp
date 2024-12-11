@@ -1033,51 +1033,19 @@ void SDK_ApplyAbsVelocityImpulse(int entity, const float vel[3])
 
 PathFollower GetEntPathFollower(int entity)
 {
-	if (g_iEntityPathFollowerIndex[entity] < 0)
-		return view_as<PathFollower>(0);
-	
-	return g_PathFollowers[g_iEntityPathFollowerIndex[entity]];
+	return g_iEntityPathFollower[entity];
 }
 
-int GetFreePathFollowerIndex(int target=INVALID_ENT)
+void CleanPathFollowers()
 {
-	int entity = INVALID_ENT;
-	ArrayList combatChars = new ArrayList();
-	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
+	for (int i = 1; i < MAX_EDICTS; i++)
 	{
-		if (!IsValidEntity2(entity))
-			continue;
-			
-		if (CBaseEntity(entity).MyNextBotPointer() && entity != target)
+		if (g_iEntityPathFollower[i])
 		{
-			combatChars.Push(entity);
+			g_iEntityPathFollower[i].Destroy();
+			g_iEntityPathFollower[i] = view_as<PathFollower>(0);
 		}
 	}
-	
-	bool valid;
-	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
-	{
-		valid = true;
-		for (int a = 0; a < combatChars.Length; a++)
-		{
-			entity = combatChars.Get(a);
-			if (g_iEntityPathFollowerIndex[entity] == i)
-			{
-				valid = false;
-				break;
-			}
-		}
-		
-		if (valid)
-		{
-			delete combatChars;
-			return i;
-		}
-	}
-	
-	LogError("[GetFreePathFollowerIndex] No more path followers available. Consider raising MAX_PATH_FOLLOWERS.");
-	delete combatChars;
-	return -1;
 }
 
 public MRESReturn Detour_IsPotentiallyChaseablePost(Address addr, DHookReturn returnVal, DHookParam params)

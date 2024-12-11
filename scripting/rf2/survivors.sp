@@ -257,6 +257,16 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	{
 		CreateTimer(1.0, Timer_SurvivorTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
+	
+	for (int i = 1; i < GetTotalItems(); i++)
+	{
+		if (GetItemQuality(i) == Quality_Collectors && PlayerHasItem(client, i, true, true) 
+			&& GetCollectorItemClass(i) != TF2_GetPlayerClass(client))
+		{
+			PrintCenterText(client, "It appears that you possess Collector quality items that don't belong to your class.\nFind and use a Scrapper to convert them into ones for your class.");
+			break;
+		}
+	}
 }
 
 void UpdateItemsForPlayer(int client, bool updateStats=true)
@@ -309,13 +319,8 @@ public int SortSurvivorListByPoints(int index1, int index2, ArrayList array, Han
 	int client2 = array.Get(index2);
 	
 	// move bots, AFK people and those who don't want to be survivors to the end of the list
-	bool survivor1 = GetCookieBool(client1, g_coBecomeSurvivor);
-	bool survivor2 = GetCookieBool(client2, g_coBecomeSurvivor);
-	if (!AreClientCookiesCached(client1))
-		survivor1 = true;
-	if (!AreClientCookiesCached(client2))
-		survivor2 = true;
-	
+	bool survivor1 = !AreClientCookiesCached(client1) || GetCookieBool(client1, g_coBecomeSurvivor);
+	bool survivor2 = !AreClientCookiesCached(client2) || GetCookieBool(client2, g_coBecomeSurvivor);
 	if (!survivor1 && !survivor2)
 	{
 		return 0;
@@ -345,7 +350,9 @@ public int SortSurvivorListByPoints(int index1, int index2, ArrayList array, Han
 	int points1 = RF2_GetSurvivorPoints(client1);
 	int points2 = RF2_GetSurvivorPoints(client2);
 	if (points1 == points2)
+	{
 		return 0;
+	}
 	
 	return points1 > points2 ? -1 : 1;
 }
@@ -512,7 +519,8 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 {
 	int survivorCount;
 	
-	// We want to remember how many objects were spawned at the beginning of the round. If recalculate is true, don't touch our object count.
+	// We want to remember how many objects were spawned at the beginning of the round. 
+	// If recalculate is true, don't touch our object count.
 	static int objectCount;
 	if (!recalculate)
 	{
@@ -629,7 +637,6 @@ void PlayerLevelUp(int client)
 {
 	int oldLevel = g_iPlayerLevel[client];
 	g_iPlayerLevel[client]++;
-	
 	CalculatePlayerMaxHealth(client);
 	CalculatePlayerMiscStats(client);
 	RF2_PrintToChat(client, "%t", "YouLevelUp", oldLevel, g_iPlayerLevel[client]);
@@ -744,8 +751,8 @@ void SpawnMinion(int client)
 	SetEntProp(client, Prop_Send, "m_bUseClassAnimations", true);
 	SetEntPropFloat(client, Prop_Send, "m_flModelScale", 0.5);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 2.5);
-	TF2Attrib_SetByDefIndex(client, 62, 0.25); // "dmg taken from crit reduced"
-	TF2Attrib_SetByDefIndex(client, 252, 0.25); // "damage force reduction"
+	TF2Attrib_SetByName(client, "dmg taken from crit reduced", 0.25);
+	TF2Attrib_SetByName(client, "damage force reduction", 0.25);
 	CBaseEntity(client).AddFlag(FL_NOTARGET);
 	if (g_iLoopCount >= 1)
 	{
@@ -753,9 +760,9 @@ void SpawnMinion(int client)
 		TF2_AddCondition(client, TFCond_Buffed);
 		TF2_AddCondition(client, TFCond_RuneHaste);
 		TF2_AddCondition(client, TFCond_SpeedBuffAlly);
-		TF2Attrib_SetByDefIndex(client, 326, 2.0);
-		TF2Attrib_SetByDefIndex(client, 610, 2.0);
-		TF2Attrib_SetByDefIndex(client, 206, 0.5);
+		TF2Attrib_SetByName(client, "increased jump height", 2.0);
+		TF2Attrib_SetByName(client, "increased air control", 2.0);
+		TF2Attrib_SetByName(client, "dmg from melee increased", 0.5);
 	}
 }
 
@@ -928,6 +935,24 @@ bool AreAnyPlayersLackingItems()
 	}
 
 	return false;
+}
+
+// Returns all alive survivors who are not minions
+int GetAliveSurvivors()
+{
+	int count;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i))
+			continue;
+		
+		if (IsPlayerSurvivor(i) && !IsPlayerMinion(i))
+		{
+			count++;
+		}
+	}
+	
+	return count;
 }
 
 void GiveCommunityItems(int client)

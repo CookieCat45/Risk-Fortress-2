@@ -17,6 +17,7 @@ char g_szWeaponStringAttributeValue[TF_CLASSES][64][MAX_STRING_ATTRIBUTES][PLATF
 
 void LoadWeapons()
 {
+	// Load base weapon stats
 	KeyValues weaponKey = CreateKeyValues("weapons");
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, WeaponConfig);
@@ -87,6 +88,8 @@ void LoadWeapons()
 	}
 	
 	delete weaponKey;
+	
+	// Load custom weapons (TODO)
 }
 
 static bool g_bSetStringAttributes;

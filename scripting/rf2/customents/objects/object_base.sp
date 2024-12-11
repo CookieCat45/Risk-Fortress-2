@@ -448,6 +448,7 @@ static void OnCreate(RF2_Object_Base obj)
 	
 	SDKHook(obj.index, SDKHook_SpawnPost, OnSpawnPost);
 	obj.AcceptInput("EnableCollision");
+	CreateTimer(0.2, Timer_RemovalCheck, EntIndexToEntRef(obj.index), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 static void OnSpawnPost(int entity)
@@ -466,6 +467,17 @@ static void OnSpawnPost(int entity)
 	// Because some props are marked as breakable and will break if shot without firing events. Very dumb.
 	obj.SetProp(Prop_Data, "m_takedamage", DAMAGE_EVENTS_ONLY);
 	CreateTimer(0.5, Timer_WorldText, EntIndexToEntRef(obj.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+}
+
+static void Timer_RemovalCheck(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+		return;
+
+	if (!g_bRoundActive || g_bWaitingForPlayers)
+	{
+		RemoveEntity(entity);
+	}
 }
 
 static Action Timer_WorldText(Handle timer, int entity)

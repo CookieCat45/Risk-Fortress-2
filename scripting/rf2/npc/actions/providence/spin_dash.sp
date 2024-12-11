@@ -96,7 +96,7 @@ static int Update(RF2_ProvidenceSpinDashAttack action, RF2_Providence boss, floa
         boss.SetPropFloat(Prop_Send, "m_flPlaybackRate", playbackRate);
         boss.ApproachEntity(boss.Target);
     }
-
+	
 	if (GetGameTime() >= action.SpinHitTime)
 	{
         if (!boss.IsPlayingGesture("spin_loop"))
@@ -105,10 +105,11 @@ static int Update(RF2_ProvidenceSpinDashAttack action, RF2_Providence boss, floa
             boss.SetLayerAutokill(layer, false);
             boss.SetLayerLooping(layer, true);
         }
-
+        
         EmitSoundToAll(SND_SWORD_SWING, boss.index, _, SNDLEVEL_SCREAMING);
-		ArrayList hitEnts = action.DoAttackHitbox({0.0, 0.0, 0.0}, _, {-250.0, -250.0, 0.0}, {250.0, 250.0, 150.0}, 100.0, 
-            DMG_SLASH|DMG_MELEE, _, true, 0.5);
+		ArrayList hitEnts = action.DoAttackHitbox({0.0, 0.0, 0.0}, _, {-250.0, -250.0, 0.0}, {250.0, 250.0, 150.0}, 
+            80.0, 
+            DMG_SLASH|DMG_MELEE, _, true, 0.5, 10.0);
             
         for (int i = 0; i < hitEnts.Length; i++)
         {

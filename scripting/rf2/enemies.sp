@@ -638,7 +638,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		if (enemy.IsBoss)
 		{
 			enemy.BossGiantWeaponSounds = asBool(enemyKey.GetNum("use_giant_weapon_sounds", true));
-			enemy.BossFootstepInterval = enemyKey.GetFloat("giant_footstep_interval", enemy.Class == TFClass_Scout ? 0.25 : 0.5);
+			enemy.BossFootstepInterval = enemyKey.GetFloat("giant_footstep_interval", enemy.Class == TFClass_Scout ? 0.18 : 0.5);
 		}
 		
 		g_iEnemyCount++;
@@ -994,10 +994,10 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		
 		//SetEntProp(client, Prop_Send, "m_bGlowEnabled", teleporterBoss);
 		g_flPlayerGiantFootstepInterval[client] = boss.BossFootstepInterval;
-		TF2Attrib_SetByDefIndex(client, 252, 0.2); // "damage force reduction"
-		TF2Attrib_SetByDefIndex(client, 329, 0.2); // "airblast vulnerability multiplier"
-		TF2Attrib_SetByDefIndex(client, 326, 1.35); // "increased jump height"
-		TF2Attrib_SetByDefIndex(client, 800, 0.0); // "patient overheal penalty"
+		TF2Attrib_SetByName(client, "damage force reduction", 0.2);
+		TF2Attrib_SetByName(client, "airblast vulnerability multiplier", 0.2);
+		TF2Attrib_SetByName(client, "increased jump height", 1.35);
+		TF2Attrib_SetByName(client, "patient overheal penalty", 0.0);
 		if (teleporterBoss)
 		{
 			CreateHealthText(client, 100.0*boss.ModelScale, 20.0, g_szEnemyName[type]);

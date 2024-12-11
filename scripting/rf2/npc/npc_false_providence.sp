@@ -301,7 +301,7 @@ static void OnCreate(RF2_Providence boss)
     boss.SetProp(Prop_Send, "m_nSkin", 1);
 	boss.BaseNpc.SetBodyMins({-150.0, -150.0, 0.0});
 	boss.BaseNpc.SetBodyMaxs({150.0, 150.0, 300.0});
-    const float baseHealth = 21500.0;
+    const float baseHealth = 20000.0;
 	float health = baseHealth * GetEnemyHealthMult();
 	health *= 1.0 + (0.25 * float(RF2_GetSurvivorCount()-1));
 	boss.SetProp(Prop_Data, "m_iHealth", RoundToFloor(health));
@@ -344,7 +344,7 @@ static void ThinkPost(int entity)
     RF2_Providence boss = RF2_Providence(entity);
     if (boss.Phase == ProvidencePhase_Crystals && boss.GetCrystalPower() >= 2)
     {
-        boss.Health = imin(boss.Health+imax(RoundToFloor(float(boss.MaxHealth) * 0.0035 * GetTickInterval()), 1), boss.MaxHealth);
+        boss.Health = imin(boss.Health+imax(RoundToFloor(float(boss.MaxHealth) * 0.0025 * GetTickInterval()), 1), boss.MaxHealth);
     }
 }
 

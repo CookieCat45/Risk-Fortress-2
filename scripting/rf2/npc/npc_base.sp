@@ -76,14 +76,6 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 			this.SetPropEnt(Prop_Data, "m_hTarget", entity);
 		}
 	}
-	
-	property PathFollower Path
-	{
-		public get()
-		{
-			return GetEntPathFollower(this.index);
-		}
-	}
 
 	property RF2_HealthText HealthText
     {
@@ -97,17 +89,17 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
             this.SetPropEnt(Prop_Data, "m_hHealthText", value.index);
         }
     }
-
-	property int FollowerIndex
+	
+	property PathFollower Path
 	{
 		public get()
 		{
-			return g_iEntityPathFollowerIndex[this.index];
+			return g_iEntityPathFollower[this.index];
 		}
-
-		public set(int value)
+		
+		public set(PathFollower value)
 		{
-			g_iEntityPathFollowerIndex[this.index] = value;
+			g_iEntityPathFollower[this.index] = value;
 		}
 	}
 
@@ -438,7 +430,7 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		{
 			GetEntPos(entity, targetPos, true);
 		}
-
+		
 		this.Path.ComputeToPos(this.Bot, targetPos, maxDist);
 		this.Path.Update(this.Bot);
 		walk ? this.Locomotion.Walk() : this.Locomotion.Run();
@@ -556,8 +548,8 @@ static void OnCreate(RF2_NPC_Base npc)
 	npc.DefendTeam = -1;
 	npc.DoUnstuckChecks = true;
 	npc.BaseBackstabDamage = 750.0;
-	npc.FollowerIndex = GetFreePathFollowerIndex(npc.index);
-
+	npc.Path = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+	
 	// Stop friendly NPCs from colliding with player bullets and projectiles
 	SDKHook(npc.index, SDKHook_ShouldCollide, Hook_DispenserShieldShouldCollide);
 	g_hHookIsCombatItem.HookEntity(Hook_Pre, npc.index, DHook_IsCombatItem);
@@ -569,6 +561,12 @@ static void OnRemove(RF2_NPC_Base npc)
 	{
 		RequestFrame(RF_DeleteForward, npc.OnDoAction);
 		npc.OnDoAction = null;
+	}
+	
+	if (npc.Path)
+	{
+		npc.Path.Destroy();
+		npc.Path = view_as<PathFollower>(0);
 	}
 }
 
@@ -584,7 +582,7 @@ static void OnAction(RF2_NPC_Base npc, const char[] action)
 	npc.GetClassname(classname, sizeof(classname));
 	CPrintToChatAll("{yellow}\"%s\" {default}doing action: {lightblue}\"%s\"", classname, action);
 	#endif
-
+	
 	npc.Bot.OnCommandString(action);
 }
 

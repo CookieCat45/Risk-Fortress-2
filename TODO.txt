@@ -1,0 +1,6 @@
+MAPS THAT WILL BE UPDATED:
+- Robotfactory
+- Rottenburg
+- Tropics
+
+- Fix Gas Passer

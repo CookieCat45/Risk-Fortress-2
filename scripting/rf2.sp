@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "DEVONLY-1.2.2"
+#define PLUGIN_VERSION "1.3-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.2.2"
+#define PLUGIN_VERSION "1.3"
 #endif
 
 #include <rf2>
@@ -223,7 +223,7 @@ StringMap g_hCrashedPlayerSteamIDs;
 Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
 
 // Entities
-PathFollower g_PathFollowers[MAX_PATH_FOLLOWERS];
+PathFollower g_iEntityPathFollower[MAX_EDICTS];
 int g_iEntityPathFollowerIndex[MAX_EDICTS] = {-1, ...};
 int g_iItemDamageProc[MAX_EDICTS];
 int g_iLastItemDamageProc[MAX_EDICTS];
@@ -508,11 +508,6 @@ public void OnPluginStart()
 	g_hCustomTracks = new ArrayList(PLATFORM_MAX_PATH);
 	g_hCustomTracksDuration = new ArrayList();
 	g_iFileTime = GetPluginModifiedTime();
-	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
-	{
-		g_PathFollowers[i] = PathFollower(INVALID_FUNCTION, FilterIgnoreActors, FilterOnlyActors);
-	}
-	
 	if (g_cvHiddenServerStartTime.FloatValue == 0.0)
 	{
 		g_cvHiddenServerStartTime.FloatValue = GetEngineTime();
@@ -538,15 +533,8 @@ public void OnPluginEnd()
 			SetClientName(i, g_szPlayerOriginalName[i]);
 		}
 	}
-	
-	for (int i = 0; i < MAX_PATH_FOLLOWERS; i++)
-	{
-		if (g_PathFollowers[i])
-		{
-			g_PathFollowers[i].Destroy();
-			g_PathFollowers[i] = view_as<PathFollower>(0);
-		}
-	}
+
+	CleanPathFollowers();
 }
 
 void LoadGameData()
@@ -1117,6 +1105,7 @@ public void OnMapEnd()
 
 void CleanUp()
 {
+	CleanPathFollowers();
 	UnhookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Pre);
 	UnhookEvent("teamplay_round_win", OnRoundEnd, EventHookMode_Post);
 	UnhookEvent("teamplay_broadcast_audio", OnBroadcastAudio, EventHookMode_Pre);
@@ -1284,6 +1273,7 @@ void LoadAssets()
 	PrecacheSound2(SND_RUNE_VAMPIRE, true);
 	PrecacheSound2(SND_RUNE_KING, true);
 	PrecacheSound2(SND_THROW, true);
+	PrecacheSound2(SND_TELEPORTER_BLU_START, true);
 	PrecacheSound2(SND_TELEPORTER_BLU, true);
 	PrecacheSound2(SND_DOOMSDAY_EXPLODE, true);
 	PrecacheSound2(SND_ACHIEVEMENT, true);
@@ -1388,13 +1378,12 @@ public void OnClientPutInServer(int client)
 	{
 		CreateTimer(1.5, Timer_PlayerJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
-
+	
 	if (RF2_IsEnabled() && !IsSpecBot(client))
 	{
 		if (IsFakeClient(client))
 		{
-			//TFBot(client).Follower = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
-			TFBot(client).FollowerIndex = GetFreePathFollowerIndex(client);
+			TFBot(client).Path = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
 			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_TFBotWeaponCanSwitch);
 		}
 		else
@@ -1522,6 +1511,7 @@ public void OnClientDisconnect(int client)
 		{
 			CheckRedTeam(client);
 		}
+		
 		DataBase_OnDisconnected(client);
 	}
 	
@@ -1549,11 +1539,11 @@ public void OnClientDisconnect_Post(int client)
 		g_hPlayerExtraSentryList[client] = null;
 	}
 	
-	if (TFBot(client).Follower)
+	if (TFBot(client).Path)
 	{
-		TFBot(client).Follower.Invalidate();
-		//TFBot(client).Follower.Destroy();
-		//TFBot(client).Follower = view_as<PathFollower>(0);
+		TFBot(client).Path.Invalidate();
+		//TFBot(client).Path.Destroy();
+		//TFBot(client).Path = view_as<PathFollower>(0);
 	}
 	
 	g_iPlayerInventoryIndex[client] = -1;
@@ -1566,7 +1556,6 @@ public void OnClientDisconnect_Post(int client)
 	g_bPlayerReviveActivated[client] = false;
 	g_bPlayerItemShareExcluded[client] = false;
 	g_hPlayerItemDescTimer[client] = null;
-	TFBot(client).FollowerIndex = -1;
 	RefreshClient(client, true);
 	ResetAFKTime(client);
 	UpdateBotQuota();
@@ -2011,16 +2000,12 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	
 	if (IsFakeClient(client))
 	{
-		if (TFBot(client).Follower)
+		if (TFBot(client).Path)
 		{
-			if (TFBot(client).Follower.IsValid())
+			if (TFBot(client).Path.IsValid())
 			{
-				TFBot(client).Follower.Invalidate();
+				TFBot(client).Path.Invalidate();
 			}
-		}
-		else
-		{
-			TFBot(client).FollowerIndex = GetFreePathFollowerIndex(client);
 		}
 	}
 	
@@ -2028,8 +2013,8 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	g_flPlayerHeavyArmorPoints[client] = 100.0;
 	CancelClientMenu(client, true);
 	ClientCommand(client, "slot10");
-	TF2Attrib_SetByDefIndex(client, 269, 1.0); // "mod see enemy health"
-	TF2Attrib_SetByDefIndex(client, 275, 1.0); // "cancel falling damage"
+	TF2Attrib_SetByName(client, "mod see enemy health", 1.0);
+	TF2Attrib_SetByName(client, "cancel falling damage", 1.0);
 	
 	TF2_AddCondition(client, TFCond_UberchargedHidden, 0.2);
 	if (g_bGracePeriod && IsPlayerSurvivor(client) && !IsPlayerMinion(client) && TF2_GetPlayerClass(client) == TFClass_Medic)
@@ -2734,6 +2719,7 @@ public void RF_DispenserQuickBuild(int building)
 	SDK_DoQuickBuild(building);
 }
 
+static bool g_bTeleSoundPlayed[MAX_EDICTS];
 public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroadcast)
 {
 	if (!g_bRoundActive)
@@ -2802,6 +2788,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 			if (g_flTeleporterNextSpawnTime[building] < 0.0)
 				g_flTeleporterNextSpawnTime[building] = GetTickedTime()+(36.0/float(GetEntProp(building, Prop_Send, "m_iUpgradeLevel")));
 		
+			g_bTeleSoundPlayed[building] = false;
 			RequestFrame(RF_TeleporterThink, EntIndexToEntRef(building));
 		}
 	}
@@ -2954,6 +2941,15 @@ public void RF_TeleporterThink(int building)
 		return;
 	}
 	
+	if (!g_bTeleSoundPlayed[building])
+	{
+		EmitSoundToAll(SND_TELEPORTER_BLU_START);
+		float pos[3];
+		GetEntPos(building, pos);
+		SpawnInfoParticle("teleporter_mvm_bot_persist", pos, _, building);
+		g_bTeleSoundPlayed[building] = true;
+	}
+	
 	// can we spawn enemies?
 	float tickedTime = GetTickedTime();
 	if (tickedTime >= g_flTeleporterNextSpawnTime[building])
@@ -3010,7 +3006,7 @@ public void RF_TeleporterThink(int building)
 		g_flTeleporterNextSpawnTime[building] = spawns > 0 ? tickedTime+(36.0/float(GetEntProp(building, Prop_Send, "m_iUpgradeLevel"))) : tickedTime+2.0;
 		delete enemies;
 	}
-
+	
 	// force spin animation for BLU teleporters (it's a bit choppy, but that's fine)
 	SetEntPropFloat(building, Prop_Send, "m_flPlaybackRate", 1.0);
 	SetEntProp(building, Prop_Send, "m_nBody", 1);
@@ -3449,7 +3445,7 @@ public Action Timer_PlayerHud(Handle timer)
 			continue;
 		
 		if (g_bGameOver || g_bGameWon)
-		{
+		{ 
 			static bool scoreCalculated;
 			static int score;
 			static char rank[8];
@@ -3503,7 +3499,7 @@ public Action Timer_PlayerHud(Handle timer)
 			else
 			{
 				victoryMessageTime += 0.1;
-				if (victoryMessageTime < 11.0)
+				if (victoryMessageTime < 14.0)
 				{
 					text = "\n\n\n\n\n...and so they left, still with a thirst for bolts and blood.";
 				}
@@ -4749,7 +4745,7 @@ public void Hook_PreThink(int client)
 			}
 		}
 	}
-
+	
 	if (IsEnemy(client))
 	{
 		// Make sure we aren't stuck inside of any players. If we are, we should change our collision group
@@ -4863,11 +4859,28 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	{
 		CalculatePlayerMaxSpeed(client);
 	}
+	else if (condition == TFCond_Charging)
+	{
+		if (PlayerHasItem(client, ItemDemo_ScotchBonnet) && CanUseCollectorItem(client, ItemDemo_ScotchBonnet))
+		{
+			TF2_AddCondition(client, TFCond_CritOnDamage, CalcItemMod(client, ItemDemo_ScotchBonnet, 2));
+		}
+	}
 	else if (condition == TFCond_Parachute)
 	{
 		if (IsPlayerSurvivor(client))
 		{
 			TF2_RemoveCondition(client, TFCond_MarkedForDeathSilent);
+		}
+	}
+	else if (condition == TFCond_Dazed)
+	{
+		// fix weapons not being unhidden for when stuns are removed
+		int activeWep = GetActiveWeapon(client);
+		if (activeWep != INVALID_ENT)
+		{
+			SetEntProp(activeWep, Prop_Send, "m_fEffects", 
+				GetEntProp(activeWep, Prop_Send, "m_fEffects") & ~EF_NODRAW);
 		}
 	}
 	else if (condition == TFCond_RuneVampire || condition == TFCond_RuneWarlock
@@ -6612,7 +6625,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	if (victimIsClient && !selfDamage && DoesPlayerHaveOSP(victim))
 	{
 		// One-shot protection: if a Survivor is above 90% HP, damage cannot deal more than 90% of max HP.
-		damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.9);
+		float maxDmg = float(RF2_GetCalculatedMaxHealth(victim))*0.9;
+		if (damage > maxDmg)
+		{
+			TF2_AddCondition(victim, TFCond_UberchargedHidden, 0.5);
+			g_flPlayerHealthRegenTime[victim] = 5.0; // since invuln blocks health regen timer
+		}
+		
+		damage = fmin(damage, maxDmg);
 	}
 
 	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
@@ -6641,7 +6661,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			float seconds = fmax(5.0 * (damage / float(RF2_GetCalculatedMaxHealth(victim))), regenTimeMin);
 			g_flPlayerHealthRegenTime[victim] = fmin(g_flPlayerHealthRegenTime[victim]+seconds, regenTimeMax);
 		}
-
+		
 		if (!invuln && !g_bGracePeriod)
 		{
 			if (PlayerHasItem(victim, Item_PocketMedic) && !GetRF2GameRules().DisableDeath)
@@ -6760,7 +6780,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			}
 		}
 
-		if (PlayerHasItem(victim, Item_Hachimaki))
+		if (PlayerHasItem(victim, Item_Hachimaki) && !IsInvuln(victim))
 		{
 			g_flPlayerDelayedHealTime[victim] = GetTickedTime()+GetItemMod(Item_Hachimaki, 0);
 		}
@@ -7432,7 +7452,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 				
 				PrecacheSound(sample);
 				EmitSoundToAll(sample, client);
-				float duration = g_flPlayerGiantFootstepInterval[client] * (RF2_GetCalculatedSpeed(client) / RF2_GetBaseSpeed(client));
+				float duration = g_flPlayerGiantFootstepInterval[client];
 				nextFootstepTime[client] = GetTickedTime() + duration;
 			}
 		}

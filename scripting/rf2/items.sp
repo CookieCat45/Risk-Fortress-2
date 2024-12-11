@@ -295,7 +295,6 @@ bool CheckEquipRegionConflict(const char[] buffer1, const char[] buffer2)
 	char tempBuffer[128], explodeBuffers[3][256];
 	FormatEx(tempBuffer, sizeof(tempBuffer), "%s ; none ; ", buffer1);
 	int count = ExplodeString(tempBuffer, " ; ", explodeBuffers, 3, 256);
-	
 	for (int i = 0; i < count; i++)
 	{
 		if (StrContainsEx(explodeBuffers[i], buffer2) != -1)
@@ -334,7 +333,6 @@ int GetRandomItem(int normalWeight=0, int genuineWeight=0,
 	
 	quality = array.Get(GetRandomInt(0, array.Length-1));
 	array.Clear();
-	
 	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (!g_bItemInDropPool[i] || GetItemQuality(i) == Quality_Collectors)
@@ -369,7 +367,6 @@ int GetRandomItemEx(int quality)
 {	
 	ArrayList array = new ArrayList();
 	int item;
-	
 	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (!g_bItemInDropPool[i])
@@ -401,7 +398,6 @@ int GetRandomCollectorItem(TFClassType class)
 {
 	ArrayList array = new ArrayList();
 	int item;
-	
 	for (int i = 0; i < GetTotalItems(); i++)
 	{
 		if (!g_bItemInDropPool[i])
@@ -461,7 +457,6 @@ void GiveItem(int client, int type, int amount=1, bool addToLogbook=false)
 			
 			g_iPlayerEquipmentItem[client] = type;
 		}
-		
 	}
 	else
 	{
@@ -577,8 +572,7 @@ int EquipItemAsWearable(int client, int item)
 
 bool HasItemAsWearable(int client, int item)
 {
-	int entity;
-	
+	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "tf_wearable")) != -1)
 	{
 		if (!g_bItemWearable[entity] || GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") != client)
@@ -587,14 +581,14 @@ bool HasItemAsWearable(int client, int item)
 		if (GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex") == g_iItemSchemaIndex[item])
 			return true;
 	}
-
+	
 	return false;
 }
 
 void RemoveItemAsWearable(int client, int item)
 {
-	int entity, index;
-	
+	int entity = MaxClients+1;
+	int index;
 	while ((entity = FindEntityByClassname(entity, "tf_wearable")) != -1)
 	{
 		if (!g_bItemWearable[entity] || g_bDontRemoveWearable[entity] || GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") != client)
@@ -634,7 +628,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 	Call_PushCell(client);
 	Call_PushCell(item);
 	Call_Finish();
-	
 	switch (item)
 	{
 		case Item_MaxHead:
@@ -646,11 +639,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			{
 				if (PlayerHasItem(client, item))
 				{
-					TF2Attrib_SetByDefIndex(primary, 266, value); // "projectile penetration"
+					TF2Attrib_SetByName(primary, "projectile penetration", value);
 				}
 				else
 				{
-					TF2Attrib_RemoveByDefIndex(primary, 266);
+					TF2Attrib_RemoveByName(primary, "projectile penetration");
 				}
 			}
 			
@@ -658,11 +651,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			{
 				if (PlayerHasItem(client, item))
 				{
-					TF2Attrib_SetByDefIndex(secondary, 266, value);
+					TF2Attrib_SetByName(secondary, "projectile penetration", value);
 				}
 				else
 				{
-					TF2Attrib_RemoveByDefIndex(secondary, 266);
+					TF2Attrib_RemoveByName(secondary, "projectile penetration");
 				}
 			}
 		}
@@ -690,11 +683,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					{
 						if (PlayerHasItem(client, Item_WhaleBoneCharm))
 						{
-							TF2Attrib_SetByDefIndex(weapon, 335, amount); // "clip size bonus upgrade"
+							TF2Attrib_SetByName(weapon, "clip size bonus upgrade", amount);
 						}
 						else
 						{
-							TF2Attrib_RemoveByDefIndex(weapon, 335);
+							TF2Attrib_RemoveByName(weapon, "clip size bonus upgrade");
 						}
 						
 					}
@@ -702,11 +695,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					{
 						if (PlayerHasItem(client, Item_WhaleBoneCharm))
 						{
-							TF2Attrib_SetByDefIndex(weapon, 424, amount); // "clip size penalty HIDDEN"
+							TF2Attrib_SetByName(weapon, "clip size penalty HIDDEN", amount);
 						}
 						else
 						{
-							TF2Attrib_RemoveByDefIndex(weapon, 424);
+							TF2Attrib_RemoveByName(weapon, "clip size penalty HIDDEN");
 						}
 						
 					}
@@ -737,13 +730,13 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			{
 				float jumpHeightAmount = 1.0 + CalcItemMod(client, Item_Tux, 0);
 				float airControlAmount = 1.0 + CalcItemMod(client, Item_Tux, 1);
-				TF2Attrib_SetByDefIndex(client, 326, jumpHeightAmount); // "increased jump height"
-				TF2Attrib_SetByDefIndex(client, 610, airControlAmount); // "increased air control"
+				TF2Attrib_SetByName(client, "increased jump height", jumpHeightAmount);
+				TF2Attrib_SetByName(client, "increased air control", airControlAmount);
 			}
 			else
 			{
-				TF2Attrib_RemoveByDefIndex(client, 326);
-				TF2Attrib_RemoveByDefIndex(client, 610);
+				TF2Attrib_RemoveByName(client, "increased jump height");
+				TF2Attrib_RemoveByName(client, "increased air control");
 			}
 		}
 		case Item_MisfortuneFedora:
@@ -768,13 +761,13 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			if (PlayerHasItem(client, Item_UFO))
 			{
 				float pushForce = 1.0 + CalcItemMod_Hyperbolic(client, Item_UFO, 1);
-				TF2Attrib_SetByDefIndex(client, 329, pushForce); // "airblast vulnerability multiplier"
-				TF2Attrib_SetByDefIndex(client, 525, pushForce); // "damage force increase"
+				TF2Attrib_SetByName(client, "airblast vulnerability multiplier", pushForce);
+				TF2Attrib_SetByName(client, "damage force increase", pushForce);
 			}
 			else
 			{
-				TF2Attrib_RemoveByDefIndex(client, 329);
-				TF2Attrib_RemoveByDefIndex(client, 525);
+				TF2Attrib_RemoveByName(client, "airblast vulnerability multiplier");
+				TF2Attrib_RemoveByName(client, "damage force increase");
 			}
 		}
 		case ItemEngi_Teddy:
@@ -788,13 +781,13 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					{
 						float maxMetal = 1.0 + CalcItemMod(client, item, 0);
 						float constructRate = 1.0 + CalcItemMod(client, item, 1);
-						TF2Attrib_SetByDefIndex(wrench, 80, maxMetal); // "maxammo metal increased"
-						TF2Attrib_SetByDefIndex(wrench, 92, constructRate); // "Construction rate increased"
+						TF2Attrib_SetByName(wrench, "maxammo metal increased", maxMetal);
+						TF2Attrib_SetByName(wrench, "Construction rate increased", constructRate);
 					}
 					else
 					{
-						TF2Attrib_RemoveByDefIndex(wrench, 80);
-						TF2Attrib_RemoveByDefIndex(wrench, 92);
+						TF2Attrib_RemoveByName(wrench, "maxammo metal increased");
+						TF2Attrib_RemoveByName(wrench, "Construction rate increased");
 					}
 				}
 			}
@@ -808,27 +801,27 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				{
 					float uberRate = 1.0 + CalcItemMod(client, item, 0);
 					float uberDuration = CalcItemMod(client, item, 1);
-					TF2Attrib_SetByDefIndex(medigun, 10, uberRate); // "ubercharge rate bonus"
-					TF2Attrib_SetByDefIndex(medigun, 314, uberDuration); // "uber duration bonus"
+					TF2Attrib_SetByName(medigun, "ubercharge rate bonus", uberRate);
+					TF2Attrib_SetByName(medigun, "uber duration bonus", uberDuration);
 				}
 				else if (item == ItemMedic_ProcedureMask && PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
 				{
 					float healRateBonus = 1.0 + CalcItemMod(client, item, 0);
 					float overhealBonus = 1.0 + CalcItemMod(client, item, 1);
-					TF2Attrib_SetByDefIndex(medigun, 493, healRateBonus); // "healing mastery"
-					TF2Attrib_SetByDefIndex(medigun, 11, overhealBonus); // "overheal bonus"
+					TF2Attrib_SetByName(medigun, "healing mastery", healRateBonus);
+					TF2Attrib_SetByName(medigun, "overheal bonus", overhealBonus);
 				}
 				else
 				{
 					if (item == ItemMedic_BlightedBeak)
 					{
-						TF2Attrib_RemoveByDefIndex(medigun, 9);
-						TF2Attrib_RemoveByDefIndex(medigun, 314);
+						TF2Attrib_RemoveByName(medigun, "ubercharge rate bonus");
+						TF2Attrib_RemoveByName(medigun, "uber duration bonus");
 					}
 					else if (item == ItemMedic_ProcedureMask)
 					{
-						TF2Attrib_RemoveByDefIndex(medigun, 493);
-						TF2Attrib_RemoveByDefIndex(medigun, 11);
+						TF2Attrib_RemoveByName(medigun, "healing mastery");
+						TF2Attrib_RemoveByName(medigun, "overheal bonus");
 					}
 				}
 			}
@@ -844,13 +837,13 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					{
 						float count = CalcItemMod(client, item, 0);
 						float revSpeed = CalcItemMod_HyperbolicInverted(client, item, 1);
-						TF2Attrib_SetByDefIndex(minigun, 323, count); // "attack projectiles"
-						TF2Attrib_SetByDefIndex(minigun, 87, revSpeed); // "minigun spinup time decreased"
+						TF2Attrib_SetByName(minigun, "attack projectiles", count);
+						TF2Attrib_SetByName(minigun, "minigun spinup time decreased", revSpeed);
 					}
 					else
 					{
-						TF2Attrib_RemoveByDefIndex(minigun, 323);
-						TF2Attrib_RemoveByDefIndex(minigun, 87);
+						TF2Attrib_RemoveByName(minigun, "attack projectiles");
+						TF2Attrib_RemoveByName(minigun, "minigun spinup time decreased");
 					}
 				}	
 			}
@@ -866,11 +859,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				{
 					if (PlayerHasItem(client, item))
 					{
-						TF2Attrib_SetByDefIndex(primary, 99, value); // "blast radius increased"
+						TF2Attrib_SetByName(primary, "blast radius increased", value);
 					}
 					else
 					{
-						TF2Attrib_RemoveByDefIndex(primary, 99);
+						TF2Attrib_RemoveByName(primary, "blast radius increased");
 					}
 				}
 				
@@ -878,11 +871,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				{
 					if (PlayerHasItem(client, item))
 					{
-						TF2Attrib_SetByDefIndex(secondary, 99, value);
+						TF2Attrib_SetByName(secondary, "blast radius increased", value);
 					}
 					else
 					{
-						TF2Attrib_RemoveByDefIndex(secondary, 99);
+						TF2Attrib_RemoveByName(secondary, "blast radius increased");
 					}
 				}
 			}
@@ -907,7 +900,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			if (PlayerHasItem(client, item))
 			{
 				float amount = CalcItemMod_HyperbolicInverted(client, item, 0);
-				TF2Attrib_SetByDefIndex(client, 178, amount); // "deploy time decreased"
+				TF2Attrib_SetByName(client, "deploy time decreased", amount);
 				
 				// These classes don't have weapons that benefit from accuracy bonuses, so don't bother
 				TFClassType class = TF2_GetPlayerClass(client);
@@ -919,28 +912,28 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					
 					if (primary != INVALID_ENT)
 					{
-						TF2Attrib_SetByDefIndex(primary, 106, amount); // "weapon spread bonus"
+						TF2Attrib_SetByName(primary, "weapon spread bonus", amount);
 					}
 					
 					if (secondary != INVALID_ENT)
 					{
-						TF2Attrib_SetByDefIndex(secondary, 106, amount);
+						TF2Attrib_SetByName(secondary, "weapon spread bonus", amount);
 					}
 				}
 			}
 			else
 			{
-				TF2Attrib_RemoveByDefIndex(client, 178);
+				TF2Attrib_RemoveByName(client, "deploy time decreased");
 				int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 				int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
 				if (primary != INVALID_ENT)
 				{
-					TF2Attrib_RemoveByDefIndex(primary, 106);
+					TF2Attrib_RemoveByName(primary, "weapon spread bonus");
 				}
 				
 				if (secondary != INVALID_ENT)
 				{
-					TF2Attrib_RemoveByDefIndex(secondary, 106);
+					TF2Attrib_RemoveByName(secondary, "weapon spread bonus");
 				}
 			}
 		}
@@ -968,11 +961,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 							projSpeed = fmin(projSpeed, 2.7);
 						}
 						
-						TF2Attrib_SetByDefIndex(launcher, 475, projSpeed); // "Projectile speed increased HIDDEN"
+						TF2Attrib_SetByName(launcher, "Projectile speed increased HIDDEN", projSpeed);
 					}
 					else
 					{
-						TF2Attrib_RemoveByDefIndex(launcher, 475);
+						TF2Attrib_RemoveByName(launcher, "Projectile speed increased HIDDEN");
 					}
 				}
 			}
@@ -988,11 +981,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					if (PlayerHasItem(client, item))
 					{
 						float projSpeed = 1.0 + CalcItemMod(client, item, 0);
-						TF2Attrib_SetByDefIndex(primary, 103, projSpeed); // "Projectile speed increased"
+						TF2Attrib_SetByName(primary, "Projectile speed increased HIDDEN", projSpeed);
 					}
 					else
 					{
-						TF2Attrib_RemoveByDefIndex(primary, 103);
+						TF2Attrib_RemoveByName(primary, "Projectile speed increased HIDDEN");
 					}
 				}
 				
@@ -1001,24 +994,17 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					if (PlayerHasItem(client, item))
 					{
 						float chargeRate = CalcItemMod_HyperbolicInverted(client, item, 1);
-						TF2Attrib_SetByDefIndex(secondary, 670, chargeRate); // "stickybomb charge rate"
+						if (GetEntProp(secondary, Prop_Send, "m_iItemDefinitionIndex") == 1150)
+						{
+							// QuickieBomb hotfix
+							chargeRate *= 0.3;
+						}
+						
+						TF2Attrib_SetByName(secondary, "stickybomb charge rate", chargeRate);
 					}
 					else
 					{
-						TF2Attrib_RemoveByDefIndex(secondary, 670);
-					}
-				}
-				
-				int shield = GetPlayerShield(client);
-				if (shield != INVALID_ENT)
-				{
-					if (PlayerHasItem(client, item))
-					{
-						TF2Attrib_SetByDefIndex(shield, 249, 1.0 + CalcItemMod(client, item, 2));
-					}
-					else
-					{
-						TF2Attrib_RemoveByDefIndex(shield, 249);
+						TF2Attrib_RemoveByName(secondary, "stickybomb charge rate");
 					}
 				}
 			}
@@ -1029,11 +1015,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			{
 				if (PlayerHasItem(client, item))
 				{
-					TF2Attrib_SetByDefIndex(client, 345, 1.0 + CalcItemMod(client, item, 1)); // "engy dispenser radius increased"
+					TF2Attrib_SetByName(client, "engy dispenser radius increased", 1.0 + CalcItemMod(client, item, 1));
 				}
 				else
 				{
-					TF2Attrib_RemoveByDefIndex(client, 345);
+					TF2Attrib_RemoveByName(client, "engy dispenser radius increased");
 				}
 			}
 		}
@@ -1047,15 +1033,15 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					if (PlayerHasItem(client, item))
 					{
 						float value = GetItemMod(item, 1) * (1.0 - CalcItemMod_HyperbolicInverted(client, item, 0));
-						TF2Attrib_SetByDefIndex(primary, 839, value); // "flame_spread_degree"
-						TF2Attrib_SetByDefIndex(primary, 2, 1.0+CalcItemMod(client, item, 2)); // "damage bonus"
-						TF2Attrib_SetByDefIndex(primary, 255, 1.0+CalcItemMod(client, ItemPyro_BrigadeHelm, 3)); // "airblast pushback scale"
+						TF2Attrib_SetByName(primary, "flame_spread_degree", value);
+						TF2Attrib_SetByName(primary, "damage bonus", 1.0+CalcItemMod(client, item, 2));
+						TF2Attrib_SetByName(primary, "airblast pushback scale", 1.0+CalcItemMod(client, ItemPyro_BrigadeHelm, 3));
 					}
 					else
 					{
-						TF2Attrib_RemoveByDefIndex(primary, 839);
-						TF2Attrib_RemoveByDefIndex(primary, 2);
-						TF2Attrib_RemoveByDefIndex(primary, 255);
+						TF2Attrib_RemoveByName(primary, "flame_spread_degree");
+						TF2Attrib_RemoveByName(primary, "damage bonus");
+						TF2Attrib_RemoveByName(primary, "airblast pushback scale");
 					}
 				}
 			}
@@ -1068,11 +1054,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			{
 				if (PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
 				{
-					TF2Attrib_SetByDefIndex(watch, 221, 1.0-fmin(0.99, CalcItemMod(client, item, 1))); // "mult decloak rate"
+					TF2Attrib_SetByName(watch, "mult decloak rate", 1.0-fmin(0.99, CalcItemMod(client, item, 1)));
 				}
 				else
 				{
-					TF2Attrib_RemoveByDefIndex(watch, 221);
+					TF2Attrib_RemoveByName(watch, "mult decloak rate");
 				}
 			}
 		}
@@ -1089,16 +1075,17 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					GetEntityClassname(rifle, classname, sizeof(classname));
 					if (strcmp2(classname, "tf_weapon_compound_bow"))
 					{
-						TF2Attrib_SetByDefIndex(rifle, 318, CalcItemMod_HyperbolicInverted(client, item, 0)); // "faster reload rate"
+						TF2Attrib_SetByName(rifle, "faster reload rate", CalcItemMod_HyperbolicInverted(client, item, 0));
 					}
 					else
 					{
-						TF2Attrib_SetByDefIndex(rifle, 90, 1.0+CalcItemMod(client, item, 0)); // "SRifle Charge rate increased"
+						TF2Attrib_SetByName(rifle, "SRifle Charge rate increased", 1.0+CalcItemMod(client, item, 0));
 					}
 				}
 				else
 				{
-					TF2Attrib_RemoveByDefIndex(rifle, 90);
+					TF2Attrib_RemoveByName(rifle, "SRifle Charge rate increased");
+					TF2Attrib_RemoveByName(rifle, "faster reload rate");
 				}
 			}
 		}
@@ -1110,11 +1097,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			{
 				if (PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
 				{
-					TF2Attrib_SetByDefIndex(primary, 45, 1.0 + CalcItemMod(client, ItemScout_FedFedora, 0)); // "bullets per shot bonus"
+					TF2Attrib_SetByName(primary, "bullets per shot bonus", 1.0+CalcItemMod(client, ItemScout_FedFedora, 0));
 				}
 				else
 				{
-					TF2Attrib_RemoveByDefIndex(primary, 45);
+					TF2Attrib_RemoveByName(primary, "bullets per shot bonus");
 				}
 			}
 		}
@@ -1123,11 +1110,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 		{
 			if (PlayerHasItem(client, item))
 			{
-				TF2Attrib_SetByDefIndex(client, 812, 1.0+CalcItemMod(client, item, 2)); // mod_air_control_blast_jump
+				TF2Attrib_SetByName(client, "mod_air_control_blast_jump", 1.0+CalcItemMod(client, item, 2));
 			}
 			else
 			{
-				TF2Attrib_RemoveByDefIndex(client, 812);
+				TF2Attrib_RemoveByName(client, "mod_air_control_blast_jump");
 			}
 		}
 	}
@@ -1178,13 +1165,18 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 			}
 		}
 		
-		if (PlayerHasItem(attacker, Item_Goalkeeper) && !TF2_IsPlayerInCondition(attacker, TFCond_CritOnKill))
+		if (PlayerHasItem(attacker, Item_Goalkeeper))
 		{
-			float chance = fmin(CalcItemMod_Hyperbolic(attacker, Item_Goalkeeper, 0), 1.0);
-			if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
+			if (!TF2_IsPlayerInCondition(attacker, TFCond_CritOnKill))
 			{
-				TF2_AddCondition(attacker, TFCond_CritOnKill, GetItemMod(Item_Goalkeeper, 1));
+				float chance = fmin(CalcItemMod_Hyperbolic(attacker, Item_Goalkeeper, 0), 1.0);
+				if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
+				{
+					TF2_AddCondition(attacker, TFCond_CritOnKill, GetItemMod(Item_Goalkeeper, 1));
+				}
 			}
+			
+			TF2_AddCondition(attacker, TFCond_SpeedBuffAlly, CalcItemMod(attacker, Item_Goalkeeper, 4));
 		}
 	}
 	
@@ -1385,23 +1377,24 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 			while ((entity = FindEntityByClassname(entity, "rf2_projectile_fireball")) != INVALID_ENT)
 			{
 				RF2_Projectile_Fireball fireball = RF2_Projectile_Fireball(entity);
-				if (fireball.Homing && fireball.Owner == attacker && fireball.HomingTarget == fireball.Owner)
+				if (fireball.Owner == attacker && GetEntItemProc(fireball.index) == Item_OldCrown)
 				{
 					count++;
 				}
 			}
-
+			
 			int total = count;
 			int spawnCount;
-			int spawnLimit = GetItemModInt(Item_OldCrown, 3) + CalcItemModInt(attacker, Item_OldCrown, 4, -1);
-			float damage = GetItemMod(Item_OldCrown, 2);
+			int spawnLimit = GetItemModInt(Item_OldCrown, 1);
+			float damage = GetItemMod(Item_OldCrown, 2) + CalcItemMod(attacker, Item_OldCrown, 3, -1);
 			float pos[3], victimPos[3], angles[3];
 			GetEntPos(attacker, pos, true);
 			GetEntPos(victim, victimPos, true);
 			GetVectorAnglesTwoPoints(victimPos, pos, angles);
 			while (total < limit && spawnCount < spawnLimit)
 			{
-				RF2_Projectile_Fireball fireball = RF2_Projectile_Fireball(ShootProjectile(attacker, "rf2_projectile_fireball", victimPos, angles, 1000.0, damage, _, _, false));
+				RF2_Projectile_Fireball fireball = RF2_Projectile_Fireball(ShootProjectile(attacker, "rf2_projectile_fireball", 
+					victimPos, angles, 1000.0, damage, _, _, false));
 				fireball.Homing = true;
 				fireball.HomingTarget = attacker;
 				fireball.DeactivateOnHit = false;
@@ -1414,13 +1407,9 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 				angles[1] += GetRandomFloat(20.0, 75.0);
 				angles[0] += GetRandomFloat(20.0, 75.0);
 			}
-			if (count < limit)
-			{
-				
-			}
 		}
 	}
-
+	
 	if (GetClientTeam(victim) == TEAM_ENEMY)
 	{
 		int pillarOfHatsOwner = INVALID_ENT;
@@ -2177,7 +2166,7 @@ public Action Timer_EquipmentCooldown(Handle timer, int client)
 
 void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float angles[3], bool infiniteRange=true, 
 	const float endPos[3]=NULL_VECTOR, float damage, int damageFlags, float size, int colors[4], const char[] particleAttach="", 
-	bool particle=true, bool playSound=true, float life=0.4)
+	bool particle=true, bool playSound=true, float life=0.4, float friendlyFireMult=0.0)
 {
 	RayType type;
 	float vec[3], end[3];
@@ -2221,6 +2210,7 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 	hitbox.Damage = damage;
 	hitbox.DamageFlags = damageFlags;
 	hitbox.ItemProc = item;
+	hitbox.FriendlyFireMult = friendlyFireMult;
 	hitbox.SetMins(mins);
 	hitbox.SetMaxs(maxs);
 	hitbox.Teleport(pos, angles);
@@ -2678,6 +2668,20 @@ int GetItemFromSectionName(const char[] name)
 	}
 
 	return Item_Null;
+}
+
+int GetPlayerItemsOfQuality(int client, int quality)
+{
+	int total;
+	for (int i = 1; i < GetTotalItems(); i++)
+	{
+		if (PlayerHasItem(client, i, true, true) && GetItemQuality(i) == quality)
+		{
+			total += GetPlayerItemCount(client, i, true, true);
+		}
+	}
+
+	return total;
 }
 
 static int g_iLastShownItem[MAXTF2PLAYERS];

@@ -281,6 +281,7 @@ enum // Move collide types
 #define SND_RUNE_VAMPIRE "items/powerup_pickup_vampire.wav"
 #define SND_RUNE_KING "items/powerup_pickup_king.wav"
 #define SND_THROW "weapons/cleaver_throw.wav"
+#define SND_TELEPORTER_BLU_START "mvm/mvm_tele_activate.wav"
 #define SND_TELEPORTER_BLU "mvm/mvm_tele_deliver.wav"
 #define SND_ARTIFACT_ROLL "ui/buttonclick.wav"
 #define SND_ARTIFACT_SELECT "items/spawn_item.wav"

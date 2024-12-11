@@ -2,27 +2,22 @@
 #pragma newdecls required
 
 static CNavArea g_TFBotGoalArea[MAXTF2PLAYERS];
-
 static int g_iTFBotFlags[MAXTF2PLAYERS];
 static int g_iTFBotForcedButtons[MAXTF2PLAYERS];
 static int g_iTFBotDesiredWeaponSlot[MAXTF2PLAYERS] = {-1, ...}; 
-
 static float g_flTFBotStrafeTime[MAXTF2PLAYERS];
 static float g_flTFBotStrafeTimeStamp[MAXTF2PLAYERS];
 static float g_flTFBotStuckTime[MAXTF2PLAYERS];
 static float g_flTFBotLastSearchTime[MAXTF2PLAYERS];
 static float g_flTFBotLastPosCheckTime[MAXTF2PLAYERS];
-
 static CNavArea g_TFBotEngineerSentryArea[MAXTF2PLAYERS];
 static float g_flTFBotEngineerSearchRetryTime[MAXTF2PLAYERS];
 static bool g_bTFBotEngineerHasBuilt[MAXTF2PLAYERS];
 static bool g_bTFBotEngineerAttemptingBuild[MAXTF2PLAYERS];
 static int g_iTFBotEngineerRepairTarget[MAXTF2PLAYERS];
 static int g_iTFBotEngineerBuildAttempts[MAXTF2PLAYERS];
-
 static int g_iTFBotSpyBuildingTarget[MAXTF2PLAYERS];
 static float g_flTFBotSpyTimeInFOV[MAXTF2PLAYERS][MAXTF2PLAYERS];
-
 static float g_flTFBotLastPos[MAXTF2PLAYERS][3];
 
 enum TFBotMission
@@ -58,15 +53,10 @@ methodmap TFBot
 	}
 	
 	// Pathing
-	property PathFollower Follower
+	property PathFollower Path
 	{
-		public get() 				{ return GetEntPathFollower(this.Client); }
-		//public set(PathFollower pf)	{ g_TFBotPathFollower[this.Client] = pf;   }
-	}
-	property int FollowerIndex
-	{
-		public get()				{ return g_iEntityPathFollowerIndex[this.Client];  }
-		public set(int value)		{ g_iEntityPathFollowerIndex[this.Client] = value; }
+		public get() 				{ return g_iEntityPathFollower[this.Client]; }
+		public set(PathFollower pf)	{ g_iEntityPathFollower[this.Client] = pf;   }
 	}
 	property CNavArea GoalArea
 	{
@@ -565,7 +555,7 @@ void TFBot_Think(TFBot bot)
 					tfArea = sentryAreas.Get(index);
 					tfArea.GetCenter(areaPos);
 					TFBot_PathToPos(bot, areaPos, 10000.0, true);
-					if (bot.Follower.IsValid())
+					if (bot.Path.IsValid())
 					{
 						// We can get to this area, start going there to build
 						bot.Mission = MISSION_BUILD;
@@ -879,11 +869,11 @@ void TFBot_TraverseMap(TFBot &bot)
 			bot.SetLastWanderPos(myPos);
 		}
 		
-		if (stuck || tickedTime >= bot.LastSearchTime + g_cvBotWanderTime.FloatValue || !bot.Follower.IsValid() 
+		if (stuck || tickedTime >= bot.LastSearchTime + g_cvBotWanderTime.FloatValue || !bot.Path.IsValid() 
 		|| GetVectorDistance(myPos, areaPos, true) <= sq(g_cvBotWanderRecomputeDist.FloatValue))
 		{
 			bot.GoalArea = NULL_AREA;
-			bot.Follower.Invalidate();
+			bot.Path.Invalidate();
 		}
 		else // continue on our path
 		{
@@ -970,16 +960,16 @@ stock bool TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool
 {
 	ILocomotion locomotion = bot.GetLocomotion();
 	INextBot nextBot = bot.GetNextBot();
-	bool goalReached = bot.Follower.ComputeToPos(nextBot, pos, distance);
+	bool goalReached = bot.Path.ComputeToPos(nextBot, pos, distance);
 	
-	if ((goalReached || ignoreGoal) && bot.Follower.IsValid())
+	if ((goalReached || ignoreGoal) && bot.Path.IsValid())
 	{
-		bot.Follower.Update(nextBot);
+		bot.Path.Update(nextBot);
 		locomotion.Run();
 	}
 	else
 	{
-		bot.Follower.Invalidate();
+		bot.Path.Invalidate();
 		locomotion.Stop();
 	}
 
@@ -990,16 +980,16 @@ stock void TFBot_PathToEntity(TFBot bot, int entity, float distance=1000.0, bool
 {
 	ILocomotion locomotion = bot.GetLocomotion();
 	INextBot nextBot = bot.GetNextBot();
-	bool goalReached = bot.Follower.ComputeToTarget(nextBot, entity, distance);
+	bool goalReached = bot.Path.ComputeToTarget(nextBot, entity, distance);
 	
-	if ((goalReached || ignoreGoal) && bot.Follower.IsValid())
+	if ((goalReached || ignoreGoal) && bot.Path.IsValid())
 	{
-		bot.Follower.Update(nextBot);
+		bot.Path.Update(nextBot);
 		locomotion.Run();
 	}
 	else
 	{
-		bot.Follower.Invalidate();
+		bot.Path.Invalidate();
 		locomotion.Stop();
 	}
 }
@@ -1069,7 +1059,7 @@ bool TFBotEngi_BuildObject(TFBot bot, TFObjectType type, TFObjectMode mode=TFObj
 	}
 	
 	FakeClientCommand(bot.Client, command);
-	bot.Follower.Invalidate();
+	bot.Path.Invalidate();
 	bot.GetLocomotion().Stop();
 	bot.AddButtonFlag(IN_DUCK);
 	

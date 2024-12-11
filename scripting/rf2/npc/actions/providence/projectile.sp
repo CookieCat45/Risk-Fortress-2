@@ -57,7 +57,10 @@ static int Update(RF2_ProvidenceProjectileAttack action, RF2_Providence boss, fl
 	{
         EmitSoundToAll(SND_SWORD_SWING, boss.index, _, SNDLEVEL_SCREAMING);
         EmitAmbientSound(SND_SPELL_FIREBALL, pos, _, SNDLEVEL_SCREAMING);
-		action.DoAttackHitbox({50.0, 0.0, 0.0}, _, {-100.0, -100.0, 0.0}, {100.0, 100.0, 150.0}, 450.0, DMG_SLASH|DMG_MELEE, _, true);
+		action.DoAttackHitbox({50.0, 0.0, 0.0}, _, {-100.0, -100.0, 0.0}, {100.0, 100.0, 150.0}, 
+            350.0, 
+            DMG_SLASH|DMG_MELEE, _, true);
+            
         for (int i = 1; i <= 3; i++)
         {
             switch (i)
@@ -66,7 +69,11 @@ static int Update(RF2_ProvidenceProjectileAttack action, RF2_Providence boss, fl
                 case 3: angles[1] -= 60.0;
             }
 
-            RF2_Projectile_Fireball fireball = RF2_Projectile_Fireball(ShootProjectile(boss.index, "rf2_projectile_fireball", pos, angles, 1500.0, 500.0));
+            RF2_Projectile_Fireball fireball = RF2_Projectile_Fireball(ShootProjectile(boss.index, 
+                "rf2_projectile_fireball", 
+                pos, angles, 1500.0, 
+                400.0));
+
             fireball.BuildingDamageMult = 0.3;
         }
 	}
