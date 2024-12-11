@@ -258,6 +258,16 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 		CreateTimer(1.0, Timer_SurvivorTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
+	CreateTimer(0.5, Timer_CheckCollectorItems, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public void Timer_CheckCollectorItems(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || TF2_GetPlayerClass(client) == TFClass_Unknown)
+	{
+		return;
+	}
+	
 	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (GetItemQuality(i) == Quality_Collectors && PlayerHasItem(client, i, true, true) 
