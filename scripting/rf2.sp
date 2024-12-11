@@ -3479,6 +3479,7 @@ public Action Timer_PlayerHud(Handle timer)
 			
 			static int color[4];
 			static char text[128];
+			text = "";
 			static float victoryMessageTime;
 			if (g_bGameOver)
 			{
