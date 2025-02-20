@@ -20,6 +20,41 @@ static int g_iTFBotSpyBuildingTarget[MAXTF2PLAYERS];
 static float g_flTFBotSpyTimeInFOV[MAXTF2PLAYERS][MAXTF2PLAYERS];
 static float g_flTFBotLastPos[MAXTF2PLAYERS][3];
 
+enum //AttributeType (most of these probably don't work outside of MvM? Haven't tested much.)
+{
+	REMOVE_ON_DEATH				= 1<<0,					// 1 kick bot from server when killed
+	AGGRESSIVE					= 1<<1,					// 2 in MvM mode, push for the cap point
+	IS_NPC						= 1<<2,					// 4 a non-player support character
+	SUPPRESS_FIRE				= 1<<3,					// 8
+	DISABLE_DODGE				= 1<<4,					// 16
+	BECOME_SPECTATOR_ON_DEATH	= 1<<5,					// 32 move bot to spectator team when killed
+	QUOTA_MANANGED				= 1<<6,					// 64 managed by the bot quota in CTFBotManager 
+	RETAIN_BUILDINGS			= 1<<7,					// 128 don't destroy this bot's buildings when it disconnects
+	SPAWN_WITH_FULL_CHARGE		= 1<<8,					// (DOES NOT WORK) 256 all weapons start with full charge (ie: uber)
+	ALWAYS_CRIT					= 1<<9,					// 512 always fire critical hits
+	IGNORE_ENEMIES				= 1<<10,				// 1024
+	HOLD_FIRE_UNTIL_FULL_RELOAD	= 1<<11,				// 2048 don't fire our barrage weapon until it is full reloaded (rocket launcher, etc)
+	PRIORITIZE_DEFENSE			= 1<<12,				// 4096 bot prioritizes defending when possible
+	ALWAYS_FIRE_WEAPON			= 1<<13,				// 8192 constantly fire our weapon
+	TELEPORT_TO_HINT			= 1<<14,				// (DOES NOT WORK) 16384 bot will teleport to hint target instead of walking out from the spawn point
+	MINIBOSS					= 1<<15,				// 32768 is miniboss?
+	USE_BOSS_HEALTH_BAR			= 1<<16,				// 65536 should I use boss health bar?
+	IGNORE_FLAG					= 1<<17,				// 131072 don't pick up flag/bomb
+	AUTO_JUMP					= 1<<18,				// (DOES NOT WORK) 262144 auto jump
+	AIR_CHARGE_ONLY				= 1<<19,				// 524288 demo knight only charge in the air
+	PREFER_VACCINATOR_BULLETS	= 1<<20,				// 1048576 When using the vaccinator, prefer to use the bullets shield
+	PREFER_VACCINATOR_BLAST		= 1<<21,				// 2097152 When using the vaccinator, prefer to use the blast shield
+	PREFER_VACCINATOR_FIRE		= 1<<22,				// 4194304 When using the vaccinator, prefer to use the fire shield
+	BULLET_IMMUNE				= 1<<23,				// 8388608 Has a shield that makes the bot immune to bullets
+	BLAST_IMMUNE				= 1<<24,				// 16777216 "" blast
+	FIRE_IMMUNE					= 1<<25,				// 33554432 "" fire
+	PARACHUTE					= 1<<26,				// 67108864 demo/soldier parachute when falling
+	PROJECTILE_SHIELD			= 1<<27,				// (DOES NOT WORK) 134217728 medic projectile shield
+};
+static int g_iTFBotBehaviorAttributes[MAXTF2PLAYERS];
+
+// Note: these are plugin-specific, not the actual MissionType enum in TF2 code.
+// Do NOT set these manually, only use these to check what the bot is currently doing.
 enum TFBotMission
 {
 	MISSION_NONE, // No mission, behave normally
@@ -65,6 +100,19 @@ methodmap TFBot
 	}
 	
 	// Behavior
+	property int BehaviorAttributes
+	{
+		public get() 					{ return g_iTFBotBehaviorAttributes[this.Client];  }
+		public set(int value) 	
+		{
+			RunScriptCode(this.Client, "self.ClearAllBotAttributes()");
+			static char str[64];
+			FormatEx(str, sizeof(str), "self.AddBotAttribute(%d)", value);
+			RunScriptCode(this.Client, str);
+			g_iTFBotBehaviorAttributes[this.Client] = value;
+		}
+	}
+	
 	property TFBotMission Mission
 	{
 		public get() 					{ return g_TFBotMissionType[this.Client];  }
@@ -112,7 +160,7 @@ methodmap TFBot
 		public get() 					 { return g_TFBotStrafeDirection[this.Client];  }
 		public set(TFBotStrafeDir value) { g_TFBotStrafeDirection[this.Client] = value; }
 	}
-	
+
 	// Wandering
 	property float LastSearchTime 
 	{
@@ -359,7 +407,7 @@ methodmap TFBot
 void TFBot_Think(TFBot bot)
 {
 	float tickedTime = GetTickedTime();
-	ILocomotion locomotion = bot.GetLocomotion();
+	//ILocomotion locomotion = bot.GetLocomotion();
 	CKnownEntity known = bot.GetTarget();
 	
 	int threat = INVALID_ENT;
@@ -395,8 +443,8 @@ void TFBot_Think(TFBot bot)
 			float eyePos[3], targetPos[3];
 			GetClientEyePosition(bot.Client, eyePos);
 			CBaseEntity(threat).WorldSpaceCenter(targetPos);
-			TR_TraceRayFilter(eyePos, targetPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(bot.Client), TRACE_ENTITIES_ONLY);
-			if (TR_DidHit() && RF2_DispenserShield(TR_GetEntityIndex()).IsValid())
+			TR_TraceRayFilter(eyePos, targetPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(bot.Client));
+			if (RF2_DispenserShield(TR_GetEntityIndex()).IsValid())
 			{
 				// If our target is behind a bubble shield, approach the shield
 				aggressiveMode = true;
@@ -692,6 +740,8 @@ void TFBot_Think(TFBot bot)
 		bot.RemoveButtonFlag(IN_JUMP);
 	}
 	
+	// This code has caused more problems than solutions.
+	/*
 	// Only for bosses for now, as they are large.
 	if (IsBoss(bot.Client))
 	{
@@ -718,6 +768,7 @@ void TFBot_Think(TFBot bot)
 			bot.RemoveButtonFlag(IN_DUCK);
 		}
 	}
+	*/
 	
 	// should we use our strange item?
 	if (TFBot_ShouldUseEquipmentItem(bot))
@@ -1159,14 +1210,13 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		KickClient(client, "Invalid INextBot pointer");
 		return Plugin_Continue;
 	}
-
+	
 	static bool reloading[MAXTF2PLAYERS];
 	int activeWep = GetActiveWeapon(client);
 	if (activeWep != INVALID_ENT && activeWep != GetPlayerWeaponSlot(client, WeaponSlot_Melee))
 	{
-		int clip = GetEntProp(activeWep, Prop_Send, "m_iClip1");
-		int maxClip = SDK_GetWeaponClipSize(activeWep);
-		
+		int clip = GetWeaponClip(activeWep);
+		int maxClip = GetWeaponClipSize(activeWep);
 		if (TF2Attrib_HookValueInt(0, "auto_fires_full_clip", activeWep) != 0)
 		{
 			CKnownEntity known = bot.GetTarget();
@@ -1509,7 +1559,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 						case TFBotSkill_Easy: perfectAimChance = 0;
 						case TFBotSkill_Normal: perfectAimChance = 20;
 						case TFBotSkill_Hard: perfectAimChance = 60;
-						case TFBotSkill_Expert: perfectAimChance = 90;
+						case TFBotSkill_Expert: perfectAimChance = 100;
 					}
 					
 					if (RandChanceInt(1, 100, perfectAimChance))
@@ -1575,7 +1625,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 			
 			if (primary != INVALID_ENT && GetActiveWeapon(client) == primary 
-			&& GetEntProp(primary, Prop_Send, "m_iClip1") >= SDK_GetWeaponClipSize(primary))
+				&& GetWeaponClip(primary) >= GetWeaponClipSize(primary))
 			{
 				// is there enough space above us?
 				const float requiredSpace = 750.0;
@@ -1617,7 +1667,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	{
 		buttons &= ~IN_JUMP;
 	}
-	
+
 	if (bot.HasFlag(TFBOTFLAG_SPAMJUMP))
 	{
 		if (GetEntityFlags(client) & FL_ONGROUND)

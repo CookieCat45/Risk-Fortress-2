@@ -555,6 +555,48 @@
 		"#format"	"{1:N}"
 		"en"		"{red}{1}'s body was gone an hour later."
 	}
+
+	"DeathMessage11"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}Remember, as time increases, so does difficulty, {1}."
+	}
+	
+	"DeathMessage12"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}Come back soon, {1}!"
+	}
+
+	"DeathMessage13"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} was styled upon."
+	}
+	
+	"DeathMessage14"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}Sucks to suck, {1}."
+	}
+	
+	"DeathMessage15"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1}'s internal organs have failed."
+	}
+
+	"DeathMessage16"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1} has broken every bone in their body."
+	}
+
+	"DeathMessage17"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}Ouch, {1}. That looked like it hurt."
+	}
 	
 	"HeadsplitterDeath"
 	{

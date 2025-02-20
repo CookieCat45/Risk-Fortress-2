@@ -1,6 +1,8 @@
-MAPS THAT WILL BE UPDATED:
-- Robotfactory
-- Rottenburg
-- Tropics
-
 - Fix Gas Passer
+
+- Give Medic projectile shield
+
+- Fix item sharing issues on Rottenburg(?)
+
+- Fix the following Gamedata:
+CTFPlayer::PlayGesture

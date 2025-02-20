@@ -126,6 +126,7 @@ enum
 	Item_Ballcap = 106,
 	Item_Hachimaki = 107,
 	Item_LilBitey = 108,
+	ItemStrange_WarswormHelm = 109,
 	Item_MaxValid,
 };
 

@@ -378,7 +378,7 @@ void PrintDeathMessage(int client, int item=Item_Null)
 	}
 	else
 	{
-		const int maxMessages = 10;
+		const int maxMessages = 17;
 		int randomMessage = GetRandomInt(1, maxMessages);
 		FormatEx(message, sizeof(message), "DeathMessage%i", randomMessage);
 	}
@@ -723,21 +723,34 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 		GetEntityClassname(weapon, classname, sizeof(classname));
 	}
 	
-	bool sentry = weapon > 0 && strcmp2(classname, "obj_sentrygun");
+	bool sentry = weapon > 0 && strcmp2(classname, "obj_sentrygun"); // this parameter can be a sentry
 	if (!sentry && weapon > 0)
 	{
 		bool flamethrower = strcmp2(classname, "tf_weapon_flamethrower");
 		if (flamethrower || strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
 		{
+			// Flamethrowers are different and need to be calculated using a normal multiplier rather than an inverse one
 			bool dragonsFury = !flamethrower;
+			
+			// make sure these reflect ALL of the fire rate bonuses from below that are for traditional weapons
 			multiplier += CalcItemMod(client, Item_MaimLicense, 0);
 			multiplier += float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1);
 			multiplier += CalcItemMod(client, Item_MaxHead, 2);
-			multiplier += CalcItemMod(client, Item_SaintMark, 3);
 			multiplier += CalcItemMod(client, Item_TripleA, 1);
+			if (g_flPlayerReloadBuffDuration[client] > 0.0)
+			{
+				multiplier += CalcItemMod(client, Item_SaintMark, 3);
+			}
+			
+			if (g_flPlayerWarswornBuffTime[client] > GetTickedTime())
+			{
+				multiplier += GetItemMod(ItemStrange_WarswormHelm, 1);
+			}
+
 			if (multiplier > 1.0 && dragonsFury)
 			{
-				// Dragon's Fury has a fire rate scaling penalty, flamethrowers do not (note that flamethrowers scale damage with fire rate items)
+				// Dragon's Fury has a fire rate scaling penalty, flamethrowers do not 
+				// (note that flamethrowers scale damage with fire rate items)
 				const float penalty = 0.5;
 				multiplier = Pow(multiplier, penalty);
 			}
@@ -746,7 +759,7 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 		}
 		else if (StrContains(classname, "tf_weapon_flaregun") != -1 || StrContains(classname, "tf_weapon_sniperrifle") != -1)
 		{
-			// Use reload multipliers instead, makes more sense
+			// Use reload speed modifiers for these weapons instead, because it makes more sense
 			return GetPlayerReloadMod(client, weapon);
 		}
 	}
@@ -769,6 +782,11 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 	if (PlayerHasItem(client, Item_TripleA))
 	{
 		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_TripleA, 1);
+	}
+
+	if (g_flPlayerWarswornBuffTime[client] > GetTickedTime())
+	{
+		multiplier *= 1.0-GetItemMod(ItemStrange_WarswormHelm, 1);
 	}
 	
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)
@@ -1181,7 +1199,7 @@ void OnPlayerAirDash(int client)
 	{
 		float vel[3], pos[3];
 		vel[2] = 125.0 * (1.0+CalcItemMod(client, ItemScout_MonarchWings, 0));
-		SDK_ApplyAbsVelocityImpulse(client, vel);
+		ApplyAbsVelocityImpulse(client, vel);
 		g_flPlayerGravityJumpBonusTime[client] = GetItemMod(ItemScout_MonarchWings, 2);
 		UpdatePlayerGravity(client);
 		EmitSoundToAll(SND_PARACHUTE, client);
@@ -1453,7 +1471,7 @@ public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam
 {
 	if (!RF2_IsEnabled())
 		return MRES_Ignored;
-
+	
 	if (IsValidClient(entity))
 	{
 		float health = DHookGetParam(params, 1);

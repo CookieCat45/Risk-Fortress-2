@@ -991,7 +991,12 @@ int GetEntityDisplayName(int entity, char[] buffer, int size)
 	}
 	else if (strcmp2(classname, "rf2_tank_boss_badass"))
 	{
-		return strcopy(buffer, size, "Badass Tank");
+		switch (RF2_TankBoss(entity).Type)
+		{
+			case TankType_Normal: return strcopy(buffer, size, "Tank");
+			case TankType_Badass: return strcopy(buffer, size, "Badass Tank");
+			case TankType_SuperBadass: return strcopy(buffer, size, "Super Badass Tank");
+		}
 	}
 	else if (strcmp2(classname, "headless_hatman"))
 	{
@@ -1023,12 +1028,33 @@ int GetEntityDisplayName(int entity, char[] buffer, int size)
 	return strcopy(buffer, size, "");
 }
 
-void SDK_ApplyAbsVelocityImpulse(int entity, const float vel[3])
+void ApplyAbsVelocityImpulse(int entity, const float vel[3])
 {
-	if (g_hSDKAbsVelImpulse)
+	static char str[128];
+	FormatEx(str, sizeof(str), "self.ApplyAbsVelocityImpulse(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]);
+	RunScriptCode(entity, str);
+}
+
+void RunScriptCode(int entity, const char[] code)
+{
+	SetVariantString(code);
+	AcceptEntityInput(entity, "RunScriptCode");
+}
+
+static int g_iScriptSlave = INVALID_ENT;
+// Set the m_iszMessage property of "activator" in the script code to the return value
+int RunScriptCode_ReturnInt(int entity, const char[] code)
+{
+	if (EntRefToEntIndex(g_iScriptSlave) == INVALID_ENT)
 	{
-		SDKCall(g_hSDKAbsVelImpulse, entity, vel);
+		g_iScriptSlave = EntIndexToEntRef(CreateEntityByName("game_text"));
 	}
+
+	SetVariantString(code);
+	AcceptEntityInput(entity, "RunScriptCode", g_iScriptSlave);
+	static char name[128];
+	GetEntPropString(g_iScriptSlave, Prop_Data, "m_iszMessage", name, sizeof(name));
+	return StringToInt(name);
 }
 
 PathFollower GetEntPathFollower(int entity)

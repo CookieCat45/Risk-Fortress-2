@@ -1283,14 +1283,19 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 			if (IsValidClient(target))
 			{
 				RefreshClient(target);
-				float pos[3];
-				GetEntPos(param1, pos);
+				float pos[3], endPos[3], angles[3];
+				GetClientEyePosition(param1, pos);
+				GetClientEyeAngles(param1, angles);
+				TR_TraceRayFilter(pos, angles, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
+				TR_GetEndPosition(endPos);
+				endPos[2] += 50.0;
 				char bossName[256];
 				
 				if (g_bGracePeriod)
 					EndGracePeriod();
 
 				SpawnBoss(target, type, pos, false, 0.0, 3000.0);
+				TeleportEntity(target, endPos);
 				EnemyByIndex(type).GetName(bossName, sizeof(bossName));
 				RF2_PrintToChat(param1, "%t", "SpawnedBoss", bossName);
 			}
@@ -1346,14 +1351,18 @@ public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
 			if (IsValidClient(target))
 			{
 				RefreshClient(target);
-				float pos[3];
-				GetEntPos(param1, pos);
-				char enemyName[256];
-
+				float pos[3], endPos[3], angles[3];
+				GetClientEyePosition(param1, pos);
+				GetClientEyeAngles(param1, angles);
+				TR_TraceRayFilter(pos, angles, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
+				TR_GetEndPosition(endPos);
+				endPos[2] += 25.0;
 				if (g_bGracePeriod)
 					EndGracePeriod();
-
+				
 				SpawnEnemy(target, type, pos, 0.0, 3000.0);
+				TeleportEntity(target, endPos);
+				char enemyName[256];
 				EnemyByIndex(type).GetName(enemyName, sizeof(enemyName));
 				RF2_PrintToChat(param1, "%t", "SpawnedEnemy", enemyName);
 			}
@@ -2070,12 +2079,12 @@ public Action Command_ForfeitItems(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	if (!IsPlayerSurvivor(client, false) || IsSingleplayer(false) /*|| g_bDisableItemDropping*/)
+	if (g_bDisableItemDropping || !IsPlayerSurvivor(client, false) || IsSingleplayer(false))
 	{
 		RF2_ReplyToCommand(client, "%t", "CannotBeUsed");
 		return Plugin_Handled;
 	}
-
+	
 	Menu confirm = new Menu(Menu_ForfeitConfirm);
 	confirm.SetTitle("!!! You are about to COMPLETELY EMPTY YOUR ENTIRE INVENTORY and give all of your items to other players !!!\nAre you absolutely sure you want to do this?");
 	confirm.AddItem("y", "Yes");
@@ -2180,7 +2189,7 @@ void ForfeitItems(int client)
 				itemCounts[poorestPlayer][i]++;
 			}
 		}
-
+		
 		delete itemPool;
 	}
 
@@ -2355,8 +2364,8 @@ public Action Command_ParticleTest(int client, int args)
 	GetCmdArg(1, effect, sizeof(effect));
 	switch (GetCmdArgInt(2))
 	{
-		case 0: SpawnInfoParticle(effect, pos, 15.0);
-		case 1: TE_TFParticle(effect, pos);
+		case 0: TE_TFParticle(effect, pos);
+		case 1: SpawnInfoParticle(effect, pos, 15.0);
 		case 2: SpawnParticleViaTrigger(client, effect);
 	}
 	

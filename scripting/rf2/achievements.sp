@@ -176,6 +176,7 @@ bool IsAchievementHidden(int achievement)
 		return !DoesFinalMapExist();
 	}
 	
+	// deprecated achievements, always hidden
 	return achievement == ACHIEVEMENT_DANCE || achievement == ACHIEVEMENT_BADMAGIC || achievement == ACHIEVEMENT_AIRJUMPS;
 }
 

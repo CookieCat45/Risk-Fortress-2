@@ -62,10 +62,10 @@
 			}
 			"CVEngineServer::CreateFakeClientEx"
 			{
-				"linux"		"115"
-				"windows"	"115"
-				"linux64"	"115"
-				"windows64"	"115"
+				"linux"		"116"
+				"windows"	"116"
+				"linux64"	"116"
+				"windows64"	"116"
 			}
 			"CVEngineServer::IsDedicatedServer"
 			{
@@ -84,15 +84,7 @@
 		}
 		"Signatures"
 		{
-			// 64 BIT WINDOWS SIGNATURES ARE UNTESTED.
-			
-			"CBaseEntity::Intersects"
-			{
-				"linux"		"@_ZN11CBaseEntity10IntersectsEPS_"
-				"windows"	"\x55\x8B\xEC\x83\x2A\x18\x00\x56\x74\x6E\x8B\x75\x08\x83\x2A\x18\x00\x74\x65\x8B\x2A\x2A\x2A\x00\x00\x81\x2A\x2A\x2A\x00\x00\xD9\xEE\x57\x51"
-				"linux64"	"@_ZN11CBaseEntity10IntersectsEPS_"
-				"windows64"	""
-			}
+			// Remove after 1.4 releases
 			"CBaseEntity::ApplyAbsVelocityImpulse"
 			{
 				"linux"		"@_ZN11CBaseEntity23ApplyAbsVelocityImpulseERK6Vector"
@@ -100,6 +92,8 @@
 				"linux64"	"@_ZN11CBaseEntity23ApplyAbsVelocityImpulseERK6Vector"
 				"windows64" "\x48\x89\x5C\x24\x08\x57\x48\x83\xEC\x50\xF3\x0F\x10\x05\x4E\x21\xD4\x00"
 			}
+			
+			// Remove after 1.4 releases
 			"CTFWeaponBase::GetMaxClip1"
 			{
 				"linux"		"@_ZNK13CTFWeaponBase11GetMaxClip1Ev"
@@ -107,17 +101,26 @@
 				"linux64"	"@_ZNK13CTFWeaponBase11GetMaxClip1Ev"
 				"windows64"	"\x40\x53\x48\x83\xEC\x50\x48\x8B\x01\x48\x8B\xD9\xFF\x90\xD8\x0D\x00\x00"
 			}
+
+			// 64 BIT WINDOWS SIGNATURES ARE UNTESTED.
+			"CBaseEntity::Intersects"
+			{
+				"linux"		"@_ZN11CBaseEntity10IntersectsEPS_"
+				"windows"	"\x55\x8B\xEC\x83\x2A\x18\x00\x56\x74\x6E\x8B\x75\x08\x83\x2A\x18\x00\x74\x65\x8B\x2A\x2A\x2A\x00\x00\x81\x2A\x2A\x2A\x00\x00\xD9\xEE\x57\x51"
+				"linux64"	"@_ZN11CBaseEntity10IntersectsEPS_"
+				"windows64"	""
+			}
 			"CTFWeaponBase::SetReloadTimer" // Look for string "mult_reload_time_while_healed"
 			{
 				"linux"		"@_ZN13CTFWeaponBase14SetReloadTimerEf"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x18\xF3\x0F\x10\x45\x08"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x10\xF3\x0F\x10\x45\x08\x56"
 				"linux64"	"@_ZN13CTFWeaponBase14SetReloadTimerEf"
 				"windows64"	"\x48\x89\x5C\x24\x20\x57\x48\x83\xEC\x60\x0F\x29\x7C\x24\x40"
 			}
 			"CTFPlayer::TeamFortress_SetSpeed"
 			{
 				"linux"		"@_ZN9CTFPlayer21TeamFortress_SetSpeedEv"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x28\xA1\x2A\x2A\x2A\x2A\x56"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x24\xA1\x2A\x2A\x2A\x2A\x56\x8B\xF1\x89\x75\xF0"
 				"linux64"	"@_ZN9CTFPlayer21TeamFortress_SetSpeedEv"
 				"windows64"	"\x40\x55\x48\x83\xEC\x60\x48\x8B\x05\x03\x3D\x7A\x00"
 			}
@@ -128,10 +131,10 @@
 				"linux64"	"@_ZN9CTFPlayer11PlayGestureEPKc"
 				"windows64"	""
 			}
-			"CTFPlayer::ApplyPunchImpulseX"
+			"CTFPlayer::ApplyPunchImpulseX" // Look for string "aiming_no_flinch"
 			{
 				"linux"		"@_ZN9CTFPlayer18ApplyPunchImpulseXEf"
-				"windows"	"\x55\x8B\xEC\x53\x56\x8B\xF1\xB3\x01"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x08\x53\x56\x8B\xF1\xB3\x01"
 				"linux64"	"@_ZN9CTFPlayer18ApplyPunchImpulseXEf"
 				"windows64"	"\x48\x89\x5C\x24\x08\x57\x48\x83\xEC\x40\x48\x8D\x81\x20\x27\x00\x00"
 			}
@@ -142,17 +145,20 @@
 				"linux64"	"@_Z14HandleRageGainP9CTFPlayerjff"
 				"windows64"	"\x48\x85\xC9\x0F\x84\x2A\x2A\x2A\x2A\x53\x55"
 			}
+			
+			// Find CTFPowerupBottle::ReapplyProvision using the unique string "mvm_medic_powerup_shared"
+			// It should be the first subroutine you find above the string, and should have a 1 being pushed into it.
 			"CBaseObject::DoQuickBuild"
 			{
 				"linux"		"@_ZN11CBaseObject12DoQuickBuildEb"
-				"windows"	"\x55\x8B\xEC\x51\x53\x56\x57\x8B\xF9\x80\xBF\x22\x0A\x00\x00\x00"
+				"windows"	"\x55\x8B\xEC\x53\x56\x57\x8B\xF9\x80\xBF\x22\x0A\x00\x00\x00"
 				"linux64"	"@_ZN11CBaseObject12DoQuickBuildEb"
 				"windows64"	"\x48\x89\x5C\x24\x10\x57\x48\x83\xEC\x20\x80\xB9\x66\x0C\x00\x00\x00"
 			}
-			"CObjectSentrygun::Attack"
+			"CObjectSentrygun::Attack" // Look for string "mult_sentry_firerate"
 			{
 				"linux"		"@_ZN16CObjectSentrygun6AttackEv"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x3C\x56\x8B\xF1\x57\x8B\x06"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x38\x56\x8B\xF1\x57\x8B\x06"
 				"linux64"	"@_ZN16CObjectSentrygun6AttackEv"
 				"windows64"	"\x48\x89\x5C\x24\x10\x57\x48\x83\xEC\x70\x48\x8B\x01\x48\x8B\xD9\xFF\x90\x40\x06\x00\x00"
 			}
@@ -173,7 +179,7 @@
 			"CZombie::SpawnAtPos" // Look for string "tf_zombie" (seems to be missing/inlined on win64?)
 			{
 				"linux"		"@_ZN7CZombie10SpawnAtPosERK6VectorfiP11CBaseEntityNS_14SkeletonType_tE"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x0C\x57\x6A\xFF"
+				"windows"	"\x55\x8B\xEC\x51\x57\x6A\xFF"
 				"linux64"	"@_ZN7CZombie10SpawnAtPosERK6VectorfiP11CBaseEntityNS_14SkeletonType_tE"
 				"windows64"	""
 			}
@@ -191,14 +197,17 @@
 				"linux64"	"@_ZN12CEyeballBoss24FindClosestVisibleVictimEv"
 				"windows64"	"\x48\x8B\xC4\x48\x89\x48\x08\x41\x54\x48\x81\xEC\x80\x00\x00\x00\x48\x89\x58\x20"
 			}
+			
+			// Find CEyeballBossTeleport::Update using the string "Halloween.EyeballBossTeleport"
+			// Should be one of the subroutines below that has a single xref
 			"CEyeballBoss::PickNewSpawnSpot"
 			{
 				"linux"		"@_ZNK12CEyeballBoss16PickNewSpawnSpotEv"
-				"windows"	"\xA1\x2A\x2A\x2A\x2A\x56\x8B\xF1\xA8\x01\x75\x2A\x83\xC8\x01\xA3\x2A\x2A\x2A\x2A\x8B\x86\x78\x09\x00\x00"
+				"windows"	"\x56\x8B\xF1\x8B\x86\x78\x09\x00\x00"
 				"linux64"	"@_ZNK12CEyeballBoss16PickNewSpawnSpotEv"
 				"windows64"	""
 			}
-			"CTFGCServerSystem::PreClientUpdate" // "Restoring sv_visiblemaxplayers to %d\n" 
+			"CTFGCServerSystem::PreClientUpdate" // Look for string "Restoring sv_visiblemaxplayers to %d\n" 
 			{
 				"linux"		"@_ZN17CTFGCServerSystem15PreClientUpdateEv"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x28\x53\x56\x8B\xD9"

@@ -5,6 +5,7 @@ int g_iWeaponCount[TF_CLASSES];
 
 // These are for Survivors, not enemies or bosses.
 int g_iWeaponIndexReplacement[TF_CLASSES][64];
+int g_iAttributeSlave = INVALID_ENT;
 
 char g_szWeaponIndexIdentifier[TF_CLASSES][64][PLATFORM_MAX_PATH];
 char g_szWeaponAttributes[TF_CLASSES][64][MAX_ATTRIBUTE_STRING_LENGTH];
@@ -41,7 +42,42 @@ void LoadWeapons()
 			while (firstKey ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
 			{
 				weaponKey.GetSectionName(g_szWeaponIndexIdentifier[i][count], sizeof(g_szWeaponIndexIdentifier[][]));
+				#if defined DEVONLY
+				if (weaponKey.JumpToKey("attributes"))
+				{
+					char key[128], val[128];
+					for (int a = 1; a > 0; a++)
+					{
+						if (a == 1 && !weaponKey.GotoFirstSubKey(false))
+							break;
+						
+						weaponKey.GetSectionName(key, sizeof(key));
+						int id = AttributeNameToDefIndex(key);
+						if (id != -1)
+						{
+							weaponKey.GetString(NULL_STRING, val, sizeof(val));
+							Format(g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]),
+								"%s%d = %s ; ", g_szWeaponAttributes[i][count], id, val);
+						}
+						else
+						{
+							LogError("[ERROR] Invalid attribute '%s' in '%s'", key, config);
+						}
+						
+						if (!weaponKey.GotoNextKey(false))
+						{
+							weaponKey.GoBack();
+							break;
+						}
+					}
+					
+					TrimString(g_szWeaponAttributes[i][count]);
+					weaponKey.GoBack();
+				}
+				#else
 				weaponKey.GetString("add_attributes", g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]));
+				#endif
+
 				weaponKey.GetString("classname", g_szWeaponClassnameReplacement[i][count], sizeof(g_szWeaponClassnameReplacement[][]));
 				g_iWeaponIndexReplacement[i][count] = weaponKey.GetNum("index", -1);
 				g_bWeaponStripAttributes[i][count] = asBool(weaponKey.GetNum("strip_attributes", false));
@@ -100,7 +136,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive)
 		return Plugin_Continue;
-	
+
 	if (g_bDisableGiveItemForward || !IsPlayerSurvivor(client) || IsPlayerMinion(client))
 		return Plugin_Continue;
 	
@@ -262,6 +298,12 @@ public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index
 	if (!RF2_IsEnabled() || !IsValidEntity2(entity))
 		return 0;
 	
+	if (index == 812 || index == 222 || index == 1121) // Make the Cleaver/Milk work with Whale Bone Charm
+	{
+		SetEntProp(entity, Prop_Data, "m_iPrimaryAmmoType", TFAmmoType_Secondary);
+		SetEntProp(client, Prop_Send, "m_iAmmo", 1, _, TFAmmoType_Secondary);
+	}
+	
 	if (g_bSetStringAttributes)
 	{
 		TFClassType class = g_StringAttributeClass;
@@ -315,7 +357,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 	Handle weapon = TF2Items_CreateItem(OVERRIDE_ALL|FORCE_GENERATION);
 	TF2Items_SetClassname(weapon, classname);
 	TF2Items_SetItemIndex(weapon, index);
-	
+
 	// now for the attributes:
 	if (attributes[0] || staticAttributes)
 	{
@@ -602,7 +644,6 @@ float GetWeaponProcCoefficient(int weapon)
 	return 1.0;
 }
 
-/*
 bool IsEffectBarWeapon(int weapon)
 {
 	static char classname[32];
@@ -618,16 +659,40 @@ bool IsEffectBarWeapon(int weapon)
 	|| strcmp2(classname, "tf_wearable_demoshield")
 	|| strcmp2(classname, "tf_wearable_razorback"));
 }
-*/
 
-int SDK_GetWeaponClipSize(int entity)
+int GetWeaponClipSize(int entity)
 {
-	if (g_hSDKGetMaxClip1)
+	static char str[256];
+	FormatEx(str, sizeof(str), "NetProps.SetPropString(activator, `m_iszMessage`, self.GetMaxClip1().tostring())");
+	int clip = RunScriptCode_ReturnInt(entity, str);
+	if (IsEnergyWeapon(entity))
 	{
-		return SDKCall(g_hSDKGetMaxClip1, entity);
+		return clip/5;
 	}
-		
-	return -1;
+
+	return clip;
+}
+
+int GetWeaponClip(int entity)
+{
+	if (IsEnergyWeapon(entity))
+	{
+		return RoundToFloor(GetEntPropFloat(entity, Prop_Send, "m_flEnergy")/5.0);
+	}
+
+	return GetEntProp(entity, Prop_Send, "m_iClip1");
+}
+
+void SetWeaponClip(int entity, int clip)
+{
+	if (IsEnergyWeapon(entity))
+	{
+		SetEntPropFloat(entity, Prop_Send, "m_flEnergy", float(clip)*5.0);
+	}
+	else
+	{
+		SetEntProp(entity, Prop_Send, "m_iClip1", clip);
+	}
 }
 
 void SDK_EquipWearable(int client, int entity)
@@ -796,6 +861,22 @@ public MRESReturn DHook_RiflePostFramePost(int entity)
 	return MRES_Ignored;
 }
 
+stock void ForcePrimaryAttack(int client, int weapon)
+{
+	SetEntProp(client, Prop_Send, "m_bLagCompensation", false);
+	SetVariantString("self.PrimaryAttack()");
+	AcceptEntityInput(weapon, "RunScriptCode");
+	SetEntProp(client, Prop_Send, "m_bLagCompensation", true);
+}
+
+stock void ForceSecondaryAttack(int client, int weapon)
+{
+	SetEntProp(client, Prop_Send, "m_bLagCompensation", false);
+	SetVariantString("self.SecondaryAttack()");
+	AcceptEntityInput(weapon, "RunScriptCode");
+	SetEntProp(client, Prop_Send, "m_bLagCompensation", true);
+}
+
 bool IsVoodooCursedCosmetic(int wearable)
 {
 	int index = GetEntProp(wearable, Prop_Send, "m_iItemDefinitionIndex");
@@ -856,8 +937,28 @@ bool IsAttributeBlacklisted(int id)
 	id == 719 || // "weapon_uses_stattrack_module"
 	id == 731 || // "weapon_allow_inspect"
 	id == 817 || // "inspect_viewmodel_offset"
-	id == 724 || // "weapon_stattrak_module_scale"
-	id == 25 || // "hidden secondary max ammo penalty" (don't need these, players have infinite ammo)
-	id == 37 || // "hidden primary max ammo bonus"
-	id >= 76 && id <= 79; // more maxammo attributes
+	id == 724; // "weapon_stattrak_module_scale"
+}
+
+int AttributeNameToDefIndex(const char[] name)
+{
+	if (!TF2Attrib_IsValidAttributeName(name))
+		return -1;
+	
+	int tempWearable = EntRefToEntIndex(g_iAttributeSlave);
+	if (tempWearable == INVALID_ENT)
+	{
+		tempWearable = CreateEntityByName("tf_wearable");
+		g_iAttributeSlave = EntIndexToEntRef(tempWearable);
+	}
+	
+	TF2Attrib_SetFromStringValue(tempWearable, name, "1");
+	Address attrib = TF2Attrib_GetByName(tempWearable, name);
+	if (attrib)
+	{
+		TF2Attrib_RemoveByName(tempWearable, name);
+		return TF2Attrib_GetDefIndex(attrib);
+	}
+	
+	return -1;
 }

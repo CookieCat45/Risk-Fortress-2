@@ -90,7 +90,7 @@ enum
 	TFCOLLISION_GROUP_COMBATOBJECT,
 	TFCOLLISION_GROUP_ROCKETS,		// Solid to players, but not player movement. ensures touch calls are originating from rocket
 	TFCOLLISION_GROUP_RESPAWNROOMS, // CookieCat note: Only collides with players
-	TFCOLLISION_GROUP_TANK, 		// CookieCat note: Solid to everything except for players. Despite the name, it's only used by pumpkin bombs, not tanks.
+	TFCOLLISION_GROUP_TANK, 		// CookieCat note: Solid to everything except for players. Despite the name, it's only used by spell pumpkin bombs, not tanks.
 	TFCOLLISION_GROUP_ROCKET_BUT_NOT_WITH_OTHER_ROCKETS, // CookieCat note: Used by most projectiles, same as TFCOLLISION_GROUP_ROCKETS but doesn't collide with itself or that group
 };
 
@@ -310,6 +310,7 @@ enum // Move collide types
 #define GSND_MACHINA "Weapon_SniperRailgun.Single"
 #define GSND_SHOOTINGSTAR "Weapon_ShootingStar.Single"
 #define GSND_AWP "Weapon_AWP.Single"
+#define GSND_MVM_POWERUP "MVM.PlayerUsedPowerup"
 
 // TFBots -------------------------------------------------------------------------------------------------------------------------------------
 enum
@@ -324,7 +325,7 @@ enum
 #define TFBOTFLAG_ROCKETJUMP (1 << 1) // Bot should rocket jump
 #define TFBOTFLAG_STRAFING (1 << 2) // Bot is currently strafing
 #define TFBOTFLAG_HOLDFIRE (1 << 3) // Hold fire until fully reloaded
-#define TFBOTFLAG_SPAMJUMP (1 << 4) // Constantly jump around
+#define TFBOTFLAG_SPAMJUMP (1 << 4) // constantly jump
 #define TFBOTFLAG_ALWAYSATTACK (1 << 5) // Always hold IN_ATTACK
 
 // Enemies/Bosses -------------------------------------------------------------------------------------------------------------------------------------
@@ -372,7 +373,7 @@ enum
 	TFAmmoType_Primary = 1,
 	TFAmmoType_Secondary,
 	TFAmmoType_Metal,
-	TFAmmoType_Jarate,
-	TFAmmoType_MadMilk,
-	//TFAmmoType_Grenades3,	- Unused
+	TFAmmoType_Jarate, // aka Grenades1, also used for Sandman/Wrap Assassin
+	TFAmmoType_MadMilk, // aka Grenades2, also used for Cleaver
+	TFAmmoType_Grenades3,
 };

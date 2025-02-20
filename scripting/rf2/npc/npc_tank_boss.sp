@@ -75,13 +75,6 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 		return IsTank(this.index);
 	}
 	
-	public bool IsBadass()
-	{
-		static char classname[128];
-		this.GetClassname(classname, sizeof(classname));
-		return strcmp2(classname, "rf2_tank_boss_badass");
-	}
-	
 	public static void Init()
 	{
 		g_Factory = new CEntityFactory("rf2_tank_boss_badass", OnCreate);
@@ -97,9 +90,9 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 			.DefineFloatField("m_flLaserCannonEndTime")
 			.DefineFloatField("m_flSpawnTime")
 			.DefineFloatField("m_flShieldTime")
+			.DefineIntField("m_iTankType", _, "type")
 			.DefineIntField("m_iSpecialAttack")
 			.DefineIntField("m_iActualMaxHealth")
-			.DefineBoolField("m_bSuperBadass", _, "superbadass")
 			.DefineBoolField("m_bFiringLaserCannon")
 			.DefineEntityField("m_hShieldEntity")
 		.EndDataMapDesc();
@@ -107,16 +100,16 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 		HookMapStart(BadassTank_OnMapStart);
 	}
 	
-	property bool SuperBadass
+	property int Type
 	{
 		public get()
 		{
-			return asBool(this.GetProp(Prop_Data, "m_bSuperBadass"));
+			return this.GetProp(Prop_Data, "m_iTankType");
 		}
 		
-		public set(bool value)
+		public set(int value)
 		{
-			this.SetProp(Prop_Data, "m_bSuperBadass", value);
+			this.SetProp(Prop_Data, "m_iTankType", value);
 		}
 	}
 
@@ -306,7 +299,7 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 	{
 		public get()
 		{
-			if (this.IsBadass())
+			if (this.Type != TankType_Normal)
 				return this.GetProp(Prop_Data, "m_iActualMaxHealth");
 
 			return this.GetProp(Prop_Data, "m_iMaxHealth");
@@ -314,7 +307,7 @@ methodmap RF2_TankBoss < RF2_NPC_Base
 		
 		public set(int value)
 		{
-			if (this.IsBadass())
+			if (this.Type != TankType_Normal)
 				this.SetProp(Prop_Data, "m_iActualMaxHealth", value);
 			else
 				this.SetProp(Prop_Data, "m_iMaxHealth", value);
@@ -431,10 +424,6 @@ void BadassTank_OnMapStart()
 
 static void OnCreate(RF2_TankBoss tank)
 {
-	tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 0);
-	tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 1);
-	tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 2);
-	tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 3);
 	float gameTime = GetGameTime();
 	tank.NextRocketAttackR = gameTime+ROCKET_ATTACK_COOLDOWN;
 	tank.NextRocketAttackL = gameTime+ROCKET_ATTACK_COOLDOWN*1.5;
@@ -449,7 +438,7 @@ static void OnCreate(RF2_TankBoss tank)
 static void Hook_BadassTankSpawnPost(int entity)
 {
 	RF2_TankBoss tank = RF2_TankBoss(entity);
-	if (tank.SuperBadass)
+	if (tank.Type == TankType_SuperBadass)
 	{
 		tank.SetModel(MODEL_TANK_SUPER_BADASS);
 		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iSuperBadassTankModelIndex, _, 0);
@@ -473,17 +462,22 @@ static void Hook_BadassTankSpawnPost(int entity)
 			}
 		}
 	}
-	else
+	else if (tank.Type == TankType_Badass)
 	{
 		tank.SetModel(MODEL_TANK_BADASS);
+		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 0);
+		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 1);
+		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 2);
+		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 3);
+		
+		// The reason this needs to be done is because Tanks will change their model based on how much damage they have taken
+		// in relation to their max health. Setting their max health to 0 AFTER spawning will prevent this behaviour.
+		int maxHealth = tank.GetProp(Prop_Data, "m_iMaxHealth");
+		tank.MaxHealth = maxHealth;
+		tank.SetProp(Prop_Data, "m_iMaxHealth", 0);
+		tank.SetSequence("movement");
 	}
-	
-	// The reason this needs to be done is because Tanks will change their model based on how much damage they have taken
-	// in relation to their max health. Setting their max health to 0 AFTER spawning will prevent this behaviour.
-	int maxHealth = tank.GetProp(Prop_Data, "m_iMaxHealth");
-	tank.MaxHealth = maxHealth;
-	tank.SetProp(Prop_Data, "m_iMaxHealth", 0);
-	tank.SetSequence("movement");
+
 	tank.SpawnTime = GetGameTime();
 }
 
@@ -626,12 +620,8 @@ RF2_TankBoss CreateTankBoss(int type, RF2_TankSpawner spawnPoint=view_as<RF2_Tan
 	
 	angles[0] = 0.0;
 	angles[2] = 0.0;
-	RF2_TankBoss tank = RF2_TankBoss(CreateEntityByName(type != TankType_Normal ? "rf2_tank_boss_badass" : "tank_boss"));
-	if (type != TankType_Normal)
-	{
-		tank.SuperBadass = type == TankType_SuperBadass;
-	}
-	
+	RF2_TankBoss tank = RF2_TankBoss(CreateEntityByName("rf2_tank_boss_badass"));
+	tank.Type = type;
 	float mult = g_cvTankHealthScale.FloatValue + (float(RF2_GetSurvivorCount()-1) * 0.01);
 	int health = RoundToFloor(
 		float(g_cvTankBaseHealth.IntValue) * (1.0 + (float(RF2_GetEnemyLevel()-1) * mult)));
@@ -686,7 +676,7 @@ static void Hook_TankBossThink(int entity)
 		}
 		
 		float value = g_cvTankSpeedBoost.FloatValue;
-		if (!tank.SpeedBoosted && (!tank.IsBadass() || !IsValidEntity2(tank.ShieldEntity))
+		if (!tank.SpeedBoosted && (tank.Type == TankType_Normal || !IsValidEntity2(tank.ShieldEntity))
 			&& value > 1.0 && RF2_GetDifficulty() >= g_cvTankBoostDifficulty.IntValue)
 		{
 			if (tank.Health < RoundToFloor(float(tank.MaxHealth) * g_cvTankBoostHealth.FloatValue))
@@ -756,7 +746,7 @@ static Action Hook_BadassTankOnTakeDamageAlive(int victim, int &attacker, int &i
 {
     RF2_TankBoss tank = RF2_TankBoss(victim);
     Action action = Plugin_Continue;
-    if (damagetype & DMG_CRIT && tank.SuperBadass)
+    if (damagetype & DMG_CRIT && tank.Type == TankType_SuperBadass)
     {
 		// 50% resistance to crits
 		float baseDamage = damage/3.0;
@@ -766,7 +756,7 @@ static Action Hook_BadassTankOnTakeDamageAlive(int victim, int &attacker, int &i
 		action = Plugin_Changed;
     }
 
-	if (tank.SpawnTime+20.0 >= GetGameTime())
+	if (tank.Type != TankType_Normal && tank.SpawnTime+20.0 >= GetGameTime())
 	{
 		// activate shield if we lose HP too quickly after spawning
 		if (tank.ShieldTime <= 0.0 && tank.Health <= tank.MaxHealth/2)
@@ -802,6 +792,12 @@ static Action Hook_BadassTankOnTakeDamageAlive(int victim, int &attacker, int &i
 static void Hook_BadassTankThink(int entity)
 {
 	RF2_TankBoss tank = RF2_TankBoss(entity);
+	// kill smokestack effect for performance reasons
+	SetVariantString("ParticleEffectStop");
+	AcceptEntityInput(tank.index, "DispatchEffect");
+	if (tank.Type == TankType_Normal)
+		return;
+
 	float gameTime = GetGameTime();
 	if (IsValidEntity2(tank.ShieldEntity) && GetGameTime() >= tank.ShieldTime)
 	{
@@ -829,13 +825,13 @@ static void Hook_BadassTankThink(int entity)
 				GetEntityAttachment(tank.index, attachment, pos, NULL_VECTOR);
 				tank.GetPropVector(Prop_Send, "m_angRotation", angles);
 				
-				int rocket = ShootProjectile(tank.index, "tf_projectile_sentryrocket", pos, angles, speed, damage, -10.0);
+				int rocket = ShootProjectile(tank.index, "tf_projectile_rocket", pos, angles, speed, damage, -10.0);
 				SetEntityMoveType(rocket, MOVETYPE_FLYGRAVITY);
 				CreateTimer(0.1, Timer_TankRocketFixAngles, EntIndexToEntRef(rocket), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 				EmitSoundToAll(SND_LAW_FIRE, tank.index, _, _, _, _, _, _, pos);
 				
 				float attackRate, nextAttackTime;
-				if (tank.SuperBadass)
+				if (tank.Type == TankType_SuperBadass)
 				{
 					attackRate = 0.25;
 				}
@@ -871,9 +867,10 @@ static void Hook_BadassTankThink(int entity)
 	{
 		// decide our next special attack if we can use one
 		int newSpecial;
-		if (gameTime >= nextLaserAttack || gameTime >= nextBarrageAttack || gameTime >= nextLaserCannonAttack && tank.SuperBadass)
+		if (gameTime >= nextLaserAttack || gameTime >= nextBarrageAttack 
+			|| gameTime >= nextLaserCannonAttack && tank.Type == TankType_SuperBadass)
 		{
-			if (gameTime >= nextLaserCannonAttack && tank.SuperBadass)
+			if (gameTime >= nextLaserCannonAttack && tank.Type == TankType_SuperBadass)
 			{
 				// always use laser cannon first if ready
 				newSpecial = SPECIAL_LASERCANNON;
@@ -1056,7 +1053,7 @@ static void Hook_BadassTankThink(int entity)
 						
 						const float speed = 1000.0;
 						const float damage = 35.0;
-						for (int i = 1; i <= (tank.SuperBadass ? 3 : 1); i++)
+						for (int i = 1; i <= (tank.Type == TankType_SuperBadass ? 3 : 1); i++)
 						{
 							if (i == 2)
 							{
@@ -1168,7 +1165,7 @@ static void Timer_TankFireHomingRockets(Handle timer, int entity)
 		float angles[3];
 		angles[0] = -90.0;
 		angles[1] = GetRandomFloat(-180.0, 180.0);
-		int rocket = ShootProjectile(tank.index, "tf_projectile_sentryrocket", pos, angles, speed, damage, -10.0);
+		int rocket = ShootProjectile(tank.index, "tf_projectile_rocket", pos, angles, speed, damage, -10.0);
 		SetEntityMoveType(rocket, MOVETYPE_FLYGRAVITY);
 		CreateTimer(0.1, Timer_TankRocketFixAngles, EntIndexToEntRef(rocket), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}

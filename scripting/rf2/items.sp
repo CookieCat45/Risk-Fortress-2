@@ -175,7 +175,6 @@ int LoadItems(const char[] customPath="")
 				LogError("[LoadItems] Bad item sprite for item %i (%s: %s)", item, g_szItemSectionName[item], g_szItemSprite[item]);
 			}
 			
-			// The effect of item modifiers are arbitrary, and depend on the item. Some may not use them at all.
 			for (int n = 0; n < MAX_ITEM_MODIFIERS; n++)
 			{
 				FormatEx(buffer, sizeof(buffer), "item_modifier_%i", n);
@@ -670,14 +669,23 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 		{
 			float amount = 1.0 + CalcItemMod(client, Item_WhaleBoneCharm, 0);
 			int weapon, ammoType;
+			
+			// Special case for certain effect bar items e.g. Jarate, Sandman, Wrap Assassin
+			TF2Attrib_SetByName(client, "maxammo grenades1 increased", 1.0+float(GetPlayerItemCount(client, item)/2));
+			TF2Attrib_SetByName(client, "maxammo secondary increased", 1.0+float(GetPlayerItemCount(client, item)/2));
+			int max1 = TF2Attrib_HookValueInt(1, "mult_maxammo_grenades1", client);
+			
+			// hardcoding to 36 because this really only matters for scout
+			int max2 = TF2Attrib_HookValueInt(36, "mult_maxammo_secondary", client);
+			
 			for (int i = WeaponSlot_Primary; i <= WeaponSlot_InvisWatch; i++)
 			{
 				weapon = GetPlayerWeaponSlot(client, i);
 				if (weapon == INVALID_ENT)
 					continue;
-					
+
 				ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType"); // we may not need to waste an attribute slot here
-				if (ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetEntProp(weapon, Prop_Send, "m_iClip1") >= 0)
+				if (ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetWeaponClipSize(weapon) > 0)
 				{
 					if (IsEnergyWeapon(weapon))
 					{
@@ -702,6 +710,16 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 							TF2Attrib_RemoveByName(weapon, "clip size penalty HIDDEN");
 						}
 						
+					}
+				}
+				
+				if ((ammoType == TFAmmoType_Secondary || ammoType == TFAmmoType_Jarate) && IsEffectBarWeapon(weapon))
+				{
+					int ammo = GetEntProp(client, Prop_Send, "m_iAmmo", _, ammoType);
+					int max = ammoType == TFAmmoType_Jarate ? max1 : max2;
+					if (ammo < max && GetEntPropFloat(weapon, Prop_Send, "m_flEffectBarRegenTime") <= GetGameTime())
+					{
+						GivePlayerAmmo(client, max-ammo, ammoType, true);
 					}
 				}
 			}
@@ -918,6 +936,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					if (secondary != INVALID_ENT)
 					{
 						TF2Attrib_SetByName(secondary, "weapon spread bonus", amount);
+						if (GetEntProp(secondary, Prop_Send, "m_iItemDefinitionIndex") == 1179)
+						{
+							// Special case for the Thermal Thruster
+							TF2Attrib_SetByName(secondary, "holster_anim_time", 0.8*CalcItemMod_HyperbolicInverted(client, item, 0));
+						}
 					}
 				}
 			}
@@ -1787,7 +1810,7 @@ bool ActivateStrangeItem(int client)
 		case ItemStrange_DarkHunter:
 		{
 			EmitSoundToAll(SND_SPELL_STEALTH, client);
-			TF2_AddCondition(client, TFCond_StealthedUserBuffFade, GetItemMod(ItemStrange_DarkHunter, 0));
+			TF2_AddCondition(client, TFCond_Stealthed, GetItemMod(ItemStrange_DarkHunter, 0));
 		}
 		
 		case ItemStrange_LegendaryLid:
@@ -1989,6 +2012,12 @@ bool ActivateStrangeItem(int client)
 				CPrintToChatAll("{blue}%N{default} :  Ahoy!", client);
 			}
 		}
+
+		case ItemStrange_WarswormHelm:
+		{
+			g_flPlayerWarswornBuffTime[client] = GetTickedTime()+GetItemMod(ItemStrange_WarswormHelm, 0);
+			EmitGameSoundToAll(GSND_MVM_POWERUP, client);
+		}
 	}
 	
 	// Don't go on cooldown if our charges are above the limit; we likely dropped some battery canteens
@@ -2081,7 +2110,7 @@ public void Timer_FusRoDah(Handle timer, int client)
 		{
 			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
 			ScaleVector(vel, -2.0);
-			SDK_ApplyAbsVelocityImpulse(entity, vel);
+			ApplyAbsVelocityImpulse(entity, vel);
 			proj = RF2_Projectile_Base(entity);
 			if (proj.Homing)
 			{
@@ -2666,7 +2695,7 @@ int GetItemFromSectionName(const char[] name)
 			return i;
 		}
 	}
-
+	
 	return Item_Null;
 }
 

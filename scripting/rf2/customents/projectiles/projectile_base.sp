@@ -528,7 +528,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		ArrayList blacklist, hitEnts;
 		if (IsValidEntity2(this.ImpactTarget) && IsCombatChar(this.ImpactTarget))
 		{
-			RF_TakeDamage(this.ImpactTarget, this.index, this.Owner, this.DirectDamage, DMG_BLAST, GetEntItemProc(this.index));
+			RF_TakeDamage(this.ImpactTarget, this.index, this.Owner, this.DirectDamage, damageType, GetEntItemProc(this.index));
 			blacklist = new ArrayList();
 			blacklist.Push(this.ImpactTarget);
 		}
@@ -536,7 +536,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		float pos[3];
 		this.WorldSpaceCenter(pos);
 		hitEnts = DoRadiusDamage(IsValidEntity2(this.Owner) ? this.Owner : this.index, this.index, pos, GetEntItemProc(this.index), 
-			this.Damage, DMG_BLAST, this.Radius, this.FalloffMult, this.DamageOwner, blacklist, returnHitEnts);
+			this.Damage, damageType, this.Radius, this.FalloffMult, this.DamageOwner, blacklist, returnHitEnts);
 		
 		if (blacklist)
 			delete blacklist;
@@ -753,7 +753,7 @@ public void OnVPhysicsUpdate(int entity)
 			NormalizeVector(vel, vel);
 			ScaleVector(vel, proj.HomingSpeed);
 			proj.SetAbsAngles(ang);
-			SDK_ApplyAbsVelocityImpulse(proj.index, vel);
+			ApplyAbsVelocityImpulse(proj.index, vel);
 		}
 		else if (GetGameTime() > proj.LastHomingTime+5.0)
 		{

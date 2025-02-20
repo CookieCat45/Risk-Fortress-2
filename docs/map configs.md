@@ -30,13 +30,13 @@ Each stage has its own individual folder, e.g. `rf2/maps/stage1/`, `rf2/maps/sta
 
 # Map Settings
 
-- `enemy_pack`: The enemy pack to use for this map. We'll get into how to create and use these shortly. **Don't include the .cfg file extension**.<br/>
+- `enemy_pack`: The enemy pack to use for this map. **Don't include the .cfg file extension**.<br/>
 
-- `boss_pack`: The boss pack to use for this map. Bosses will appear during the Teleporter event or may spawn randomly when the difficulty reaches a certain point.<br/>
+- `boss_pack`: The boss pack to use for this map. Bosses (normally giants) will appear during the Teleporter event or may spawn randomly when the enemy level reaches a certain point.<br/>
 
-- `enemy_pack_loop`: Same as `enemy_pack`, but is used in place of it if the game has looped at least once.<br/>
+- `enemy_pack_loop`: Same as `enemy_pack`, but is used in place of it if the run has looped at least once.<br/>
 
-- `boss_pack_loop`: Same as `boss_pack`, but is used in place of it if the game has looped at least once.<br/>
+- `boss_pack_loop`: Same as `boss_pack`, but is used in place of it if the run has looped at least once.<br/>
 
 - `grace_period_time`: How long the grace period at the beginning of the map will last. Defaults to 30 seconds. -1 for no grace period.<br/>
 
@@ -50,10 +50,14 @@ Each stage has its own individual folder, e.g. `rf2/maps/stage1/`, `rf2/maps/sta
 
 - `max_spawn_wave_time`: The maximum amount of time in seconds between robot spawn waves. If unspecified, the spawn timer will behave as normal.
 
-- `boss_spawn_chance_bonus`: Can increase the chance for bosses to randomly spawn. Starting at enemy level 20, there will be a 1 in 250 chance for a boss to spawn in place of a regular robot, which increases by 1 every 4 levels onwards, but this keyvalue can be used to add to this chance value.
+- `boss_spawn_chance_bonus`: Can increase the chance for bosses to randomly spawn. Starting at enemy level 20, there will be a 1 in 250 chance for a boss to spawn in place of a regular robot, which increases by 1 every 4 levels onwards, but this key can be used to add to this chance value.
 
 - `disable_eureka_teleport`: Disables the Eureka Effect's teleport ability.
 
 - `disable_item_dropping`: Prevent players from dropping their items.
 
 - `start_money_multiplier`: Multiplier for the amount of money that players begin the map with.
+
+
+# Risk Fortress 2 Mapping: Robot Configs
+Most maps normally have two configuration files for robot types: one for the regular common robot types, and another for the boss robots, who are normally giants.

@@ -8,7 +8,7 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.3-DEVONLY"
+#define PLUGIN_VERSION "1.4-DEVONLY"
 #else
 #define PLUGIN_VERSION "1.3"
 #endif
@@ -157,6 +157,7 @@ bool g_bPlayerItemShareExcluded[MAXTF2PLAYERS];
 bool g_bPlayerHauntedKeyDrop[MAXTF2PLAYERS];
 bool g_bPlayerFullMinigunMoveSpeed[MAXTF2PLAYERS];
 bool g_bPlayerPermaDeathMark[MAXTF2PLAYERS];
+bool g_bPlayerIsDyingBoss[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -189,6 +190,7 @@ float g_flPlayerHardHatLastResistTime[MAXTF2PLAYERS];
 float g_flPlayerLastBlockTime[MAXTF2PLAYERS];
 float g_flPlayerDelayedHealTime[MAXTF2PLAYERS];
 float g_flPlayerLifestealTime[MAXTF2PLAYERS];
+float g_flPlayerWarswornBuffTime[MAXTF2PLAYERS];
 
 int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
@@ -216,6 +218,7 @@ int g_iPlayerUnusualsUnboxed[MAXTF2PLAYERS];
 int g_iPlayerGoombaChain[MAXTF2PLAYERS];
 int g_iPlayerLastPingedEntity[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 int g_iPlayerShieldHealth[MAXTF2PLAYERS];
+int g_iPlayerCollectorSwapCount[MAXTF2PLAYERS];
 
 char g_szPlayerOriginalName[MAXTF2PLAYERS][MAX_NAME_LENGTH];
 ArrayList g_hPlayerExtraSentryList[MAXTF2PLAYERS];
@@ -247,6 +250,8 @@ float g_flLastHalloweenBossAttackTime[MAX_EDICTS][MAXTF2PLAYERS];
 
 ArrayList g_hHHHTargets;
 ArrayList g_hMonoculusTargets;
+StringMap g_hEnemyTypeCooldowns;
+StringMap g_hEnemyTypeNumSpawned;
 
 // Timers
 Handle g_hPlayerTimer;
@@ -257,7 +262,6 @@ Handle g_hEntityGlowResetTimer[MAX_EDICTS];
 
 // Gamedata handles
 Handle g_hSDKEquipWearable;
-Handle g_hSDKGetMaxClip1;
 Handle g_hSDKUpdateSpeed;
 Handle g_hSDKDoQuickBuild;
 Handle g_hSDKGetMaxHealth;
@@ -266,7 +270,6 @@ Handle g_hSDKIntersects;
 Handle g_hSDKWeaponSwitch;
 Handle g_hSDKRealizeSpy;
 Handle g_hSDKSpawnZombie;
-Handle g_hSDKAbsVelImpulse;
 Handle g_hSDKTankSetStartNode;
 DynamicDetour g_hDetourSentryAttack;
 DynamicDetour g_hDetourHandleRageGain;
@@ -503,6 +506,8 @@ public void OnPluginStart()
 	LoadTranslations("rf2.phrases");
 	LoadTranslations("rf2_achievements.phrases");
 	g_hCrashedPlayerSteamIDs = new StringMap();
+	g_hEnemyTypeCooldowns = new StringMap();
+	g_hEnemyTypeNumSpawned = new StringMap();
 	g_hHHHTargets = new ArrayList();
 	g_hMonoculusTargets = new ArrayList();
 	g_hCustomTracks = new ArrayList(PLATFORM_MAX_PATH);
@@ -524,16 +529,24 @@ public void OnPluginStart()
 public void OnPluginEnd()
 {
 	if (RF2_IsEnabled())
+	{
+		FindConVar("tf_bot_offline_practice").SetBool(false);
 		StopMusicTrackAll();
+	}
 	
 	for (int i = 0; i < MAXTF2PLAYERS; i++)
 	{
 		if (RF2_IsEnabled() && IsValidClient(i))
 		{
 			SetClientName(i, g_szPlayerOriginalName[i]);
+			StopSound(i, SNDCHAN_STATIC, "mvm/giant_scout/giant_scout_loop.wav");
+			StopSound(i, SNDCHAN_STATIC, "mvm/giant_soldier/giant_soldier_loop.wav");
+			StopSound(i, SNDCHAN_STATIC, "mvm/giant_pyro/giant_pyro_loop.wav");
+			StopSound(i, SNDCHAN_STATIC, "mvm/giant_demoman/giant_demoman_loop.wav");
+			StopSound(i, SNDCHAN_STATIC, "mvm/giant_heavy/giant_heavy_loop.wav");
 		}
 	}
-
+	
 	CleanPathFollowers();
 }
 
@@ -571,7 +584,7 @@ void LoadGameData()
 	g_hSDKPlayGesture = EndPrepSDKCall();
 	if (!g_hSDKPlayGesture)
 	{
-		LogError("Failed to create call for CTFPlayer::PlayGesture");
+		LogError("[SDK] Failed to create call for CTFPlayer::PlayGesture");
 	}
 	
 	
@@ -616,16 +629,6 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CBaseEntity::Intersects");
 	}
 	
-	
-	StartPrepSDKCall(SDKCall_Entity);
-	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CBaseEntity::ApplyAbsVelocityImpulse");
-	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
-	g_hSDKAbsVelImpulse = EndPrepSDKCall();
-	if (!g_hSDKAbsVelImpulse)
-	{
-		LogError("[SDK] Failed to create call for CBaseEntity::ApplyAbsVelocityImpulse");
-	}
-	
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFTankBoss::SetStartingPathTrackNode");
 	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // targetname of path_track entity
@@ -635,15 +638,6 @@ void LoadGameData()
 		LogError("[SDK] Failed to create call for CTFTankBoss::SetStartingPathTrackNode");
 	}
 	
-	StartPrepSDKCall(SDKCall_Entity);
-	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFWeaponBase::GetMaxClip1");
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
-	g_hSDKGetMaxClip1 = EndPrepSDKCall();
-	if (!g_hSDKGetMaxClip1)
-	{
-		LogError("[SDK] Failed to create call for CTFWeaponBase::GetMaxClip1");
-	}
-
 	g_hDetourSetReloadTimer = DynamicDetour.FromConf(gamedata, "CTFWeaponBase::SetReloadTimer");
 	if (!g_hDetourSetReloadTimer || !g_hDetourSetReloadTimer.Enable(Hook_Pre, Detour_SetReloadTimer))
 	{
@@ -783,7 +777,7 @@ void LoadGameData()
 		LogError("[DHooks] Failed to create detour for CVEngineServer::FindMap");
 	}
 	
-	
+
 	g_hHookCreateFakeClientEx = new DynamicHook(gamedata.GetOffset("CVEngineServer::CreateFakeClientEx"), HookType_Raw, ReturnType_Edict, ThisPointer_Address);
 	if (g_hHookCreateFakeClientEx)
 	{
@@ -992,19 +986,21 @@ public void OnMapStart()
 		g_hMainHudSync = CreateHudSynchronizer();
 		g_hObjectiveHudSync = CreateHudSynchronizer();
 		g_hMiscHudSync = CreateHudSynchronizer();
-		g_iMaxStages = FindMaxStages();
-		if (!g_szUnderworldMap[0])
-			FindSpecialMap(SpecialMap_Underworld);
-		if (!g_szFinalMap[0])
-			FindSpecialMap(SpecialMap_Final);
-
-		LoadMapSettings(mapName);
-		g_bTropicsMapExists = RF2_IsMapValid("rf2_tropics"); // For ACHIEVEMENT_TEMPLESECRET - hide it if the map doesn't exist
+		
+		// ALWAYS load items first
 		if (GetTotalItems() <= 0)
 		{
 			LoadItems();
 		}
 		
+		g_iMaxStages = FindMaxStages();
+		if (!g_szUnderworldMap[0])
+			FindSpecialMap(SpecialMap_Underworld);
+		if (!g_szFinalMap[0])
+			FindSpecialMap(SpecialMap_Final);
+			
+		LoadMapSettings(mapName);
+		g_bTropicsMapExists = RF2_IsMapValid("rf2_tropics"); // For ACHIEVEMENT_TEMPLESECRET - hide it if the map doesn't exist
 		LoadWeapons();
 		LoadSurvivorStats();
 		Call_StartForward(g_fwOnMapStart);
@@ -1063,11 +1059,11 @@ public void OnConfigsExecuted()
 		FindConVar("sm_vote_progress_hintbox").SetBool(true);
 		FindConVar("mp_humans_must_join_team").SetString(g_cvAllowHumansInBlue.BoolValue ? "any" : "red");
 		InsertServerCommand("sv_pure 0");
-
+		
 		UpdateBotQuota();
 		char class[32];
 		GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
-		FindConVar("tf_bot_force_class").SetString("engineer");
+		FindConVar("tf_bot_force_class").SetString(class);
 		FindConVar("tf_bot_quota_mode").SetString("normal");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
 		FindConVar("tf_bot_offense_must_push_time").SetInt(-1);
@@ -1174,6 +1170,8 @@ void CleanUp()
 	delete g_hObjectiveHudSync;
 	delete g_hMiscHudSync;
 	g_hCrashedPlayerSteamIDs.Clear();
+	g_hEnemyTypeCooldowns.Clear();
+	g_hEnemyTypeNumSpawned.Clear();
 	g_hHHHTargets.Clear();
 	g_hMonoculusTargets.Clear();
 	SetAllInArray(g_hCrashedPlayerTimers, sizeof(g_hCrashedPlayerTimers), INVALID_HANDLE);
@@ -1293,6 +1291,12 @@ void LoadAssets()
 	PrecacheSound2("vo/halloween_boss/knight_attack04.mp3", true);
 	PrecacheScriptSound(GSND_CRIT);
 	PrecacheScriptSound(GSND_MINICRIT);
+	PrecacheScriptSound(GSND_MVM_POWERUP);
+	PrecacheScriptSound("MVM.GiantScoutLoop");
+	PrecacheScriptSound("MVM.GiantSoldierLoop");
+	PrecacheScriptSound("MVM.GiantPyroLoop");
+	PrecacheScriptSound("MVM.GiantDemomanLoop");
+	PrecacheScriptSound("MVM.GiantHeavyLoop");
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
 	AddSoundToDownloadsTable(SND_DRAGONBORN);
@@ -1333,6 +1337,7 @@ void ResetConVars()
 	ResetConVar(FindConVar("tf_allow_server_hibernation"));
 	ResetConVar(FindConVar("tf_mvm_defenders_team_size"));
 	ResetConVar(FindConVar("tf_mvm_max_connected_players"));
+	ResetConVar(FindConVar("tf_bot_offline_practice"));
 	ResetConVar(FindConVar("tv_enable"));
 	ResetConVar(FindConVar("mp_tournament_redteamname"));
 	ResetConVar(FindConVar("mp_tournament_blueteamname"));
@@ -1548,8 +1553,10 @@ public void OnClientDisconnect_Post(int client)
 	
 	g_iPlayerInventoryIndex[client] = -1;
 	g_iPlayerSurvivorIndex[client] = -1;
+	g_iPlayerCollectorSwapCount[client] = 0;
 	g_flPlayerCash[client] = 0.0;
 	g_iMetalItemsDropped[client] = 0;
+	g_bPlayerIsDyingBoss[client] = false;
 	g_bPlayerSpawningAsMinion[client] = false;
 	g_bPlayerToggledAutoFire[client] = false;
 	g_bPlayerHauntedKeyDrop[client] = false;
@@ -1770,7 +1777,7 @@ void StartDifficultyVote()
 	menu.AddItem("0", "Scrap (Easy)");
 	menu.AddItem("1", "Iron (Normal)");
 	menu.AddItem("2", "Steel (Hard)");
-
+	
 	bool achievement = true;
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -1963,6 +1970,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		}
 	}
 	
+	g_bPlayerIsDyingBoss[client] = false;
 	if (!g_bRoundActive)
 		return Plugin_Continue;
 	
@@ -2192,11 +2200,20 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	
 	if (victimTeam == TEAM_ENEMY)
 	{
+		SetVariantString("ParticleEffectStop");
+		AcceptEntityInput(victim, "DispatchEffect");
+		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_scout/giant_scout_loop.wav");
+		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_soldier/giant_soldier_loop.wav");
+		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_pyro/giant_pyro_loop.wav");
+		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_demoman/giant_demoman_loop.wav");
+		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_heavy/giant_heavy_loop.wav");
+		
 		if (!IsFakeClient(victim))
 		{
 			SetClientName(victim, g_szPlayerOriginalName[victim]);
 		}
-		
+
+		g_bPlayerIsDyingBoss[victim] = IsBoss(victim);
 		if (!g_bGracePeriod)
 		{
 			float pos[3];
@@ -3514,7 +3531,7 @@ public Action Timer_PlayerHud(Handle timer)
 						{
 							TriggerAchievement(i, ACHIEVEMENT_BEATGAMESTEEL);
 						}
-
+						
 						if (RF2_GetDifficulty() >= DIFFICULTY_TITANIUM)
 						{
 							TriggerAchievement(i, ACHIEVEMENT_BEATGAMETITANIUM);
@@ -3600,7 +3617,7 @@ public Action Timer_PlayerHud(Handle timer)
 					if (tank.IsValid())
 					{
 						static char name[32];
-						name = tank.IsBadass() ? tank.SuperBadass ? "Super Badass Tank" : "Badass Tank" : "Tank";
+						name = tank.Type != TankType_Normal ? tank.Type != TankType_Badass ? "Super Badass Tank" : "Badass Tank" : "Tank";
 						FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), g_bTankBossMode ? "Tanks Destroyed: %i/%i\n%s Health: %i/%i" : "%s Health: %i/%i",
 							g_iTanksKilledObjective, g_iTankKillRequirement, name, tank.Health, tank.MaxHealth);
 					}
@@ -4018,7 +4035,18 @@ public Action Timer_PlayerTimer(Handle timer)
 		if (weapon != INVALID_ENT)
 		{
 			ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType");
-			if (ammoType > TFAmmoType_None && ammoType < TFAmmoType_Metal)
+			bool scoutSecondary;
+			if (ammoType == TFAmmoType_Secondary)
+			{
+				// don't refill for scout secondaries since they use this ammo type to work with Whale Bone Charm
+				int id = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+				if (id == 812 || id == 222 || id == 1121)
+				{
+					scoutSecondary = true;
+				}	
+			}
+			
+			if (!scoutSecondary && ammoType > TFAmmoType_None && ammoType < TFAmmoType_Metal)
 			{
 				GivePlayerAmmo(i, 999999, ammoType, true);
 			}
@@ -4848,6 +4876,13 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 			}
 		}
 	}
+	else if (condition == TFCond_Bonked)
+	{
+		if (GetClientTeam(client) == TEAM_SURVIVOR)
+		{
+			TF2_RemoveCondition(client, TFCond_Dazed);
+		}
+	}
 	else if (condition == TFCond_Buffed && PlayerHasItem(client, Item_MisfortuneFedora))
 	{
 		TF2_AddCondition(client, TFCond_Buffed);
@@ -4911,6 +4946,11 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	
 	bool changed;
 	bool melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee) == weapon;
+	if (!melee && g_flPlayerWarswornBuffTime[client] > GetTickedTime())
+	{
+		// infinite shots
+		SetWeaponClip(weapon, GetWeaponClipSize(weapon));
+	}
 	
 	// Set m_flNextPrimaryAttack on the next frame to modify attack speed
 	// Any of TF2's own firing speed modifications such as attributes will still go through
@@ -4990,10 +5030,12 @@ public void RF_NextPrimaryAttack(int client)
 	// Calculate based on the time the weapon was fired at since that was in the last frame.
 	float gameTime = g_flWeaponFireTime[client];
 	float time = GetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack");
+	float time2 = GetEntPropFloat(weapon, Prop_Send, "m_flNextSecondaryAttack");
 	
 	bool melee = (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == weapon);
 	float rate = GetPlayerFireRateMod(client, weapon);
 	time -= gameTime;
+	time2 -= gameTime;
 	int viewModel = GetEntPropEnt(client, Prop_Send, "m_hViewModel");
 	float playBackRate = GetEntPropFloat(viewModel, Prop_Send, "m_flPlaybackRate");
 	if (melee)
@@ -5006,11 +5048,19 @@ public void RF_NextPrimaryAttack(int client)
 	}
 	
 	time *= rate;
+	time2 *= rate;
 	
-	// Melee weapons have a swing speed cap
-	if (time < 0.3 && melee)
+	// Melee weapons and certain throwables have an attack speed cap
+	int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+	bool throwable = (index == 812 || index == 58 || index == 1083 || index == 222 || index == 1121 || index == 1180);
+	if (throwable)
 	{
-		time = 0.3;
+		time = fmax(0.2, time);
+	}
+	else if (melee)
+	{
+		time = fmax(0.3, time);
+		time2 = fmax(0.3, time2);
 	}
 	
 	if (!melee && IsPlayerSurvivor(client) && time <= GetTickInterval())
@@ -5024,6 +5074,7 @@ public void RF_NextPrimaryAttack(int client)
 	}
 	
 	SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", gameTime+time);
+	SetEntPropFloat(weapon, Prop_Send, "m_flNextSecondaryAttack", gameTime+time2);
 }
 
 void ForceRifleSound(int client, bool crit=false)
@@ -5132,6 +5183,10 @@ public void TF2_OnWaitingForPlayersStart()
 {
 	if (!RF2_IsEnabled())
 		return;
+	
+	// Disable TF2 achievements and stat tracking
+	// We need to enable it here because this cvar otherwise prevents waiting for players from starting at all.
+	FindConVar("tf_bot_offline_practice").SetBool(true);
 	
 	GameRules_SetPropFloat("m_flNextRespawnWave", GetGameTime()+999999.0, 2);
 	GameRules_SetPropFloat("m_flNextRespawnWave", GetGameTime()+999999.0, 3);
@@ -5667,7 +5722,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 					float vel[3];
 					vel[2] = 300.0;
 					vel[2] = TF2Attrib_HookValueFloat(vel[2], "damage_force_reduction", victim);
-					SDK_ApplyAbsVelocityImpulse(victim, vel);
+					ApplyAbsVelocityImpulse(victim, vel);
 				}
 			}
 
@@ -6201,15 +6256,17 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (inflictorIsBuilding)
 	{
-		if (GetEntTeam(inflictor) == TEAM_ENEMY)
-			damageType |= DMG_PREVENT_PHYSICS_FORCE;
-		
-		// only applies to sentry bullets
+		// Reduce self damage from bullets
 		if (victim == attacker)
 		{
 			damage *= 0.4;
 			damageType &= ~DMG_CRIT;
 			return Plugin_Changed;
+		}
+		else
+		{
+			// No sentry knockback
+			damageType |= DMG_PREVENT_PHYSICS_FORCE;
 		}
 	}
 	
@@ -6421,7 +6478,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			}
 		}
 		
-		if (!selfDamage && !invuln) // General damage modifications will be done here
+		if (!selfDamage && !invuln)
 		{
 			if (PlayerHasItem(attacker, Item_PointAndShoot))
 			{
@@ -6462,10 +6519,10 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				{
 					damage *= 1.0 + CalcItemMod(attacker, Item_SaxtonHat, 0);
 				}
-
+				
 				if (TF2_IsPlayerInCondition(attacker, TFCond_RuneKnockout))
 				{
-					// Knockout does nothing outside of Mannpower, so make it double melee damage and do heavy knockback
+					// Knockout doesn't function by itself outside of Mannpower, so make it double melee damage and do heavy knockback
 					damage *= 2.0;
 					if (victimIsClient)
 					{
@@ -6478,7 +6535,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 						NormalizeVector(vel, vel);
 						ScaleVector(vel, 500.0);
 						ScaleVector(vel, TF2Attrib_HookValueFloat(1.0, "damage_force_reduction", victim));
-						SDK_ApplyAbsVelocityImpulse(victim, vel);
+						ApplyAbsVelocityImpulse(victim, vel);
 						RemoveAllRunes(victim);
 					}
 				}
@@ -6645,7 +6702,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 {
 	if (!RF2_IsEnabled() || attacker >= MAX_EDICTS)
 		return;
-
+	
 	bool attackerIsClient = IsValidClient(attacker);
 	bool victimIsClient = IsValidClient(victim);
 	bool invuln = victimIsClient && IsInvuln(victim);
@@ -6703,7 +6760,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			GiveItem(victim, Item_CheatersLament, -1);
 			GiveItem(victim, Item_CheatersLament_Recharging, 1, true);
 		}
-
+		
 		if (!selfDamage && !invuln && proc > 0.0 
 			&& PlayerHasItem(victim, Item_Capacitor) && (!attackerIsClient || GetEntItemProc(attacker) != Item_Capacitor)
 			&& RandChanceFloatEx(victim, 0.001, 1.0, GetItemMod(Item_Capacitor, 3)))
@@ -6875,10 +6932,10 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				GetEntityClassname(weapon, wepClassname, sizeof(wepClassname));
 				if (strcmp2(wepClassname, "tf_weapon_flamethrower"))
 				{
-					damage *= GetPlayerFireRateMod(attacker, weapon); // Fire rate increases flamethrower damage, at a reduced rate
+					damage *= GetPlayerFireRateMod(attacker, weapon); // Fire rate increases flamethrower damage
 				}
 				else if ((damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE)
-						&& strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball"))
+					&& strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball"))
 				{
 					float mult = GetPlayerFireRateMod(attacker, weapon)*1.5;
 					SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
@@ -6906,7 +6963,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 					enemyPos[2] += 30.0;
 					GetVectorAnglesTwoPoints(pos, enemyPos, angles);
 					float dmg = GetItemMod(Item_Law, 1) + CalcItemMod(attacker, Item_Law, 2, -1);
-					int rocket = ShootProjectile(attacker, "tf_projectile_sentryrocket", pos, angles, rocketSpeed, dmg);
+					int rocket = ShootProjectile(attacker, "tf_projectile_rocket", pos, angles, rocketSpeed, dmg);
 					SetShouldDamageOwner(rocket, false);
 					SetEntItemProc(rocket, Item_Law);
 					EmitSoundToAll(SND_LAW_FIRE, attacker, _, _, _, 0.6);
@@ -7534,13 +7591,12 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 			if (voiceType == VoiceType_Robot)
 			{
 				action = Plugin_Changed;
-				
 				bool noGiantLines = (class == TFClass_Sniper || class == TFClass_Medic || class == TFClass_Engineer || class == TFClass_Spy);
 				char classString[16], newString[32];
 				GetClassString(class, classString, sizeof(classString), true);
-				
-				if (IsBoss(client) && !noGiantLines)
+				if ((IsBoss(client) || g_bPlayerIsDyingBoss[client]) && !noGiantLines)
 				{
+					g_bPlayerIsDyingBoss[client] = false;
 					ReplaceStringEx(sample, sizeof(sample), "vo/", "vo/mvm/mght/");
 					FormatEx(newString, sizeof(newString), "%smvm_m_", classString);
 				}
@@ -7642,10 +7698,13 @@ public Action TEHook_TFBlood(const char[] te_name, const int[] clients, int numC
 	{
 		if (Enemy(client).NoBleeding)
 		{
+			// This may have possibly been causing client crashes, but not sure
+			/*
 			g_flBloodPos[0] = TE_ReadFloat("m_vecOrigin[0]");
 			g_flBloodPos[1] = TE_ReadFloat("m_vecOrigin[1]");
 			g_flBloodPos[2] = TE_ReadFloat("m_vecOrigin[2]");
 			RequestFrame(RF_SpawnMechBlood, client);
+			*/
 			return Plugin_Stop;
 		}
 	}

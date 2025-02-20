@@ -500,7 +500,7 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 			ScaleVector(vel, GetRandomFloat(500.0, 1250.0));
 			TeleportEntity(prop, pos, angles);
 			DispatchSpawn(prop);
-			SDK_ApplyAbsVelocityImpulse(prop, vel);
+			ApplyAbsVelocityImpulse(prop, vel);
 			CreateTimer(GetRandomFloat(10.0, 18.0), Timer_DeleteEntity, EntIndexToEntRef(prop), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
