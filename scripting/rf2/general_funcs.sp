@@ -978,6 +978,11 @@ stock void DebugMsgNoSpam(const char[] message, any ...)
 		strcopy(lastMessage, sizeof(lastMessage), buffer);
 		lastTime = time;
 	}
+	#else
+	if (message[0]) // prevent compile warning
+	{
+	
+	}
 	#endif
 }
 
@@ -988,5 +993,10 @@ stock void DebugMsg(const char[] message, any ...)
 	VFormat(buffer, sizeof(buffer), message, 2);
 	PrintToChatAll("[DEBUG] %s", buffer);
 	PrintToServer("[DEBUG] %s", buffer);
+	#else
+	if (message[0]) // prevent compile warning
+	{
+	
+	}
 	#endif
 }

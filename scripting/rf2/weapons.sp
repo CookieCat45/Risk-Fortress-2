@@ -42,7 +42,6 @@ void LoadWeapons()
 			while (firstKey ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
 			{
 				weaponKey.GetSectionName(g_szWeaponIndexIdentifier[i][count], sizeof(g_szWeaponIndexIdentifier[][]));
-				#if defined DEVONLY
 				if (weaponKey.JumpToKey("attributes"))
 				{
 					char key[128], val[128];
@@ -74,9 +73,7 @@ void LoadWeapons()
 					TrimString(g_szWeaponAttributes[i][count]);
 					weaponKey.GoBack();
 				}
-				#else
-				weaponKey.GetString("add_attributes", g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]));
-				#endif
+				//weaponKey.GetString("add_attributes", g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]));
 
 				weaponKey.GetString("classname", g_szWeaponClassnameReplacement[i][count], sizeof(g_szWeaponClassnameReplacement[][]));
 				g_iWeaponIndexReplacement[i][count] = weaponKey.GetNum("index", -1);

@@ -664,7 +664,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			}
 			
 			enemyKey.GetString("classname", g_szEnemyWeaponName[e][w], sizeof(g_szEnemyWeaponName[][]), "null");
-			#if defined DEVONLY
 			if (enemyKey.JumpToKey("attributes"))
 			{
 				char key[128], val[128];
@@ -707,16 +706,11 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 				TrimString(g_szEnemyWeaponAttributes[e][w]);
 				enemyKey.GoBack();
 			}
-			#else
-			enemyKey.GetString("attributes", g_szEnemyWeaponAttributes[e][w], sizeof(g_szEnemyWeaponAttributes[][]), "");
-			#endif
+			//enemyKey.GetString("attributes", g_szEnemyWeaponAttributes[e][w], sizeof(g_szEnemyWeaponAttributes[][]), "");
 			enemy.SetWeaponIndex(w, enemyKey.GetNum("index", 5));
 			enemy.SetWeaponVisible(w, asBool(enemyKey.GetNum("visible", true)));
-			#if defined DEVONLY
 			enemy.SetWeaponUseStaticAtts(w, !asBool(enemyKey.GetNum("strip_attributes", false)));
-			#else
-			enemy.SetWeaponUseStaticAtts(w, asBool(enemyKey.GetNum("static_attributes", false)));
-			#endif
+			//enemy.SetWeaponUseStaticAtts(w, asBool(enemyKey.GetNum("static_attributes", false)));
 			enemy.SetWeaponIsFirstActive(w, asBool(enemyKey.GetNum("active_weapon", false)));
 			enemy.SetWeaponStartWithEmptyClip(w, asBool(enemyKey.GetNum("empty_clip", false)));
 			enemy.WeaponCount++;
