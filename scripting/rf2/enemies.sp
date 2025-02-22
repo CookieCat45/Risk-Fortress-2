@@ -657,6 +657,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.WeaponCount = 0;
 		for (int w = 0; w < TF_WEAPON_SLOTS; w++)
 		{
+			g_szEnemyWeaponAttributes[e][w] = "";
 			FormatEx(sectionName, sizeof(sectionName), "weapon%i", w+1);
 			if (!enemyKey.JumpToKey(sectionName))
 			{
@@ -706,7 +707,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 				TrimString(g_szEnemyWeaponAttributes[e][w]);
 				enemyKey.GoBack();
 			}
-			//enemyKey.GetString("attributes", g_szEnemyWeaponAttributes[e][w], sizeof(g_szEnemyWeaponAttributes[][]), "");
+
 			enemy.SetWeaponIndex(w, enemyKey.GetNum("index", 5));
 			enemy.SetWeaponVisible(w, asBool(enemyKey.GetNum("visible", true)));
 			enemy.SetWeaponUseStaticAtts(w, !asBool(enemyKey.GetNum("strip_attributes", false)));
@@ -724,6 +725,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			if (!enemyKey.JumpToKey(sectionName))
 				continue;
 			
+			// TODO: update to new attribute parsing code
 			enemyKey.GetString("classname", g_szEnemyWearableName[e][w], sizeof(g_szEnemyWearableName[][]), "tf_wearable");
 			enemyKey.GetString("attributes", g_szEnemyWearableAttributes[e][w], sizeof(g_szEnemyWearableAttributes[][]), "");
 			enemy.SetWearableIndex(w, enemyKey.GetNum("index", 5));
