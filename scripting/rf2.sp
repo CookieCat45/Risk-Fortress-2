@@ -40,6 +40,7 @@ public Plugin myinfo =
 
 // General
 bool g_bPluginEnabled;
+bool g_bStatsLoaded;
 bool g_bLateLoad;
 bool g_bGameInitialized;
 bool g_bWaitingForPlayers;
@@ -1001,8 +1002,13 @@ public void OnMapStart()
 			
 		LoadMapSettings(mapName);
 		g_bTropicsMapExists = RF2_IsMapValid("rf2_tropics"); // For ACHIEVEMENT_TEMPLESECRET - hide it if the map doesn't exist
-		LoadWeapons();
-		LoadSurvivorStats();
+		if (!g_bStatsLoaded)
+		{
+			LoadWeapons();
+			LoadSurvivorStats();
+			g_bStatsLoaded = true;
+		}
+		
 		Call_StartForward(g_fwOnMapStart);
 		Call_Finish();
 		CreateTimer(1.0, Timer_AFKManager, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
