@@ -100,13 +100,6 @@
 				"linux64"	"@_ZN13CTFWeaponBase14SetReloadTimerEf"
 				"windows64"	"\x48\x89\x5C\x24\x20\x57\x48\x83\xEC\x60\x0F\x29\x7C\x24\x40"
 			}
-			"CTFPlayer::TeamFortress_SetSpeed"
-			{
-				"linux"		"@_ZN9CTFPlayer21TeamFortress_SetSpeedEv"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x24\xA1\x2A\x2A\x2A\x2A\x56\x8B\xF1\x89\x75\xF0"
-				"linux64"	"@_ZN9CTFPlayer21TeamFortress_SetSpeedEv"
-				"windows64"	"\x40\x55\x48\x83\xEC\x60\x48\x8B\x05\x03\x3D\x7A\x00"
-			}
 			"CTFPlayer::ApplyPunchImpulseX" // Look for string "aiming_no_flinch"
 			{
 				"linux"		"@_ZN9CTFPlayer18ApplyPunchImpulseXEf"

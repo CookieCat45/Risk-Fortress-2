@@ -561,7 +561,7 @@ float CalculatePlayerMaxSpeed(int client)
 		TF2Attrib_SetByName(client, "move speed bonus", mult);
 	}
 	
-	SDK_ForceSpeedUpdate(client);
+	ForceSpeedUpdate(client);
 	g_flPlayerCalculatedMaxSpeed[client] = speed;
 	return GetEntPropFloat(client, Prop_Data, "m_flMaxspeed");
 }
@@ -1434,12 +1434,9 @@ stock bool IsPlayerCritBoosted(int client)
 		|| TF2_IsPlayerInCondition(client, TFCond_CritOnWin);
 }
 
-void SDK_ForceSpeedUpdate(int client)
+void ForceSpeedUpdate(int client)
 {
-	if (g_hSDKUpdateSpeed)
-	{
-		SDKCall(g_hSDKUpdateSpeed, client);
-	}
+	ClientCommand(client, "cyoa_pda_open"); // Yes, this actually works.
 }
 
 public MRESReturn Detour_HandleRageGain(DHookParam params)
@@ -1672,12 +1669,18 @@ void ClientPlayGesture(int client, const char[] gesture)
 {
 	bool wasCheatsEnabled = g_cvSvCheats.BoolValue;
 	if (!wasCheatsEnabled)
+	{
+		g_cvSvCheats.Flags &= ~FCVAR_NOTIFY;
 		g_cvSvCheats.SetBool(true);
+	}
 	
 	ClientCommand(client, "mp_playgesture %s", gesture);
 	
 	if (!wasCheatsEnabled)
+	{
 		g_cvSvCheats.SetBool(false);
+		g_cvSvCheats.Flags |= FCVAR_NOTIFY;
+	}
 }
 
 bool IsPlayerSpectator(int client)

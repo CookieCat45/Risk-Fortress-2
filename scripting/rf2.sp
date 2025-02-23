@@ -264,7 +264,6 @@ Handle g_hEntityGlowResetTimer[MAX_EDICTS];
 
 // Gamedata handles
 Handle g_hSDKEquipWearable;
-Handle g_hSDKUpdateSpeed;
 Handle g_hSDKDoQuickBuild;
 Handle g_hSDKGetMaxHealth;
 Handle g_hSDKIntersects;
@@ -582,15 +581,6 @@ void LoadGameData()
 	if(!g_hSDKEquipWearable)
 	{
 		LogError("[SDK] Failed to create call for CBasePlayer::EquipWearable");
-	}
-	
-	
-	StartPrepSDKCall(SDKCall_Player);
-	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFPlayer::TeamFortress_SetSpeed");
-	g_hSDKUpdateSpeed = EndPrepSDKCall();
-	if (!g_hSDKUpdateSpeed)
-	{
-		LogError("[SDK] Failed to create call for CTFPlayer::TeamFortress_SetSpeed");
 	}
 
 	
