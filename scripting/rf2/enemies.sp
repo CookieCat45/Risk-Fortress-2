@@ -658,6 +658,10 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		for (int w = 0; w < TF_WEAPON_SLOTS; w++)
 		{
 			g_szEnemyWeaponAttributes[e][w] = "";
+		}
+		
+		for (int w = 0; w < TF_WEAPON_SLOTS; w++)
+		{
 			FormatEx(sectionName, sizeof(sectionName), "weapon%i", w+1);
 			if (!enemyKey.JumpToKey(sectionName))
 			{
@@ -705,6 +709,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 				}
 				
 				TrimString(g_szEnemyWeaponAttributes[e][w]);
+				DebugMsg(g_szEnemyWeaponAttributes[e][w]);
 				enemyKey.GoBack();
 			}
 
@@ -721,11 +726,58 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.WearableCount = 0;
 		for (int w = 0; w < MAX_WEARABLES; w++)
 		{
+			g_szEnemyWearableAttributes[e][w] = "";
+		}
+
+		for (int w = 0; w < MAX_WEARABLES; w++)
+		{
 			FormatEx(sectionName, sizeof(sectionName), "wearable%i", w+1);
 			if (!enemyKey.JumpToKey(sectionName))
 				continue;
 			
-			// TODO: update to new attribute parsing code
+			if (enemyKey.JumpToKey("attributes"))
+			{
+				char key[128], val[128];
+				for (int i = 1; i > 0; i++)
+				{
+					if (i == 1 && !enemyKey.GotoFirstSubKey(false))
+					{
+						break;
+					}
+					
+					enemyKey.GetSectionName(key, sizeof(key));
+					int id = AttributeNameToDefIndex(key);
+					if (id != -1)
+					{
+						enemyKey.GetString(NULL_STRING, val, sizeof(val));
+						if (i == 1)
+						{
+							Format(g_szEnemyWearableAttributes[e][w], sizeof(g_szEnemyWearableAttributes[][]),
+								"%s%d = %s", g_szEnemyWearableAttributes[e][w], id, val);
+						}
+						else
+						{
+							Format(g_szEnemyWearableAttributes[e][w], sizeof(g_szEnemyWearableAttributes[][]),
+								"%s ; %d = %s", g_szEnemyWearableAttributes[e][w], id, val);
+						}
+						
+					}
+					else
+					{
+						LogError("[LoadEnemiesFromPack] Invalid attribute '%s' in '%s'", key, config);
+					}
+					
+					if (!enemyKey.GotoNextKey(false))
+					{
+						enemyKey.GoBack();
+						break;
+					}
+				}
+
+				TrimString(g_szEnemyWearableAttributes[e][w]);
+				DebugMsg(g_szEnemyWearableAttributes[e][w]);
+			}
+			
 			enemyKey.GetString("classname", g_szEnemyWearableName[e][w], sizeof(g_szEnemyWearableName[][]), "tf_wearable");
 			enemyKey.GetString("attributes", g_szEnemyWearableAttributes[e][w], sizeof(g_szEnemyWearableAttributes[][]), "");
 			enemy.SetWearableIndex(w, enemyKey.GetNum("index", 5));

@@ -488,6 +488,18 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 		return APLRes_Failure;
 	}
 	
+	char altPluginName[64];
+	#if defined DEVONLY
+	altPluginName = "rf2.smx";
+	#else
+	altPluginName = "rf2_development.smx";
+	#endif
+	if (FindPluginByFile(altPluginName))
+	{
+		FormatEx(error, err_max, "A different version of the plugin is already running (%s)", altPluginName);
+		return APLRes_SilentFailure;
+	}
+
 	g_bLateLoad = late;
 	g_bMapRunning = late;
 	RegPluginLibrary("rf2");
@@ -540,11 +552,14 @@ public void OnPluginEnd()
 		if (RF2_IsEnabled() && IsValidClient(i))
 		{
 			SetClientName(i, g_szPlayerOriginalName[i]);
-			StopSound(i, SNDCHAN_STATIC, "mvm/giant_scout/giant_scout_loop.wav");
-			StopSound(i, SNDCHAN_STATIC, "mvm/giant_soldier/giant_soldier_loop.wav");
-			StopSound(i, SNDCHAN_STATIC, "mvm/giant_pyro/giant_pyro_loop.wav");
-			StopSound(i, SNDCHAN_STATIC, "mvm/giant_demoman/giant_demoman_loop.wav");
-			StopSound(i, SNDCHAN_STATIC, "mvm/giant_heavy/giant_heavy_loop.wav");
+			for (int a = 1; a <= 2; a++)
+			{
+				StopSound(i, SNDCHAN_STATIC, "mvm/giant_scout/giant_scout_loop.wav");
+				StopSound(i, SNDCHAN_STATIC, "mvm/giant_soldier/giant_soldier_loop.wav");
+				StopSound(i, SNDCHAN_STATIC, "mvm/giant_pyro/giant_pyro_loop.wav");
+				StopSound(i, SNDCHAN_STATIC, "mvm/giant_demoman/giant_demoman_loop.wav");
+				StopSound(i, SNDCHAN_STATIC, "mvm/giant_heavy/giant_heavy_loop.wav");
+			}
 		}
 	}
 	
@@ -2128,6 +2143,15 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	{
 		CreateTimer(0.1, Timer_RespawnPlayerPreRound, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 	}
+	
+	for (int i = 1; i <= 2; i++)
+	{
+		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_scout/giant_scout_loop.wav");
+		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_soldier/giant_soldier_loop.wav");
+		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_pyro/giant_pyro_loop.wav");
+		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_demoman/giant_demoman_loop.wav");
+		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_heavy/giant_heavy_loop.wav");
+	}
 
 	KillAnnotation(victim);
 	if (!g_bRoundActive)
@@ -2208,12 +2232,6 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	{
 		SetVariantString("ParticleEffectStop");
 		AcceptEntityInput(victim, "DispatchEffect");
-		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_scout/giant_scout_loop.wav");
-		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_soldier/giant_soldier_loop.wav");
-		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_pyro/giant_pyro_loop.wav");
-		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_demoman/giant_demoman_loop.wav");
-		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_heavy/giant_heavy_loop.wav");
-		
 		if (!IsFakeClient(victim))
 		{
 			SetClientName(victim, g_szPlayerOriginalName[victim]);
@@ -6150,7 +6168,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (!g_bRoundActive)
 		return Plugin_Continue;
-
+	
 	float proc = g_flDamageProc;
 	bool attackerIsClient = IsValidClient(attacker);
 	bool inflictorIsBuilding = inflictor > 0 && IsBuilding(inflictor);

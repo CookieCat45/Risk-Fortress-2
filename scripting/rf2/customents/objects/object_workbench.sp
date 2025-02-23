@@ -294,9 +294,9 @@ static void OnSpawnPost(int entity)
 	else if (bench.ItemQuality == Quality_None)
 	{
 		// choose a random item quality if mapper doesn't force a specific one
-		if (GetRandomInt(1, 20) == 1 && !RF2_Object_Workbench.IsAnyComposterActive())
+		if (GetRandomInt(1, 40) == 1 && !RF2_Object_Workbench.IsAnyComposterActive())
 		{
-			// 1 in 20 for a composter (trades 2 greens for a collectors)
+			// 1 in 40 for a composter (trades 2 greens for a collectors)
 			bench.IsComposter = true;
 			bench.ItemQuality = Quality_Collectors;
 		}
@@ -318,7 +318,7 @@ static void OnSpawnPost(int entity)
 		}
 	}
 	else if (IsInUnderworld() && bench.ItemQuality != Quality_Haunted 
-		&& GetRandomInt(1, 20) == 1 && !RF2_Object_Workbench.IsAnyComposterActive())
+		&& GetRandomInt(1, 40) == 1 && !RF2_Object_Workbench.IsAnyComposterActive())
 	{
 		// also allow composters to spawn in hell
 		bench.IsComposter = true;

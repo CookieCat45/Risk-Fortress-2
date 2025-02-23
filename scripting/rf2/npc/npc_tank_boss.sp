@@ -438,8 +438,10 @@ static void OnCreate(RF2_TankBoss tank)
 static void Hook_BadassTankSpawnPost(int entity)
 {
 	RF2_TankBoss tank = RF2_TankBoss(entity);
+	bool isBadass;
 	if (tank.Type == TankType_SuperBadass)
 	{
+		isBadass = true;
 		tank.SetModel(MODEL_TANK_SUPER_BADASS);
 		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iSuperBadassTankModelIndex, _, 0);
 		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iSuperBadassTankModelIndex, _, 1);
@@ -464,12 +466,16 @@ static void Hook_BadassTankSpawnPost(int entity)
 	}
 	else if (tank.Type == TankType_Badass)
 	{
+		isBadass = true;
 		tank.SetModel(MODEL_TANK_BADASS);
 		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 0);
 		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 1);
 		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 2);
 		tank.SetProp(Prop_Send, "m_nModelIndexOverrides", g_iBadassTankModelIndex, _, 3);
-		
+	}
+	
+	if (isBadass)
+	{
 		// The reason this needs to be done is because Tanks will change their model based on how much damage they have taken
 		// in relation to their max health. Setting their max health to 0 AFTER spawning will prevent this behaviour.
 		int maxHealth = tank.GetProp(Prop_Data, "m_iMaxHealth");
