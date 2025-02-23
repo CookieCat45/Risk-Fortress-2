@@ -234,7 +234,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			g_iStringAttributeWeapon = i;
 		}
 
-		if (totalAttribs > MAX_STATIC_ATTRIBUTES)
+		if (totalAttribs >= MAX_STATIC_ATTRIBUTES)
 		{
 			LogError("[TF2Items_OnGiveNamedItem] Item %i (%s) exceeded static attribute limit of %i", index, classname, MAX_STATIC_ATTRIBUTES);
 		}
@@ -378,7 +378,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 			
 			if (staticAttribCount > 0)
 			{
-				int totalAttribs = imin(attribCount+staticAttribCount, MAX_STATIC_ATTRIBUTES);
+				int totalAttribs = imin(attribCount+staticAttribCount, MAX_STATIC_ATTRIBUTES-1);
 				TF2Items_SetNumAttributes(weapon, totalAttribs);
 				
 				for (int i = 0; i < staticAttribCount; i++)
@@ -388,7 +388,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 					
 					TF2Items_SetAttribute(weapon, attribSlot, attribArray[i], valueArray[i]);
 					attribSlot++;
-					if (attribSlot >= MAX_STATIC_ATTRIBUTES)
+					if (attribSlot >= MAX_STATIC_ATTRIBUTES-1)
 					{
 						maxAttribs = true;
 						break;
@@ -413,7 +413,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 				TF2Items_SetAttribute(weapon, attribSlot, attrib, val);
 				attribSlot++;
 				
-				if (attribSlot >= MAX_STATIC_ATTRIBUTES)
+				if (attribSlot >= MAX_STATIC_ATTRIBUTES-1)
 				{
 					maxAttribs = true;
 					break;
@@ -423,7 +423,8 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 		
 		if (maxAttribs) // Uh oh.
 		{
-			LogError("[CreateWeapon] Maximum number of static attributes reached (%i) on weapon \"%s\" index %i\n\"%s\"\nstatic attribute count = %i", MAX_ATTRIBUTES, classname, index, attributes, staticAttribCount);
+			LogError("[CreateWeapon] Maximum number of static attributes reached (%i) on weapon \"%s\" index %i\n\"%s\"\nstatic attribute count = %i", 
+				MAX_STATIC_ATTRIBUTES, classname, index, attributes, staticAttribCount);
 		}
 		
 		TF2Items_SetNumAttributes(weapon, attribSlot+1);
@@ -536,7 +537,7 @@ bool visible = true, const char[] model="", int quality=0, int level=0)
 		}
 	}
 	
-	if (totalAttribs > MAX_ATTRIBUTES)
+	if (totalAttribs >= MAX_ATTRIBUTES)
 	{
 		LogError("[CreateWearable] Wearable %i (%s) exceeded attribute limit of %i", index, classname, MAX_ATTRIBUTES);
 	}
@@ -934,7 +935,8 @@ bool IsAttributeBlacklisted(int id)
 	id == 719 || // "weapon_uses_stattrack_module"
 	id == 731 || // "weapon_allow_inspect"
 	id == 817 || // "inspect_viewmodel_offset"
-	id == 724; // "weapon_stattrak_module_scale"
+	id == 724 || // "weapon_stattrak_module_scale"
+	id == 328; // "disable fancy class select anim"
 }
 
 int AttributeNameToDefIndex(const char[] name)

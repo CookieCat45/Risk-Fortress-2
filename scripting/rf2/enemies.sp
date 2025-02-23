@@ -700,6 +700,12 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 					{
 						LogError("[LoadEnemiesFromPack] Invalid attribute '%s' in '%s'", key, config);
 					}
+
+					if (i >= 16)
+					{
+						LogError("[WARNING] Maximum number of attributes on a weapon exceeded (%s: %s)", 
+						enemy.GetInternalName(), sectionName);
+					}
 					
 					if (!enemyKey.GotoNextKey(false))
 					{
@@ -776,6 +782,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 
 				TrimString(g_szEnemyWearableAttributes[e][w]);
 				DebugMsg(g_szEnemyWearableAttributes[e][w]);
+				enemyKey.GoBack();
 			}
 			
 			enemyKey.GetString("classname", g_szEnemyWearableName[e][w], sizeof(g_szEnemyWearableName[][]), "tf_wearable");
