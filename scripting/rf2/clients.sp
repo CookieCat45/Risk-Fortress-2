@@ -1668,14 +1668,16 @@ float GetPlayerDamageMult(int client)
 	return GetEnemyDamageMult();
 }
 
-bool ClientPlayGesture(int client, const char[] gesture)
+void ClientPlayGesture(int client, const char[] gesture)
 {
-	if (g_hSDKPlayGesture)
-	{
-		return SDKCall(g_hSDKPlayGesture, client, gesture);
-	}
+	bool wasCheatsEnabled = g_cvSvCheats.BoolValue;
+	if (!wasCheatsEnabled)
+		g_cvSvCheats.SetBool(true);
 	
-	return false;
+	ClientCommand(client, "mp_playgesture %s", gesture);
+	
+	if (!wasCheatsEnabled)
+		g_cvSvCheats.SetBool(false);
 }
 
 bool IsPlayerSpectator(int client)

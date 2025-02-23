@@ -75,6 +75,7 @@ char g_szForcedMap[256];
 char g_szMapForcerName[MAX_NAME_LENGTH];
 char g_szCurrentEnemyGroup[64];
 Address g_aEngineServer;
+ConVar g_cvSvCheats;
 
 // Map settings
 bool g_bDisableEurekaTeleport;
@@ -266,7 +267,6 @@ Handle g_hSDKEquipWearable;
 Handle g_hSDKUpdateSpeed;
 Handle g_hSDKDoQuickBuild;
 Handle g_hSDKGetMaxHealth;
-Handle g_hSDKPlayGesture;
 Handle g_hSDKIntersects;
 Handle g_hSDKWeaponSwitch;
 Handle g_hSDKRealizeSpy;
@@ -526,6 +526,7 @@ public void OnPluginStart()
 	g_hCustomTracks = new ArrayList(PLATFORM_MAX_PATH);
 	g_hCustomTracksDuration = new ArrayList();
 	g_iFileTime = GetPluginModifiedTime();
+	g_cvSvCheats = FindConVar("sv_cheats");
 	if (g_cvHiddenServerStartTime.FloatValue == 0.0)
 	{
 		g_cvHiddenServerStartTime.FloatValue = GetEngineTime();
@@ -591,18 +592,7 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CTFPlayer::TeamFortress_SetSpeed");
 	}
-	
-	
-	StartPrepSDKCall(SDKCall_Player);
-	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFPlayer::PlayGesture");
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-	PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
-	g_hSDKPlayGesture = EndPrepSDKCall();
-	if (!g_hSDKPlayGesture)
-	{
-		LogError("[SDK] Failed to create call for CTFPlayer::PlayGesture");
-	}
-	
+
 	
 	g_hHookTakeHealth = new DynamicHook(gamedata.GetOffset("CBaseEntity::TakeHealth"), HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity);
 	if (g_hHookTakeHealth)

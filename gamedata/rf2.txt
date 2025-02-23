@@ -84,7 +84,8 @@
 		}
 		"Signatures"
 		{
-			// 64 BIT WINDOWS SIGNATURES ARE UNTESTED.
+			// 64 BIT WINDOWS SIGNATURES ARE UNTESTED
+
 			"CBaseEntity::Intersects"
 			{
 				"linux"		"@_ZN11CBaseEntity10IntersectsEPS_"
@@ -106,13 +107,6 @@
 				"linux64"	"@_ZN9CTFPlayer21TeamFortress_SetSpeedEv"
 				"windows64"	"\x40\x55\x48\x83\xEC\x60\x48\x8B\x05\x03\x3D\x7A\x00"
 			}
-			"CTFPlayer::PlayGesture"
-			{
-				"linux"		"@_ZN9CTFPlayer11PlayGestureEPKc"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x34\x53\x56\x8B\x75\x08\x57"
-				"linux64"	"@_ZN9CTFPlayer11PlayGestureEPKc"
-				"windows64"	""
-			}
 			"CTFPlayer::ApplyPunchImpulseX" // Look for string "aiming_no_flinch"
 			{
 				"linux"		"@_ZN9CTFPlayer18ApplyPunchImpulseXEf"
@@ -129,7 +123,7 @@
 			}
 			
 			// Find CTFPowerupBottle::ReapplyProvision using the unique string "mvm_medic_powerup_shared"
-			// It should be the first subroutine you find above the string, and should have a 1 being pushed into it.
+			// It should be the first subroutine you find above the string, and has a 1 being pushed into it.
 			"CBaseObject::DoQuickBuild"
 			{
 				"linux"		"@_ZN11CBaseObject12DoQuickBuildEb"
