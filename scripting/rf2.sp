@@ -923,7 +923,7 @@ public void OnMapStart()
 		FindConVar("tf_avoidteammates_pushaway").SetBool(false);
 		FindConVar("tf_bot_pyro_shove_away_range").SetFloat(0.0);
 		FindConVar("sv_tags").Flags = 0;
-		FindConVar("tv_enable").SetBool(false);
+		FindConVar("tv_enable").SetBool(true);
 		FindConVar("mp_tournament_redteamname").SetString("SURVIVORS");
 		FindConVar("mp_tournament_blueteamname").SetString("ROBOTS");
 		SetMVMPlayerCvar(GetDesiredPlayerCap());

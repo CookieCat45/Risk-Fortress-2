@@ -145,9 +145,10 @@ static Action OnInteract(int client, RF2_Object_Pedestal pedestal)
 {
     if (pedestal.Spinning)
     {
-        if (pedestal.ItemType == Item_Null || client != pedestal.User)
+        if (pedestal.ItemType == Item_Null 
+            || IsValidClient(pedestal.User) && IsPlayerSurvivor(pedestal.User) && client != pedestal.User)
             return Plugin_Handled;
-
+        
         pedestal.Spinning = false;
         pedestal.Active = false;
         pedestal.SetWorldText("");
@@ -232,5 +233,13 @@ static void Timer_SpinRoulette(Handle timer, int entity)
     EmitGameSoundToAll(pedestal.SpinTick ? "Halloween.spelltick_b" : "Halloween.spelltick_a", pedestal.index);
     pedestal.SpinTick = !pedestal.SpinTick;
     pedestal.SpinTime /= 1.04;
-    CreateTimer(pedestal.SpinTime, Timer_SpinRoulette, EntIndexToEntRef(pedestal.index), TIMER_FLAG_NO_MAPCHANGE);
+    if (pedestal.SpinTime < 0.1)
+    {
+        pedestal.SetWorldText("");
+        pedestal.User = INVALID_ENT;
+    }
+    else
+    {
+        CreateTimer(pedestal.SpinTime, Timer_SpinRoulette, EntIndexToEntRef(pedestal.index), TIMER_FLAG_NO_MAPCHANGE);
+    }
 }

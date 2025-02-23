@@ -293,7 +293,8 @@ static void OnCreate(RF2_RobotButler bot)
 	SDKHook(bot.index, SDKHook_SpawnPost, OnSpawnPost);
 	
 	// TODO: add friendly fire blocking to npc_base instead
-	SDKHook(bot.index, SDKHook_OnTakeDamage, OnTakeDamage); // hooking this instead to actually block friendly fire damage so items don't proc
+	// hooking this to actually prevent friendly fire damage so items don't proc from it
+	SDKHook(bot.index, SDKHook_OnTakeDamage, OnTakeDamage);
 	SDKHook(bot.index, SDKHook_OnTakeDamageAlivePost, OnTakeDamageAlivePost);
 	
 	bot.SuicideBombAt = GetGameTime()+90.0;
