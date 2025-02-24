@@ -76,6 +76,8 @@ static void Database_RetryClient(Database db, any data, int numQueries, const ch
 	{
 		OnClientAuthorized(client, error);
 	}
+	
+	LogError(error);
 }
 
 public void OnClientAuthorized(int client, const char[] auth)
@@ -84,10 +86,17 @@ public void OnClientAuthorized(int client, const char[] auth)
 	{
 		return;
 	}
-
+	
 	int id = GetSteamAccountID(client);
 	if (id == 0)
 	{
+		char auth2[64];
+		if (GetClientAuthId(client, AuthId_SteamID64, auth2, sizeof(auth2)))
+		{
+			// I'm suspecting that GetSteamAccountID() has issues. Let's see if this is true.
+			LogError("GetSteamAccountID returned 0 despite GetClientAuthId returning a valid auth (%s)", auth2);
+		}
+		
 		return;
 	}
 
