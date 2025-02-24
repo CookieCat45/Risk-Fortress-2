@@ -7669,7 +7669,6 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				channel = SNDCHAN_STATIC;
 				volume = 0.35;
 				pitch = GetRandomInt(95, 100);
-				// Only works this way for some reason
 				if (TF2_IsPlayerInCondition(client, TFCond_Disguised) && !IsPlayerMinion(client))
 				{
 					EmitSoundToClient(client, sample, client, SNDCHAN_STATIC, level, flags, volume, pitch);
