@@ -373,7 +373,7 @@ enum
 	TFAmmoType_Primary = 1,
 	TFAmmoType_Secondary,
 	TFAmmoType_Metal,
-	TFAmmoType_Jarate, // aka Grenades1, also used for Sandman/Wrap Assassin
+	TFAmmoType_Jarate, // aka Grenades1, also used for Sandman/Wrap Assassin and lunchbox items
 	TFAmmoType_MadMilk, // aka Grenades2, also used for Cleaver
 	TFAmmoType_Grenades3,
 };

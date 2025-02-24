@@ -1258,6 +1258,11 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		TF2Attrib_SetByName(client, "increased jump height", 1.35);
 		TF2Attrib_SetByName(client, "patient overheal penalty", 0.0);
 		TF2Attrib_SetByName(client, "aiming movespeed increased", 10.0);
+		if (!g_cvOldGiantFootsteps.BoolValue)
+		{
+			TF2Attrib_SetByName(client, "override footstep sound set", 2.0);
+		}
+
 		if (teleporterBoss)
 		{
 			CreateHealthText(client, 100.0*boss.ModelScale, 20.0, g_szEnemyName[type]);

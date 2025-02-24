@@ -378,6 +378,7 @@ ConVar g_cvItemShareDisableThreshold;
 ConVar g_cvItemShareDisableLoopCount;
 ConVar g_cvRequiredStagesForStatue;
 ConVar g_cvEnableOneShotProtection;
+ConVar g_cvOldGiantFootsteps;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -1297,7 +1298,8 @@ void LoadAssets()
 	PrecacheScriptSound("MVM.GiantSoldierLoop");
 	PrecacheScriptSound("MVM.GiantPyroLoop");
 	PrecacheScriptSound("MVM.GiantDemomanLoop");
-	PrecacheScriptSound("MVM.GiantHeavyLoop");
+	PrecacheScriptSound("MVM.GiantScoutStep");
+	PrecacheSound("mvm/giant_heavy/giant_heavy_loop.wav", true);
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
 	AddSoundToDownloadsTable(SND_DRAGONBORN);
@@ -2794,7 +2796,6 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 			if (g_hHookOnWrenchHit)
 			{
 				g_hHookOnWrenchHit.HookEntity(Hook_Pre, building, DHook_OnWrenchHitDispenser);
-				//g_hHookOnWrenchHit.HookEntity(Hook_Post, building, DHook_OnWrenchHitDispenserPost);
 			}
 			
 			shield = CreateDispenserShield(GetEntTeam(client), building);
@@ -4778,6 +4779,19 @@ public void Hook_PreThink(int client)
 			}
 		}
 	}
+	else if (class == TFClass_Heavy)
+	{
+		// fix extra reserve sandviches not recharging
+		float itemCharge = GetEntPropFloat(client, Prop_Send, "m_flItemChargeMeter", WeaponSlot_Secondary);
+		if (itemCharge >= 100.0)
+		{
+			int maxAmmo = TF2Attrib_HookValueInt(1, "mult_maxammo_grenades1", client);
+			if (GetEntProp(client, Prop_Send, "m_iAmmo", _, TFAmmoType_Jarate) < maxAmmo)
+			{
+				SetEntPropFloat(client, Prop_Send, "m_flItemChargeMeter", 0.0, WeaponSlot_Secondary);
+			}
+		}
+	}
 	
 	if (IsEnemy(client))
 	{
@@ -4941,8 +4955,7 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	}
 }
 
-int g_iLastFiredWeapon[MAXTF2PLAYERS] = {INVALID_ENT, ...};
-float g_flWeaponFireTime[MAXTF2PLAYERS];
+static int g_iLastFiredWeapon[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName, bool &result)
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive)
@@ -4956,11 +4969,9 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 		SetWeaponClip(weapon, GetWeaponClipSize(weapon));
 	}
 	
-	// Set m_flNextPrimaryAttack on the next frame to modify attack speed
-	// Any of TF2's own firing speed modifications such as attributes will still go through
 	g_iLastFiredWeapon[client] = EntIndexToEntRef(weapon);
-	g_flWeaponFireTime[client] = GetGameTime(); // This is to prevent a desync issue, see RF_NextPrimaryAttack
 	RequestFrame(RF_NextPrimaryAttack, GetClientUserId(client));
+	TF2Attrib_SetByName(weapon, "halloween fire rate bonus", GetPlayerFireRateMod(client, weapon));
 	
 	// Use our own crit logic
 	if (!result)
@@ -5031,43 +5042,8 @@ public void RF_NextPrimaryAttack(int client)
 	if ((weapon = EntRefToEntIndex(g_iLastFiredWeapon[client])) == INVALID_ENT)
 		return;
 	
-	// Calculate based on the time the weapon was fired at since that was in the last frame.
-	float gameTime = g_flWeaponFireTime[client];
-	float time = GetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack");
-	float time2 = GetEntPropFloat(weapon, Prop_Send, "m_flNextSecondaryAttack");
-	
-	bool melee = (GetPlayerWeaponSlot(client, WeaponSlot_Melee) == weapon);
-	float rate = GetPlayerFireRateMod(client, weapon);
-	time -= gameTime;
-	time2 -= gameTime;
-	int viewModel = GetEntPropEnt(client, Prop_Send, "m_hViewModel");
-	float playBackRate = GetEntPropFloat(viewModel, Prop_Send, "m_flPlaybackRate");
-	if (melee)
-	{
-		SetEntPropFloat(viewModel, Prop_Send, "m_flPlaybackRate", fmax(playBackRate, fmin(time/(time*rate), 2.0)));
-	}
-	else
-	{
-		SetEntPropFloat(viewModel, Prop_Send, "m_flPlaybackRate", fmax(playBackRate, fmin(time/(time*rate), 12.0)));
-	}
-	
-	time *= rate;
-	time2 *= rate;
-	
-	// Melee weapons and certain throwables have an attack speed cap
-	int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-	bool throwable = (index == 812 || index == 58 || index == 1083 || index == 222 || index == 1121 || index == 1180);
-	if (throwable)
-	{
-		time = fmax(0.2, time);
-	}
-	else if (melee)
-	{
-		time = fmax(0.3, time);
-		time2 = fmax(0.3, time2);
-	}
-	
-	if (!melee && IsPlayerSurvivor(client) && time <= GetTickInterval())
+	float time = GetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack")-GetGameTime();
+	if (IsPlayerSurvivor(client) && time <= GetTickInterval())
 	{
 		static char classname[128];
 		GetEntityClassname(weapon, classname, sizeof(classname));
@@ -5076,9 +5052,6 @@ public void RF_NextPrimaryAttack(int client)
 			TriggerAchievement(client, ACHIEVEMENT_FIRERATECAP);
 		}
 	}
-	
-	SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", gameTime+time);
-	SetEntPropFloat(weapon, Prop_Send, "m_flNextSecondaryAttack", gameTime+time2);
 }
 
 void ForceRifleSound(int client, bool crit=false)
@@ -5529,8 +5502,10 @@ public void RF_ProjectileSpawnPost(int entity)
 	}
 }
 
+static float g_flHealthKitSpawnTime[MAX_EDICTS];
 public void Hook_HealthKitSpawnPost(int entity)
 {
+	g_flHealthKitSpawnTime[entity] = GetTickedTime();
 	// make sure we don't accidentally delete thrown lunchbox items
 	if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") <= 0)
 	{
@@ -5538,8 +5513,47 @@ public void Hook_HealthKitSpawnPost(int entity)
 	}
 	else
 	{
-		SDKHook(entity, SDKHook_StartTouch, Hook_HealthKitTouch);
+		SDKHook(entity, SDKHook_StartTouch, Hook_HealthKitStartTouch);
 		SDKHook(entity, SDKHook_Touch, Hook_HealthKitTouch);
+	}
+}
+
+public Action Hook_HealthKitStartTouch(int entity, int other)
+{
+	if (IsValidClient(other) && GetClientTeam(other) == TEAM_ENEMY)
+		return Plugin_Handled;
+	
+	if (g_flHealthKitSpawnTime[entity]+0.3 < GetTickedTime()) // heavy can't pick up sandvich for 0.3s after throw
+	{
+		int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+		if (IsValidClient(owner) && owner == other)
+		{
+			int sandvich = GetPlayerWeaponSlot(owner, WeaponSlot_Secondary);
+			if (sandvich != INVALID_ENT)
+			{
+				// if a heavy picks up his own sandvich, remove 1 sandvich from reserve
+				// this is necessary to fix a stupid bug where heavy gets 2 sandviches instead of 1
+				// if he picks up his own sandvich while having an increased ammo reserve cap
+				int ammo = GetEntProp(owner, Prop_Send, "m_iAmmo", _, TFAmmoType_Jarate);
+				SetEntProp(owner, Prop_Send, "m_iAmmo", ammo-1, _, TFAmmoType_Jarate);
+				RequestFrame(RF_FixSandvichMeter, owner);
+			}
+		}
+	}
+
+	return Plugin_Continue;
+}
+
+static void RF_FixSandvichMeter(int owner)
+{
+	if (!IsClientInGame(owner))
+		return;
+	
+	int maxAmmo = TF2Attrib_HookValueInt(1, "mult_maxammo_grenades1", owner);
+	if (GetEntProp(owner, Prop_Send, "m_iAmmo", _, TFAmmoType_Jarate) < maxAmmo)
+	{
+		// also do this or else the meter will stop charging
+		SetEntPropFloat(owner, Prop_Send, "m_flItemChargeMeter", 0.0, WeaponSlot_Secondary);
 	}
 }
 
@@ -5547,7 +5561,7 @@ public Action Hook_HealthKitTouch(int entity, int other)
 {
 	if (IsValidClient(other) && GetClientTeam(other) == TEAM_ENEMY)
 		return Plugin_Handled;
-
+	
 	return Plugin_Continue;
 }
 
@@ -7466,8 +7480,11 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	}
 
 	static float nextFootstepTime[MAXTF2PLAYERS];
-	if (g_iPlayerFootstepType[client] == FootstepType_GiantRobot && GetTickedTime() >= nextFootstepTime[client] 
-		&& !TF2_IsPlayerInCondition(client, TFCond_Disguised) && !IsPlayerStunned(client))
+	if (g_iPlayerFootstepType[client] == FootstepType_GiantRobot 
+		&& GetTickedTime() >= nextFootstepTime[client] 
+		&& g_cvOldGiantFootsteps.BoolValue
+		&& !TF2_IsPlayerInCondition(client, TFCond_Disguised) 
+		&& !IsPlayerStunned(client))
 	{
 		if ((buttons & IN_FORWARD || buttons & IN_BACK || buttons & IN_MOVELEFT || buttons & IN_MOVERIGHT) && GetEntityFlags(client) & FL_ONGROUND)
 		{
@@ -7624,7 +7641,6 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 			else if (footstepType == FootstepType_Robot)
 			{
 				action = Plugin_Stop;
-
 				if (TF2_GetPlayerClass(client) == TFClass_Medic) // Robot Medics don't have legs. So this wouldn't make much sense.
 					return Plugin_Stop;
 
@@ -7647,11 +7663,16 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 						
 					PrecacheSound2(sample);
 				}
-
+				
+				// Match MVM.BotStep
+				level = 87;
+				channel = SNDCHAN_STATIC;
+				volume = 0.35;
+				pitch = GetRandomInt(95, 100);
 				// Only works this way for some reason
 				if (TF2_IsPlayerInCondition(client, TFCond_Disguised) && !IsPlayerMinion(client))
 				{
-					EmitSoundToClient(client, sample, client, channel, level, flags, volume, pitch);
+					EmitSoundToClient(client, sample, client, SNDCHAN_STATIC, level, flags, volume, pitch);
 
 					for (int i = 0; i < numClients; i++)
 					{

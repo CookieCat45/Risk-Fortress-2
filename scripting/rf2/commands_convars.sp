@@ -131,6 +131,7 @@ void LoadCommandsAndCvars()
 	g_cvWaitExtendTime = CreateConVar("rf2_wait_extend_time", "600", "If the vote to extend Waiting for Players passes, extend the wait time to this in seconds. 0 to disable extending.", FCVAR_NOTIFY, true, 0.0);
 	g_cvRequiredStagesForStatue = CreateConVar("rf2_statue_required_stages", "10", "How many stages need to be completed before being able to interact with the statue in the Underworld", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnableOneShotProtection = CreateConVar("rf2_enable_osp", "1", "Enables one-shot protection for Survivors. If a Survivor is at or above 90% of their health, they cannot die to a single instance of damage.", FCVAR_NOTIFY, true, 0.0);
+	g_cvOldGiantFootsteps = CreateConVar("rf2_use_old_giant_footsteps", "0", "Uses the old system for giant footstep sounds (unused footstep sounds instead of giant_common_step)", FCVAR_NOTIFY, true, 0.0);
 	CreateConVar("rf2_plugin_version", PLUGIN_VERSION, "Plugin version. Don't touch this please.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	
 	// Debug

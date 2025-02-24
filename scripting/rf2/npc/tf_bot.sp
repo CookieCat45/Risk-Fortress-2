@@ -450,11 +450,26 @@ void TFBot_Think(TFBot bot)
 				aggressiveMode = true;
 			}
 		}
-
+		
+		static float lastStuckTime[MAXTF2PLAYERS];
+		if (bot.GetLocomotion().IsStuck())
+		{
+			lastStuckTime[bot.Client] = GetTickedTime();
+			
+		}
+		
+		bool stuckBoss;
+		if (IsBoss(bot.Client) && lastStuckTime[bot.Client]+10.0 > GetTickedTime())
+		{
+			DebugMsgNoSpam("Robot is stuck, pushing forward");
+			aggressiveMode = true;
+			stuckBoss = true;
+		}
+		
 		// Aggressive AI, relentlessly pursues target and strafes on higher difficulties. Mostly for melee.
 		if (aggressiveMode)
 		{
-			if (threat > MaxClients || !IsInvuln(threat) && class != TFClass_Spy)
+			if (threat > MaxClients || (stuckBoss || !IsInvuln(threat)) && class != TFClass_Spy)
 			{
 				float threatPos[3];
 				GetEntPos(threat, threatPos);
@@ -464,7 +479,6 @@ void TFBot_Think(TFBot bot)
 				{
 					float angles[3];
 					float direction[3];
-					
 					GetVectorAnglesTwoPoints(botPos, threatPos, angles);
 					angles[0] = 0.0;
 					GetAngleVectors(angles, NULL_VECTOR, direction, NULL_VECTOR);
