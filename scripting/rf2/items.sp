@@ -629,34 +629,39 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 	Call_Finish();
 	switch (item)
 	{
-		case Item_MaxHead:
+		case Item_MaxHead, Item_MaimLicense:
 		{
-			float value = CalcItemMod(client, Item_MaxHead, 0);
-			int primary = GetPlayerWeaponSlot(client, 0);
-			int secondary = GetPlayerWeaponSlot(client, 1);
-			if (primary != INVALID_ENT)
+			UpdatePlayerFireRate(client);
+			if (item == Item_MaxHead)
 			{
-				if (PlayerHasItem(client, item))
+				float value = CalcItemMod(client, Item_MaxHead, 0);
+				int primary = GetPlayerWeaponSlot(client, 0);
+				int secondary = GetPlayerWeaponSlot(client, 1);
+				if (primary != INVALID_ENT)
 				{
-					TF2Attrib_SetByName(primary, "projectile penetration", value);
+					if (PlayerHasItem(client, item))
+					{
+						TF2Attrib_SetByName(primary, "projectile penetration", value);
+					}
+					else
+					{
+						TF2Attrib_RemoveByName(primary, "projectile penetration");
+					}
 				}
-				else
+				
+				if (secondary != INVALID_ENT)
 				{
-					TF2Attrib_RemoveByName(primary, "projectile penetration");
+					if (PlayerHasItem(client, item))
+					{
+						TF2Attrib_SetByName(secondary, "projectile penetration", value);
+					}
+					else
+					{
+						TF2Attrib_RemoveByName(secondary, "projectile penetration");
+					}
 				}
 			}
 			
-			if (secondary != INVALID_ENT)
-			{
-				if (PlayerHasItem(client, item))
-				{
-					TF2Attrib_SetByName(secondary, "projectile penetration", value);
-				}
-				else
-				{
-					TF2Attrib_RemoveByName(secondary, "projectile penetration");
-				}
-			}
 		}
 		case Item_PrideScarf, Item_ClassCrown:
 		{
@@ -2016,6 +2021,7 @@ bool ActivateStrangeItem(int client)
 		case ItemStrange_WarswormHelm:
 		{
 			g_flPlayerWarswornBuffTime[client] = GetTickedTime()+GetItemMod(ItemStrange_WarswormHelm, 0);
+			UpdatePlayerFireRate(client);
 			EmitGameSoundToAll(GSND_MVM_POWERUP, client);
 		}
 	}
@@ -2045,6 +2051,8 @@ bool ActivateStrangeItem(int client)
 		{
 			g_flPlayerReloadBuffDuration[client] = duration;
 		}
+
+		UpdatePlayerFireRate(client);
 	}
 	
 	g_iPlayerEquipmentItemCharges[client]--;
@@ -2678,6 +2686,7 @@ void DoHeadshotBonuses(int attacker, int victim, float damage)
 	if (PlayerHasItem(attacker, ItemSniper_VillainsVeil) && CanUseCollectorItem(attacker, ItemSniper_VillainsVeil))
 	{
 		g_flPlayerRifleHeadshotBonusTime[attacker] = GetItemMod(ItemSniper_VillainsVeil, 2);
+		UpdatePlayerFireRate(attacker);
 	}
 }
 

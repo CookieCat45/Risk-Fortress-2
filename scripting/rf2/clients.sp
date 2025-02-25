@@ -714,101 +714,67 @@ void AddPlayerCash(int client, float amount)
 }
 
 // This is for items, it has nothing to do with the attribute
-float GetPlayerFireRateMod(int client, int weapon=-1)
+float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false)
 {
 	float multiplier = 1.0;
 	static char classname[64];
-	if (weapon > 0)
+	if (weapon != INVALID_ENT)
 	{
 		GetEntityClassname(weapon, classname, sizeof(classname));
-	}
-	
-	bool sentry = weapon > 0 && strcmp2(classname, "obj_sentrygun"); // this parameter can be a sentry
-	if (!sentry && weapon > 0)
-	{
-		bool flamethrower = strcmp2(classname, "tf_weapon_flamethrower");
-		if (flamethrower || strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
-		{
-			// Flamethrowers are different and need to be calculated using a normal multiplier rather than an inverse one
-			bool dragonsFury = !flamethrower;
-			
-			// make sure these reflect ALL of the fire rate bonuses from below that are for traditional weapons
-			multiplier += CalcItemMod(client, Item_MaimLicense, 0);
-			multiplier += float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1);
-			multiplier += CalcItemMod(client, Item_MaxHead, 2);
-			multiplier += CalcItemMod(client, Item_TripleA, 1);
-			if (g_flPlayerReloadBuffDuration[client] > 0.0)
-			{
-				multiplier += CalcItemMod(client, Item_SaintMark, 3);
-			}
-			
-			if (g_flPlayerWarswornBuffTime[client] > GetTickedTime())
-			{
-				multiplier += GetItemMod(ItemStrange_WarswormHelm, 1);
-			}
-
-			if (multiplier > 1.0 && dragonsFury)
-			{
-				// Dragon's Fury has a fire rate scaling penalty, flamethrowers do not 
-				// (note that flamethrowers scale damage with fire rate items)
-				const float penalty = 0.5;
-				multiplier = Pow(multiplier, penalty);
-			}
-			
-			return multiplier;
-		}
-		else if (StrContains(classname, "tf_weapon_flaregun") != -1 || StrContains(classname, "tf_weapon_sniperrifle") != -1)
+		if (StrContains(classname, "tf_weapon_flaregun") != -1 || StrContains(classname, "tf_weapon_sniperrifle") != -1)
 		{
 			// Use reload speed modifiers for these weapons instead, because it makes more sense
-			return GetPlayerReloadMod(client, weapon);
+			multiplier = GetPlayerReloadMod(client, weapon);
+			if (multiplier < 1.0 && update)
+			{
+				TF2Attrib_SetByName(weapon, "melee attack rate bonus", multiplier);
+			}
+
+			return multiplier;
 		}
 	}
 	
 	if (PlayerHasItem(client, Item_MaimLicense))
 	{
-		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_MaimLicense, 0);
+		multiplier *= 1.0 + CalcItemMod(client, Item_MaimLicense, 0);
 	}
 	
 	if (PlayerHasItem(client, Item_PointAndShoot) && g_iPlayerFireRateStacks[client] > 0)
 	{
-		multiplier *= (1.0 / (1.0 + (float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1))));
+		multiplier *= 1.0 + (float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 1));
 	}
 	
 	if (PlayerHasItem(client, Item_MaxHead))
 	{
-		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_MaxHead, 2);
+		multiplier *= 1.0 + CalcItemMod(client, Item_MaxHead, 2);
 	}
 	
 	if (PlayerHasItem(client, Item_TripleA))
 	{
-		multiplier *= CalcItemMod_HyperbolicInverted(client, Item_TripleA, 1);
+		multiplier *= 1.0 + CalcItemMod(client, Item_TripleA, 1);
 	}
 
 	if (g_flPlayerWarswornBuffTime[client] > GetTickedTime())
 	{
-		multiplier *= 1.0-GetItemMod(ItemStrange_WarswormHelm, 1);
+		multiplier *= 1.0 + GetItemMod(ItemStrange_WarswormHelm, 1);
 	}
 	
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)
 	{
-		multiplier *= GetItemMod(Item_SaintMark, 3);
+		multiplier *= 1.0 + GetItemMod(Item_SaintMark, 3);
 	}
 	
 	if (g_flPlayerRifleHeadshotBonusTime[client] > 0.0)
 	{
-		multiplier *= CalcItemMod_HyperbolicInverted(client, ItemSniper_VillainsVeil, 1);
+		multiplier *= 1.0 + CalcItemMod(client, ItemSniper_VillainsVeil, 1);
 	}
 	
-	if (sentry)
-	{
-		const float penalty = 0.5;
-		multiplier = Pow(multiplier, penalty);
-	}
-	else if (weapon > 0 && multiplier < 1.0)
+	if (weapon != INVALID_ENT && multiplier > 1.0)
 	{
 		if (strcmp2(classname, "tf_weapon_minigun") || strcmp2(classname, "tf_weapon_syringegun_medic")
 			|| strcmp2(classname, "tf_weapon_charged_smg") || strcmp2(classname, "tf_weapon_smg") 
-			|| strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_handgun_scout_secondary"))
+			|| strcmp2(classname, "tf_weapon_pistol") || strcmp2(classname, "tf_weapon_handgun_scout_secondary")
+			|| strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
 		{
 			const float penalty = 0.5;
 			multiplier = Pow(multiplier, penalty);
@@ -824,7 +790,70 @@ float GetPlayerFireRateMod(int client, int weapon=-1)
 		}
 	}
 	
+	if (weapon == INVALID_ENT || !strcmp2(classname, "tf_weapon_flamethrower"))
+	{
+		// use an inverse multiplier for everything other than flamethrower 
+		// because fire rate is a damage multiplier for flamethrowers
+		multiplier = fmax(1.0 / multiplier, 0.01);
+	}
+
+	if (weapon != INVALID_ENT)
+	{
+		if (weapon == GetPlayerWeaponSlot(client, WeaponSlot_Melee)
+			|| strcmp2(classname, "tf_weapon_cleaver")
+			|| StrContains(classname, "tf_weapon_jar") != -1)
+		{
+			// attack speed cap for melee (and throwables)
+			// We need to temporarily remove the attribute that we normally apply here for fire rate
+			// so that we can calculate the fire rate from other stats since we need that
+			Address attrib = TF2Attrib_GetByName(weapon, "melee attack rate bonus");
+			float meleeAttackRate;
+			if (attrib)
+			{
+				meleeAttackRate = TF2Attrib_GetValue(attrib);
+				TF2Attrib_RemoveByName(weapon, "melee attack rate bonus");
+			}
+			
+			float fireRateStat = TF2Attrib_HookValueFloat(1.0, "mult_postfiredelay", weapon);
+
+			if (attrib)
+			{
+				TF2Attrib_SetByName(weapon, "melee attack rate bonus", meleeAttackRate);
+			}
+			
+			float max = StrContains(classname, "tf_weapon_bat") != -1 ? 0.4 : 0.25;
+			multiplier = fmax(multiplier, max/fireRateStat);
+		}
+	}
+
+	if (weapon != INVALID_ENT && update)
+	{
+		// note that this works on all weapons, not just melee
+		TF2Attrib_SetByName(weapon, "melee attack rate bonus", multiplier);
+	}
+	
 	return multiplier;
+}
+
+void UpdatePlayerFireRate(int client)
+{
+	for (int i = 0; i <= WeaponSlot_Melee; i++)
+	{
+		int weapon = GetPlayerWeaponSlot(client, i);
+		if (weapon == INVALID_ENT)
+			continue;
+
+		GetPlayerFireRateMod(client, weapon, true);
+	}
+
+	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+	{
+		float multiplier = GetPlayerFireRateMod(client);
+		const float penalty = 0.5;
+		multiplier = Pow(multiplier, penalty);
+		DebugMsg("%f", multiplier);
+		TF2Attrib_SetByName(client, "engy sentry fire rate increased", multiplier);
+	}
 }
 
 float GetPlayerReloadMod(int client, int weapon=INVALID_ENT)
@@ -836,7 +865,7 @@ float GetPlayerReloadMod(int client, int weapon=INVALID_ENT)
 	
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)
 	{
-		multiplier *= GetItemMod(Item_SaintMark, 0);
+		multiplier *= 1.0 - GetItemMod(Item_SaintMark, 0);
 	}
 	
 	if (g_flPlayerRifleHeadshotBonusTime[client] > 0.0)

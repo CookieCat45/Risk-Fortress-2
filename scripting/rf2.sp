@@ -271,7 +271,6 @@ Handle g_hSDKWeaponSwitch;
 Handle g_hSDKRealizeSpy;
 Handle g_hSDKSpawnZombie;
 Handle g_hSDKTankSetStartNode;
-DynamicDetour g_hDetourSentryAttack;
 DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourSetReloadTimer;
 DynamicDetour g_hDetourApplyPunchImpulse;
@@ -683,13 +682,6 @@ void LoadGameData()
 	else
 	{
 		LogError("[DHooks] Failed to create virtual hook for CBaseObject::OnWrenchHit");
-	}
-	
-	
-	g_hDetourSentryAttack = DynamicDetour.FromConf(gamedata, "CObjectSentrygun::Attack");
-	if (!g_hDetourSentryAttack || !g_hDetourSentryAttack.Enable(Hook_Post, Detour_SentryGunAttack))
-	{
-		LogError("[DHooks] Failed to create detour for CObjectSentrygun::Attack");
 	}
 	
 	
@@ -4971,7 +4963,7 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	
 	g_iLastFiredWeapon[client] = EntIndexToEntRef(weapon);
 	RequestFrame(RF_NextPrimaryAttack, GetClientUserId(client));
-	TF2Attrib_SetByName(weapon, "halloween fire rate bonus", GetPlayerFireRateMod(client, weapon));
+	//UpdatePlayerFireRate(client);
 	
 	// Use our own crit logic
 	if (!result)
@@ -5442,28 +5434,29 @@ public void RF_DragonFuryCritCheck(int entity)
 		return;
 	
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
-	if (IsValidClient(owner))
+	if (!IsValidClient(owner))
+		return;
+
+	if (RollAttackCrit(owner))
 	{
-		if (RollAttackCrit(owner))
+		SetEntProp(entity, Prop_Send, "m_bCritical", true);
+		StopSound(owner, SNDCHAN_AUTO, SND_WEAPON_CRIT);
+		EmitSoundToAll(SND_WEAPON_CRIT, owner);
+	}
+	
+	int weapon = GetPlayerWeaponSlot(owner, WeaponSlot_Primary);
+	if (weapon > 0)
+	{
+		static char classname[64];
+		GetEntityClassname(weapon, classname, sizeof(classname));
+		if (strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
 		{
-			SetEntProp(entity, Prop_Send, "m_bCritical", true);
-			StopSound(owner, SNDCHAN_AUTO, SND_WEAPON_CRIT);
-			EmitSoundToAll(SND_WEAPON_CRIT, owner);
-		}
-		
-		int weapon = GetPlayerWeaponSlot(owner, WeaponSlot_Primary);
-		if (weapon > 0)
-		{
-			static char classname[64];
-			GetEntityClassname(weapon, classname, sizeof(classname));
-			if (strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
+			float mult = GetPlayerFireRateMod(owner, weapon);
+			//SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
+			TF2Attrib_SetByName(weapon, "item_meter_charge_rate", mult);
+			if (0.8 / mult <= GetTickInterval())
 			{
-				float mult = GetPlayerFireRateMod(owner, weapon);
-				SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
-				if (0.8 / mult <= GetTickInterval())
-				{
-					TriggerAchievement(owner, ACHIEVEMENT_FIRERATECAP);
-				}
+				TriggerAchievement(owner, ACHIEVEMENT_FIRERATECAP);
 			}
 		}
 	}
@@ -6504,6 +6497,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				if (g_iPlayerFireRateStacks[attacker] < maxStacks)
 				{
 					g_iPlayerFireRateStacks[attacker]++;
+					UpdatePlayerFireRate(attacker);
 					float duration = GetItemMod(Item_PointAndShoot, 2) * proc;
 					if (duration < 0.25)
 					{
@@ -6952,16 +6946,6 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				{
 					damage *= GetPlayerFireRateMod(attacker, weapon); // Fire rate increases flamethrower damage
 				}
-				else if ((damageCustom == TF_CUSTOM_DRAGONS_FURY_IGNITE)
-					&& strcmp2(wepClassname, "tf_weapon_rocketlauncher_fireball"))
-				{
-					float mult = GetPlayerFireRateMod(attacker, weapon)*1.5;
-					SetEntPropFloat(weapon, Prop_Send, "m_flRechargeScale", mult);
-					if (0.8 / mult <= GetTickInterval())
-					{
-						TriggerAchievement(attacker, ACHIEVEMENT_FIRERATECAP);
-					}
-				}
 			}
 		}
 		
@@ -7270,6 +7254,7 @@ public void Timer_DecayFireRateBuff(Handle timer, int client)
 	if (g_iPlayerFireRateStacks[client] > 0)
 	{
 		g_iPlayerFireRateStacks[client]--;
+		UpdatePlayerFireRate(client);
 	}
 }
 

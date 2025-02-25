@@ -124,13 +124,6 @@
 				"linux64"	"@_ZN11CBaseObject12DoQuickBuildEb"
 				"windows64"	"\x48\x89\x5C\x24\x10\x57\x48\x83\xEC\x20\x80\xB9\x66\x0C\x00\x00\x00"
 			}
-			"CObjectSentrygun::Attack" // Look for string "mult_sentry_firerate"
-			{
-				"linux"		"@_ZN16CObjectSentrygun6AttackEv"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x38\x56\x8B\xF1\x57\x8B\x06"
-				"linux64"	"@_ZN16CObjectSentrygun6AttackEv"
-				"windows64"	"\x48\x89\x5C\x24\x10\x57\x48\x83\xEC\x70\x48\x8B\x01\x48\x8B\xD9\xFF\x90\x40\x06\x00\x00"
-			}
 			"CTFBot::RealizeSpy"
 			{
 				"linux"		"@_ZN6CTFBot10RealizeSpyEP9CTFPlayer"
@@ -216,14 +209,6 @@
 						"type"	"float"
 					}
 				}
-			}
-			
-			"CObjectSentrygun::Attack"
-			{
-				"signature" "CObjectSentrygun::Attack"
-				"callconv"	"thiscall"
-				"return"	"void"
-				"this"		"entity"
 			}
 			
 			"HandleRageGain"

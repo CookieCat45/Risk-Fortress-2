@@ -151,28 +151,6 @@ public MRESReturn DHook_StartUpgradingPost(int entity, DHookReturn returnVal, DH
 	return MRES_Ignored;
 }
 
-public MRESReturn Detour_SentryGunAttack(int entity)
-{
-	if (RF2_IsEnabled())
-	{
-		int owner = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
-		if (IsValidClient(owner) && IsPlayerAlive(owner))
-		{
-			if (GetEntProp(entity, Prop_Send, "m_bPlayerControlled") || GetEntPropEnt(entity, Prop_Send, "m_hEnemy") > 0)
-			{
-				float gameTime = GetGameTime();
-				int offset = FindSendPropInfo("CObjectSentrygun", "m_iState") + 4; // m_flNextAttack
-				float time = GetEntDataFloat(entity, offset);
-				time -= gameTime;
-				time *= GetPlayerFireRateMod(owner, entity);
-				SetEntDataFloat(entity, offset, gameTime+time, true);
-			}
-		}
-	}
-	
-	return MRES_Ignored;
-}
-
 public MRESReturn DHook_OnWrenchHitDispenser(int entity, DHookReturn returnVal, DHookParam params)
 {
 	if (GetEntProp(entity, Prop_Send, "m_bBuilding") ||
