@@ -715,7 +715,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 				}
 				
 				TrimString(g_szEnemyWeaponAttributes[e][w]);
-				DebugMsg(g_szEnemyWeaponAttributes[e][w]);
 				enemyKey.GoBack();
 			}
 
@@ -781,7 +780,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 				}
 
 				TrimString(g_szEnemyWearableAttributes[e][w]);
-				DebugMsg(g_szEnemyWearableAttributes[e][w]);
 				enemyKey.GoBack();
 			}
 			

@@ -871,7 +871,6 @@ void UpdatePlayerFireRate(int client)
 		float multiplier = GetPlayerFireRateMod(client);
 		const float penalty = 0.5;
 		multiplier = Pow(multiplier, penalty);
-		DebugMsg("%f", multiplier);
 		TF2Attrib_SetByName(client, "engy sentry fire rate increased", multiplier);
 	}
 }

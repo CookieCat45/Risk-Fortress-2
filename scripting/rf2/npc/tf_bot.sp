@@ -461,7 +461,6 @@ void TFBot_Think(TFBot bot)
 		bool stuckBoss;
 		if (IsBoss(bot.Client) && lastStuckTime[bot.Client]+10.0 > GetTickedTime())
 		{
-			DebugMsgNoSpam("Robot is stuck, pushing forward");
 			aggressiveMode = true;
 			stuckBoss = true;
 		}

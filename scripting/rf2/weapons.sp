@@ -295,12 +295,6 @@ public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index
 	if (!RF2_IsEnabled() || !IsValidEntity2(entity))
 		return 0;
 	
-	int killEater = TF2Attrib_HookValueInt(0, "kill_eater_score_type", entity);
-	if (killEater != 0)
-	{
-		DebugMsg("Found strange item (%s) (%d)", classname, killEater);
-	}
-
 	if (index == 812 || index == 222 || index == 1121) // Make the Cleaver/Milk work with Whale Bone Charm
 	{
 		SetEntProp(entity, Prop_Data, "m_iPrimaryAmmoType", TFAmmoType_Secondary);

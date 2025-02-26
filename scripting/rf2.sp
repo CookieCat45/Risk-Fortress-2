@@ -5297,7 +5297,6 @@ public void OnEntityCreated(int entity, const char[] classname)
 	if (!RF2_IsEnabled() || entity < 0 || entity >= MAX_EDICTS)
 		return;
 	
-	//DebugMsg(classname);
 	g_bProjectileIgnoreShields[entity] = false;
 	g_hEntityGlowResetTimer[entity] = null;
 	g_flCashValue[entity] = 0.0;
@@ -6213,6 +6212,13 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			ignoreResist = true;
 		}
+
+		static char wepClassname[64];
+		GetEntityClassname(weapon, wepClassname, sizeof(wepClassname));
+		if (strcmp2(wepClassname, "tf_weapon_flamethrower"))
+		{
+			damage *= GetPlayerFireRateMod(attacker, weapon); // Fire rate increases flamethrower damage
+		}
 	}
 
 	// backstabs first, before any damage modifiers get applied
@@ -6375,7 +6381,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (attackerIsClient)
 	{
-		if (IsPlayerMinion(attacker) && weapon > 0)
+		if (IsPlayerMinion(attacker) && validWeapon)
 		{
 			CBaseEntity(attacker).RemoveFlag(FL_NOTARGET);
 		}
@@ -6960,15 +6966,6 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				{
 					g_bPlayerFullMinigunMoveSpeed[attacker] = true;
 					TF2_AddCondition(attacker, TFCond_SpeedBuffAlly, CalcItemMod(attacker, ItemHeavy_ToughGuyToque, 2));
-				}
-			}
-			else
-			{
-				static char wepClassname[64];
-				GetEntityClassname(weapon, wepClassname, sizeof(wepClassname));
-				if (strcmp2(wepClassname, "tf_weapon_flamethrower"))
-				{
-					damage *= GetPlayerFireRateMod(attacker, weapon); // Fire rate increases flamethrower damage
 				}
 			}
 		}
