@@ -111,7 +111,6 @@ static void Database_Setup(Database db, any data, int numQueries, DBResultSet[] 
 		return;
 	}
 	
-	DebugMsg("Database_Setup");
 	char formatter[256], name[64];
 	Transaction action;
 	if (results[0].MoreRows) // Achievements
