@@ -295,6 +295,12 @@ public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index
 	if (!RF2_IsEnabled() || !IsValidEntity2(entity))
 		return 0;
 	
+	int killEater = TF2Attrib_HookValueInt(0, "kill_eater_score_type", entity);
+	if (killEater != 0)
+	{
+		DebugMsg("Found strange item (%s) (%d)", classname, killEater);
+	}
+
 	if (index == 812 || index == 222 || index == 1121) // Make the Cleaver/Milk work with Whale Bone Charm
 	{
 		SetEntProp(entity, Prop_Data, "m_iPrimaryAmmoType", TFAmmoType_Secondary);
@@ -699,6 +705,52 @@ void SDK_EquipWearable(int client, int entity)
 	{
 		SDKCall(g_hSDKEquipWearable, client, entity);
 	}
+}
+
+public MRESReturn Detour_GetOverhealBonus(int medigun, DHookReturn returnVal, DHookParam params)
+{
+	// if a player has a powerup, they cannot be overhealed normally
+	// so we need to recalculate what the overheal bonus would be and override it
+	int target = params.Get(1);
+	if (PlayerHasAnyRune(target))
+	{
+		static ConVar maxHealthBoost;
+		if (!maxHealthBoost)
+		{
+			maxHealthBoost = FindConVar("tf_max_health_boost");
+		}
+		
+		float overhealBonus = maxHealthBoost.FloatValue - 1.0;
+		float mod = 1.0;
+		mod = TF2Attrib_HookValueFloat(mod, "mult_medigun_overheal_amount", medigun);
+		mod = TF2Attrib_HookValueFloat(mod, "mult_patient_overheal_penalty", target);
+		int activeWep = GetActiveWeapon(target);
+		if (activeWep != INVALID_ENT)
+		{
+			mod = TF2Attrib_HookValueFloat(mod, "mult_patient_overheal_penalty_active", activeWep);
+		}
+		
+		if (mod >= 1.0)
+		{
+			overhealBonus += mod;
+		}
+		else if (mod < 1.0 && overhealBonus > 0.0)
+		{
+			overhealBonus *= mod;
+			overhealBonus += 1.0;
+		}
+		
+		// Safety net
+		if (overhealBonus < 1.0)
+		{
+			overhealBonus = 1.0;
+		}
+
+		returnVal.Value = overhealBonus;
+		return MRES_Supercede;
+	}
+
+	return MRES_Ignored;
 }
 
 public MRESReturn DHook_MeleeSmack(int weapon)

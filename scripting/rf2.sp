@@ -274,6 +274,7 @@ Handle g_hSDKTankSetStartNode;
 DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourSetReloadTimer;
 DynamicDetour g_hDetourApplyPunchImpulse;
+DynamicDetour g_hDetourOverhealBonus;
 DynamicDetour g_hDetourEyeFindVictim;
 DynamicDetour g_hDetourEyePickSpot;
 DynamicDetour g_hDetourHHHChaseable;
@@ -654,6 +655,13 @@ void LoadGameData()
 		LogError("[DHooks] Failed to create detour for CTFPlayer::ApplyPunchImpulseX");
 	}
 	
+
+	g_hDetourOverhealBonus = DynamicDetour.FromConf(gamedata, "CWeaponMedigun::GetOverhealBonus");
+	if (!g_hDetourOverhealBonus || !g_hDetourOverhealBonus.Enable(Hook_Pre, Detour_GetOverhealBonus))
+	{
+		LogError("[DHooks] Failed to create detour for CWeaponMedigun::GetOverhealBonus");
+	}
+
 	
 	StartPrepSDKCall(SDKCall_Entity);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CBaseObject::DoQuickBuild");
@@ -4856,15 +4864,23 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 		}
 	}
 	else if (condition == TFCond_RuneVampire || condition == TFCond_RuneWarlock
-		|| condition == TFCond_RuneKnockout || condition == TFCond_KingRune)
+		|| condition == TFCond_RuneKnockout || condition == TFCond_KingRune || condition == TFCond_KingAura)
 	{
 		// These runes modify max health
 		CalculatePlayerMaxHealth(client);
+		if (condition == TFCond_KingAura || condition == TFCond_KingRune)
+		{
+			UpdatePlayerFireRate(client);
+		}
 	}
 	else if (condition == TFCond_RuneHaste || condition == TFCond_RuneAgility || condition == TFCond_SpeedBuffAlly
 		|| condition == TFCond_RegenBuffed || condition == TFCond_HalloweenSpeedBoost || condition == TFCond_Slowed || condition == TFCond_Dazed)
 	{
 		CalculatePlayerMaxSpeed(client);
+		if (condition == TFCond_RuneHaste)
+		{
+			UpdatePlayerFireRate(client);
+		}
 	}
 }
 
@@ -4930,10 +4946,14 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 		}
 	}
 	else if (condition == TFCond_RuneVampire || condition == TFCond_RuneWarlock
-	|| condition == TFCond_RuneKnockout || condition == TFCond_KingRune)
+	|| condition == TFCond_RuneKnockout || condition == TFCond_KingRune || condition == TFCond_KingAura)
 	{
 		// These runes modify max health
 		CalculatePlayerMaxHealth(client);
+		if (condition == TFCond_KingAura || condition == TFCond_KingRune)
+		{
+			UpdatePlayerFireRate(client);
+		}
 	}
 	else if (condition == TFCond_RuneHaste || condition == TFCond_RuneAgility || condition == TFCond_SpeedBuffAlly
 	|| condition == TFCond_RegenBuffed || condition == TFCond_HalloweenSpeedBoost || condition == TFCond_Slowed || condition == TFCond_Dazed)
@@ -4941,6 +4961,10 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 		if (condition == TFCond_SpeedBuffAlly)
 		{
 			g_bPlayerFullMinigunMoveSpeed[client] = false;
+		}
+		else if (condition == TFCond_RuneHaste)
+		{
+			UpdatePlayerFireRate(client);
 		}
 
 		CalculatePlayerMaxSpeed(client);

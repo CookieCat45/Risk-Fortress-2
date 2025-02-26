@@ -629,9 +629,13 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 	Call_Finish();
 	switch (item)
 	{
-		case Item_MaxHead, Item_MaimLicense:
+		case Item_MaxHead, Item_MaimLicense, Item_RoundedRifleman:
 		{
-			UpdatePlayerFireRate(client);
+			if (updateStats)
+			{
+				UpdatePlayerFireRate(client);
+			}
+			
 			if (item == Item_MaxHead)
 			{
 				float value = CalcItemMod(client, Item_MaxHead, 0);
@@ -737,6 +741,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				if (item == Item_DarkHelm)
 				{
 					CalculatePlayerMaxHealth(client);
+				}
+
+				if (item == Item_TripleA)
+				{
+					UpdatePlayerFireRate(client);
 				}
 			}
 		}

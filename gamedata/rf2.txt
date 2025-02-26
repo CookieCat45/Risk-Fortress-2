@@ -107,6 +107,16 @@
 				"linux64"	"@_ZN9CTFPlayer18ApplyPunchImpulseXEf"
 				"windows64"	"\x48\x89\x5C\x24\x08\x57\x48\x83\xEC\x40\x48\x8D\x81\x20\x27\x00\x00"
 			}
+
+			// Look for string "mult_medigun_overheal_amount"
+			// The correct subroutine will NOT contain "set_weapon_mode"
+			"CWeaponMedigun::GetOverhealBonus"
+			{
+				"linux"		"@_ZN14CWeaponMedigun16GetOverHealBonusEP9CTFPlayer"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x08\xA1\x2A\x2A\x2A\x2A\xD9\xE8"
+				"linux64"	"@_ZN14CWeaponMedigun16GetOverHealBonusEP9CTFPlayer"
+				"windows64"	""
+			}
 			"HandleRageGain"
 			{
 				"linux"		"@_Z14HandleRageGainP9CTFPlayerjff"
@@ -250,6 +260,22 @@
 					"impulse"
 					{
 						"type"	"float"
+					}
+				}
+			}
+
+			"CWeaponMedigun::GetOverhealBonus"
+			{
+				"signature"	"CWeaponMedigun::GetOverhealBonus"
+				"callconv"	"thiscall"
+				"return"	"float"
+				"this"		"entity"
+
+				"arguments"
+				{
+					"target"
+					{
+						"type"	"cbaseentity"
 					}
 				}
 			}

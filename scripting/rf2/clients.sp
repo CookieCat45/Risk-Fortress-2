@@ -727,9 +727,10 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 			multiplier = GetPlayerReloadMod(client, weapon);
 			if (multiplier < 1.0 && update)
 			{
+				DebugMsg(classname);
 				TF2Attrib_SetByName(weapon, "melee attack rate bonus", multiplier);
 			}
-
+			
 			return multiplier;
 		}
 	}
@@ -822,7 +823,26 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 			}
 			
 			float max = StrContains(classname, "tf_weapon_bat") != -1 ? 0.4 : 0.25;
-			multiplier = fmax(multiplier, max/fireRateStat);
+
+			// account for powerups as well
+			float powerupMult = 1.0;
+			if (TF2_IsPlayerInCondition(client, TFCond_RuneHaste))
+			{
+				if (TF2_IsPlayerInCondition(client, TFCond_PowerupModeDominant))
+				{
+					powerupMult = 0.75;
+				}
+				else
+				{
+					powerupMult = 0.5;
+				}
+			}
+			else if (TF2_IsPlayerInCondition(client, TFCond_KingRune) || TF2_IsPlayerInCondition(client, TFCond_KingAura))
+			{
+				powerupMult = 0.75;
+			}
+
+			multiplier = fmax(multiplier, max/fireRateStat/powerupMult);
 		}
 	}
 
@@ -859,26 +879,26 @@ void UpdatePlayerFireRate(int client)
 float GetPlayerReloadMod(int client, int weapon=INVALID_ENT)
 {
 	float multiplier = 1.0;
-	multiplier *= CalcItemMod_HyperbolicInverted(client, Item_RoundedRifleman, 0);
-	multiplier *= CalcItemMod_HyperbolicInverted(client, Item_TripleA, 0);
-	multiplier *= CalcItemMod_HyperbolicInverted(client, Item_MaxHead, 3);
+	multiplier *= 1.0 + CalcItemMod(client, Item_RoundedRifleman, 0);
+	multiplier *= 1.0 + CalcItemMod(client, Item_TripleA, 0);
+	multiplier *= 1.0 + CalcItemMod(client, Item_MaxHead, 3);
 	
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)
 	{
-		multiplier *= 1.0 - GetItemMod(Item_SaintMark, 0);
+		multiplier *= 1.0 + GetItemMod(Item_SaintMark, 0);
 	}
 	
 	if (g_flPlayerRifleHeadshotBonusTime[client] > 0.0)
 	{
-		multiplier *= CalcItemMod_HyperbolicInverted(client, ItemSniper_VillainsVeil, 1);
+		multiplier *= 1.0 + CalcItemMod(client, ItemSniper_VillainsVeil, 1);
 	}
 
 	if (PlayerHasItem(client, Item_PointAndShoot) && g_iPlayerFireRateStacks[client] > 0)
 	{
-		multiplier *= (1.0 / (1.0 + (float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 3))));
+		multiplier *= 1.0 + (float(g_iPlayerFireRateStacks[client]) * GetItemMod(Item_PointAndShoot, 3));
 	}
 	
-	if (IsValidEntity2(weapon))
+	if (weapon != INVALID_ENT)
 	{
 		static char classname[64];
 		GetEntityClassname(weapon, classname, sizeof(classname));
@@ -903,7 +923,8 @@ float GetPlayerReloadMod(int client, int weapon=INVALID_ENT)
 			multiplier = Pow(multiplier, penalty);
 		}
 	}
-
+	
+	multiplier = fmax(1.0 / multiplier, 0.01);
 	return multiplier;
 }
 
