@@ -35,6 +35,7 @@ static char g_szEnemyGroup[MAX_ENEMIES][64];
 // TFBot
 static int g_iEnemyBotSkill[MAX_ENEMIES];
 static int g_iEnemyBotBehaviorAttributes[MAX_ENEMIES];
+static bool g_bEnemyBotSkillNoOverride[MAX_ENEMIES];
 static bool g_bEnemyBotAggressive[MAX_ENEMIES];
 static bool g_bEnemyBotRocketJump[MAX_ENEMIES];
 static bool g_bEnemyBotHoldFireUntilReloaded[MAX_ENEMIES];
@@ -286,6 +287,12 @@ methodmap Enemy
 	{
 		public get()			{ return g_iEnemyBotSkill[this.Index];  }
 		public set(int value)	{ g_iEnemyBotSkill[this.Index] = value; }
+	}
+
+	property bool BotSkillNoOverride
+	{
+		public get()			{ return g_bEnemyBotSkillNoOverride[this.Index];  }
+		public set(bool value)	{ g_bEnemyBotSkillNoOverride[this.Index] = value; }
 	}
 	
 	property int BotBehaviorAttributes
@@ -641,6 +648,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		
 		// bot stuff
 		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotSkill_Normal);
+		enemy.BotSkillNoOverride = asBool(enemyKey.GetNum("tf_bot_difficulty_no_override"));
 		enemy.BotBehaviorAttributes = enemyKey.GetNum("tf_bot_behavior_flags", 0);
 		enemy.BotAlwaysJump = asBool(enemyKey.GetNum("tf_bot_constant_jump", false));
 		enemy.BotAggressive = asBool(enemyKey.GetNum("tf_bot_aggressive", false));
@@ -653,7 +661,13 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		// XP and cash awards on death
 		enemy.XPAward = enemyKey.GetFloat("xp_award", 15.0);
 		enemy.CashAward = enemyKey.GetFloat("cash_award", 20.0);
-		enemy.Weight = imin(imax(enemyKey.GetNum("weight", 50), 1), 100);
+
+		// Spawning keyvalues
+		enemy.Weight = enemyKey.GetNum("weight", 50);
+		enemy.ActiveLimit = enemyKey.GetNum("active_limit");
+		enemy.SpawnLimit = enemyKey.GetNum("spawn_limit");
+		enemy.SpawnCooldown = enemyKey.GetFloat("spawn_cooldown");
+
 		enemy.FullRage = asBool(enemyKey.GetNum("full_rage", false));
 		enemy.NoBleeding = asBool(enemyKey.GetNum("no_bleeding", true));
 		enemy.ShouldGlow = asBool(enemyKey.GetNum("glow", false));
@@ -836,9 +850,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.VoiceType = enemyKey.GetNum("voice_type", VoiceType_Robot);
 		enemy.VoicePitch = enemyKey.GetNum("voice_pitch", noGiantLines ? SNDPITCH_LOW : SNDPITCH_NORMAL);
 		enemy.FootstepType = enemyKey.GetNum("footstep_type", enemy.IsBoss ? FootstepType_GiantRobot : FootstepType_Robot);
-		enemy.ActiveLimit = enemyKey.GetNum("active_limit");
-		enemy.SpawnLimit = enemyKey.GetNum("spawn_limit");
-		enemy.SpawnCooldown = enemyKey.GetFloat("spawn_cooldown");
 		enemy.AllowSelfDamage = asBool(enemyKey.GetNum("allow_self_damage", enemy.IsBoss ? false : true));
 		enemy.HeadScale = enemyKey.GetFloat("head_scale", enemy.IsBoss ? 1.5 : 1.0);
 		enemy.TorsoScale = enemyKey.GetFloat("torso_scale", 1.0);
@@ -1123,23 +1134,26 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 
 	if (IsFakeClient(client))
 	{
-		switch (RF2_GetDifficulty())
+		if (!enemy.BotSkillNoOverride)
 		{
-			// Bots have more skill on higher difficulties
-			case DIFFICULTY_STEEL:
+			switch (RF2_GetDifficulty())
 			{
-				if (enemy.BotSkill < TFBotSkill_Hard && enemy.BotSkill != TFBotSkill_Expert)
+				// Bots have more skill on higher difficulties
+				case DIFFICULTY_STEEL:
 				{
-					TFBot(client).SetSkillLevel(TFBotSkill_Hard);
+					if (enemy.BotSkill < TFBotSkill_Hard && enemy.BotSkill != TFBotSkill_Expert)
+					{
+						TFBot(client).SetSkillLevel(TFBotSkill_Hard);
+					}
+					else
+					{
+						TFBot(client).SetSkillLevel(enemy.BotSkill);
+					}
 				}
-				else
-				{
-					TFBot(client).SetSkillLevel(enemy.BotSkill);
-				}
+				
+				case DIFFICULTY_TITANIUM: TFBot(client).SetSkillLevel(TFBotSkill_Expert);
+				default: TFBot(client).SetSkillLevel(enemy.BotSkill);
 			}
-			
-			case DIFFICULTY_TITANIUM: TFBot(client).SetSkillLevel(TFBotSkill_Expert);
-			default: TFBot(client).SetSkillLevel(enemy.BotSkill);
 		}
 
 		if (enemy.Class == TFClass_Engineer)

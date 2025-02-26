@@ -61,3 +61,135 @@ Each stage has its own individual folder, e.g. `rf2/maps/stage1/`, `rf2/maps/sta
 
 # Risk Fortress 2 Mapping: Robot Configs
 Most maps normally have two configuration files for robot types: one for the regular common robot types, and another for the boss robots, who are normally giants.
+
+
+```
+"enemies"
+{
+	"example_heavy"
+	{
+		"name"			"Example Heavy"
+		"class"			"heavy"
+		"health"		"300"
+		"speed"			"280"
+		"weight"		"25"
+
+		"xp_award"		"30"
+		"cash_award"	"15"
+
+		"tf_bot_difficulty"	"1"
+		
+		"weapon1"
+		{
+			"classname"		"tf_weapon_minigun"
+			"index"			"15"               
+			"attributes"
+			{
+				"damage bonus" "1.2"
+				"fire rate bonus" "0.8"
+			}
+		}
+        "weapon2"
+		{
+			"classname"		"tf_weapon_fists"
+			"index"			"5"
+			"attributes"		
+			{
+				"fire rate bonus" "0.5"
+			}
+		}
+		
+		"wearable1"
+		{
+			"index"		"246"
+		}
+
+	}
+}
+```
+
+
+### General Keyvalues
+- `name`: The bot's name. Self explanatory.
+
+- `class`: The bot's class, e.g. `scout`, `soldier`, `pyro`
+
+- `health`: The bot's base max health. Scales with level.
+
+- `speed`: The bot's movement speed in hammer units per second.
+
+- `group`: The bot's spawning group. This can be changed by the map on the fly, and if the map does so, only bots from this group will spawn. Defaults to none.
+
+- `model`: Custom model to use if set, e.g. `models/player/heavy.mdl`. Defaults to the robot model for the class if unspecified
+
+- `model_scale`: The bot's model scale. Defaults to 1.75 for bosses.
+
+- `xp_award`: The bot's base XP drop. Scales with level.
+
+- `money_award`: The bot's base money drop. Scales with level.
+
+- `weight`: Value that determines how often a bot will spawn in comparison to others. Defaults to 50.
+
+- `active_limit`: How many of this bot type that can be active on the map at once. Defaults to 0 (no limit).
+
+- `spawn_limit`: How many times this bot is allowed to spawn during the course of the map. Defaults to 0 (no limit).
+
+- `spawn_cooldown`: The time in seconds that must pass before this bot is allowed to spawn again. Defaults to 0.
+
+
+### TFBot Behavior Keyvalues
+- `tf_bot_difficulty`: The bot's skill level. 0 = Easy, 1 = Normal, 2 = Hard, 3 = Expert. Defaults to Normal.
+Note that higher difficulty settings can override this unless `tf_bot_difficulty_no_override` is set to 1.
+
+- `tf_bot_difficulty_no_override`: If 1, prevents higher difficulty settings from overriding the bot's skill level. Defaults to 0.
+
+- `tf_bot_constant_jump`: If 1, forces the bot to constantly jump.
+
+- `tf_bot_aggressive`: If 1, forces the bot to aggressively chase down its target. Bots wielding melee weapons will utilize this behavior automatically. Defaults to 0.
+
+- `tf_bot_rocketjump`: If 1 on a Soldier bot, allows it to rocket jump. Defaults to 0.
+
+- `tf_bot_hold_fire_until_reload`: If 1, the bot will not fire its weapon until the clip is fully loaded. Defaults to 0.
+
+- `tf_bot_always_attack`: If 1, forces the bot to constantly fire its weapon. Defaults to 0.
+
+- `tf_bot_melee_distance`: If a bot's target gets this close to it in hammer units, the bot will switch to its melee weapon. Defaults to 0.
+
+- `tf_bot_uber_on_sight`: If 1, forces a Medic bot to use it's UberCharge the moment it spots an enemy. Defaults to 0.
+
+- `tf_bot_behavior_flags`: TFBot attributes (the ones you can set in MvM popfiles such as AlwaysCrit). This is a bitflag. You probably don't want to touch this - most of them don't work outside of MvM anyways.
+
+
+### Miscellaneous Keyvalues
+- `full_rage`: Forces the bot to spawn with a full rage meter, for weapons such as banners. Defaults to 0.
+
+- `no_bleeding`: Prevents the bot from generating blood particles when it takes damage. Defaults to 1.
+
+- `glow`: Forces the bot to have an outline. Defaults to 0.
+
+- `no_crits`: Prevents this bot from dealing any kind of crit or mini-crit damage. Defaults to 0.
+
+- `eye_glow`: Enables the eye glow effect for robots. Defaults to 1.
+
+- `engine_idle_sound`: Plays the engine idle sound for boss robots. Defaults to 1 for bosses.
+
+
+### Weapons Section Keyvalues
+For a list of weapon classnames and item definition indexes, see this page: https://wiki.alliedmods.net/Team_fortress_2_item_definition_indexes
+
+For a list of weapon attributes, see this page: https://wiki.teamfortress.com/wiki/List_of_item_attributes
+
+- `classname`: The weapon's entity classname.
+
+- `index`: The weapon's item definition index. This will define the weapon's appearance and default stats.
+
+- `attributes`: Attributes section. See the above example.
+
+- `strip_attributes`: If 1, strips all of the default stats on the weapon. The default stats are based on the weapon's item definition index.
+
+- `visible`: If 0, causes the weapon's model to be invisible.
+
+- `active_weapon`: If 1, this will be the bot's active weapon when it spawns.
+
+- `empty_clip`: If 1, this weapon's clip will be empty when the bot spawns.
+
