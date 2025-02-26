@@ -1,16 +1,7 @@
 # Risk Fortress 2
 
 ### Installation
-### SOURCEMOD 1.12 OR NEWER IS REQUIRED! SOURCEMOD 1.12 IS CURRENTLY UNSTABLE, SO PLEASE GRAB ONE OF THE DEVELOPMENT BUILDS FROM THE WEBSITE, AND NOT THE STABLE BUILDS!
-[SourceMod Development Builds](https://www.sourcemod.net/downloads.php?branch=dev)   
-
-Here are some useful tutorials to help you set up a local dedicated server:   
-[Dedicated Server Setup Guide (Windows)](https://wiki.teamfortress.com/wiki/Windows_dedicated_server)   
-[Dedicated Server Setup Guide (Linux)](https://wiki.teamfortress.com/wiki/Linux_dedicated_server)   
-[MetaMod+SourceMod Installation Guide](https://www.youtube.com/watch?v=QF7urRJIgrE)   
-[Private Server Setup Guide (For AFTER you get the server up and running)](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)   
-   
-Of course, you can just rent a server instead if you wish to do so.
+[Private Server Setup Guide](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)   
 
 ### REQUIRED Plugins/Extensions
 [CBaseNPC](https://github.com/TF2-DMB/CBaseNPC/releases)   
