@@ -4033,7 +4033,7 @@ public Action Timer_PlayerTimer(Handle timer)
 				if (id == 812 || id == 222 || id == 1121)
 				{
 					scoutSecondary = true;
-				}	
+				}
 			}
 			
 			if (!scoutSecondary && ammoType > TFAmmoType_None && ammoType < TFAmmoType_Metal)

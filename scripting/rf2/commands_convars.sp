@@ -1225,7 +1225,7 @@ public Action Command_ForceBoss(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	ShowBossSpawnMenu(client);
+	ShowBossSpawnMenu(client, asBool(GetCmdArgInt(1)));
 	return Plugin_Handled;
 }
 
@@ -1243,15 +1243,24 @@ public Action Command_ForceEnemy(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	ShowEnemySpawnMenu(client);
+	ShowEnemySpawnMenu(client, asBool(GetCmdArgInt(1)));
 	return Plugin_Handled;	
 }
 
-void ShowBossSpawnMenu(int client)
+void ShowBossSpawnMenu(int client, bool asSelf=false)
 {
 	Menu menu = new Menu(Menu_SpawnBoss);
 	char buffer[128], info[16], bossName[256];
 	menu.SetTitle("%T", "SpawnAs", client);
+	if (asSelf)
+	{
+		menu.AddItem("1", "Spawning as self", ITEMDRAW_DISABLED);
+	}
+	else
+	{
+		menu.AddItem("0", "", ITEMDRAW_DISABLED);
+	}
+
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
 		if (!EnemyByIndex(i).IsBoss)
@@ -1272,10 +1281,11 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 	{
 		case MenuAction_Select:
 		{
-			char info[8];
+			char info[8], self[4];
 			menu.GetItem(param2, info, sizeof(info));
 			int type = StringToInt(info);
-			int target = GetRandomPlayer(TEAM_ENEMY, false);
+			menu.GetItem(0, self, sizeof(self));
+			int target = self[0] == '1' ? param1 : GetRandomPlayer(TEAM_ENEMY, false);
 			if (!IsValidClient(target))
 			{
 				target = GetRandomPlayer(TEAM_ENEMY, true);
@@ -1315,11 +1325,20 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 	return 0;
 }
 
-void ShowEnemySpawnMenu(int client)
+void ShowEnemySpawnMenu(int client, bool asSelf=false)
 {
 	Menu menu = new Menu(Menu_SpawnEnemy);
 	char buffer[128], info[16], enemyName[256];
 	menu.SetTitle("%T", "SpawnAs", client);
+	if (asSelf)
+	{
+		menu.AddItem("1", "Spawning as self", ITEMDRAW_DISABLED);
+	}
+	else
+	{
+		menu.AddItem("0", "", ITEMDRAW_DISABLED);
+	}
+	
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
 		if (EnemyByIndex(i).IsBoss)
@@ -1340,10 +1359,11 @@ public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
 	{
 		case MenuAction_Select:
 		{
-			char info[8];
+			char info[8], self[4];
 			menu.GetItem(param2, info, sizeof(info));
 			int type = StringToInt(info);
-			int target = GetRandomPlayer(TEAM_ENEMY, false);
+			menu.GetItem(0, self, sizeof(self));
+			int target = strcmp2(self, "1") ? param1 : GetRandomPlayer(TEAM_ENEMY, false);
 			if (!IsValidClient(target))
 			{
 				target = GetRandomPlayer(TEAM_ENEMY, true);
