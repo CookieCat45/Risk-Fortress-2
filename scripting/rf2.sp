@@ -6461,7 +6461,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		
 		if (!victimIsBuilding && !victimIsNpc)
 		{
-			if (selfDamage && !Enemy(victim).AllowSelfDamage && damageCustom != TF_CUSTOM_TELEFRAG)
+			if (selfDamage && IsEnemy(victim) && !Enemy(victim).AllowSelfDamage && damageCustom != TF_CUSTOM_TELEFRAG)
 			{
 				damage = 0.0;
 				return Plugin_Changed;

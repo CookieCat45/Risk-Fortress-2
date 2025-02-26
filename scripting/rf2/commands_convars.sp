@@ -2111,7 +2111,6 @@ public Action Command_ForfeitItems(int client, int args)
 	confirm.AddItem("y", "Yes");
 	confirm.AddItem("n", "No");
 	confirm.Display(client, MENU_TIME_FOREVER);
-
 	return Plugin_Handled;
 }
 

@@ -3,6 +3,3 @@
 - Give Medic projectile shield
 
 - Fix item sharing issues on Rottenburg(?)
-
-- Fix the following Gamedata:
-CTFPlayer::PlayGesture
