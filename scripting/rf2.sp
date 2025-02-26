@@ -546,20 +546,12 @@ public void OnPluginEnd()
 	{
 		FindConVar("tf_bot_offline_practice").SetBool(false);
 		StopMusicTrackAll();
-	}
-	
-	for (int i = 0; i < MAXTF2PLAYERS; i++)
-	{
-		if (RF2_IsEnabled() && IsValidClient(i))
+		for (int i = 0; i < MAXTF2PLAYERS; i++)
 		{
-			SetClientName(i, g_szPlayerOriginalName[i]);
-			for (int a = 1; a <= 2; a++)
+			if (IsValidClient(i))
 			{
-				StopSound(i, SNDCHAN_STATIC, "mvm/giant_scout/giant_scout_loop.wav");
-				StopSound(i, SNDCHAN_STATIC, "mvm/giant_soldier/giant_soldier_loop.wav");
-				StopSound(i, SNDCHAN_STATIC, "mvm/giant_pyro/giant_pyro_loop.wav");
-				StopSound(i, SNDCHAN_STATIC, "mvm/giant_demoman/giant_demoman_loop.wav");
-				StopSound(i, SNDCHAN_STATIC, "mvm/giant_heavy/giant_heavy_loop.wav");
+				SetClientName(i, g_szPlayerOriginalName[i]);
+				StopEngineSounds(i);
 			}
 		}
 	}
@@ -1961,6 +1953,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	if (!IsValidClient(client))
 		return Plugin_Continue;
 	
+	StopEngineSounds(client);
 	if (g_bWaitingForPlayers && !IsFakeClient(client))
 	{
 		if (g_cvAlwaysSkipWait.BoolValue)
@@ -2126,15 +2119,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		CreateTimer(0.1, Timer_RespawnPlayerPreRound, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
-	for (int i = 1; i <= 2; i++)
-	{
-		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_scout/giant_scout_loop.wav");
-		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_soldier/giant_soldier_loop.wav");
-		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_pyro/giant_pyro_loop.wav");
-		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_demoman/giant_demoman_loop.wav");
-		StopSound(victim, SNDCHAN_STATIC, "mvm/giant_heavy/giant_heavy_loop.wav");
-	}
-
+	StopEngineSounds(victim);
 	KillAnnotation(victim);
 	if (!g_bRoundActive)
 		return action;

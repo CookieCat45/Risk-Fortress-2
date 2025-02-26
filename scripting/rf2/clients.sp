@@ -727,7 +727,6 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 			multiplier = GetPlayerReloadMod(client, weapon);
 			if (multiplier < 1.0 && update)
 			{
-				DebugMsg(classname);
 				TF2Attrib_SetByName(weapon, "melee attack rate bonus", multiplier);
 			}
 			
@@ -1735,6 +1734,18 @@ void ClientPlayGesture(int client, const char[] gesture)
 bool IsPlayerSpectator(int client)
 {
 	return GetClientTeam(client) <= 1;
+}
+
+void StopEngineSounds(int client)
+{
+	for (int a = 1; a <= 2; a++)
+	{
+		StopSound(client, SNDCHAN_STATIC, "mvm/giant_scout/giant_scout_loop.wav");
+		StopSound(client, SNDCHAN_STATIC, "mvm/giant_soldier/giant_soldier_loop.wav");
+		StopSound(client, SNDCHAN_STATIC, "mvm/giant_pyro/giant_pyro_loop.wav");
+		StopSound(client, SNDCHAN_STATIC, "mvm/giant_demoman/giant_demoman_loop.wav");
+		StopSound(client, SNDCHAN_STATIC, "mvm/giant_heavy/giant_heavy_loop.wav");
+	}
 }
 
 float GetPercentInvisible(int client)
