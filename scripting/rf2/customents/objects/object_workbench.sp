@@ -317,12 +317,13 @@ static void OnSpawnPost(int entity)
 			}
 		}
 	}
-	else if (IsInUnderworld() && bench.ItemQuality != Quality_Haunted 
+	else if (IsInUnderworld() && bench.ItemQuality != Quality_Haunted && !IsScrapItem(bench.Item)
 		&& GetRandomInt(1, 40) == 1 && !RF2_Object_Workbench.IsAnyComposterActive())
 	{
 		// also allow composters to spawn in hell
 		bench.IsComposter = true;
 		bench.ItemQuality = Quality_Collectors;
+		bench.TradeQuality = Quality_Genuine;
 	}
 	
 	// use item quality as trade quality if mapper doesn't force a specific one
@@ -426,14 +427,21 @@ static void OnSpawnPost(int entity)
 	sprite.Teleport(pos);
 	sprite.Spawn();
 	int color[4] = {255, 255, 255, 255};
-	switch (GetItemQuality(bench.Item))
+	if (bench.IsComposter)
 	{
-		case Quality_Genuine:		color = {125, 255, 125, 255};
-		case Quality_Unusual: 		color = {200, 125, 255, 255};
-		case Quality_Strange:		color = {200, 150, 0, 255};
-		case Quality_Collectors:	color = {255, 100, 100, 255};
-		case Quality_Haunted, 
-			Quality_HauntedStrange:	color = {125, 255, 255, 255};
+		color = {255, 100, 100, 255};
+	}
+	else
+	{
+		switch (GetItemQuality(bench.Item))
+		{
+			case Quality_Genuine:		color = {125, 255, 125, 255};
+			case Quality_Unusual: 		color = {200, 125, 255, 255};
+			case Quality_Strange:		color = {200, 150, 0, 255};
+			case Quality_Collectors:	color = {255, 100, 100, 255};
+			case Quality_Haunted, 
+				Quality_HauntedStrange:	color = {125, 255, 255, 255};
+		}
 	}
 	
 	sprite.SetRenderColor(color[0], color[1], color[2], color[3]);

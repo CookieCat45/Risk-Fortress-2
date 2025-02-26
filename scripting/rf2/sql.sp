@@ -90,13 +90,6 @@ public void OnClientAuthorized(int client, const char[] auth)
 	int id = GetSteamAccountID(client);
 	if (id == 0)
 	{
-		char auth2[64];
-		if (GetClientAuthId(client, AuthId_SteamID64, auth2, sizeof(auth2)))
-		{
-			// I'm suspecting that GetSteamAccountID() has issues. Let's see if this is true.
-			LogError("GetSteamAccountID returned 0 despite GetClientAuthId returning a valid auth (%s)", auth2);
-		}
-		
 		return;
 	}
 
@@ -107,6 +100,7 @@ public void OnClientAuthorized(int client, const char[] auth)
 	FormatEx(formatter, sizeof(formatter), "SELECT * FROM item_log WHERE steamid = %d;", id);
 	action.AddQuery(formatter);
 	g_hDataBase.Execute(action, Database_Setup, Database_RetryClient, GetClientUserId(client));
+	g_hObtainedItems[client] = new ArrayList(ByteCountToCells(64));
 }
 
 static void Database_Setup(Database db, any data, int numQueries, DBResultSet[] results, any[] queryData)
@@ -116,7 +110,8 @@ static void Database_Setup(Database db, any data, int numQueries, DBResultSet[] 
 	{
 		return;
 	}
-
+	
+	DebugMsg("Database_Setup");
 	char formatter[256], name[64];
 	Transaction action;
 	if (results[0].MoreRows) // Achievements
@@ -163,7 +158,7 @@ static void Database_Setup(Database db, any data, int numQueries, DBResultSet[] 
 				{
 					g_hObtainedItems[client] = new ArrayList(ByteCountToCells(64));
 				}
-
+				
 				g_hObtainedItems[client].PushString(formatter);
 			}
 		}
