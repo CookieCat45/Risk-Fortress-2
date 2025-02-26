@@ -627,7 +627,7 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CTFTankBoss::SetStartingPathTrackNode");
 	}
-	
+
 	
 	g_hDetourSetReloadTimer = DynamicDetour.FromConf(gamedata, "CTFWeaponBase::SetReloadTimer");
 	if (!g_hDetourSetReloadTimer || !g_hDetourSetReloadTimer.Enable(Hook_Pre, Detour_SetReloadTimer))
@@ -923,15 +923,6 @@ public void OnMapStart()
 		FindConVar("mp_tournament_blueteamname").SetString("ROBOTS");
 		SetMVMPlayerCvar(GetDesiredPlayerCap());
 		
-		// Remove Goomba immunities on stunned players
-		ConVar goombaBonk = FindConVar("goomba_bonked_immun");
-		ConVar goombaStun = FindConVar("goomba_stun_immun");
-		if (goombaBonk)
-		{
-			goombaBonk.BoolValue = false;
-			goombaStun.BoolValue = false;
-		}
-
 		// Why is this a development only ConVar Valve?
 		ConVar waitTime = FindConVar("mp_waitingforplayers_time");
 		waitTime.Flags &= ~FCVAR_DEVELOPMENTONLY;
@@ -1058,6 +1049,15 @@ public void OnConfigsExecuted()
 		FindConVar("mp_humans_must_join_team").SetString(g_cvAllowHumansInBlue.BoolValue ? "any" : "red");
 		InsertServerCommand("sv_pure 0");
 		
+		// Remove Goomba immunities on stunned players
+		ConVar goombaBonk = FindConVar("goomba_bonked_immun");
+		ConVar goombaStun = FindConVar("goomba_stun_immun");
+		if (goombaBonk)
+		{
+			goombaBonk.BoolValue = false;
+			goombaStun.BoolValue = false;
+		}
+
 		UpdateBotQuota();
 		char class[32];
 		GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
