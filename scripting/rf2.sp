@@ -6458,12 +6458,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				}
 			}
 		}
-
+		
 		if (!victimIsBuilding && !victimIsNpc)
 		{
-			if (selfDamage && IsBoss(victim) && !Enemy(victim).AllowSelfDamage && damageCustom != TF_CUSTOM_TELEFRAG)
+			if (selfDamage && !Enemy(victim).AllowSelfDamage && damageCustom != TF_CUSTOM_TELEFRAG)
 			{
-				// bosses normally don't do damage to themselves (except TF_CUSTOM_TELEFRAG, which some maps use to slay all bots)
 				damage = 0.0;
 				return Plugin_Changed;
 			}

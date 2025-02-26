@@ -916,65 +916,6 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	}
 	
 	ChangeClientTeam(client, TEAM_ENEMY);
-	if (IsFakeClient(client))
-	{
-		switch (RF2_GetDifficulty())
-		{
-			// Bots have more skill on higher difficulties
-			case DIFFICULTY_STEEL:
-			{
-				if (enemy.BotSkill < TFBotSkill_Hard && enemy.BotSkill != TFBotSkill_Expert)
-				{
-					TFBot(client).SetSkillLevel(TFBotSkill_Hard);
-				}
-				else
-				{
-					TFBot(client).SetSkillLevel(enemy.BotSkill);
-				}
-			}
-			
-			case DIFFICULTY_TITANIUM: TFBot(client).SetSkillLevel(TFBotSkill_Expert);
-			default: TFBot(client).SetSkillLevel(enemy.BotSkill);
-		}
-
-		if (enemy.Class == TFClass_Engineer)
-		{
-			enemy.BotBehaviorAttributes |= REMOVE_ON_DEATH;
-			enemy.BotBehaviorAttributes |= BECOME_SPECTATOR_ON_DEATH;
-			enemy.BotBehaviorAttributes |= RETAIN_BUILDINGS;
-		}
-		
-		if (enemy.BotBehaviorAttributes)
-		{
-			TFBot(client).BehaviorAttributes = enemy.BotBehaviorAttributes;
-		}
-		
-		if (enemy.BotAggressive)
-		{
-			TFBot(client).AddFlag(TFBOTFLAG_AGGRESSIVE);
-		}
-		
-		if (enemy.BotRocketJump)
-		{
-			TFBot(client).AddFlag(TFBOTFLAG_ROCKETJUMP);
-		}
-		
-		if (enemy.BotHoldFireReload)
-		{
-			TFBot(client).AddFlag(TFBOTFLAG_HOLDFIRE);
-		}
-
-		if (enemy.BotAlwaysAttack)
-		{
-			TFBot(client).AddFlag(TFBOTFLAG_ALWAYSATTACK);
-		}
-
-		if (enemy.BotAlwaysJump)
-		{
-			TFBot(client).AddFlag(TFBOTFLAG_SPAMJUMP);
-		}
-	}
-	
 	float mins[3] = PLAYER_MINS;
 	float maxs[3] = PLAYER_MAXS;
 	ScaleVector(mins, enemy.ModelScale);
@@ -1171,6 +1112,65 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		TE_TFParticle("eyeboss_tp_player", spawnPos);
 		TF2_AddCondition(client, TFCond_TeleportedGlow, 15.0);
 		g_bPlayerSpawnedByTeleporter[client] = false;
+	}
+
+	if (IsFakeClient(client))
+	{
+		switch (RF2_GetDifficulty())
+		{
+			// Bots have more skill on higher difficulties
+			case DIFFICULTY_STEEL:
+			{
+				if (enemy.BotSkill < TFBotSkill_Hard && enemy.BotSkill != TFBotSkill_Expert)
+				{
+					TFBot(client).SetSkillLevel(TFBotSkill_Hard);
+				}
+				else
+				{
+					TFBot(client).SetSkillLevel(enemy.BotSkill);
+				}
+			}
+			
+			case DIFFICULTY_TITANIUM: TFBot(client).SetSkillLevel(TFBotSkill_Expert);
+			default: TFBot(client).SetSkillLevel(enemy.BotSkill);
+		}
+
+		if (enemy.Class == TFClass_Engineer)
+		{
+			enemy.BotBehaviorAttributes |= REMOVE_ON_DEATH;
+			enemy.BotBehaviorAttributes |= BECOME_SPECTATOR_ON_DEATH;
+			enemy.BotBehaviorAttributes |= RETAIN_BUILDINGS;
+		}
+		
+		if (enemy.BotBehaviorAttributes)
+		{
+			TFBot(client).BehaviorAttributes = enemy.BotBehaviorAttributes;
+		}
+		
+		if (enemy.BotAggressive)
+		{
+			TFBot(client).AddFlag(TFBOTFLAG_AGGRESSIVE);
+		}
+		
+		if (enemy.BotRocketJump)
+		{
+			TFBot(client).AddFlag(TFBOTFLAG_ROCKETJUMP);
+		}
+		
+		if (enemy.BotHoldFireReload)
+		{
+			TFBot(client).AddFlag(TFBOTFLAG_HOLDFIRE);
+		}
+
+		if (enemy.BotAlwaysAttack)
+		{
+			TFBot(client).AddFlag(TFBOTFLAG_ALWAYSATTACK);
+		}
+
+		if (enemy.BotAlwaysJump)
+		{
+			TFBot(client).AddFlag(TFBOTFLAG_SPAMJUMP);
+		}
 	}
 	
 	if (enemy.EyeGlow)
