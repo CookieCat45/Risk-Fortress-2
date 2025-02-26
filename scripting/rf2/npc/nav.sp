@@ -200,7 +200,7 @@ public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 }
 
 public bool FilterIgnoreActors(int entity, int contentsMask, int desiredcollisiongroup)
-{	
+{
 	if ((entity > 0 && entity <= MaxClients) || !IsCombatChar(entity))
 	{
 		return false;
