@@ -548,7 +548,7 @@ static void OnCreate(RF2_NPC_Base npc)
 	npc.DefendTeam = -1;
 	npc.DoUnstuckChecks = true;
 	npc.BaseBackstabDamage = 750.0;
-	npc.Path = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+	npc.Path = PathFollower(INVALID_FUNCTION, FilterIgnoreActors, FilterOnlyActors);
 	
 	// Stop friendly NPCs from colliding with player bullets and projectiles
 	SDKHook(npc.index, SDKHook_ShouldCollide, Hook_DispenserShieldShouldCollide);

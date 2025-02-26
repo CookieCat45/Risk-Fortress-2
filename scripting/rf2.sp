@@ -479,6 +479,7 @@ public const char g_szTeddyBearSounds[][] =
 #include "rf2/npc/npc_companion_base.sp"
 #include "rf2/npc/npc_robot_butler.sp"
 #include "rf2/npc/npc_false_providence.sp"
+#include "rf2/customents/providence_shield_crystal.sp"
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
@@ -626,6 +627,7 @@ void LoadGameData()
 	{
 		LogError("[SDK] Failed to create call for CTFTankBoss::SetStartingPathTrackNode");
 	}
+	
 	
 	g_hDetourSetReloadTimer = DynamicDetour.FromConf(gamedata, "CTFWeaponBase::SetReloadTimer");
 	if (!g_hDetourSetReloadTimer || !g_hDetourSetReloadTimer.Enable(Hook_Pre, Detour_SetReloadTimer))
@@ -1038,6 +1040,9 @@ public void OnConfigsExecuted()
 	if (RF2_IsEnabled() && !g_bPluginReloading)
 	{
 		// Here are ConVars that we don't want changed by configs
+		ConVar droppedWeaponLife = FindConVar("tf_dropped_weapon_lifetime");
+		droppedWeaponLife.Flags &= ~FCVAR_CHEAT;
+		droppedWeaponLife.SetInt(0);
 		FindConVar("sv_quota_stringcmdspersecond").SetInt(5000); // So Engie bots don't get kicked
 		FindConVar("mp_teams_unbalance_limit").SetInt(0);
 		FindConVar("mp_forcecamera").SetBool(false);
@@ -1045,7 +1050,6 @@ public void OnConfigsExecuted()
 		FindConVar("mp_timelimit").SetInt(99999);
 		FindConVar("mp_forceautoteam").SetBool(true);
 		FindConVar("mp_respawnwavetime").SetFloat(99999.0);
-		FindConVar("tf_dropped_weapon_lifetime").SetInt(0);
 		FindConVar("mp_bonusroundtime").SetInt(15);
 		FindConVar("tf_weapon_criticals").SetBool(false);
 		FindConVar("tf_forced_holiday").SetInt(2);
@@ -1383,7 +1387,7 @@ public void OnClientPutInServer(int client)
 	{
 		if (IsFakeClient(client))
 		{
-			TFBot(client).Path = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+			TFBot(client).Path = PathFollower(INVALID_FUNCTION, FilterIgnoreActors, FilterOnlyActors);
 			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_TFBotWeaponCanSwitch);
 		}
 		else

@@ -95,18 +95,24 @@ methodmap Enemy
 		name = this.GetInternalName();
 		int val;
 		if (this.SpawnLimit > 0 && g_hEnemyTypeNumSpawned.GetValue(name, val) && val >= this.SpawnLimit)
+		{
 			return false;
+		}
 
 		float cd;
 		if (this.SpawnCooldown > 0.0 && g_hEnemyTypeCooldowns.GetValue(name, cd) && GetGameTime() < cd)
+		{
 			return false;
+		}
 		
 		if (g_szCurrentEnemyGroup[0])
 		{
 			char group[64];
 			this.GetGroup(group, sizeof(group));
 			if (group[0] && StrContainsEx(group, g_szCurrentEnemyGroup, false) == -1)
+			{
 				return false;
+			}
 		}
 
 		return true;
@@ -578,6 +584,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemyKey.GetSectionName(g_szLoadedEnemies[e], sizeof(g_szLoadedEnemies[]));
 		enemy = EnemyByIndex(e);
 		enemy.IsBoss = bosses;
+		PrintToServer("Loading enemy type: %s", g_szLoadedEnemies[e]);
 		
 		// TF class, health, and speed
 		enemy.BaseHealth = enemyKey.GetNum("health", 150);

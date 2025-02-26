@@ -256,9 +256,9 @@ methodmap RF2_RobotButler < RF2_NPC_Base
 	}
 }
 
-#include "rf2/npc/actions/robot_butler/main.sp"
-#include "rf2/npc/actions/robot_butler/heal.sp"
-#include "rf2/npc/actions/robot_butler/suicide_bomb.sp"
+#include "actions/robot_butler/main.sp"
+#include "actions/robot_butler/heal.sp"
+#include "actions/robot_butler/suicide_bomb.sp"
 
 void RobotButler_OnMapStart()
 {

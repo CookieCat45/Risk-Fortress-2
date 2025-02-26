@@ -365,10 +365,10 @@ methodmap RF2_Companion_Base < RF2_NPC_Base
 	}
 }
 
-#include "rf2/npc/actions/companions/main.sp"
-#include "rf2/npc/actions/companions/chaser.sp"
-#include "rf2/npc/actions/companions/attack_melee.sp"
-#include "rf2/npc/companions/npc_companion_heavybot.sp"
+#include "actions/companions/main.sp"
+#include "actions/companions/chaser.sp"
+#include "actions/companions/attack_melee.sp"
+#include "companions/npc_companion_heavybot.sp"
 
 static void OnCreate(RF2_Companion_Base npc)
 {
@@ -397,7 +397,7 @@ static void OnCreate(RF2_Companion_Base npc)
 	npc.MeleeGesture = -1;
 	npc.MoveX = -1;
 	npc.MoveY = -1;
-	//npc.Path = PathFollower(_, FilterIgnoreActors, FilterOnlyActors);
+	//npc.Path = PathFollower(INVALID_FUNCTION, FilterIgnoreActors, FilterOnlyActors);
 	npc.OnStateChange = new PrivateForward(ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	npc.HookStateChange(OnStateChanged);
 	SDKHook(npc.index, SDKHook_Think, CompanionThink);

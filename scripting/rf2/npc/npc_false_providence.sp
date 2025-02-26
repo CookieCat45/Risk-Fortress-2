@@ -263,14 +263,13 @@ enum
     ProvidencePhase_Crystals,
 };
 
-#include "rf2/customents/providence_shield_crystal.sp"
-#include "rf2/npc/actions/providence/main.sp"
-#include "rf2/npc/actions/providence/shockwave.sp"
-#include "rf2/npc/actions/providence/projectile.sp"
-#include "rf2/npc/actions/providence/explosive_slash.sp"
-#include "rf2/npc/actions/providence/spin_dash.sp"
-#include "rf2/npc/actions/providence/retreat.sp"
-#include "rf2/npc/actions/providence/death.sp"
+#include "actions/providence/main.sp"
+#include "actions/providence/shockwave.sp"
+#include "actions/providence/projectile.sp"
+#include "actions/providence/explosive_slash.sp"
+#include "actions/providence/spin_dash.sp"
+#include "actions/providence/retreat.sp"
+#include "actions/providence/death.sp"
 
 void Providence_OnMapStart()
 {

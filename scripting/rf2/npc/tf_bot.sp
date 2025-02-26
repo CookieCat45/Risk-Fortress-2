@@ -1846,17 +1846,14 @@ public MRESReturn Detour_OnWeaponFired(DHookParam params)
 		return MRES_Ignored;
 	
 	int whoFired = params.Get(1);
-	if (IsValidClient(whoFired))
+	if (IsValidClient(whoFired) && TF2_GetPlayerClass(whoFired) == TFClass_Spy)
 	{
-		if (PlayerHasItem(whoFired, ItemSpy_StealthyScarf) && CanUseCollectorItem(whoFired, ItemSpy_StealthyScarf))
+		int weapon = params.Get(2);
+		static char classname[32];
+		GetEntityClassname(weapon, classname, sizeof(classname));
+		if (strcmp2(classname, "tf_weapon_invis"))
 		{
-			int weapon = params.Get(2);
-			static char classname[32];
-			GetEntityClassname(weapon, classname, sizeof(classname));
-			if (strcmp2(classname, "tf_weapon_invis"))
-			{
-				return MRES_Supercede; // Silent cloaking
-			}
+			return MRES_Supercede; // Silent cloaking
 		}
 	}
 	
