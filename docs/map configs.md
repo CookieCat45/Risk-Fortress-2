@@ -89,7 +89,8 @@ Most maps normally have two configuration files for robot types: one for the reg
 				"fire rate bonus" "0.8"
 			}
 		}
-        "weapon2"
+
+                "weapon2"
 		{
 			"classname"		"tf_weapon_fists"
 			"index"			"5"
