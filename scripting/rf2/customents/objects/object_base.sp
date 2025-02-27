@@ -441,7 +441,7 @@ static void OnCreate(RF2_Object_Base obj)
 	obj.SetGlowColor(255, 255, 255, 255);
 	if (!RF2_Object_Teleporter(obj.index).IsValid())
 	{
-		obj.SetProp(Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER_TOUCH_DEBRIS|FSOLID_TRIGGER|FSOLID_NOT_SOLID|FSOLID_CUSTOMRAYTEST);
+		obj.SetProp(Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER_TOUCH_DEBRIS|FSOLID_TRIGGER|FSOLID_NOT_SOLID|FSOLID_CUSTOMBOXTEST);
 		obj.SetProp(Prop_Send, "m_nSolidType", SOLID_OBB);
 		SetEntityCollisionGroup(obj.index, COLLISION_GROUP_DEBRIS_TRIGGER);
 	}
