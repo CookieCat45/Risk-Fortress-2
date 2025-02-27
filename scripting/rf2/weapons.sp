@@ -7,7 +7,7 @@ int g_iWeaponCount[TF_CLASSES];
 int g_iWeaponIndexReplacement[TF_CLASSES][64];
 int g_iAttributeSlave = INVALID_ENT;
 
-char g_szWeaponIndexIdentifier[TF_CLASSES][64][PLATFORM_MAX_PATH];
+char g_szWeaponIndexIdentifier[TF_CLASSES][64][512];
 char g_szWeaponAttributes[TF_CLASSES][64][MAX_ATTRIBUTE_STRING_LENGTH];
 char g_szWeaponClassnameReplacement[TF_CLASSES][64][64];
 
@@ -299,6 +299,29 @@ public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index
 	{
 		SetEntProp(entity, Prop_Data, "m_iPrimaryAmmoType", TFAmmoType_Secondary);
 		SetEntProp(client, Prop_Send, "m_iAmmo", 1, _, TFAmmoType_Secondary);
+	}
+
+	int attribArray[MAX_STATIC_ATTRIBUTES];
+	float valueArray[MAX_STATIC_ATTRIBUTES];
+	int count = TF2Attrib_GetSOCAttribs(entity, attribArray, valueArray, MAX_STATIC_ATTRIBUTES);
+	for (int n = 0; n < count; n++)
+	{
+		bool shouldSet;
+		
+		// Allow these attributes so that war paints can work on weapons with overriden stats
+		if (attribArray[n] == 834)
+		{
+			shouldSet = TF2Attrib_HookValueInt(0, "paintkit_proto_def_index", entity) == 0;
+		}
+		else if (attribArray[n] == 725)
+		{
+			shouldSet = TF2Attrib_HookValueInt(0, "set_item_texture_wear", entity) == 0;
+		}
+		
+		if (shouldSet)
+		{
+			TF2Attrib_SetByDefIndex(entity, attribArray[n], valueArray[n]);
+		}
 	}
 	
 	if (g_bSetStringAttributes)

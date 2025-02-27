@@ -5802,8 +5802,8 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.5);
 			}
 			
-			if (strcmp2(inflictorClassname, "tf_projectile_rocket") || strcmp2(inflictorClassname, "tf_projectile_energy_ball") 
-				|| strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
+			bool mangler = strcmp2(inflictorClassname, "tf_projectile_energy_ball");
+			if (mangler || strcmp2(inflictorClassname, "tf_projectile_rocket") || strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
 			{
 				int offset = FindSendPropInfo("CTFProjectile_Rocket", "m_hLauncher") + 16;
 				int enemy = GetEntDataEnt2(inflictor, offset); // m_hEnemy
@@ -5823,6 +5823,12 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 							TF2_StunPlayer(victim, GetItemMod(ItemSoldier_Compatriot, 1), _, TF_STUNFLAG_BONKSTUCK, attacker);
 						}
 					}
+				}
+
+				if (mangler && validWeapon && GetEntProp(inflictor, Prop_Send, "m_bChargedShot"))
+				{
+					// mangler charged shot does more damage with clip size
+					damage *= 1.0 + (float(GetWeaponClipSize(weapon)) * 0.3);
 				}
 			}
 			else if (strcmp2(inflictorClassname, "tf_projectile_pipe"))
