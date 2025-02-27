@@ -20,6 +20,7 @@ static float g_flEnemyModelScale[MAX_ENEMIES];
 static float g_flEnemyXPAward[MAX_ENEMIES];
 static float g_flEnemyCashAward[MAX_ENEMIES];
 static float g_flEnemySpawnCooldown[MAX_ENEMIES];
+static float g_flEnemyItemDamageModifier[MAX_ENEMIES];
 
 static bool g_bEnemyFullRage[MAX_ENEMIES];
 static bool g_bEnemyNoBleeding[MAX_ENEMIES];
@@ -361,6 +362,12 @@ methodmap Enemy
 		public set(float value)	{ g_flEnemySpawnCooldown[this.Index] = value; }
 	}
 	
+	property float ItemDamageModifier
+	{
+		public get()			{ return g_flEnemyItemDamageModifier[this.Index]; }
+		public set(float value)	{ g_flEnemyItemDamageModifier[this.Index] = value; }
+	}
+
 	public bool WeaponUseStaticAtts(int slot)
 	{
 		return g_bEnemyWeaponUseStaticAttributes[this.Index][slot];
@@ -844,9 +851,11 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemyKey.GoBack();
 		}
 		
+		enemy.ItemDamageModifier = enemyKey.GetFloat("item_damage_modifier", 1.0);
+
 		bool noGiantLines = enemy.IsBoss && (enemy.Class == TFClass_Sniper || enemy.Class == TFClass_Medic 
 			|| enemy.Class == TFClass_Engineer || enemy.Class == TFClass_Spy);
-
+		
 		enemy.VoiceType = enemyKey.GetNum("voice_type", VoiceType_Robot);
 		enemy.VoicePitch = enemyKey.GetNum("voice_pitch", noGiantLines ? SNDPITCH_LOW : SNDPITCH_NORMAL);
 		enemy.FootstepType = enemyKey.GetNum("footstep_type", enemy.IsBoss ? FootstepType_GiantRobot : FootstepType_Robot);

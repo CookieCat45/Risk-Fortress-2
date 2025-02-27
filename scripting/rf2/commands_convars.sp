@@ -31,7 +31,9 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_tp_to_altar", Command_AltarTeleport, ADMFLAG_SLAY, "Teleports to an altar if one exists");
 	RegAdminCmd("rf2_view_afk_times", Command_ViewAFKTimes, ADMFLAG_SLAY, "View player AFK times");
 	RegAdminCmd("rf2_trigger_achievement", Command_TriggerAchievement, ADMFLAG_SLAY, "Trigger an achievement for a player. /rf2_trigger_achievement <player> <achievement ID>");
-
+	RegAdminCmd("rf2_load_enemies", Command_LoadEnemies, ADMFLAG_ROOT, "Loads an enemy configuration file.");
+	RegAdminCmd("rf2_load_bosses", Command_LoadBosses, ADMFLAG_ROOT, "Loads a boss configuration file.");
+	
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
 	RegConsoleCmd("rf2_endlevel", Command_EndLevel, "Starts the vote to end the level in Tank Destruction mode.");
@@ -2340,6 +2342,72 @@ public Action Command_TriggerAchievement(int client, int args)
 		}
 	}
 
+	return Plugin_Handled;
+}
+
+public Action Command_LoadEnemies(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	char file[PLATFORM_MAX_PATH], path[PLATFORM_MAX_PATH];
+	GetCmdArg(1, file, sizeof(file));
+	if (StrContains(file, ".cfg") == -1)
+	{
+		StrCat(file, sizeof(file), ".cfg");
+	}
+
+	if (StrContains(file, "enemies/") != 0)
+	{
+		Format(file, sizeof(file), "enemies/%s", file);
+	}
+	
+	BuildPath(Path_SM, path, sizeof(path), "%s/%s", ConfigPath, file);
+	if (!FileExists(path))
+	{
+		RF2_ReplyToCommand(client, "The config file '%s' does not exist.", path);
+		return Plugin_Handled;
+	}
+	
+	RF2_ReplyToCommand(client, "Loading enemies from config file: '%s'...", file);
+	ReplaceString(file, sizeof(file), ".cfg", "");
+	LoadEnemiesFromPack(file);
+	return Plugin_Handled;
+}
+
+public Action Command_LoadBosses(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	char file[PLATFORM_MAX_PATH], path[PLATFORM_MAX_PATH];
+	GetCmdArg(1, file, sizeof(file));
+	if (StrContains(file, ".cfg") == -1)
+	{
+		StrCat(file, sizeof(file), ".cfg");
+	}
+
+	if (StrContains(file, "enemies/") != 0)
+	{
+		Format(file, sizeof(file), "enemies/%s", file);
+	}
+	
+	BuildPath(Path_SM, path, sizeof(path), "%s/%s", ConfigPath, file);
+	if (!FileExists(path))
+	{
+		RF2_ReplyToCommand(client, "The config file '%s' does not exist.", path);
+		return Plugin_Handled;
+	}
+	
+	RF2_ReplyToCommand(client, "Loading bosses from config file: '%s'...", file);
+	ReplaceString(file, sizeof(file), ".cfg", "");
+	LoadEnemiesFromPack(file, true);
 	return Plugin_Handled;
 }
 

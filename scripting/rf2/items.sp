@@ -1639,8 +1639,12 @@ bool ActivateStrangeItem(int client)
 		ArrayList equipmentList = new ArrayList();
 		for (int i = 1; i < GetTotalItems(); i++)
 		{
-			if (i == ItemStrange_PartyHat || i == ItemStrange_LittleBuddy || !g_bItemInDropPool[i] ||
-				!IsEquipmentItem(i) || GetItemQuality(i) == Quality_HauntedStrange)
+			if (i == ItemStrange_PartyHat 
+				|| i == ItemStrange_LittleBuddy 
+				|| i == ItemStrange_ModestHat
+				|| !g_bItemInDropPool[i]
+				|| !IsEquipmentItem(i) 
+				|| GetItemQuality(i) == Quality_HauntedStrange)
 				continue;
 			
 			equipmentList.Push(i);

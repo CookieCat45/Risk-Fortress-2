@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.4.1-DEVONLY"
+#define PLUGIN_VERSION "1.4.2-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.4.1"
+#define PLUGIN_VERSION "1.4.2"
 #endif
 
 #include <rf2>
@@ -4968,15 +4968,22 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 	
 	bool changed;
 	bool melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee) == weapon;
-	if (!melee && g_flPlayerWarswornBuffTime[client] > GetTickedTime())
+	if (g_flPlayerWarswornBuffTime[client] > GetTickedTime())
 	{
-		// infinite shots
-		SetWeaponClip(weapon, GetWeaponClipSize(weapon));
+		if (!melee)
+		{
+			// infinite shots
+			SetWeaponClip(weapon, GetWeaponClipSize(weapon));
+		}
+	}
+	else if (g_flPlayerWarswornBuffTime[client] > 0.0)
+	{
+		UpdatePlayerFireRate(client);
+		g_flPlayerWarswornBuffTime[client] = 0.0;
 	}
 	
 	g_iLastFiredWeapon[client] = EntIndexToEntRef(weapon);
 	RequestFrame(RF_NextPrimaryAttack, GetClientUserId(client));
-	//UpdatePlayerFireRate(client);
 	
 	// Use our own crit logic
 	if (!result)
@@ -5716,6 +5723,11 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 		procItem = GetEntItemProc(inflictor);
 	}
 
+	if (procItem != Item_Null && IsValidClient(attacker) && IsEnemy(attacker))
+	{
+		damage *= Enemy(attacker).ItemDamageModifier;
+	}
+
 	if (validWeapon && IsValidClient(attacker))
 	{
 		proc *= GetWeaponProcCoefficient(weapon);
@@ -5736,6 +5748,10 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				{
 					TF2_StunPlayer(victim, 3.0, 0.6, TF_STUNFLAG_SLOWDOWN, attacker);
 				}
+			}
+			else if (itemDef == 656) // Holiday Punch
+			{
+				TF2_AddCondition(victim, TFCond_Milked, 8.0);
 			}
 			else if (itemDef == 414) // Liberty Launcher
 			{
