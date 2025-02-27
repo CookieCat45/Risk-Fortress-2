@@ -591,7 +591,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemyKey.GetSectionName(g_szLoadedEnemies[e], sizeof(g_szLoadedEnemies[]));
 		enemy = EnemyByIndex(e);
 		enemy.IsBoss = bosses;
-		PrintToServer("Loading enemy type: %s", g_szLoadedEnemies[e]);
+		PrintToServer("[RF2] Loading enemy type: %s", g_szLoadedEnemies[e]);
 		
 		// TF class, health, and speed
 		enemy.BaseHealth = enemyKey.GetNum("health", 150);
