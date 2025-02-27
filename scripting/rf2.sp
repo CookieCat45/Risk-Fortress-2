@@ -7247,6 +7247,7 @@ public void RF_CheckHealthForPocketMedic(int client)
 	{
 		EmitSoundToAll(SND_SHIELD, client);
 		TF2_AddCondition(client, TFCond_UberchargedCanteen, GetItemMod(Item_PocketMedic, 2));
+		TF2_AddCondition(client, TFCond_DefenseBuffNoCritBlock, GetItemMod(Item_PocketMedic, 3));
 		int heal = RoundToFloor(float(maxHealth) * GetItemMod(Item_PocketMedic, 1));
 		HealPlayer(client, heal, false);
 		PrintHintText(client, "%t", "PocketMedic");
