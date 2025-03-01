@@ -1934,7 +1934,7 @@ public Action OnBroadcastAudio(Event event, const char[] eventName, bool dontBro
 	if (IsInFinalMap())
 	{
 		// mute the announcer's tank near hatch warnings because there is no bomb hatch in the final map.
-		// Temporary solution, should instead add a way to disable this through the rf2_gamerules entity in maps.
+		// Temporary solution, should instead add a way to disable this through the rf2_gamerules entity in maps. (TODO)
 		char sound[PLATFORM_MAX_PATH];
 		event.GetString("sound", sound, sizeof(sound));
 		if (strcmp2(sound, "Announcer.MVM_Tank_Alert_Near_Hatch")

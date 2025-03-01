@@ -300,9 +300,9 @@ public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index
 		SetEntProp(entity, Prop_Data, "m_iPrimaryAmmoType", TFAmmoType_Secondary);
 		SetEntProp(client, Prop_Send, "m_iAmmo", 1, _, TFAmmoType_Secondary);
 	}
-
-	int attribArray[MAX_STATIC_ATTRIBUTES];
-	float valueArray[MAX_STATIC_ATTRIBUTES];
+	
+	int attribArray[32];
+	float valueArray[32];
 	int count = TF2Attrib_GetSOCAttribs(entity, attribArray, valueArray, MAX_STATIC_ATTRIBUTES);
 	for (int n = 0; n < count; n++)
 	{
