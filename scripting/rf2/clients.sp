@@ -713,7 +713,6 @@ void AddPlayerCash(int client, float amount)
 	SetEntProp(client, Prop_Send, "m_nCurrency", RoundToFloor(g_flPlayerCash[client]));
 }
 
-// This is for items, it has nothing to do with the attribute
 float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false)
 {
 	float multiplier = 1.0;

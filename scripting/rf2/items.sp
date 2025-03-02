@@ -647,10 +647,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					{
 						TF2Attrib_SetByName(primary, "projectile penetration", value);
 					}
-					else
-					{
-						TF2Attrib_RemoveByName(primary, "projectile penetration");
-					}
 				}
 				
 				if (secondary != INVALID_ENT)
@@ -658,10 +654,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					if (PlayerHasItem(client, item))
 					{
 						TF2Attrib_SetByName(secondary, "projectile penetration", value);
-					}
-					else
-					{
-						TF2Attrib_RemoveByName(secondary, "projectile penetration");
 					}
 				}
 			}
@@ -702,11 +694,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						{
 							TF2Attrib_SetByName(weapon, "clip size bonus upgrade", amount);
 						}
-						else
-						{
-							TF2Attrib_RemoveByName(weapon, "clip size bonus upgrade");
-						}
-						
 					}
 					else
 					{
@@ -714,11 +701,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						{
 							TF2Attrib_SetByName(weapon, "clip size penalty HIDDEN", amount);
 						}
-						else
-						{
-							TF2Attrib_RemoveByName(weapon, "clip size penalty HIDDEN");
-						}
-						
 					}
 				}
 				
@@ -765,11 +747,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				TF2Attrib_SetByName(client, "increased jump height", jumpHeightAmount);
 				TF2Attrib_SetByName(client, "increased air control", airControlAmount);
 			}
-			else
-			{
-				TF2Attrib_RemoveByName(client, "increased jump height");
-				TF2Attrib_RemoveByName(client, "increased air control");
-			}
 		}
 		case Item_MisfortuneFedora:
 		{
@@ -796,11 +773,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				TF2Attrib_SetByName(client, "airblast vulnerability multiplier", pushForce);
 				TF2Attrib_SetByName(client, "damage force increase", pushForce);
 			}
-			else
-			{
-				TF2Attrib_RemoveByName(client, "airblast vulnerability multiplier");
-				TF2Attrib_RemoveByName(client, "damage force increase");
-			}
 		}
 		case ItemEngi_Teddy:
 		{
@@ -815,11 +787,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						float constructRate = 1.0 + CalcItemMod(client, item, 1);
 						TF2Attrib_SetByName(wrench, "maxammo metal increased", maxMetal);
 						TF2Attrib_SetByName(wrench, "Construction rate increased", constructRate);
-					}
-					else
-					{
-						TF2Attrib_RemoveByName(wrench, "maxammo metal increased");
-						TF2Attrib_RemoveByName(wrench, "Construction rate increased");
 					}
 				}
 			}
@@ -843,19 +810,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					TF2Attrib_SetByName(medigun, "healing mastery", healRateBonus);
 					TF2Attrib_SetByName(medigun, "overheal bonus", overhealBonus);
 				}
-				else
-				{
-					if (item == ItemMedic_BlightedBeak)
-					{
-						TF2Attrib_RemoveByName(medigun, "ubercharge rate bonus");
-						TF2Attrib_RemoveByName(medigun, "uber duration bonus");
-					}
-					else if (item == ItemMedic_ProcedureMask)
-					{
-						TF2Attrib_RemoveByName(medigun, "healing mastery");
-						TF2Attrib_RemoveByName(medigun, "overheal bonus");
-					}
-				}
 			}
 		}
 		case ItemHeavy_ToughGuyToque:
@@ -871,11 +825,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						float revSpeed = CalcItemMod_HyperbolicInverted(client, item, 1);
 						TF2Attrib_SetByName(minigun, "attack projectiles", count);
 						TF2Attrib_SetByName(minigun, "minigun spinup time decreased", revSpeed);
-					}
-					else
-					{
-						TF2Attrib_RemoveByName(minigun, "attack projectiles");
-						TF2Attrib_RemoveByName(minigun, "minigun spinup time decreased");
 					}
 				}	
 			}
@@ -893,10 +842,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					{
 						TF2Attrib_SetByName(primary, "blast radius increased", value);
 					}
-					else
-					{
-						TF2Attrib_RemoveByName(primary, "blast radius increased");
-					}
 				}
 				
 				if (secondary != INVALID_ENT)
@@ -904,10 +849,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					if (PlayerHasItem(client, item))
 					{
 						TF2Attrib_SetByName(secondary, "blast radius increased", value);
-					}
-					else
-					{
-						TF2Attrib_RemoveByName(secondary, "blast radius increased");
 					}
 				}
 			}
@@ -958,21 +899,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					}
 				}
 			}
-			else
-			{
-				TF2Attrib_RemoveByName(client, "deploy time decreased");
-				int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-				int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-				if (primary != INVALID_ENT)
-				{
-					TF2Attrib_RemoveByName(primary, "weapon spread bonus");
-				}
-				
-				if (secondary != INVALID_ENT)
-				{
-					TF2Attrib_RemoveByName(secondary, "weapon spread bonus");
-				}
-			}
 		}
 		case ItemSoldier_WarPig:
 		{
@@ -1000,10 +926,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						
 						TF2Attrib_SetByName(launcher, "Projectile speed increased HIDDEN", projSpeed);
 					}
-					else
-					{
-						TF2Attrib_RemoveByName(launcher, "Projectile speed increased HIDDEN");
-					}
 				}
 			}
 		}
@@ -1020,10 +942,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						float projSpeed = 1.0 + CalcItemMod(client, item, 0);
 						TF2Attrib_SetByName(primary, "Projectile speed increased HIDDEN", projSpeed);
 					}
-					else
-					{
-						TF2Attrib_RemoveByName(primary, "Projectile speed increased HIDDEN");
-					}
 				}
 				
 				if (secondary != INVALID_ENT)
@@ -1039,10 +957,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						
 						TF2Attrib_SetByName(secondary, "stickybomb charge rate", chargeRate);
 					}
-					else
-					{
-						TF2Attrib_RemoveByName(secondary, "stickybomb charge rate");
-					}
 				}
 			}
 		}
@@ -1053,10 +967,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				if (PlayerHasItem(client, item))
 				{
 					TF2Attrib_SetByName(client, "engy dispenser radius increased", 1.0 + CalcItemMod(client, item, 1));
-				}
-				else
-				{
-					TF2Attrib_RemoveByName(client, "engy dispenser radius increased");
 				}
 			}
 		}
@@ -1074,12 +984,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						TF2Attrib_SetByName(primary, "damage bonus", 1.0+CalcItemMod(client, item, 2));
 						TF2Attrib_SetByName(primary, "airblast pushback scale", 1.0+CalcItemMod(client, ItemPyro_BrigadeHelm, 3));
 					}
-					else
-					{
-						TF2Attrib_RemoveByName(primary, "flame_spread_degree");
-						TF2Attrib_RemoveByName(primary, "damage bonus");
-						TF2Attrib_RemoveByName(primary, "airblast pushback scale");
-					}
 				}
 			}
 		}
@@ -1092,10 +996,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				if (PlayerHasItem(client, item) && CanUseCollectorItem(client, item))
 				{
 					TF2Attrib_SetByName(watch, "mult decloak rate", 1.0-fmin(0.99, CalcItemMod(client, item, 1)));
-				}
-				else
-				{
-					TF2Attrib_RemoveByName(watch, "mult decloak rate");
 				}
 			}
 		}
@@ -1119,11 +1019,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						TF2Attrib_SetByName(rifle, "SRifle Charge rate increased", 1.0+CalcItemMod(client, item, 0));
 					}
 				}
-				else
-				{
-					TF2Attrib_RemoveByName(rifle, "SRifle Charge rate increased");
-					TF2Attrib_RemoveByName(rifle, "faster reload rate");
-				}
 			}
 		}
 		
@@ -1136,10 +1031,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				{
 					TF2Attrib_SetByName(primary, "bullets per shot bonus", 1.0+CalcItemMod(client, ItemScout_FedFedora, 0));
 				}
-				else
-				{
-					TF2Attrib_RemoveByName(primary, "bullets per shot bonus");
-				}
 			}
 		}
 		
@@ -1148,10 +1039,6 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			if (PlayerHasItem(client, item))
 			{
 				TF2Attrib_SetByName(client, "mod_air_control_blast_jump", 1.0+CalcItemMod(client, item, 2));
-			}
-			else
-			{
-				TF2Attrib_RemoveByName(client, "mod_air_control_blast_jump");
 			}
 		}
 	}

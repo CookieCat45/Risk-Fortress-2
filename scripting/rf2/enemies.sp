@@ -1164,7 +1164,11 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 				default: TFBot(client).SetSkillLevel(enemy.BotSkill);
 			}
 		}
-
+		else
+		{
+			TFBot(client).SetSkillLevel(enemy.BotSkill);
+		}
+		
 		if (enemy.Class == TFClass_Engineer)
 		{
 			enemy.BotBehaviorAttributes |= REMOVE_ON_DEATH;

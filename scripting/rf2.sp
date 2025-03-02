@@ -1295,7 +1295,7 @@ void LoadAssets()
 	PrecacheScriptSound("MVM.GiantPyroLoop");
 	PrecacheScriptSound("MVM.GiantDemomanLoop");
 	PrecacheScriptSound("MVM.GiantScoutStep");
-	PrecacheSound("mvm/giant_heavy/giant_heavy_loop.wav", true);
+	PrecacheSound2("mvm/giant_heavy/giant_heavy_loop.wav", true);
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
 	AddSoundToDownloadsTable(SND_DRAGONBORN);
