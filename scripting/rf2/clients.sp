@@ -724,7 +724,7 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 		{
 			// Use reload speed modifiers for these weapons instead, because it makes more sense
 			multiplier = GetPlayerReloadMod(client, weapon);
-			if (multiplier < 1.0 && update)
+			if (update)
 			{
 				TF2Attrib_SetByName(weapon, "melee attack rate bonus", multiplier);
 			}
@@ -844,7 +844,7 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 		}
 	}
 
-	if (weapon != INVALID_ENT && update && multiplier < 1.0)
+	if (weapon != INVALID_ENT && update)
 	{
 		// note that this works on all weapons, not just melee
 		TF2Attrib_SetByName(weapon, "melee attack rate bonus", multiplier);
