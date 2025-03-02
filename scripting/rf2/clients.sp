@@ -844,7 +844,7 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 		}
 	}
 
-	if (weapon != INVALID_ENT && update)
+	if (weapon != INVALID_ENT && update && multiplier < 1.0)
 	{
 		// note that this works on all weapons, not just melee
 		TF2Attrib_SetByName(weapon, "melee attack rate bonus", multiplier);
