@@ -18,6 +18,7 @@ methodmap RF2_ProvidenceSpinDashAttack < RF2_BaseNPCAttackAction
 				.DefineFloatField("m_flAttackTime")
 				.DefineFloatField("m_flRecoveryTime")
                 .DefineFloatField("m_flSpinHitTime")
+                .DefineFloatField("m_flNextPathUpdateTime")
                 .DefineIntField("m_nHitCounter")
 				.EndDataMapDesc();
 		}
@@ -37,6 +38,19 @@ methodmap RF2_ProvidenceSpinDashAttack < RF2_BaseNPCAttackAction
             this.SetDataFloat("m_flSpinHitTime", value);
         }
     }
+
+    property float NextPathUpdateTime
+    {
+        public get()
+        {
+            return this.GetDataFloat("m_flNextPathUpdateTime");
+        }
+
+        public set(float value)
+        {
+            this.SetDataFloat("m_flNextPathUpdateTime", value);
+        }
+    }
 }
 
 static int OnStart(RF2_ProvidenceSpinDashAttack action, RF2_Providence boss, NextBotAction prevAction)
@@ -50,6 +64,7 @@ static int OnStart(RF2_ProvidenceSpinDashAttack action, RF2_Providence boss, Nex
     boss.SpinAttackTime = GetGameTime()+time+duration+25.0;
     action.AttackTime = GetGameTime() + time+duration;
     action.SpinHitTime = GetGameTime()+duration;
+    action.NextPathUpdateTime = 0.0;
     EmitSoundToAll(SND_SPIN_START, boss.index, _, SNDLEVEL_AIRCRAFT);
     EmitSoundToAll(SND_SPIN_START, boss.index, _, SNDLEVEL_AIRCRAFT);
     EmitSoundToAll(SND_SPIN_LOOP, boss.index, _, SNDLEVEL_AIRCRAFT);
@@ -94,7 +109,18 @@ static int Update(RF2_ProvidenceSpinDashAttack action, RF2_Providence boss, floa
         float playbackRate = boss.GetPropFloat(Prop_Send, "m_flPlaybackRate");
         playbackRate = fmin(playbackRate+0.05, 4.0);
         boss.SetPropFloat(Prop_Send, "m_flPlaybackRate", playbackRate);
-        boss.ApproachEntity(boss.Target);
+        
+        if (action.NextPathUpdateTime < GetGameTime())
+        {
+            // don't constantly beeline for the target - only keep track of their position every so often
+            boss.ApproachEntity(boss.Target);
+            action.NextPathUpdateTime = GetGameTime()+0.6;
+        }
+        else
+        {
+            // make sure to keep updating the path
+            boss.Path.Update(boss.Bot);
+        }
     }
 	
 	if (GetGameTime() >= action.SpinHitTime)

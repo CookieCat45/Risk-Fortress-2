@@ -101,14 +101,14 @@
 	"YourItemsShareEnabled" // No color tags
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"Your Items (select to drop). Item Share Limit: {1}/{2}"
+		"en"		"Your Items (select for info). Item Share Limit: {1}/{2}"
 	}
 	
 	"YourItems" // No color tags
 	{
-		"en"		"Your Items (select to drop)."
+		"en"		"Your Items (select for info)."
 	}
-
+	
 	"InspectTargetItems" // No color tags
 	{
 		"#format"	"{1:N}"
