@@ -2,7 +2,8 @@
 #pragma newdecls required
 
 void RF_TakeDamage(int entity, int inflictor, int attacker, float damage, int damageType=DMG_GENERIC, int procItem=Item_Null, 
-	int weapon=-1, const float damageForce[3]=NULL_VECTOR, const float damagePosition[3]=NULL_VECTOR)
+	int weapon=-1, const float damageForce[3]=NULL_VECTOR, const float damagePosition[3]=NULL_VECTOR, 
+	int damageCustom=0, CritType critType=CritType_None, bool friendlyFire=false)
 {
 	if (procItem > Item_Null)
 	{
@@ -13,7 +14,12 @@ void RF_TakeDamage(int entity, int inflictor, int attacker, float damage, int da
 			SetEntItemProc(inflictor, procItem);
 	}
 	
+	CTakeDamageInfo info = GetGlobalDamageInfo();
+	info.Init(inflictor, attacker, weapon, damageForce, damagePosition, damage, damageType, damageCustom);
+	info.SetForceFriendlyFire(friendlyFire);
+	info.SetCritType(view_as<TakeDamageInfo_CritType>(critType));
 	SDKHooks_TakeDamage(entity, inflictor, attacker, damage, damageType, weapon, damageForce, damagePosition, false);
+	CBaseEntity(entity).TakeDamage(info);
 }
 
 int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0, float maxDist=-1.0, int team=-1, bool trace=false)
@@ -293,12 +299,16 @@ int ShootProjectile(int owner=INVALID_ENT, const char[] classname, const float p
 * @param allowSelfDamage	Allow self damage.
 * @param blacklist			ArrayList of entities to ignore when dealing damage.
 * @param returnHitEnts		If true, return an ArrayList of entities that were hit.
+* @param buildingDamageMult Building damage multiplier
+* @param limit				Limit to number of entities that can be hit
+* @param friendlyFire	Allow friendly fire
 *
 * @return If returnHitEnts is TRUE, return ArrayList of hit entities, otherwise return NULL.
 */
 ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int item=Item_Null,
 	float baseDamage, int damageFlags, float radius, float minFalloffMult=0.3, 
-	bool allowSelfDamage=false, ArrayList blacklist=null, bool returnHitEnts=false, float buildingDamageMult=1.0, int limit=0)
+	bool allowSelfDamage=false, ArrayList blacklist=null, bool returnHitEnts=false, 
+	float buildingDamageMult=1.0, int limit=0, bool friendlyFire=false)
 {
 	float enemyPos[3];
 	float distance, falloffMultiplier, calculatedDamage;
@@ -322,7 +332,8 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 		if ((!IsValidClient(entity) || !IsPlayerAlive(entity)) && !IsNPC(entity) && !IsBuilding(entity) || entity == attacker && !allowSelfDamage)
 			continue;
 		
-		if (attackerTeam == GetEntTeam(entity) && (entity != attacker || entity == attacker && !allowSelfDamage))
+		if (attackerTeam == GetEntTeam(entity) && (entity != attacker && !friendlyFire 
+			|| entity == attacker && !allowSelfDamage))
 			continue;
 		
 		GetEntPos(entity, enemyPos);
@@ -349,7 +360,9 @@ ArrayList DoRadiusDamage(int attacker, int inflictor, const float pos[3], int it
 						calculatedDamage *= buildingDamageMult;
 					}
 					
-					RF_TakeDamage(entity, inflictor, attacker, calculatedDamage, damageFlags, item);
+					RF_TakeDamage(entity, inflictor, attacker, calculatedDamage, damageFlags, item,
+						_, _, _, _, _, friendlyFire);
+
 					if (returnHitEnts)
 					{
 						hitEnts.Push(entity);
@@ -1055,11 +1068,6 @@ int RunScriptCode_ReturnInt(int entity, const char[] code)
 	static char name[128];
 	GetEntPropString(g_iScriptSlave, Prop_Data, "m_iszMessage", name, sizeof(name));
 	return StringToInt(name);
-}
-
-PathFollower GetEntPathFollower(int entity)
-{
-	return g_iEntityPathFollower[entity];
 }
 
 void CleanPathFollowers()

@@ -219,7 +219,7 @@ public void Timer_GameOver(Handle timer)
 	}
 	else
 	{
-		ReloadPlugin(true);
+		ReloadPlugin();
 	}
 }
 
@@ -578,7 +578,7 @@ void UpdateGameDescription()
 	#endif
 }
 
-// It does not matter if the .mdl extension is included in the path or not.
+// Works with or without the .mdl extension in the file path
 void AddModelToDownloadsTable(const char[] file, bool precache=true)
 {
 	char buffer[PLATFORM_MAX_PATH], extension[16];

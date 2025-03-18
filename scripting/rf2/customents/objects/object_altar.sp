@@ -55,7 +55,7 @@ static void OnCreate(RF2_Object_Altar altar)
 	altar.DisallowNonSurvivorMinions = true;
 	altar.TextSize = 3.0;
 	altar.TextDist = 100.0;
-	altar.Effects = 0; // no flashing
+	altar.ShouldBlink = false;
 	altar.SetModel(MODEL_ALTAR);
 	altar.SetWorldText("(1 Gargoyle Key) Call for Medic to activate");
 	altar.SetObjectName("Gargoyle Altar");

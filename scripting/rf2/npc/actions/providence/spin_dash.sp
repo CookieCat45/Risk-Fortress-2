@@ -95,6 +95,7 @@ static int Update(RF2_ProvidenceSpinDashAttack action, RF2_Providence boss, floa
     {
         boss.GetAbsAngles(angles);
         boss.GetNewTarget(TargetMethod_Closest, TargetType_NoMinions);
+        action.NextPathUpdateTime = 0.0;
     }
 
     if (!boss.IsPlayingGesture("spin_begin") && boss.IsTargetValid())
@@ -114,7 +115,7 @@ static int Update(RF2_ProvidenceSpinDashAttack action, RF2_Providence boss, floa
         {
             // don't constantly beeline for the target - only keep track of their position every so often
             boss.ApproachEntity(boss.Target);
-            action.NextPathUpdateTime = GetGameTime()+0.6;
+            action.NextPathUpdateTime = GetGameTime()+0.5;
         }
         else
         {

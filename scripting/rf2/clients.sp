@@ -1,8 +1,3 @@
-#if defined _RF2_functions_clients_included
- #endinput
-#endif
-#define _RF2_functions_clients_included
-
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -43,6 +38,7 @@ void RefreshClient(int client, bool force=false)
 	g_flPlayerTimeSinceLastItemPickup[client] = 0.0;
 	g_flPlayerCaberRechargeAt[client] = 0.0;
 	g_flPlayerShieldRegenTime[client] = 0.0;
+	g_flPlayerMedicShieldNextUseTime[client] = 0.0;
 	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
@@ -1730,12 +1726,32 @@ void ClientPlayGesture(int client, const char[] gesture)
 	}
 }
 
+int CreateMedigunShield(int client, bool fillRage=true)
+{
+	int shield = CreateEntityByName("entity_medigun_shield");
+	int team = GetClientTeam(client);
+	SetEntTeam(shield, team);
+	SetEntProp(shield, Prop_Send, "m_nSkin", team-2);
+	SetEntPropEnt(shield, Prop_Send, "m_hOwnerEntity", client);
+	SetEntProp(shield, Prop_Send, "m_iTeamNum", team);
+	if (fillRage)
+	{
+		SetEntPropFloat(client, Prop_Send, "m_flRageMeter", 100.0);
+	}
+	
+	SetEntProp(client, Prop_Send, "m_bRageDraining", true);
+	SetEntityModel(shield, "models/props_mvm/mvm_player_shield2.mdl");
+	DispatchSpawn(shield);
+	EmitSoundToAll(SND_MEDSHIELD_DEPLOY, shield);
+	return shield;
+}
+
 bool IsPlayerSpectator(int client)
 {
 	return GetClientTeam(client) <= 1;
 }
 
-void StopEngineSounds(int client)
+void StopLoopingSounds(int client)
 {
 	for (int a = 1; a <= 2; a++)
 	{
@@ -1743,7 +1759,8 @@ void StopEngineSounds(int client)
 		StopSound(client, SNDCHAN_STATIC, "mvm/giant_soldier/giant_soldier_loop.wav");
 		StopSound(client, SNDCHAN_STATIC, "mvm/giant_pyro/giant_pyro_loop.wav");
 		StopSound(client, SNDCHAN_STATIC, "mvm/giant_demoman/giant_demoman_loop.wav");
-		StopSound(client, SNDCHAN_STATIC, "mvm/giant_heavy/giant_heavy_loop.wav");
+		StopSound(client, SNDCHAN_STATIC, ")mvm/giant_heavy/giant_heavy_loop.wav");
+		StopSound(client, SNDCHAN_STATIC, "mvm/sentrybuster/mvm_sentrybuster_loop.wav");
 	}
 }
 
@@ -1828,6 +1845,24 @@ bool IsInspectButtonPressed(int client)
 int GetDesiredPlayerCap()
 {
 	return g_cvMaxHumanPlayers.IntValue;
+}
+
+int FindPlayerBySteamID(const char[] steamId, AuthIdType authType)
+{
+	char id[128];
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || IsFakeClient(i))
+			continue;
+	
+		GetClientAuthId(i, authType, id, sizeof(id));
+		if (strcmp2(id, steamId))
+		{
+			return i;
+		}
+	}
+
+	return INVALID_ENT;
 }
 
 void ToggleHiddenSlot(bool state)

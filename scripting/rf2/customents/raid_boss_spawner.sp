@@ -26,6 +26,7 @@ methodmap RF2_RaidBossSpawner < CBaseEntity
         g_Factory.BeginDataMapDesc()
             .DefineEntityField("m_hBoss")
             .DefineStringField("m_szBossClassname", _, "boss_classname")
+            .DefineStringField("m_szBossTargetname", _, "boss_targetname")
             .DefineIntField("m_iBaseHealthOverride", _, "base_health_override")
             .DefineIntField("m_iExtraBaseHealthPerPlayer", _, "extra_health_per_player")
             .DefineInputFunc("StartBossBattle", InputFuncValueType_Void, Input_StartBossBattle)
@@ -80,10 +81,20 @@ methodmap RF2_RaidBossSpawner < CBaseEntity
     {
         return this.GetPropString(Prop_Data, "m_szBossClassname", buffer, size);
     }
-
+    
     public void SetBossClassname(const char[] classname)
     {
         this.SetPropString(Prop_Data, "m_szBossClassname", classname);
+    }
+    
+    public int GetBossTargetname(char[] buffer, int size)
+    {
+        return this.GetPropString(Prop_Data, "m_szBossTargetname", buffer, size);
+    }
+    
+    public void SetBossTargetname(const char[] classname)
+    {
+        this.SetPropString(Prop_Data, "m_szBossTargetname", classname);
     }
 
     public bool IsActive()
@@ -101,8 +112,11 @@ methodmap RF2_RaidBossSpawner < CBaseEntity
             LogError("rf2_raid_boss_spawner: Failed to create boss entity \"%s\".", classname);
             return;
         }
-
+        
         this.Boss = boss.index;
+        char targetName[128];
+        this.GetBossTargetname(targetName, sizeof(targetName));
+        boss.KeyValue("targetname", targetName);
         float pos[3], angles[3];
         this.GetAbsOrigin(pos);
         this.GetAbsAngles(angles);

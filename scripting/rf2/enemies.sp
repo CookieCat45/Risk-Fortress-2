@@ -1,7 +1,9 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define MAX_ENEMIES 32
+#define NULL_ENEMY view_as<Enemy>(-1)
+
+#define MAX_ENEMIES 64
 #define MAX_WEARABLES 6
 
 int g_iEnemyCount;
@@ -29,6 +31,15 @@ static bool g_bEnemyNoCrits[MAX_ENEMIES];
 static bool g_bEnemyEyeGlow[MAX_ENEMIES];
 static bool g_bEnemyEngineIdleSound[MAX_ENEMIES];
 
+// Suicide Bomber (Sentry Busters)
+static bool g_bEnemySuicideBomber[MAX_ENEMIES];
+static bool g_bEnemySuicideBombDamageFalloff[MAX_ENEMIES];
+static bool g_bEnemySuicideBombBusterSounds[MAX_ENEMIES];
+static bool g_bEnemySuicideBombFriendlyFire[MAX_ENEMIES];
+static float g_flEnemySuicideBombDamage[MAX_ENEMIES];
+static float g_flEnemySuicideBombDelay[MAX_ENEMIES];
+static float g_flEnemySuicideBombRange[MAX_ENEMIES];
+
 static char g_szEnemyName[MAX_ENEMIES][MAX_NAME_LENGTH];
 static char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
 static char g_szEnemyGroup[MAX_ENEMIES][64];
@@ -36,14 +47,16 @@ static char g_szEnemyGroup[MAX_ENEMIES][64];
 // TFBot
 static int g_iEnemyBotSkill[MAX_ENEMIES];
 static int g_iEnemyBotBehaviorAttributes[MAX_ENEMIES];
+static float g_flEnemyBotMeleeDistance[MAX_ENEMIES];
+static float g_flEnemyBotMaxVisionRange[MAX_ENEMIES];
 static bool g_bEnemyBotSkillNoOverride[MAX_ENEMIES];
 static bool g_bEnemyBotAggressive[MAX_ENEMIES];
 static bool g_bEnemyBotRocketJump[MAX_ENEMIES];
 static bool g_bEnemyBotHoldFireUntilReloaded[MAX_ENEMIES];
 static bool g_bEnemyBotAlwaysAttack[MAX_ENEMIES];
 static bool g_bEnemyBotAlwaysJump[MAX_ENEMIES];
-static float g_flEnemyBotMeleeDistance[MAX_ENEMIES];
 static bool g_bEnemyBotUberOnSight[MAX_ENEMIES];
+static ArrayList g_hEnemyBotTags[MAX_ENEMIES];
 
 // Weapons
 static bool g_bEnemyWeaponUseStaticAttributes[MAX_ENEMIES][TF_WEAPON_SLOTS];
@@ -87,7 +100,7 @@ methodmap Enemy
 	{
 		return EnemyByIndex(g_iPlayerEnemyType[client]);
 	}
-
+	
 	public bool IsAllowedToSpawn()
 	{
 		if (this.ActiveLimit > 0 && this.GetTotalActive() >= this.ActiveLimit)
@@ -277,6 +290,54 @@ methodmap Enemy
 		public get()			{ return g_bEnemyEngineIdleSound[this.Index]; }
 		public set(bool value)	{ g_bEnemyEngineIdleSound[this.Index] = value; }
 	}
+
+	property bool SuicideBomber
+	{
+		public get()			{ return g_bEnemySuicideBomber[this.Index]; }
+		public set(bool value)	{ g_bEnemySuicideBomber[this.Index] = value; }
+	}
+	
+	property bool SuicideBombBusterSounds
+	{
+		public get()			{ return g_bEnemySuicideBombBusterSounds[this.Index]; }
+		public set(bool value)	{ g_bEnemySuicideBombBusterSounds[this.Index] = value; }
+	}
+
+	property bool SuicideBombDamageFalloff
+	{
+		public get()			{ return g_bEnemySuicideBombDamageFalloff[this.Index]; }
+		public set(bool value)	{ g_bEnemySuicideBombDamageFalloff[this.Index] = value; }
+	}
+	
+	property bool SuicideBombFriendlyFire
+	{
+		public get()			{ return g_bEnemySuicideBombFriendlyFire[this.Index]; }
+		public set(bool value)	{ g_bEnemySuicideBombFriendlyFire[this.Index] = value; }
+	}
+	
+	property float SuicideBombDamage
+	{
+		public get()			{ return g_flEnemySuicideBombDamage[this.Index]; }
+		public set(float value)	{ g_flEnemySuicideBombDamage[this.Index] = value; }
+	}
+	
+	property float SuicideBombRange
+	{
+		public get()			{ return g_flEnemySuicideBombRange[this.Index]; }
+		public set(float value)	{ g_flEnemySuicideBombRange[this.Index] = value; }
+	}
+	
+	property float SuicideBombDelay
+	{
+		public get()			{ return g_flEnemySuicideBombDelay[this.Index]; }
+		public set(float value)	{ g_flEnemySuicideBombDelay[this.Index] = value; }
+	}
+
+	property ArrayList BotTags
+	{
+		public get()				{ return g_hEnemyBotTags[this.Index]; }
+		public set(ArrayList value)	{ g_hEnemyBotTags[this.Index] = value; }
+	}
 	
 	property bool BotUberOnSight
 	{
@@ -330,6 +391,12 @@ methodmap Enemy
 	{
 		public get()			{ return g_flEnemyBotMeleeDistance[this.Index];  }
 		public set(float value)	{ g_flEnemyBotMeleeDistance[this.Index] = value; }
+	}
+	
+	property float BotMaxVisionRange
+	{
+		public get()			{ return g_flEnemyBotMaxVisionRange[this.Index];  }
+		public set(float value)	{ g_flEnemyBotMaxVisionRange[this.Index] = value; }
 	}
 
 	property bool BotAlwaysJump
@@ -557,9 +624,55 @@ methodmap Enemy
 		public get()			{ return g_flBossFootstepInterval[this.Index]; }
 		public set(float value)	{ g_flBossFootstepInterval[this.Index] = value; }
 	}
+
+	public void DoSuicideBomb(int client)
+	{
+		if (!TF2_IsPlayerInCondition(client, TFCond_Taunting))
+		{
+			// make sure we are actually taunting before anything
+			return;
+		}
+
+		TF2Attrib_AddCustomPlayerAttribute(client, "increased air control", 0.0);
+		TF2Attrib_AddCustomPlayerAttribute(client, "no_jump", 1.0);
+		TF2Attrib_AddCustomPlayerAttribute(client, "no_duck", 1.0);
+		TF2Attrib_AddCustomPlayerAttribute(client, "no_attack", 1.0);
+		TF2Attrib_AddCustomPlayerAttribute(client, "move speed penalty", 0.0);
+		ForceSpeedUpdate(client);
+		TF2_AddCondition(client, TFCond_FreezeInput);
+		TF2_AddCondition(client, TFCond_UberchargedHidden);
+		TF2_AddCondition(client, TFCond_ImmuneToPushback);
+		if (this.SuicideBombBusterSounds)
+		{
+			EmitGameSoundToAll("MVM.SentryBusterSpin", client);
+		}
+		
+		CreateTimer(this.SuicideBombDelay, Timer_SuicideBomb, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	}
 }
 
-#define NULL_ENEMY view_as<Enemy>(-1)
+static void Timer_SuicideBomb(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
+		return;
+	
+	Enemy enemy = Enemy(client);
+	if (enemy == NULL_ENEMY || !enemy.SuicideBomber)
+		return;
+	
+	float pos[3];
+	GetEntPos(client, pos, true);
+	TE_TFParticle("fireSmokeExplosion", pos);
+	SetEntityHealth(client, 1);
+	TF2_RemoveCondition(client, TFCond_PreventDeath);
+	TF2_RemoveCondition(client, TFCond_UberchargedHidden);
+	UTIL_ScreenShake(pos, 10.0, 5.0, 4.0, 1000.0, SHAKE_START, true);
+	EmitSoundToAll(SND_SENTRYBUSTER_BOOM, client, _, SNDLEVEL_SCREAMING);
+	DoRadiusDamage(client, client, pos, _, enemy.SuicideBombDamage, DMG_BLAST|DMG_PREVENT_PHYSICS_FORCE,
+		enemy.SuicideBombRange, enemy.SuicideBombDamageFalloff ? 0.3 : 1.0, _, _, _, _, _, enemy.SuicideBombFriendlyFire);
+	
+	FakeClientCommand(client, "explode");
+}
 
 Enemy EnemyByIndex(int index)
 {
@@ -598,7 +711,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemyKey.GetSectionName(g_szLoadedEnemies[e], sizeof(g_szLoadedEnemies[]));
 		enemy = EnemyByIndex(e);
 		enemy.IsBoss = bosses;
-		PrintToServer("[RF2] Loading enemy type: %s", g_szLoadedEnemies[e]);
+		PrintToServer("[RF2] Found enemy type: %s", g_szLoadedEnemies[e]);
 		
 		// TF class, health, and speed
 		enemy.BaseHealth = enemyKey.GetNum("health", 150);
@@ -653,7 +766,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemy.SetModel(MODEL_ERROR);
 		}
 		
-		// bot stuff
 		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotSkill_Normal);
 		enemy.BotSkillNoOverride = asBool(enemyKey.GetNum("tf_bot_difficulty_no_override"));
 		enemy.BotBehaviorAttributes = enemyKey.GetNum("tf_bot_behavior_flags", 0);
@@ -663,24 +775,60 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.BotHoldFireReload = asBool(enemyKey.GetNum("tf_bot_hold_fire_until_reload", false));
 		enemy.BotAlwaysAttack = asBool(enemyKey.GetNum("tf_bot_always_attack", false));
 		enemy.BotMeleeDistance = enemyKey.GetFloat("tf_bot_melee_distance");
+		enemy.BotMaxVisionRange = enemyKey.GetFloat("tf_bot_max_vision_range", 6000.0);
 		enemy.BotUberOnSight = asBool(enemyKey.GetNum("tf_bot_uber_on_sight", false));
-		
-		// XP and cash awards on death
 		enemy.XPAward = enemyKey.GetFloat("xp_award", 15.0);
 		enemy.CashAward = enemyKey.GetFloat("cash_award", 20.0);
-
-		// Spawning keyvalues
 		enemy.Weight = enemyKey.GetNum("weight", 50);
 		enemy.ActiveLimit = enemyKey.GetNum("active_limit");
 		enemy.SpawnLimit = enemyKey.GetNum("spawn_limit");
 		enemy.SpawnCooldown = enemyKey.GetFloat("spawn_cooldown");
-
 		enemy.FullRage = asBool(enemyKey.GetNum("full_rage", false));
 		enemy.NoBleeding = asBool(enemyKey.GetNum("no_bleeding", true));
 		enemy.ShouldGlow = asBool(enemyKey.GetNum("glow", false));
 		enemy.NoCrits = asBool(enemyKey.GetNum("no_crits", false));
 		enemy.EyeGlow = asBool(enemyKey.GetNum("eye_glow", true));
 		enemy.EngineSound = asBool(enemyKey.GetNum("engine_idle_sound", enemy.IsBoss));
+		enemy.SuicideBomber = enemyKey.JumpToKey("suicide_bomber");
+		if (enemy.SuicideBomber)
+		{
+			enemy.SuicideBombDamage = enemyKey.GetFloat("damage", 600.0);
+			enemy.SuicideBombRange = enemyKey.GetFloat("range", 300.0);
+			enemy.SuicideBombDelay = enemyKey.GetFloat("delay", 2.0);
+			enemy.SuicideBombFriendlyFire = asBool(enemyKey.GetNum("friendly_fire", 1));
+			enemy.SuicideBombBusterSounds = asBool(enemyKey.GetNum("use_buster_sounds", 1));
+			enemy.SuicideBombDamageFalloff = asBool(enemyKey.GetNum("use_damage_falloff", 1));
+			enemyKey.GoBack();
+		}
+		
+		if (enemy.BotTags)
+		{
+			delete enemy.BotTags;
+		}
+
+		if (enemyKey.JumpToKey("tags"))
+		{
+			enemy.BotTags = new ArrayList(64);
+			int i = 1;
+			char key[8], tag[64];
+			for ( ;; )
+			{
+				FormatEx(key, sizeof(key), "tag%d", i);
+				enemyKey.GetString(key, tag, sizeof(tag));
+				if (tag[0])
+				{
+					enemy.BotTags.PushString(tag);
+				}
+				else
+				{
+					break;
+				}
+				
+				i++;
+			}
+
+			enemyKey.GoBack();
+		}
 		
 		enemy.WeaponCount = 0;
 		for (int w = 0; w < TF_WEAPON_SLOTS; w++)
@@ -745,11 +893,10 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 				TrimString(g_szEnemyWeaponAttributes[e][w]);
 				enemyKey.GoBack();
 			}
-
+			
 			enemy.SetWeaponIndex(w, enemyKey.GetNum("index", 5));
 			enemy.SetWeaponVisible(w, asBool(enemyKey.GetNum("visible", true)));
 			enemy.SetWeaponUseStaticAtts(w, !asBool(enemyKey.GetNum("strip_attributes", false)));
-			//enemy.SetWeaponUseStaticAtts(w, asBool(enemyKey.GetNum("static_attributes", false)));
 			enemy.SetWeaponIsFirstActive(w, asBool(enemyKey.GetNum("active_weapon", false)));
 			enemy.SetWeaponStartWithEmptyClip(w, asBool(enemyKey.GetNum("empty_clip", false)));
 			enemy.WeaponCount++;
@@ -815,7 +962,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemyKey.GetString("attributes", g_szEnemyWearableAttributes[e][w], sizeof(g_szEnemyWearableAttributes[][]), "");
 			enemy.SetWearableIndex(w, enemyKey.GetNum("index", 5));
 			enemy.SetWearableVisible(w, asBool(enemyKey.GetNum("visible", true)));
-			enemy.SetWearableUseStaticAtts(w, asBool(enemyKey.GetNum("static_attributes", false)));
+			enemy.SetWearableUseStaticAtts(w, !asBool(enemyKey.GetNum("strip_attributes", false)));
 			enemy.WearableCount++;
 			enemyKey.GoBack();
 		}
@@ -897,6 +1044,12 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 			enemyList.Push(i);
 	}
 	
+	if (enemyList.Length <= 0)
+	{
+		delete enemyList;
+		return -1;
+	}
+
 	Enemy selected = EnemyByIndex(enemyList.Get(GetRandomInt(0, enemyList.Length-1)));
 	if (getName)
 	{
@@ -922,6 +1075,12 @@ int GetRandomBoss(bool getName=false, char[] buffer="", int size=0)
 			bossList.Push(i);
 	}
 	
+	if (bossList.Length <= 0)
+	{
+		delete bossList;
+		return -1;
+	}
+
 	Enemy selected = EnemyByIndex(bossList.Get(GetRandomInt(0, bossList.Length-1)));
 	if (getName)
 	{
@@ -1140,7 +1299,22 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		TF2_AddCondition(client, TFCond_TeleportedGlow, 15.0);
 		g_bPlayerSpawnedByTeleporter[client] = false;
 	}
-
+	
+	if (enemy.SuicideBomber)
+	{
+		if (IsFakeClient(client))
+		{
+			TFBot(client).AddFlag(TFBOTFLAG_SUICIDEBOMBER);
+		}
+		
+		TF2_AddCondition(client, TFCond_PreventDeath);
+		if (enemy.SuicideBombBusterSounds)
+		{
+			EmitGameSoundToAll("MVM.SentryBusterIntro", client);
+			EmitGameSoundToAll("MVM.SentryBusterLoop", client);
+		}
+	}
+	
 	if (IsFakeClient(client))
 	{
 		if (!enemy.BotSkillNoOverride)
@@ -1200,10 +1374,25 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		{
 			TFBot(client).AddFlag(TFBOTFLAG_ALWAYSATTACK);
 		}
-
+		
 		if (enemy.BotAlwaysJump)
 		{
 			TFBot(client).AddFlag(TFBOTFLAG_SPAMJUMP);
+		}
+		
+		char scriptCode[128];
+		FormatEx(scriptCode, sizeof(scriptCode), "self.SetMaxVisionRangeOverride(%.0f)", enemy.BotMaxVisionRange);
+		RunScriptCode(client, scriptCode);
+		
+		if (enemy.BotTags)
+		{
+			char tag[64];
+			for (int i = 0; i < enemy.BotTags.Length; i++)
+			{
+				enemy.BotTags.GetString(i, tag, sizeof(tag));
+				FormatEx(scriptCode, sizeof(scriptCode), "self.AddBotTag(%s)", tag);
+				RunScriptCode(client, scriptCode);
+			}
 		}
 	}
 	
@@ -1280,7 +1469,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		if (boss.BossGiantWeaponSounds)
 		{
 			int weapon = GetPlayerWeaponSlot(client, 0);
-			if (weapon != -1)
+			if (weapon != INVALID_ENT)
 			{
 				// trick game into playing MvM giant weapon sounds
 				SetEntProp(weapon, Prop_Send, "m_iTeamNum", TF_TEAM_PVE_INVADERS_GIANTS);
@@ -1333,12 +1522,15 @@ void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 	{
 		int client = players.Get(i);
 		g_bPlayerInSpawnQueue[client] = true;
-		
+		int randomBoss = GetRandomBoss();
+		if (randomBoss == -1)
+			continue;
+
 		// don't spawn all the bosses at once, as it will cause client crashes if there are too many
 		DataPack pack;
 		CreateDataTimer(time, Timer_SpawnTeleporterBoss, pack, TIMER_FLAG_NO_MAPCHANGE);
 		pack.WriteCell(GetClientUserId(client));
-		pack.WriteCell(GetRandomBoss());
+		pack.WriteCell(randomBoss);
 		pack.WriteCell(teleporter.index);
 		time += 0.1;
 	}

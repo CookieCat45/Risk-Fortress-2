@@ -53,9 +53,10 @@
 	"A raid boss spawner. Used to spawn special raid boss entities. The boss will be spawned using the position and angles of this entity."
 [
 	boss_classname(string) : "Boss Entity Name" : "" : "The entity classname of the boss to spawn."
+	boss_targetname(string) : "Boss Target Name" : "" : "The targetname to set on the boss when it spawns. This can be used for VScripts."
 	base_health_override(integer) : "Base Health Override" : 0 : "If above 0, this will be the base health value of bosses spawned by this entity."
 	extra_health_per_player(integer) : "Extra Base Health Per Player" : 0 : "Extra base health per player. Only used if base health is overriden."
-
+	
 	input StartBossBattle(void) : "Spawns the boss."
 	input DoBossAction(string) : "Sends a string command that tells the boss to do a certain action. Intended for custom boss behaviour."
 

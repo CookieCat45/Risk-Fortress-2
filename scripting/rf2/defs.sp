@@ -248,6 +248,7 @@ enum // Move collide types
 #define SND_MERASMUS_DANCE3 "vo/halloween_merasmus/sf12_wheel_dance05.mp3"
 #define SND_BOSS_SPAWN "mvm/mvm_tank_start.wav"
 #define SND_BOSS_DEATH "rf2/sfx/boss_death.wav"
+#define SND_MEDSHIELD_DEPLOY "weapons/medi_shield_deploy.wav"
 #define SND_SENTRYBUSTER_BOOM "mvm/sentrybuster/mvm_sentrybuster_explode.wav"
 #define SND_ENEMY_STUN "mvm/mvm_robo_stun.wav"
 #define SND_TELEPORTER_CHARGED "mvm/mvm_bought_in.wav"
@@ -327,6 +328,7 @@ enum
 #define TFBOTFLAG_HOLDFIRE (1 << 3) // Hold fire until fully reloaded
 #define TFBOTFLAG_SPAMJUMP (1 << 4) // constantly jump
 #define TFBOTFLAG_ALWAYSATTACK (1 << 5) // Always hold IN_ATTACK
+#define TFBOTFLAG_SUICIDEBOMBER (1 << 6) // Behave like a Sentry Buster, but go after players instead of sentries
 
 // Enemies/Bosses -------------------------------------------------------------------------------------------------------------------------------------
 enum

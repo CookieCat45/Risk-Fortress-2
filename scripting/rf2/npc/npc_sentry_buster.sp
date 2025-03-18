@@ -3,7 +3,7 @@
 
 // Original Sentry Buster NPC plugin by Kenzzer: https://github.com/Kenzzer/sm_plugins/tree/master/sentrybuster
 #define MODEL_BUSTER "models/bots/demo/bot_sentry_buster.mdl"
-#define BUSTER_BASE_HEALTH 1500.0
+#define BUSTER_BASE_HEALTH 2500.0
 #define BUSTER_BASE_DAMAGE 1000.0
 
 enum ShakeCommand_t

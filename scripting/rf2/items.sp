@@ -981,7 +981,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					{
 						float value = GetItemMod(item, 1) * (1.0 - CalcItemMod_HyperbolicInverted(client, item, 0));
 						TF2Attrib_SetByName(primary, "flame_spread_degree", value);
-						TF2Attrib_SetByName(primary, "damage bonus", 1.0+CalcItemMod(client, item, 2));
+						TF2Attrib_SetByName(primary, "damage bonus HIDDEN", 1.0+CalcItemMod(client, item, 2));
 						TF2Attrib_SetByName(primary, "airblast pushback scale", 1.0+CalcItemMod(client, ItemPyro_BrigadeHelm, 3));
 					}
 				}

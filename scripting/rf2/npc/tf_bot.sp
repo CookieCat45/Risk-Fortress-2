@@ -435,9 +435,24 @@ void TFBot_Think(TFBot bot)
 		ForceWeaponSwitch(bot.Client, desiredSlot);
 	}
 	
+	if (threat > 0 && bot.HasFlag(TFBOTFLAG_SUICIDEBOMBER) && GetEntityFlags(bot.Client) & FL_ONGROUND)
+	{
+		if (GetClientHealth(bot.Client) <= 1 
+			|| DistBetween(bot.Client, threat) <= Enemy(bot.Client).SuicideBombRange*0.25)
+		{
+			// taunting is what triggers the suicide bomb
+			if (!TF2_IsPlayerInCondition(bot.Client, TFCond_Taunting))
+			{
+				FakeClientCommand(bot.Client, "taunt");
+			}
+		}
+	}
+
 	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer && !IsValidEntity2(bot.BuildingTarget))
 	{
-		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
+		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || bot.HasFlag(TFBOTFLAG_SUICIDEBOMBER)
+			|| GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
+		
 		if (!aggressiveMode && threat > 0 && bot.GetSkillLevel() > TFBotSkill_Easy)
 		{
 			float eyePos[3], targetPos[3];
@@ -455,7 +470,6 @@ void TFBot_Think(TFBot bot)
 		if (bot.GetLocomotion().IsStuck())
 		{
 			lastStuckTime[bot.Client] = GetTickedTime();
-			
 		}
 		
 		bool stuckBoss;

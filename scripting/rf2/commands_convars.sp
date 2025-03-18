@@ -57,6 +57,7 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_forfeit_items", Command_ForfeitItems, "Forfeit all of your items to others in multiplayer.");
 	RegConsoleCmd("rf2_forfeit", Command_ForfeitItems, "Forfeit all of your items to others in multiplayer.");
 	
+	CreateConVar("rf2_plugin_version", PLUGIN_VERSION, "Plugin version. Don't touch this please.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	char buffer[8];
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
 	g_cvMaxSurvivors = CreateConVar("rf2_max_survivors", buffer, "Max number of Survivors that can be in the game.", FCVAR_NOTIFY, true, 1.0, true, float(MAX_SURVIVORS));
@@ -134,8 +135,9 @@ void LoadCommandsAndCvars()
 	g_cvRequiredStagesForStatue = CreateConVar("rf2_statue_required_stages", "10", "How many stages need to be completed before being able to interact with the statue in the Underworld", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnableOneShotProtection = CreateConVar("rf2_enable_osp", "1", "Enables one-shot protection for Survivors. If a Survivor is at or above 90% of their health, they cannot die to a single instance of damage.", FCVAR_NOTIFY, true, 0.0);
 	g_cvOldGiantFootsteps = CreateConVar("rf2_use_old_giant_footsteps", "0", "Uses the old system for giant footstep sounds (unused footstep sounds instead of giant_common_step)", FCVAR_NOTIFY, true, 0.0);
-	CreateConVar("rf2_plugin_version", PLUGIN_VERSION, "Plugin version. Don't touch this please.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
-	
+	g_cvPlayerAbsenceLimit = CreateConVar("rf2_player_absence_limit", "2", "How many times the player is allowed to be absent at the start of a map before their inventory is forfeited automatically", FCVAR_NOTIFY, true, 0.0);
+	g_cvMinStagesClearedToForfeit = CreateConVar("rf2_forfeit_min_stages_cleared", "2", "If the player was not present at the beginning of the run, number of stages that they need to clear before being allowed to forfeit", FCVAR_NOTIFY, true, 0.0);
+
 	// Debug
 	RegAdminCmd("rf2_hiddenslot_test", Command_TestHiddenSlot, ADMFLAG_ROOT);
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
@@ -172,7 +174,7 @@ public Action Command_FullyReloadRF2(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	ReloadPlugin(true);
+	ReloadPlugin();
 	return Plugin_Handled;
 }
 
@@ -2108,6 +2110,13 @@ public Action Command_ForfeitItems(int client, int args)
 		return Plugin_Handled;
 	}
 	
+	int invIndex = g_iPlayerInventoryIndex[client];
+	if (!IsInventoryAllowedToForfeit(invIndex))
+	{
+		RF2_ReplyToCommand(client, "Since you were not present at the beginning of this run, you need to clear at least {yellow}%d{default} more stages to use this command.", 
+			g_cvMinStagesClearedToForfeit.IntValue-g_iSaveDataCompletedStages[invIndex]);
+	}
+	
 	Menu confirm = new Menu(Menu_ForfeitConfirm);
 	confirm.SetTitle("!!! You are about to COMPLETELY EMPTY YOUR ENTIRE INVENTORY and give all of your items to other players !!!\nAre you absolutely sure you want to do this?");
 	confirm.AddItem("y", "Yes");
@@ -2137,123 +2146,6 @@ public int Menu_ForfeitConfirm(Menu menu, MenuAction action, int param1, int par
 	}
 
 	return 0;
-}
-
-void ForfeitItems(int client)
-{
-	int itemCounts[MAXTF2PLAYERS][Quality_MaxValid];
-	ArrayList players = new ArrayList();
-	for (int i = 1; i < Quality_MaxValid; i++)
-	{
-		if (i == Quality_Community)
-			continue;
-
-		// Compile all items into a big list
-		ArrayList itemPool = new ArrayList();
-		for (int item = 1; item < GetTotalItems(); item++)
-		{
-			int count = GetPlayerItemCount(client, item, true, true);
-			if (GetItemQuality(item) == i && count > 0)
-			{
-				while (count > 0)
-				{
-					itemPool.Push(item);
-					itemPool.SwapAt(GetRandomInt(0, itemPool.Length-1), GetRandomInt(0, itemPool.Length-1));
-					count--;
-				}
-
-				if (i == Quality_Strange || i == Quality_HauntedStrange)
-				{
-					break; // we can stop at this point since we can only have one of these anyways
-				}
-			}
-		}
-		
-		// Distribute items starting with the player who has the least total of this quality
-		while (itemPool.Length > 0)
-		{
-			int poorestPlayer = INVALID_ENT;
-			int lowestCount = -1;
-			for (int c = 1; c <= MaxClients; c++)
-			{
-				if (client == c || !IsClientInGame(c) || !IsPlayerSurvivor(c, false))
-					continue;
-				
-				players.Push(c);
-				players.SwapAt(GetRandomInt(0, players.Length-1), GetRandomInt(0, players.Length-1));
-				int count = GetPlayerItemsOfQuality(c, i);
-				if (poorestPlayer == INVALID_ENT || count < lowestCount)
-				{
-					poorestPlayer = c;
-					lowestCount = count;
-				}
-			}
-
-			if (poorestPlayer != INVALID_ENT)
-			{
-				int chosenItem;
-				if (i == Quality_Collectors)
-				{
-					chosenItem = GetRandomCollectorItem(TF2_GetPlayerClass(poorestPlayer));
-				}
-				else if (i == Quality_Haunted || i == Quality_HauntedStrange)
-				{
-					// haunted items get converted back into keys
-					chosenItem = Item_HauntedKey;
-				}
-				else
-				{
-					chosenItem = itemPool.Get(0);
-				}
-
-				itemPool.Erase(0);
-				GiveItem(poorestPlayer, chosenItem);
-				itemCounts[poorestPlayer][i]++;
-			}
-		}
-		
-		delete itemPool;
-	}
-
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (client == i || !IsClientInGame(i) || !IsPlayerSurvivor(i, false))
-			continue;
-
-		for (int q = 1; q < Quality_MaxValid; q++)
-		{
-			if (itemCounts[i][q] > 0)
-			{
-				char colorTag[32], qualityName[32];
-				GetQualityColorTag(q, colorTag, sizeof(colorTag));
-				GetQualityName(q, qualityName, sizeof(qualityName));
-				RF2_PrintToChat(i, "You received {yellow}%i{default} %s%s {default}items from {yellow}%N's{default} forfeit", 
-					itemCounts[i][q], colorTag, qualityName, client);
-			}
-		}
-	}
-	
-	// If we have a strange item, give it to a random player who does not have one
-	int equipment = GetPlayerEquipmentItem(client);
-	if (equipment != Item_Null)
-	{
-		while (players.Length > 0)
-		{
-			int randomPlayer = players.Get(GetRandomInt(0, players.Length-1));
-			players.Erase(players.FindValue(randomPlayer));
-			if (GetPlayerEquipmentItem(randomPlayer) == Item_Null)
-			{
-				GiveItem(randomPlayer, equipment, 1);
-				break;
-			}
-		}
-	}
-	
-	delete players;
-	g_iPlayerEquipmentItem[client] = Item_Null;
-	SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
-	UpdateItemsForPlayer(client);
-	PrintCenterTextAll("%N has forfeited their items to other players.", client);
 }
 
 public Action Command_AltarTeleport(int client, int args)
@@ -2392,7 +2284,7 @@ public Action Command_LoadBosses(int client, int args)
 	{
 		StrCat(file, sizeof(file), ".cfg");
 	}
-
+	
 	if (StrContains(file, "enemies/") != 0)
 	{
 		Format(file, sizeof(file), "enemies/%s", file);
