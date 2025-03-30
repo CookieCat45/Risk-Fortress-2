@@ -127,7 +127,7 @@ void LoadWeapons()
 
 static bool g_bSetStringAttributes;
 static TFClassType g_StringAttributeClass;
-static int g_iStringAttributeWeapon; // Not to be confused with entity indexes
+static int g_iStringAttributeWeapon;
 static bool g_bDisableGiveItemForward;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
 {

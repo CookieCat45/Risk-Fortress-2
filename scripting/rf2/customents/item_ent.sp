@@ -176,16 +176,23 @@ methodmap RF2_Item < CBaseEntity
 			return;
 		
 		static char worldText[256], ownerText[128];
+		float ownTime;
 		ownerText = "";
 		if (IsValidClient(this.Owner))
 		{
+			static char numString[16];
+			ownTime = this.OwnTime;
+			if (ownTime > 0.0)
+			{
+				FormatEx(numString, sizeof(numString), " [%.0f]", ownTime);
+			}
 			if (IsValidClient(this.Subject))
 			{
-				FormatEx(ownerText, sizeof(ownerText), "(Belongs to %N - Dropped for %N [%.0f])\n", this.Owner, this.Subject, this.OwnTime);
+				FormatEx(ownerText, sizeof(ownerText), "(Belongs to %N - Dropped for %N%s)\n", this.Owner, this.Subject, numString);
 			}
 			else
 			{
-				FormatEx(ownerText, sizeof(ownerText), "(Belongs to %N [%.0f])\n", this.Owner, this.OwnTime);
+				FormatEx(ownerText, sizeof(ownerText), "(Belongs to %N%s)\n", this.Owner, numString);
 			}
 		}
 		

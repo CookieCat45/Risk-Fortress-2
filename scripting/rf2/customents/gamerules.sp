@@ -52,6 +52,7 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineInputFunc("SetEnemyGroup", InputFuncValueType_String, Input_SetEnemyGroup)
 			.DefineInputFunc("EnableMinionSpawning", InputFuncValueType_Void, Input_EnableMinionSpawning)
 			.DefineInputFunc("DisableMinionSpawning", InputFuncValueType_Void, Input_DisableMinionSpawning)
+			.DefineInputFunc("RunRF2Command", InputFuncValueType_String, Input_RunRF2Command)
 			.DefineOutput("OnTeleporterEventStart")
 			.DefineOutput("OnTeleporterEventComplete")
 			.DefineOutput("OnTankDestructionStart")
@@ -240,6 +241,25 @@ public void Input_ForceStartTeleporter(int entity, int activator, int caller, in
 	{
 		teleporter.Prepare();
 	}
+}
+
+public void Input_RunRF2Command(int entity, int activator, int caller, const char[] value)
+{
+	static char command[128], val[1024];
+	strcopy(val, sizeof(val), value);
+	TrimString(val);
+	int split = SplitString(val, " ", command, sizeof(command));
+	if (split == -1)
+	{
+		strcopy(command, sizeof(command), val);
+	}
+	
+	// only allow rf2_ commands
+	TrimString(command);
+	if (StrContains(command, "rf2_") != 0)
+		return;
+		
+	InsertServerCommand(val);
 }
 
 public void Input_TriggerWin(int entity, int activator, int caller, int value)

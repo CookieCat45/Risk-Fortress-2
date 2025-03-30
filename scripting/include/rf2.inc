@@ -12,7 +12,7 @@
 #define TEAM_ENEMY 3
 
 // Items -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_ITEMS 200
+#define MAX_ITEMS 250
 #define MAX_ITEM_MODIFIERS 16
 
 enum
@@ -126,7 +126,7 @@ enum
 	Item_Ballcap = 106,
 	Item_Hachimaki = 107,
 	Item_LilBitey = 108,
-	ItemStrange_WarswormHelm = 109,
+	ItemStrange_WarswornHelm = 109,
 	Item_MaxValid,
 };
 

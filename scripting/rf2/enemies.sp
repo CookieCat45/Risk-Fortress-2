@@ -87,6 +87,7 @@ float g_flEnemyTorsoScale[MAX_ENEMIES] = {1.0, ...};
 float g_flEnemyHandScale[MAX_ENEMIES] = {1.0, ...};
 static bool g_bEnemyAllowSelfDamage[MAX_ENEMIES];
 static char g_szEnemyConditions[MAX_ENEMIES][256];
+static ArrayList g_hEnemyScripts[MAX_ENEMIES];
 
 // Bosses
 static bool g_bEnemyIsBoss[MAX_ENEMIES];
@@ -606,6 +607,12 @@ methodmap Enemy
 	{
 		strcopy(g_szEnemyConditions[this.Index], sizeof(g_szEnemyConditions[]), conds);
 	}
+	
+	property ArrayList Scripts
+	{
+		public get()				{ return g_hEnemyScripts[this.Index]; }
+		public set(ArrayList value)	{g_hEnemyScripts[this.Index] = value; }
+	}
 
 	property bool AllowSelfDamage
 	{
@@ -801,6 +808,45 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemyKey.GoBack();
 		}
 		
+		if (enemy.Scripts)
+		{
+			delete enemy.Scripts;
+		}
+		
+		if (enemyKey.JumpToKey("scripts"))
+		{
+			enemy.Scripts = new ArrayList(PLATFORM_MAX_PATH);
+			int i = 1;
+			char key[8], script[PLATFORM_MAX_PATH], scriptPath[PLATFORM_MAX_PATH];
+			for ( ;; )
+			{
+				IntToString(i, key, sizeof(key));
+				enemyKey.GetString(key, script, sizeof(script));
+				if (script[0])
+				{
+					FormatEx(scriptPath, sizeof(scriptPath), "scripts/vscripts/%s", script);
+					if (!FileExists(scriptPath))
+					{
+						LogError("[LoadEnemiesFromPack] The script file \"%s\" for enemy \"%s\" does not exist", 
+							script, g_szLoadedEnemies[e]);
+							
+						i++;
+						continue;
+					}
+					
+					enemy.Scripts.PushString(script);
+				}
+				else
+				{
+					break;
+				}
+				
+				i++;
+			}
+
+			enemyKey.GoBack();
+		}
+		
 		if (enemy.BotTags)
 		{
 			delete enemy.BotTags;
@@ -813,7 +859,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			char key[8], tag[64];
 			for ( ;; )
 			{
-				FormatEx(key, sizeof(key), "tag%d", i);
+				IntToString(i, key, sizeof(key));
 				enemyKey.GetString(key, tag, sizeof(tag));
 				if (tag[0])
 				{
@@ -1315,6 +1361,18 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		}
 	}
 	
+	if (enemy.Scripts)
+	{
+		char script[PLATFORM_MAX_PATH];
+		for (int i = 0; i < enemy.Scripts.Length; i++)
+		{
+			enemy.Scripts.GetString(i, script, sizeof(script));
+			SetVariantString(script);
+			AcceptEntityInput(client, "RunScriptFile");
+			DebugMsg("Running script file %s", script);
+		}
+	}
+	
 	if (IsFakeClient(client))
 	{
 		if (!enemy.BotSkillNoOverride)
@@ -1390,7 +1448,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 			for (int i = 0; i < enemy.BotTags.Length; i++)
 			{
 				enemy.BotTags.GetString(i, tag, sizeof(tag));
-				FormatEx(scriptCode, sizeof(scriptCode), "self.AddBotTag(%s)", tag);
+				FormatEx(scriptCode, sizeof(scriptCode), "self.AddBotTag(`%s`)", tag);
 				RunScriptCode(client, scriptCode);
 			}
 		}

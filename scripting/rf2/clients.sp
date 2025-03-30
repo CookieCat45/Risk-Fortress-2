@@ -23,7 +23,9 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerHealOnHitCooldown[client] = false;
 	g_bPlayerFullMinigunMoveSpeed[client] = false;
 	g_bPlayerPermaDeathMark[client] = false;
+	g_bPlayerPressedCanteenButton[client] = false;
 	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
+	g_iPlayerPowerupBottle[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;
 	g_iPlayerFireRateStacks[client] = 0;
 	g_iPlayerAirDashCounter[client] = 0;
@@ -751,7 +753,7 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 
 	if (g_flPlayerWarswornBuffTime[client] > GetTickedTime())
 	{
-		multiplier *= 1.0 + GetItemMod(ItemStrange_WarswormHelm, 1);
+		multiplier *= 1.0 + GetItemMod(ItemStrange_WarswornHelm, 1);
 	}
 	
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)

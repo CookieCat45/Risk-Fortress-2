@@ -161,6 +161,7 @@ bool g_bPlayerHauntedKeyDrop[MAXTF2PLAYERS];
 bool g_bPlayerFullMinigunMoveSpeed[MAXTF2PLAYERS];
 bool g_bPlayerPermaDeathMark[MAXTF2PLAYERS];
 bool g_bPlayerIsDyingBoss[MAXTF2PLAYERS];
+bool g_bPlayerPressedCanteenButton[MAXTF2PLAYERS];
 
 float g_flPlayerXP[MAXTF2PLAYERS];
 float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
@@ -223,6 +224,7 @@ int g_iPlayerGoombaChain[MAXTF2PLAYERS];
 int g_iPlayerLastPingedEntity[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 int g_iPlayerShieldHealth[MAXTF2PLAYERS];
 int g_iPlayerCollectorSwapCount[MAXTF2PLAYERS];
+int g_iPlayerPowerupBottle[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 
 char g_szPlayerOriginalName[MAXTF2PLAYERS][MAX_NAME_LENGTH];
 ArrayList g_hPlayerExtraSentryList[MAXTF2PLAYERS];
@@ -897,6 +899,7 @@ public void OnMapStart()
 		LoadAssets();
 		if (!g_bLateLoad)
 		{
+			// this causes problems when changing default values of cvars
 			//AutoExecConfig(true, "RiskFortress2");
 		}
 		
@@ -3226,6 +3229,27 @@ void EndGracePeriod()
 				TF2_AddCondition(i, debuff, CalcItemMod(i, Item_HauntedHat, 1));
 			}
 		}
+		
+		if (PlayerHasItem(i, ItemEngi_BrainiacHairpiece) && CanUseCollectorItem(i, ItemEngi_BrainiacHairpiece))
+		{
+			// remove powerup canteen if we already have it equipped to prevent conflict
+			int powerBottle = MaxClients+1;
+			while ((powerBottle = FindEntityByClassname(powerBottle, "tf_powerup_bottle")) != INVALID_ENT)
+			{
+				if (GetEntPropEnt(powerBottle, Prop_Send, "m_hOwnerEntity") == i)
+				{
+					TF2_RemoveWearable(i, powerBottle);
+				}
+			}
+			
+			powerBottle = CreateWearable(i, "tf_powerup_bottle", 489, _, true);
+			g_bDontRemoveWearable[powerBottle] = true;
+			int charges = CalcItemModInt(i, ItemEngi_BrainiacHairpiece, 4);
+			SetEntProp(powerBottle, Prop_Send, "m_usNumCharges", charges);
+			TF2Attrib_SetByName(powerBottle, "powerup max charges", float(charges));
+			TF2Attrib_SetByName(powerBottle, "building instant upgrade", 1.0);
+			g_iPlayerPowerupBottle[i] = powerBottle;
+		}
 	}
 }
 
@@ -3871,10 +3895,37 @@ public Action Timer_PlayerHud(Handle timer)
 						Format(miscText, sizeof(miscText), "%sSHIELD BATTERY: %i\n", miscText, shield.Battery);
 					}
 				}
-
+				
+				if (PlayerHasItem(i, ItemEngi_BrainiacHairpiece))
+				{
+					int powerBottle = g_iPlayerPowerupBottle[i];
+					if (IsValidEntity2(powerBottle))
+					{
+						int charges = GetEntProp(powerBottle, Prop_Send, "m_usNumCharges");
+						if (charges > 0)
+						{
+							if (!g_bPlayerPressedCanteenButton[i])
+							{
+								g_bPlayerPressedCanteenButton[i] = asBool(GetEntProp(powerBottle, Prop_Send, "m_bActive"));
+							}
+							
+							if (!g_bPlayerPressedCanteenButton[i])
+							{
+								Format(miscText, sizeof(miscText), "%s\nBUILD CANTEENS: %i [MVM CANTEEN BUTTON TO USE]\n", 
+									miscText, charges);
+							}
+							else
+							{
+								Format(miscText, sizeof(miscText), "%s\nBUILD CANTEENS: %i\n", 
+									miscText, charges);
+							}
+						}
+					}
+				}
+				
 				if (PlayerHasItem(i, ItemEngi_HeadOfDefense))
 				{
-					Format(miscText, sizeof(miscText), "%s\nDISPOSABLE SENTRIES: %i/%i\n", miscText,
+					Format(miscText, sizeof(miscText), "%sDISPOSABLE SENTRIES: %i/%i\n", miscText,
 						g_hPlayerExtraSentryList[i].Length, CalcItemModInt(i, ItemEngi_HeadOfDefense, 0));
 				}
 			}
@@ -7890,13 +7941,6 @@ public Action TEHook_TFBlood(const char[] te_name, const int[] clients, int numC
 	{
 		if (Enemy(client).NoBleeding)
 		{
-			// This may have possibly been causing client crashes, but not sure
-			/*
-			g_flBloodPos[0] = TE_ReadFloat("m_vecOrigin[0]");
-			g_flBloodPos[1] = TE_ReadFloat("m_vecOrigin[1]");
-			g_flBloodPos[2] = TE_ReadFloat("m_vecOrigin[2]");
-			RequestFrame(RF_SpawnMechBlood, client);
-			*/
 			return Plugin_Stop;
 		}
 	}

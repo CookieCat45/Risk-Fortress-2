@@ -1918,9 +1918,9 @@ bool ActivateStrangeItem(int client)
 			}
 		}
 
-		case ItemStrange_WarswormHelm:
+		case ItemStrange_WarswornHelm:
 		{
-			g_flPlayerWarswornBuffTime[client] = GetTickedTime()+GetItemMod(ItemStrange_WarswormHelm, 0);
+			g_flPlayerWarswornBuffTime[client] = GetTickedTime()+GetItemMod(ItemStrange_WarswornHelm, 0);
 			UpdatePlayerFireRate(client);
 			EmitGameSoundToAll(GSND_MVM_POWERUP, client);
 		}
