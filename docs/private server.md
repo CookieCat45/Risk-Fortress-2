@@ -1,6 +1,6 @@
 # Private Server Setup Tutorial
 This guide is for those who wish to set up a private Risk Fortress dedicated server for yourself or friends to join and play. A few things to note:
-- Running Risk Fortress on a listen server (the Create Server button on the main menu) is not recommended, as SourceMod does not support listen servers, and the `-insecure` launch option is required for SourceMod to load on listen servers anyways. For this guide, you should be using the TF2 SRCDS.
+- Running Risk Fortress on a listen server (the Create Server button on the main menu) is not recommended, as SourceMod does not support listen servers, and the `-insecure` launch option is required for SourceMod to load on listen servers anyways. For this guide, you should be using the TF2 SRCDS. Tutorials on how to install it as well as SourceMod/MetaMod can be found in many places online.
 - Port forwarding or using a VPN service such as Hamachi is NOT required.
 - Since the plugin can be resource-intensive at times, you may want to host it on a separate machine instead of on the one you plan to run TF2 with, or a machine that's powerful enough to host a dedicated server and run TF2 simultaneously without performance issues.
 - The server.cfg file is located in `tf/cfg/` in your dedicated server directory.
