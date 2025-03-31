@@ -8,7 +8,7 @@
 [TFOnTakeDamage](https://github.com/nosoop/SM-TFOnTakeDamage/releases)   
 [TF2Items](https://builds.limetech.io/?project=tf2items)   
 [TF2Attributes](https://github.com/FlaminSarge/tf2attributes/releases)   
-[MoreColors](https://forums.alliedmods.net/showthread.php?t=185016) - INCLUDE file. Only required for developers.
+[MoreColors](https://forums.alliedmods.net/showthread.php?t=185016) - INCLUDE file. Only required for compiling the plugin.
 
 ### RECOMMENDED Plugins/Extensions
 [SteamWorks](https://github.com/KyleSanderson/SteamWorks/releases) - Required to display info about Risk Fortress 2 in the server browser.   
