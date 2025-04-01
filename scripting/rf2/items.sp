@@ -2618,7 +2618,7 @@ int GetPlayerItemsOfQuality(int client, int quality)
 			total += GetPlayerItemCount(client, i, true, true);
 		}
 	}
-
+	
 	return total;
 }
 

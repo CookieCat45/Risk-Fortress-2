@@ -69,7 +69,7 @@ static Action Pumpkin_OnInteract(int client, RF2_Object_Pumpkin pumpkin)
 		{
 			AddPlayerCash(client, -pumpkin.Cost);
 			altar.SetGlow(true);
-			altar.Effects |= EF_ITEM_BLINK;
+			altar.ShouldBlink = true;
 			ShowAnnotationToAll(_, "Gargoyle Altar", 15.0, altar.index, altar.index);
 			EmitSoundToAll(SND_PUMPKIN_USE, pumpkin.index);
 		}

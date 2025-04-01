@@ -144,7 +144,6 @@ bool g_bPlayerEquipmentCooldownActive[MAXTF2PLAYERS];
 bool g_bPlayerLawCooldown[MAXTF2PLAYERS];
 bool g_bPlayerTookCollectorItem[MAXTF2PLAYERS];
 bool g_bPlayerSpawnedByTeleporter[MAXTF2PLAYERS];
-bool g_bPlayerExecutionerBleedCooldown[MAXTF2PLAYERS];
 bool g_bPlayerHealBurstCooldown[MAXTF2PLAYERS];
 bool g_bPlayerTimingOut[MAXTF2PLAYERS];
 bool g_bPlayerMeleeMiss[MAXTF2PLAYERS];
@@ -153,7 +152,6 @@ bool g_bPlayerSpawningAsMinion[MAXTF2PLAYERS];
 bool g_bPlayerRifleAutoFire[MAXTF2PLAYERS];
 bool g_bPlayerToggledAutoFire[MAXTF2PLAYERS];
 bool g_bPlayerOpenedHelpMenu[MAXTF2PLAYERS];
-bool g_bPlayerHealOnHitCooldown[MAXTF2PLAYERS];
 bool g_bPlayerViewingItemDesc[MAXTF2PLAYERS];
 bool g_bPlayerReviveActivated[MAXTF2PLAYERS];
 bool g_bPlayerItemShareExcluded[MAXTF2PLAYERS];
@@ -196,6 +194,8 @@ float g_flPlayerDelayedHealTime[MAXTF2PLAYERS];
 float g_flPlayerLifestealTime[MAXTF2PLAYERS];
 float g_flPlayerWarswornBuffTime[MAXTF2PLAYERS];
 float g_flPlayerMedicShieldNextUseTime[MAXTF2PLAYERS];
+float g_flPlayerNextParasiteHealTime[MAXTF2PLAYERS];
+float g_flPlayerNextExecutionerBleedTime[MAXTF2PLAYERS];
 
 int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
@@ -6162,14 +6162,14 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				}
 				
 				// Executioner has a chance to cause bleeding on crit damage
-				if (!g_bPlayerExecutionerBleedCooldown[attacker] && damageCustom != TF_CUSTOM_BLEEDING && PlayerHasItem(attacker, Item_Executioner)
+				if (g_flPlayerNextExecutionerBleedTime[attacker] <= GetTickedTime()
+					&& damageCustom != TF_CUSTOM_BLEEDING && PlayerHasItem(attacker, Item_Executioner)
 					&& IsValidClient(victim) && !TF2_IsPlayerInCondition(victim, TFCond_Bonked))
 				{
 					if (RandChanceFloatEx(attacker, 0.001, 1.0, GetItemMod(Item_Executioner, 0) * proc))
 					{
 						TF2_MakeBleed(victim, attacker, GetItemMod(Item_Executioner, 1));
-						g_bPlayerExecutionerBleedCooldown[attacker] = true;
-						CreateTimer(0.2, Timer_ExecutionerBleedCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
+						g_flPlayerNextExecutionerBleedTime[attacker] = GetTickedTime()+0.2;
 					}
 				}
 			}
@@ -7268,11 +7268,10 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				}
 			}
 			
-			if (PlayerHasItem(attacker, Item_AlienParasite) && !g_bPlayerHealOnHitCooldown[attacker])
+			if (PlayerHasItem(attacker, Item_AlienParasite) && !g_flPlayerNextParasiteHealTime[attacker] <= GetTickedTime())
 			{
 				HealPlayer(attacker, CalcItemModInt(attacker, Item_AlienParasite, 0));
-				g_bPlayerHealOnHitCooldown[attacker] = true;
-				CreateTimer(0.1, Timer_HealOnHitCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
+				g_flPlayerNextParasiteHealTime[attacker] = GetTickedTime()+0.1;
 			}
 			
 			if (IsPlayerSurvivor(attacker))
@@ -7354,22 +7353,6 @@ public Action Hook_SkeletonFriendlyFireFix(int victim, int &attacker, int &infli
 	}
 
 	return Plugin_Continue;
-}
-
-public void Timer_ExecutionerBleedCooldown(Handle timer, int client)
-{
-	if (!(client = GetClientOfUserId(client)))
-		return;
-	
-	g_bPlayerExecutionerBleedCooldown[client] = false;
-}
-
-public void Timer_HealOnHitCooldown(Handle timer, int client)
-{
-	if (!(client = GetClientOfUserId(client)))
-		return;
-	
-	g_bPlayerHealOnHitCooldown[client] = false;
 }
 
 public void Timer_PowerPlayExpire(Handle timer, int client)

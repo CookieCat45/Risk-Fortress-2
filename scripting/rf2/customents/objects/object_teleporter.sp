@@ -373,7 +373,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 
 		this.ToggleObjects(true);
 		this.EventState = TELE_EVENT_COMPLETE;
-		this.Effects = EF_ITEM_BLINK;
+		this.Effects |= EF_ITEM_BLINK;
 		this.TextSize = 6.0;
 		this.SetWorldText("Call for Medic to go to the next stage!");
 		
