@@ -60,7 +60,7 @@ Each stage has its own individual folder, e.g. `rf2/maps/stage1/`, `rf2/maps/sta
 
 
 # Risk Fortress 2 Mapping: Robot Configs
-Most maps normally have two configuration files for robot types: one for the regular common robot types, and another for the boss robots, who are normally giants.
+Maps normally have two configuration files for robot types: one for the common robot types, and another for the boss robots, who are usually giants.
 
 
 ```
@@ -160,8 +160,63 @@ Note that higher difficulty settings can override this unless `tf_bot_difficulty
 
 - `tf_bot_behavior_flags`: TFBot attributes (the ones you can set in MvM popfiles such as AlwaysCrit). This is a bitflag. You probably don't want to touch this - most of them don't work outside of MvM anyways.
 
+- `suicide_bomber`: This one is a section. Causes the bot to behave like a Sentry Buster, except that it goes after players instead of buildings. Here is an example usage:
+```
+"suicide_bomber"
+{
+	"name"      "Player Buster"
+	"class"     "demoman"
+	"health"    "600"
+	"speed"     "360"
+	"model"     "models/bots/demo/bot_sentry_buster.mdl"
+	"weight"    "50"
+	"voice_pitch" "125"
+	
+	"tf_bot_difficulty" "3"
+	
+	"suicide_bomber"
+	{
+		"damage"        600		// Damage of the explosion (default 600)
+		"range"         300		// Range of the explosion (default 300)
+		"friendly_fire" 1		// Should the explosion deal friendly fire damage (default 1)
+		"delay"         2.0		// Delay in seconds before the explosion happens (default 2.0)
+		
+		"use_buster_sounds"     1	// Should the bot play sentry buster sound effects (default 1)
+		"use_damage_falloff"    1	// Should the explosion have damage falloff (default 1)
+	}
+	
+	"weapon1"
+	{
+		"classname"     "tf_weapon_grenadelauncher"
+		"index"         "19"
+		"attributes"
+		{
+			"no_attack" 1
+			"special taunt" 1 // disables thriller taunt
+		}
+	}
+}
+```
 
 ### Miscellaneous Keyvalues
+- `scripts`: A section that specifies VScript files to be run on the bot when it spawns. The bot will be the `self` variable in the script.
+```
+"scripts"
+{
+	"1" "my_script_file.nut"
+	"2" "my_other_script_file.nut"
+}
+```
+
+- `tags`: A section that specifies a list of tags to give to the bot. Useful for scripts.
+```
+"tags"
+{
+	"1" "first_tag"
+	"2"	"second_tag"
+}
+```
+
 - `full_rage`: Forces the bot to spawn with a full rage meter, for weapons such as banners. Defaults to 0.
 
 - `no_bleeding`: Prevents the bot from generating blood particles when it takes damage. Defaults to 1.
@@ -194,3 +249,27 @@ For a list of weapon attributes, see this page: https://wiki.teamfortress.com/wi
 
 - `empty_clip`: If 1, this weapon's clip will be empty when the bot spawns.
 
+
+There is also a wearables section for giving wearable items to the bot. For the most part, it is the same as the weapons section.
+```
+"wearable1"
+{
+	// The classname of the item defaults to tf_wearable
+	
+	"index"				"359" 	// Item def index (Samur-Eye)
+	"visible"			"1"		// Is the wearable item visible, default 1
+	"strip_attributes"	"0"		// Strip all base item stats from the wearable, default 0
+}
+"wearable2"
+{
+	// Demoman shields are wearables and need to be defined like this
+	"classname"			"tf_wearable_demoshield"
+	"index"				"406" 	// Splendid Screen
+	
+	// Wearables can also have attributes
+	"attributes"
+	{
+		"charge recharge rate increased" 1.5
+	}
+}
+```

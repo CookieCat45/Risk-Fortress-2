@@ -895,6 +895,11 @@ public void OnMapStart()
 			SetFailState("[NAV] The NavMesh for map \"%s\" does not exist", mapName);
 		}
 		
+		if (!TheNavMesh.IsAnalyzed())
+		{
+			LogError("[NAV] The NavMesh for map \"%s\" needs a nav_analyze", mapName);
+		}
+		
 		UpdateGameDescription();
 		LoadAssets();
 		if (!g_bLateLoad)
