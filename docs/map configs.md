@@ -217,6 +217,19 @@ Note that higher difficulty settings can override this unless `tf_bot_difficulty
 }
 ```
 
+- `items`: A section that specifies items to give to the bot.
+```
+"items"
+{
+	// Item section name : amount of the item to give
+	// This example will give 2 Class Crown, 5 Tomb Readers, and a Legendary Lid to the bot
+	
+	"class_crown" 	"2"
+	"tomb_readers"	"5"
+	"legendary_lid"	"1"
+}
+```
+
 - `full_rage`: Forces the bot to spawn with a full rage meter, for weapons such as banners. Defaults to 0.
 
 - `no_bleeding`: Prevents the bot from generating blood particles when it takes damage. Defaults to 1.
