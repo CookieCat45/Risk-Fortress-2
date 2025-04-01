@@ -221,7 +221,7 @@ Note that higher difficulty settings can override this unless `tf_bot_difficulty
 ```
 "items"
 {
-	// Item section name : amount of the item to give
+	// Item section name (in items.cfg) : amount of the item to give
 	// This example will give 2 Class Crown, 5 Tomb Readers, and a Legendary Lid to the bot
 	
 	"class_crown" 	"2"
