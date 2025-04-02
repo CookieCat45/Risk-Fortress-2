@@ -13,6 +13,6 @@ This guide is for those who wish to set up a private Risk Fortress dedicated ser
    `sv_password "yourpasswordhere"`
 
 4. Run the server. Connecting to the server via Steam friends list will NOT work as of this writing. Here are a few ways for players to connect to the server:
-   - **(Host only)** Method 1: Go to the LAN tab in the Community Server Browser and you should be able to see your server.
+   - **(Host only)** Method 1: Go to the LAN tab in the Community Server Browser and you should be able to see your server. (Be careful not to accidentally join through SourceTV)
    - Method 2: The host should type the `status` command in the server console. The server's IP and port will be the first address next to the `udp/ip` field. Give this to your friends and tell them to enter in the console: `connect <ip:port>; password <serverpassword>` WITHOUT the <>. `password` can be excluded if the server has no password set.
    - Method 3: In your server.cfg file, give your server a unique tag by adding `sv_tags "yourtagherecanbeanything"`. Tell your friends to search for this tag in the Internet tab in the server browser using the tags field.
