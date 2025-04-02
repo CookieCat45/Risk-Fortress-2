@@ -276,8 +276,9 @@ There is also a wearables section for giving wearable items to the bot. For the 
 }
 ```
 
-- `spawn_conditions`: A delimited string that specifies a list of conditions to give to the bot. The syntax is `"cond = duration ; cond = duration"`
-Example usage: `"spawn_conditions" "16 = 20.0"` - This will give the bot 20 seconds of minicrits after it spawns. -1.0 can be used for infinite duration. List of conditions: https://wiki.teamfortress.com/wiki/Cheats#addcond
+- `spawn_conditions`: A delimited string that specifies a list of conditions to give to the bot. The syntax is `"cond = duration ; cond = duration"`<br>
+Example usage: `"spawn_conditions" "16 = 20.0"`<br>
+^ This will give the bot 20 seconds of minicrits after it spawns. -1.0 can be used for infinite duration. List of conditions: https://wiki.teamfortress.com/wiki/Cheats#addcond
 
 - `full_rage`: Forces the bot to spawn with a full rage meter, for weapons such as banners. Defaults to 0.
 
