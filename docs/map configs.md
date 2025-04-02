@@ -75,7 +75,7 @@ Maps normally have two configuration files for robot types: one for the common r
 		"weight"		"25"
 
 		"xp_award"		"30"
-		"cash_award"	"15"
+		"cash_award"		"15"
 
 		"tf_bot_difficulty"	"1"
 		
@@ -227,7 +227,7 @@ There is also a wearables section for giving wearable items to the bot. For the 
 	
 	"index"				"359" 	// Item def index (Samur-Eye)
 	"visible"			"1"	// Is the wearable item visible, default 1
-	"strip_attributes"		"0"		// Strip all base item stats from the wearable, default 0
+	"strip_attributes"		"0"	// Strip all base item stats from the wearable, default 0
 }
 "wearable2"
 {
