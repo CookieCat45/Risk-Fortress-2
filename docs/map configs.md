@@ -54,7 +54,7 @@ Each stage has its own individual folder, e.g. `rf2/maps/stage1/`, `rf2/maps/sta
 
 - `disable_eureka_teleport`: Disables the Eureka Effect's teleport ability.
 
-- `disable_item_dropping`: Prevent players from dropping their items.
+- `disable_item_dropping`: Prevent players from dropping their items or using the forfeit command.
 
 - `start_money_multiplier`: Multiplier for the amount of money that players begin the map with.
 
@@ -226,8 +226,8 @@ There is also a wearables section for giving wearable items to the bot. For the 
 	// The classname of the item defaults to tf_wearable
 	
 	"index"				"359" 	// Item def index (Samur-Eye)
-	"visible"			"1"		// Is the wearable item visible, default 1
-	"strip_attributes"	"0"		// Strip all base item stats from the wearable, default 0
+	"visible"			"1"	// Is the wearable item visible, default 1
+	"strip_attributes"		"0"		// Strip all base item stats from the wearable, default 0
 }
 "wearable2"
 {
@@ -259,7 +259,7 @@ There is also a wearables section for giving wearable items to the bot. For the 
 "tags"
 {
 	"1" "first_tag"
-	"2"	"second_tag"
+	"2" "second_tag"
 }
 ```
 
