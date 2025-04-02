@@ -276,6 +276,9 @@ There is also a wearables section for giving wearable items to the bot. For the 
 }
 ```
 
+- `spawn_conditions`: A delimited string that specifies a list of conditions to give to the bot. The syntax is `"cond = duration ; cond = duration"`
+Example usage: `"spawn_conditions" "16 = 20.0"` - This will give the bot 20 seconds of minicrits after it spawns. -1.0 can be used for infinite duration.
+
 - `full_rage`: Forces the bot to spawn with a full rage meter, for weapons such as banners. Defaults to 0.
 
 - `no_bleeding`: Prevents the bot from generating blood particles when it takes damage. Defaults to 1.
