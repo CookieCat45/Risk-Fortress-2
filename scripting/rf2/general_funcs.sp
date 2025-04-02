@@ -741,7 +741,7 @@ public MRESReturn Detour_GCPreClientUpdatePost(Address gc)
 		return MRES_Ignored;
 	
 	g_bPreventServerExit = false;
-	GameRules_SetProp("m_bPlayingMannVsMachine", false);
+	GameRules_SetProp("m_bPlayingMannVsMachine", MvMHUD_IsEnabled());
 	return MRES_Ignored;
 }
 

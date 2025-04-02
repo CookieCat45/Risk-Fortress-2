@@ -119,7 +119,7 @@ Maps normally have two configuration files for robot types: one for the common r
 
 - `speed`: The bot's movement speed in hammer units per second.
 
-- `group`: The bot's spawning group. This can be changed by the map on the fly, and if the map does so, only bots from this group will spawn. Defaults to none.
+- `group`: The bot's spawning group. The spawning group can be changed by the map on the fly, and if the map does so, only bots from that group will spawn. Defaults to none.
 
 - `model`: Custom model to use if set, e.g. `models/player/heavy.mdl`. Defaults to the robot model for the class if unspecified
 
@@ -158,7 +158,7 @@ Note that higher difficulty settings can override this unless `tf_bot_difficulty
 
 - `tf_bot_uber_on_sight`: If 1, forces a Medic bot to use it's UberCharge the moment it spots an enemy. Defaults to 0.
 
-- `tf_bot_behavior_flags`: TFBot attributes (the ones you can set in MvM popfiles such as AlwaysCrit). This is a bitflag. You probably don't want to touch this - most of them don't work outside of MvM anyways.
+- `tf_bot_behavior_flags`: TFBot attributes (the ones you can set in MvM popfiles such as AlwaysCrit). This is a bitflag. You probably don't want to touch this - most of them don't work outside of Mann vs Machine mode.
 
 - `suicide_bomber`: This one is a section. Causes the bot to behave like a Sentry Buster, except that it goes after players instead of buildings. Here is an example usage:
 ```
@@ -197,50 +197,6 @@ Note that higher difficulty settings can override this unless `tf_bot_difficulty
 	}
 }
 ```
-
-### Miscellaneous Keyvalues
-- `scripts`: A section that specifies VScript files to be run on the bot when it spawns. The bot will be the `self` variable in the script.
-```
-"scripts"
-{
-	"1" "my_script_file.nut"
-	"2" "my_other_script_file.nut"
-}
-```
-
-- `tags`: A section that specifies a list of tags to give to the bot. Useful for scripts.
-```
-"tags"
-{
-	"1" "first_tag"
-	"2"	"second_tag"
-}
-```
-
-- `items`: A section that specifies items to give to the bot.
-```
-"items"
-{
-	// Item section name (in items.cfg) : amount of the item to give
-	// This example will give 2 Class Crown, 5 Tomb Readers, and a Legendary Lid to the bot
-	
-	"class_crown" 	"2"
-	"tomb_readers"	"5"
-	"legendary_lid"	"1"
-}
-```
-
-- `full_rage`: Forces the bot to spawn with a full rage meter, for weapons such as banners. Defaults to 0.
-
-- `no_bleeding`: Prevents the bot from generating blood particles when it takes damage. Defaults to 1.
-
-- `glow`: Forces the bot to have an outline. Defaults to 0.
-
-- `no_crits`: Prevents this bot from dealing any kind of crit or mini-crit damage. Defaults to 0.
-
-- `eye_glow`: Enables the eye glow effect for robots. Defaults to 1.
-
-- `engine_idle_sound`: Plays the engine idle sound for boss robots. Defaults to 1 for bosses.
 
 
 ### Weapons Section Keyvalues
@@ -286,3 +242,48 @@ There is also a wearables section for giving wearable items to the bot. For the 
 	}
 }
 ```
+
+
+### Miscellaneous Keyvalues
+- `scripts`: A section that specifies VScript files to be run on the bot when it spawns. The bot will be the `self` variable in the script.
+```
+"scripts"
+{
+	"1" "my_script_file.nut"
+	"2" "my_other_script_file.nut"
+}
+```
+
+- `tags`: A section that specifies a list of tags to give to the bot. Useful for scripts.
+```
+"tags"
+{
+	"1" "first_tag"
+	"2"	"second_tag"
+}
+```
+
+- `items`: A section that specifies items to give to the bot.
+```
+"items"
+{
+	// Item section name (in items.cfg) : amount of the item to give
+	// This example will give 2 Class Crown, 5 Tomb Readers, and a Legendary Lid to the bot
+
+	"class_crown" 	"2"
+	"tomb_readers"	"5"
+	"legendary_lid"	"1"
+}
+```
+
+- `full_rage`: Forces the bot to spawn with a full rage meter, for weapons such as banners. Defaults to 0.
+
+- `no_bleeding`: Prevents the bot from generating blood particles when it takes damage. Defaults to 1.
+
+- `glow`: Forces the bot to have an outline. Defaults to 0.
+
+- `no_crits`: Prevents this bot from dealing any kind of crit or mini-crit damage. Defaults to 0.
+
+- `eye_glow`: Enables the eye glow effect for robots. Defaults to 1.
+
+- `engine_idle_sound`: Plays the engine idle sound for boss robots. Defaults to 1 for bosses.

@@ -1082,6 +1082,18 @@ void CleanPathFollowers()
 	}
 }
 
+int GetObjectiveResource()
+{
+	static int resourceRef = INVALID_ENT;
+	if (!IsValidEntity2(resourceRef))
+	{
+		int resource = FindEntityByClassname(INVALID_ENT, "tf_objective_resource");
+		resourceRef = EntIndexToEntRef(resource);
+	}
+	
+	return resourceRef;
+}
+
 public MRESReturn Detour_IsPotentiallyChaseablePost(Address addr, DHookReturn returnVal, DHookParam params)
 {
 	if (!RF2_IsEnabled() || params.IsNull(2))

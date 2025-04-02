@@ -143,8 +143,8 @@ public MRESReturn DHook_StartUpgradingPost(int entity, DHookReturn returnVal, DH
 		{
 			GameRules_SetProp("m_bInSetup", false);
 		}
-
-		GameRules_SetProp("m_bPlayingMannVsMachine", false);
+		
+		GameRules_SetProp("m_bPlayingMannVsMachine", MvMHUD_IsEnabled());
 	}
 	
 	g_bWasInSetup = false;

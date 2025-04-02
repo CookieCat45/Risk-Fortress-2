@@ -137,6 +137,7 @@ void LoadCommandsAndCvars()
 	g_cvOldGiantFootsteps = CreateConVar("rf2_use_old_giant_footsteps", "0", "Uses the old system for giant footstep sounds (unused footstep sounds instead of giant_common_step)", FCVAR_NOTIFY, true, 0.0);
 	g_cvPlayerAbsenceLimit = CreateConVar("rf2_player_absence_limit", "2", "How many times the player is allowed to be absent at the start of a map before their inventory is forfeited automatically", FCVAR_NOTIFY, true, 0.0);
 	g_cvMinStagesClearedToForfeit = CreateConVar("rf2_forfeit_min_stages_cleared", "2", "If the player was not present at the beginning of the run, number of stages that they need to clear before being allowed to forfeit", FCVAR_NOTIFY, true, 0.0);
+	g_cvShowMvMWaveBar = CreateConVar("rf2_enable_mvm_wavebar", "0", "EXPERIMENTAL!!! DOES NOT WORK CORRECTLY!!! Enables the display of the Mann vs. Machine wavebar during Waiting for Players", FCVAR_NOTIFY, true, 0.0);
 	
 	// Debug
 	RegAdminCmd("rf2_hiddenslot_test", Command_TestHiddenSlot, ADMFLAG_ROOT);

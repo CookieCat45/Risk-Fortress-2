@@ -232,6 +232,7 @@ StringMap g_hCrashedPlayerSteamIDs;
 Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
 
 // Entities
+int g_iMvMPopulator = INVALID_ENT;
 PathFollower g_iEntityPathFollower[MAX_EDICTS];
 int g_iItemDamageProc[MAX_EDICTS];
 int g_iLastItemDamageProc[MAX_EDICTS];
@@ -257,6 +258,7 @@ ArrayList g_hHHHTargets;
 ArrayList g_hMonoculusTargets;
 StringMap g_hEnemyTypeCooldowns;
 StringMap g_hEnemyTypeNumSpawned;
+StringMap g_hAllocPooledStringCache;
 
 // Timers
 Handle g_hPlayerTimer;
@@ -384,6 +386,7 @@ ConVar g_cvEnableOneShotProtection;
 ConVar g_cvOldGiantFootsteps;
 ConVar g_cvPlayerAbsenceLimit;
 ConVar g_cvMinStagesClearedToForfeit;
+ConVar g_cvShowMvMWaveBar;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -428,6 +431,7 @@ public const char g_szTeddyBearSounds[][] =
 #include "rf2/entityfactory.sp"
 #include "rf2/enemies.sp"
 #include "rf2/stages.sp"
+#include "rf2/wave_hud.sp"
 
 #include "rf2/customents/gamerules.sp"
 #include "rf2/customents/item_ent.sp"
@@ -1187,6 +1191,7 @@ void CleanUp()
 	StopMusicTrackAll();
 	g_hCustomTracks.Clear();
 	g_hCustomTracksDuration.Clear();
+	g_hAllocPooledStringCache.Clear();
 	
 	// Just to be safe...
 	int entity = MaxClients+1;
@@ -5321,10 +5326,15 @@ public void TF2_OnWaitingForPlayersStart()
 	if (!RF2_IsEnabled())
 		return;
 	
+	if (g_cvShowMvMWaveBar.BoolValue)
+	{
+		MvMHUD_Enable();
+		MvMHUD_UpdateStats();
+	}
+	
 	// Disable TF2 achievements and stat tracking
 	// We need to enable it here because this cvar otherwise prevents waiting for players from starting at all.
 	FindConVar("tf_bot_offline_practice").SetBool(true);
-	
 	GameRules_SetPropFloat("m_flNextRespawnWave", GetGameTime()+999999.0, 2);
 	GameRules_SetPropFloat("m_flNextRespawnWave", GetGameTime()+999999.0, 3);
 	g_bWaitingForPlayers = true;
@@ -5378,6 +5388,11 @@ public void TF2_OnWaitingForPlayersEnd()
 	if (!RF2_IsEnabled())
 		return;
 	
+	if (MvMHUD_IsEnabled())
+	{
+		MVMHud_Disable();
+	}
+
 	g_bWaitingForPlayers = false;
 	g_flWaitRestartTime = 0.0;
 	PrintToServer("%T", "WaitingEnd", LANG_SERVER);
@@ -6346,7 +6361,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (IsValidClient(victim))
 	{
-		GameRules_SetProp("m_bPlayingMannVsMachine", false); // prevent server crash from a dhook we use
+		GameRules_SetProp("m_bPlayingMannVsMachine", MvMHUD_IsEnabled()); // prevent server crash from a dhook we use
 	}
 	
 	if (!g_bRoundActive)
@@ -7268,7 +7283,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				}
 			}
 			
-			if (PlayerHasItem(attacker, Item_AlienParasite) && !g_flPlayerNextParasiteHealTime[attacker] <= GetTickedTime())
+			if (PlayerHasItem(attacker, Item_AlienParasite) && g_flPlayerNextParasiteHealTime[attacker] <= GetTickedTime())
 			{
 				HealPlayer(attacker, CalcItemModInt(attacker, Item_AlienParasite, 0));
 				g_flPlayerNextParasiteHealTime[attacker] = GetTickedTime()+0.1;

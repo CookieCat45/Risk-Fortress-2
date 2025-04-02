@@ -24,6 +24,7 @@ static float g_flEnemyCashAward[MAX_ENEMIES];
 static float g_flEnemySpawnCooldown[MAX_ENEMIES];
 static float g_flEnemyItemDamageModifier[MAX_ENEMIES];
 
+static bool g_bEnemyAlwaysCrit[MAX_ENEMIES];
 static bool g_bEnemyFullRage[MAX_ENEMIES];
 static bool g_bEnemyNoBleeding[MAX_ENEMIES];
 static bool g_bEnemyShouldGlow[MAX_ENEMIES];
@@ -43,6 +44,7 @@ static float g_flEnemySuicideBombRange[MAX_ENEMIES];
 static char g_szEnemyName[MAX_ENEMIES][MAX_NAME_LENGTH];
 static char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
 static char g_szEnemyGroup[MAX_ENEMIES][64];
+static char g_szEnemyIcon[MAX_ENEMIES][PLATFORM_MAX_PATH];
 
 // TFBot
 static int g_iEnemyBotSkill[MAX_ENEMIES];
@@ -194,6 +196,16 @@ methodmap Enemy
 		strcopy(g_szEnemyModel[this.Index], sizeof(g_szEnemyModel[]), model);
 	}
 	
+	public void SetIcon(const char[] icon)
+	{
+		strcopy(g_szEnemyIcon[this.Index], sizeof(g_szEnemyModel[]), icon);
+	}
+	
+	public int GetIcon(char[] buffer, int size)
+	{
+		return strcopy(buffer, size, g_szEnemyIcon[this.Index]);
+	}
+	
 	public int GetName(char[] buffer, int size)
 	{
 		return strcopy(buffer, size, g_szEnemyName[this.Index]);
@@ -254,6 +266,12 @@ methodmap Enemy
 	{
 		public get()			{ return g_iEnemyWeight[this.Index];  }
 		public set(int value)	{ g_iEnemyWeight[this.Index] = value; }
+	}
+	
+	property bool AlwaysCrit
+	{
+		public get()			{ return g_bEnemyAlwaysCrit[this.Index]; }
+		public set(bool value)	{ g_bEnemyAlwaysCrit[this.Index] = value; }
 	}
 	
 	property bool FullRage
@@ -743,7 +761,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			{
 				case TFClass_Scout: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), 
 					enemy.IsBoss ? MODEL_GIANT_SCOUT : MODEL_BOT_SCOUT);
-
+				
 				case TFClass_Soldier: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), 
 					enemy.IsBoss ? MODEL_GIANT_SOLDIER : MODEL_BOT_SOLDIER);
 
@@ -755,7 +773,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 
 				case TFClass_Heavy: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), 
 					enemy.IsBoss ? MODEL_GIANT_HEAVY : MODEL_BOT_HEAVY);
-
+				
 				case TFClass_Engineer: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), MODEL_BOT_ENGINEER);
 				case TFClass_Medic: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), MODEL_BOT_MEDIC);
 				case TFClass_Sniper: strcopy(g_szEnemyModel[e], sizeof(g_szEnemyModel[]), MODEL_BOT_SNIPER);
@@ -772,6 +790,36 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			LogError("[LoadEnemiesFromPack] Model %s for enemy \"%s\" could not be found!", g_szEnemyModel[e], g_szLoadedEnemies[e]);
 			enemy.SetModel(MODEL_ERROR);
 		}
+		
+		if (g_cvShowMvMWaveBar.BoolValue)
+		{
+			enemyKey.GetString("icon", g_szEnemyIcon[e], sizeof(g_szEnemyIcon));
+			if (!g_szEnemyIcon[e][0])
+			{
+				if (enemy.Class == TFClass_DemoMan) // Demo is "demo" not "demoman"
+				{
+					g_szEnemyIcon[e] = "demo";
+				}
+				else
+				{
+					char classString[64];
+					GetClassString(enemy.Class, classString, sizeof(classString));
+					g_szEnemyIcon[e] = classString;
+				}
+			}
+			
+			char iconPath[PLATFORM_MAX_PATH];
+			FormatEx(iconPath, sizeof(iconPath), "materials/hud/leaderboard_class_%s.vmt", g_szEnemyIcon[e]);
+			if (FileExists(iconPath, true))
+			{
+				AddMaterialToDownloadsTable(iconPath, true);
+			}
+			else
+			{
+				LogError("[LoadEnemiesFromPack] Icon %s for enemy \"%s\" could not be found!", iconPath, g_szLoadedEnemies[e]);
+			}
+		}
+		
 		
 		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotSkill_Normal);
 		enemy.BotSkillNoOverride = asBool(enemyKey.GetNum("tf_bot_difficulty_no_override"));
@@ -1056,6 +1104,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.HeadScale = enemyKey.GetFloat("head_scale", enemy.IsBoss ? 1.5 : 1.0);
 		enemy.TorsoScale = enemyKey.GetFloat("torso_scale", 1.0);
 		enemy.HandScale = enemyKey.GetFloat("hand_scale", 1.0);
+		enemy.AlwaysCrit = asBool(enemyKey.GetNum("always_crit"));
 		enemyKey.GetString("spawn_conditions", g_szEnemyConditions[e], sizeof(g_szEnemyConditions[]), "");
 		
 		if (enemy.IsBoss)
@@ -1070,6 +1119,11 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			LogError("[LoadEnemiesFromPack] Max enemy type limit of %i reached!", MAX_ENEMIES);
 			break;
 		}
+	}
+	
+	if (MvMHUD_IsEnabled())
+	{
+		MvMHUD_UpdateStats();
 	}
 	
 	delete enemyKey;
@@ -1331,6 +1385,11 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		{
 			TF2_AddCondition(client, view_as<TFCond>(StringToInt(buffers[i])), StringToFloat(buffers[i+1]));
 		}
+	}
+	
+	if (enemy.AlwaysCrit)
+	{
+		TF2_AddCondition(client, TFCond_CritCanteen);
 	}
 	
 	g_iPlayerVoiceType[client] = enemy.VoiceType;
