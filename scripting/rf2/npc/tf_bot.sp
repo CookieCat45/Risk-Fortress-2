@@ -811,13 +811,25 @@ void TFBot_Think(TFBot bot)
 		{
 			static char classname[32];
 			GetEntityClassname(primary, classname, sizeof(classname));
-			isSniping = (StrContains(classname, "tf_weapon_sniperrifle") == 0);
+			isSniping = threat > 0 && (StrContains(classname, "tf_weapon_sniperrifle") == 0);
+		}
+	}
+	
+	bool isHealing;
+	if (class == TFClass_Medic)
+	{
+		int medigun = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Secondary);
+		if (medigun != INVALID_ENT && medigun == GetActiveWeapon(bot.Client))
+		{
+			isHealing = IsValidClient(GetEntPropEnt(medigun, Prop_Send, "m_hHealingTarget"));
 		}
 	}
 	
 	// If we aren't doing anything else, wander the map looking for enemies to attack.
-	if (bot.Mission != MISSION_TELEPORTER && (class == TFClass_Spy || threat <= 0) && !isSniping && (class != TFClass_Engineer || bot.EngiSearchRetryTime > 0.0) 
-	&& bot.Mission != MISSION_BUILD && !bot.HasBuilt)
+	if (bot.Mission != MISSION_TELEPORTER && !isHealing && !isSniping
+		&& (class == TFClass_Spy || threat <= 0)
+		&& (class != TFClass_Engineer || bot.EngiSearchRetryTime > 0.0) 
+		&& bot.Mission != MISSION_BUILD && !bot.HasBuilt)
 	{
 		TFBot_TraverseMap(bot);
 	}
@@ -1034,7 +1046,7 @@ void TFBot_TraverseMap(TFBot &bot)
 	}
 }
 
-stock bool TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool ignoreGoal=false)
+bool TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool ignoreGoal=false)
 {
 	ILocomotion locomotion = bot.GetLocomotion();
 	INextBot nextBot = bot.GetNextBot();
@@ -1050,11 +1062,11 @@ stock bool TFBot_PathToPos(TFBot &bot, float pos[3], float distance=1000.0, bool
 		bot.Path.Invalidate();
 		locomotion.Stop();
 	}
-
+	
 	return goalReached;
 }
 
-stock void TFBot_PathToEntity(TFBot bot, int entity, float distance=1000.0, bool ignoreGoal=false)
+void TFBot_PathToEntity(TFBot bot, int entity, float distance=1000.0, bool ignoreGoal=false)
 {
 	ILocomotion locomotion = bot.GetLocomotion();
 	INextBot nextBot = bot.GetNextBot();

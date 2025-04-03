@@ -5576,10 +5576,16 @@ public void OnEntityDestroyed(int entity)
 		g_iEntityPathFollower[entity] = view_as<PathFollower>(0);
 	}
 	
-	RF2_NPC_Base npc = RF2_NPC_Base(entity);
-	if (npc.IsValid() && npc.IsRaidBoss())
+	static char classname[128];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	// We can't check npc.IsValid() here because the NPC index is invalid at this point
+	if (StrContains(classname, "rf2_npc") != -1)
 	{
-		RF2_RaidBossSpawner(npc.RaidBossSpawner).OnBossKilled();
+		RF2_NPC_Base npc = RF2_NPC_Base(entity);
+		if (npc.IsRaidBoss())
+		{
+			RF2_RaidBossSpawner(npc.RaidBossSpawner).OnBossKilled();
+		}
 	}
 	
 	g_flCashValue[entity] = 0.0;
