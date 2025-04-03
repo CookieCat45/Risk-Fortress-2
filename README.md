@@ -1,5 +1,7 @@
 # Risk Fortress 2
 
+[Asset Repository](https://ln5.sync.com/dl/56aea4400#rctr8jjq-fesnwkmp-yh3dzeef-j6s5daa8)
+
 ### Installation
 [Private Server Setup Guide](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)   
 
