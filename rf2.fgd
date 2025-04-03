@@ -377,7 +377,7 @@
 ]
 
 @PointClass base(rf2_object_base) studio("models/props_manor/deadtree01.mdl") = rf2_object_tree :
-	"The Tree of Fate. For a cost of 2 Gargoyle Keys, this object allows players to decide what the next map will be."
+	"The Tree of Fate. For a cost of 1 Gargoyle Key, this object allows players to decide what the next map will be."
 [
 	
 ]
