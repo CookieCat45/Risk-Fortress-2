@@ -81,6 +81,20 @@
 				"linux64"	"199"
 				"windows64"	"198"
 			}
+			"CGameEventManager::LoadEventsFromFile"
+			{
+				"linux"		"2"
+				"windows"	"1"
+				"linux64"	"2"
+				"windows64"	"1"
+			}
+			"CEconEntity::GetAttributeManager"
+			{
+				"linux"		"229"
+				"windows"	"228"
+				"linux64"	"229"
+				"windows64"	"228"
+			}
 		}
 		"Signatures"
 		{
@@ -201,10 +215,43 @@
 				"linux64"	"@_ZN11CTFTankBoss24SetStartingPathTrackNodeEPc"
 				"windows64"	""
 			}
+			"CGameEventManager::CreateEvent" // Look for string "CreateEvent: event '%s' not registered."
+			{
+				"library"	"engine"
+				"linux"		"@_ZN17CGameEventManager11CreateEventEPKcb"
+				"windows"	""
+				"linux64"	"@_ZN17CGameEventManager11CreateEventEPKcb"
+				"windows64"	""
+			}
+			"CTFDroppedWeapon::Create"
+			{
+				"linux"		"@_ZN16CTFDroppedWeapon6CreateEP9CTFPlayerRK6VectorRK6QAnglePKcPK13CEconItemView"
+			}
 		}
 		
 		"Functions"
         {
+			"CGameEventManager::CreateEvent"
+			{
+				"signature" "CGameEventManager::CreateEvent"
+				"callconv"	"thiscall"
+				"return"	"int"
+				"this"		"address"
+				
+				"arguments"
+				{
+					"name"
+					{
+						"type" "charptr"
+					}
+					
+					"force"
+					{
+						"type" "bool"
+					}
+				}
+			}
+			
 			"CTFWeaponBase::SetReloadTimer"
 			{
 				"signature"	"CTFWeaponBase::SetReloadTimer"

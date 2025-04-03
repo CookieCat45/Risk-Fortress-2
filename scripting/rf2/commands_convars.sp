@@ -144,6 +144,7 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
 	RegAdminCmd("rf2_debug_entitycount", Command_EntityCount, ADMFLAG_SLAY, "Shows the total number of networked entities (edicts) in the server.");
 	RegAdminCmd("rf2_debug_unlock_achievements", Command_UnlockAllAchievements, ADMFLAG_ROOT, "Unlocks every achievement.");
+	RegAdminCmd("rf2_debug_dropped_weapon_test", Command_DroppedWeaponTest, ADMFLAG_SLAY);
 	g_cvDebugNoMapChange = CreateConVar("rf2_debug_skip_map_change", "0", "If nonzero, prevents the map from changing on round end.", FCVAR_NOTIFY, true, 0.0);
 	g_cvDebugShowObjectSpawns = CreateConVar("rf2_debug_show_object_spawns", "0", "If nonzero, when an object spawns, its name and location will be printed to the console.", FCVAR_NOTIFY, true, 0.0);
 	g_cvDebugDontEndGame = CreateConVar("rf2_debug_dont_end_game", "0", "If nonzero, don't end the game if all of the survivors die.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -2385,5 +2386,26 @@ public Action Command_TestHiddenSlot(int client, int args)
 	
 	bool state = asBool(GetCmdArgInt(1));
 	ToggleHiddenSlot(state);
+	return Plugin_Handled;
+}
+
+public Action Command_DroppedWeaponTest(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	int weapon = GetActiveWeapon(client);
+	float pos[3];
+	GetClientEyePosition(client, pos);
+	GenerateDroppedWeapon(weapon, pos);
 	return Plugin_Handled;
 }

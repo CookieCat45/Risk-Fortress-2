@@ -1030,3 +1030,40 @@ int AttributeNameToDefIndex(const char[] name)
 	
 	return -1;
 }
+
+int GenerateDroppedWeapon(int weapon, const float pos[3])
+{
+	if (!g_hSDKCreateDroppedWeapon)
+		return INVALID_ENT;
+	
+	int offset = GetEntSendPropOffs(weapon, "m_Item", true);
+	if (offset <= 0)
+		return INVALID_ENT;
+		
+	char model[PLATFORM_MAX_PATH];
+	int modelPrecache = FindStringTable("modelprecache");
+	int modelIndex = GetEntProp(weapon, Prop_Send, "m_iWorldModelIndex");
+	if (modelIndex >= GetStringTableNumStrings(modelPrecache))
+	{
+		return INVALID_ENT;
+	}
+	
+	ReadStringTable(modelPrecache, modelIndex, model, sizeof(model));
+	if (!model[0])
+	{
+		return INVALID_ENT;
+	}
+	
+	DebugMsg("%d = %s", modelIndex, model);
+	ConVar droppedWeaponLife = FindConVar("tf_dropped_weapon_lifetime");
+	float oldVal = droppedWeaponLife.FloatValue;
+	droppedWeaponLife.FloatValue = 9999999.0;
+	
+	int droppedWep = SDKCall(g_hSDKCreateDroppedWeapon, 
+		INVALID_ENT, pos, {0.0, 0.0, 0.0}, 
+		model,
+		GetEntityAddress(weapon)+view_as<Address>(offset));
+		
+	droppedWeaponLife.FloatValue = oldVal;
+	return droppedWep;
+}

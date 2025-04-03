@@ -57,6 +57,7 @@ bool g_bGoombaAvailable;
 bool g_bRoundEnding;
 bool g_bInUnderworld;
 bool g_bInFinalMap;
+bool g_bCustomEventsAvailable;
 float g_flWaitRestartTime;
 int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
@@ -75,6 +76,7 @@ char g_szForcedMap[256];
 char g_szMapForcerName[MAX_NAME_LENGTH];
 char g_szCurrentEnemyGroup[64];
 Address g_aEngineServer;
+Address g_aGameEventManager;
 ConVar g_cvSvCheats;
 
 // Map settings
@@ -276,6 +278,8 @@ Handle g_hSDKWeaponSwitch;
 Handle g_hSDKRealizeSpy;
 Handle g_hSDKSpawnZombie;
 Handle g_hSDKTankSetStartNode;
+Handle g_hSDKLoadEvents;
+Handle g_hSDKCreateDroppedWeapon;
 DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourSetReloadTimer;
 DynamicDetour g_hDetourApplyPunchImpulse;
@@ -286,6 +290,7 @@ DynamicDetour g_hDetourHHHChaseable;
 DynamicDetour g_hDetourOnWeaponFired;
 DynamicDetour g_hDetourGCPreClientUpdate;
 DynamicDetour g_hDetourFindMap;
+DynamicDetour g_hDetourCreateEvent;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookOnWrenchHit;
@@ -548,6 +553,11 @@ public void OnPluginStart()
 		char dummy[256];
 		FindMap("thisisadummystring", dummy, 256);
 	}
+	
+	if (g_hDetourCreateEvent)
+	{
+		CreateEvent("non_existent_event");
+	}
 }
 
 public void OnPluginEnd()
@@ -777,7 +787,40 @@ void LoadGameData()
 		LogError("[DHooks] Failed to create detour for CVEngineServer::FindMap");
 	}
 	
-
+	
+	g_hDetourCreateEvent = DynamicDetour.FromConf(gamedata, "CGameEventManager::CreateEvent");
+	if (!g_hDetourCreateEvent || !g_hDetourCreateEvent.Enable(Hook_Post, Detour_CreateEventPost))
+	{
+		LogError("[DHooks] Failed to create detour for CGameEventManager::CreateEvent");
+	}
+	
+	
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "CGameEventManager::LoadEventsFromFile");
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	g_hSDKLoadEvents = EndPrepSDKCall();
+	if (!g_hSDKLoadEvents)
+	{
+		LogError("[SDK] Failed to create call to CGameEventManager::LoadEventsFromFile");
+	}
+	
+	
+	StartPrepSDKCall(SDKCall_Static);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFDroppedWeapon::Create");
+	PrepSDKCall_AddParameter(SDKType_CBasePlayer, SDKPass_Pointer, VDECODE_FLAG_ALLOWNULL); // last owner of weapon
+	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef); // origin
+	PrepSDKCall_AddParameter(SDKType_QAngle, SDKPass_ByRef); // angles
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer); // model name
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // pItem (CEconItemView)
+	PrepSDKCall_SetReturnInfo(SDKType_CBaseEntity, SDKPass_Pointer);
+	g_hSDKCreateDroppedWeapon = EndPrepSDKCall();
+	if (!g_hSDKCreateDroppedWeapon)
+	{
+		LogError("[SDK] Failed to create call to CTFDroppedWeapon::Create");
+	}
+	
+	
 	g_hHookCreateFakeClientEx = new DynamicHook(gamedata.GetOffset("CVEngineServer::CreateFakeClientEx"), HookType_Raw, ReturnType_Edict, ThisPointer_Address);
 	if (g_hHookCreateFakeClientEx)
 	{
@@ -859,6 +902,21 @@ public void OnMapStart()
 		ReplaceStringEx(fileName, sizeof(fileName), ".smx", "");
 		InsertServerCommand("sm plugins load_unlock; sm plugins reload %s", fileName);
 		return;
+	}
+	
+	g_bCustomEventsAvailable = false;
+	if (g_aGameEventManager && g_hSDKLoadEvents)
+	{
+		LogMessage("Loading custom events file %s...", CUSTOM_EVENTS_FILE);
+		if (SDKCall(g_hSDKLoadEvents, g_aGameEventManager, CUSTOM_EVENTS_FILE))
+		{
+			g_bCustomEventsAvailable = true;
+			LogMessage("%s was loaded successfully", CUSTOM_EVENTS_FILE);
+		}
+		else
+		{
+			LogError("FAILED to load custom events file %s", CUSTOM_EVENTS_FILE);
+		}
 	}
 	
 	g_bMapChanging = false;
@@ -1191,7 +1249,8 @@ void CleanUp()
 	StopMusicTrackAll();
 	g_hCustomTracks.Clear();
 	g_hCustomTracksDuration.Clear();
-	g_hAllocPooledStringCache.Clear();
+	if (g_hAllocPooledStringCache)
+		g_hAllocPooledStringCache.Clear();
 	
 	// Just to be safe...
 	int entity = MaxClients+1;
@@ -4017,7 +4076,6 @@ public Action Timer_Difficulty(Handle timer)
 	float playerFactor = fmax(1.0 + float(RF2_GetSurvivorCount()-1) * 0.12, 1.0);
 	float value = fmax(1.08 - (0.005 * float(RF2_GetSurvivorCount()-1)), 1.02);
 	float stageFactor = Pow(value, float(g_iStagesCompleted));
-
 	float difficultyFactor = GetDifficultyFactor(RF2_GetDifficulty());
 	float oldDifficultyCoeff = g_flDifficultyCoeff;
 	g_flDifficultyCoeff = (timeFactor * stageFactor * playerFactor) * difficultyFactor;
@@ -4032,7 +4090,7 @@ public Action Timer_Difficulty(Handle timer)
 	int currentLevel = RF2_GetEnemyLevel();
 	g_iEnemyLevel = imax(RoundToFloor(1.0 + g_flDifficultyCoeff / (g_cvSubDifficultyIncrement.FloatValue / 4.0)), currentLevel);
 	g_iEnemyLevel = imax(g_iEnemyLevel, 1);
-
+	
 	if (g_iEnemyLevel > currentLevel) // enemy level just increased
 	{
 		RF2_PrintToChatAll("%t", "EnemyLevelUp", currentLevel, g_iEnemyLevel);
@@ -5194,7 +5252,20 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 		ForceRifleSound(client, result);
 		g_bForceRifleSound = false;
 	}
-
+	
+	if (AreCustomEventsAvailable())
+	{
+		Event event = CreateEvent("rf2_player_fireweapon", true);
+		if (event)
+		{
+			event.SetInt("userid", GetClientUserId(client));
+			event.SetInt("weapon_entindex", weapon);
+			event.SetString("weapon_classname", weaponName);
+			event.SetBool("crit", result);
+			event.Fire(true);
+		}
+	}
+	
 	return changed ? Plugin_Changed : Plugin_Continue;
 }
 
@@ -5453,7 +5524,21 @@ public void OnGameFrame()
 bool g_bProjectileIgnoreShields[MAX_EDICTS];
 public void OnEntityCreated(int entity, const char[] classname)
 {
-	if (!RF2_IsEnabled() || entity < 0 || entity >= MAX_EDICTS)
+	if (!RF2_IsEnabled())
+		return;
+	
+	if (AreCustomEventsAvailable())
+	{
+		Event event = CreateEvent("rf2_entity_created", true);
+		if (event)
+		{
+			event.SetInt("entindex", entity);
+			event.SetString("classname", classname);
+			event.Fire(true);
+		}
+	}
+	
+	if (entity < 0 || entity >= MAX_EDICTS)
 		return;
 	
 	g_bProjectileIgnoreShields[entity] = false;
@@ -5548,7 +5633,23 @@ public void Hook_NPCSpawnPost(int entity)
 
 public void OnEntityDestroyed(int entity)
 {
-	if (!RF2_IsEnabled() || entity < 0 || entity >= MAX_EDICTS)
+	if (!RF2_IsEnabled())
+		return;
+	
+	static char classname[128];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	if (AreCustomEventsAvailable())
+	{
+		Event event = CreateEvent("rf2_entity_destroyed", true);
+		if (event)
+		{
+			event.SetInt("entindex", entity);
+			event.SetString("classname", classname);
+			event.Fire(true);
+		}
+	}
+	
+	if (entity < 0 || entity >= MAX_EDICTS)
 		return;
 	
 	if (g_bCashBomb[entity])
@@ -5576,8 +5677,6 @@ public void OnEntityDestroyed(int entity)
 		g_iEntityPathFollower[entity] = view_as<PathFollower>(0);
 	}
 	
-	static char classname[128];
-	GetEntityClassname(entity, classname, sizeof(classname));
 	// We can't check npc.IsValid() here because the NPC index is invalid at this point
 	if (StrContains(classname, "rf2_npc") != -1)
 	{
@@ -7258,8 +7357,11 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 							CBaseEntity(closestEnemy).WorldSpaceCenter(pos2);
 							TE_SetupBeamPoints(pos1, pos2, g_iBeamModel, 0, 0, 0, 0.5, 8.0, 8.0, 0, 10.0, {100, 100, 255, 200}, 20);
 							TE_SendToAll();
-							
-							RF_TakeDamage(closestEnemy, attacker, attacker, dmg, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, Item_RoBro);
+							DataPack pack = new DataPack();
+							pack.WriteCell(EntIndexToEntRef(closestEnemy));
+							pack.WriteCell(EntIndexToEntRef(attacker));
+							pack.WriteFloat(dmg);
+							RequestFrame(RF_RoBroDealDamage, pack);
 							hitEnemies.Push(closestEnemy);
 							lastHitEnemy = closestEnemy;
 							if (hitEnemies.Length-1 >= limit)
@@ -7324,6 +7426,22 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			}
 		}
 	}
+}
+
+public void RF_RoBroDealDamage(DataPack pack)
+{
+	pack.Reset();
+	int victim = EntRefToEntIndex(pack.ReadCell());
+	int attacker = EntRefToEntIndex(pack.ReadCell());
+	if (victim == INVALID_ENT || attacker == INVALID_ENT)
+	{
+		delete pack;
+		return;
+	}
+	
+	float damage = pack.ReadFloat();
+	delete pack;
+	RF_TakeDamage(victim, attacker, attacker, damage, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, Item_RoBro);
 }
 
 public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
@@ -7903,7 +8021,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 
 					for (int i = 0; i < numClients; i++)
 					{
-						if (clients[i] != client && !blacklist[clients[i]])
+						if (clients[i] != client && !blacklist[clients[i]] && IsClientInGame(clients[i]))
 						{
 							EmitSoundToClient(clients[i], sample, client, channel, level, flags, volume, pitch);
 						}
