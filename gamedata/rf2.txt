@@ -88,13 +88,6 @@
 				"linux64"	"2"
 				"windows64"	"1"
 			}
-			"CEconEntity::GetAttributeManager"
-			{
-				"linux"		"229"
-				"windows"	"228"
-				"linux64"	"229"
-				"windows64"	"228"
-			}
 		}
 		"Signatures"
 		{
@@ -121,7 +114,6 @@
 				"linux64"	"@_ZN9CTFPlayer18ApplyPunchImpulseXEf"
 				"windows64"	"\x48\x89\x5C\x24\x08\x57\x48\x83\xEC\x40\x48\x8D\x81\x20\x27\x00\x00"
 			}
-
 			// Look for string "mult_medigun_overheal_amount"
 			// The correct subroutine will NOT contain "set_weapon_mode"
 			"CWeaponMedigun::GetOverhealBonus"
@@ -183,7 +175,6 @@
 				"linux64"	"@_ZN12CEyeballBoss24FindClosestVisibleVictimEv"
 				"windows64"	"\x48\x8B\xC4\x48\x89\x48\x08\x41\x54\x48\x81\xEC\x80\x00\x00\x00\x48\x89\x58\x20"
 			}
-			
 			// Find CEyeballBossTeleport::Update using the string "Halloween.EyeballBossTeleport"
 			// Should be one of the subroutines below that has a single xref
 			"CEyeballBoss::PickNewSpawnSpot"
@@ -219,18 +210,50 @@
 			{
 				"library"	"engine"
 				"linux"		"@_ZN17CGameEventManager11CreateEventEPKcb"
-				"windows"	""
+				"windows"	"\x55\x8B\xEC\x56\x8B\x75\x08\x57\x85\xF6\x74\x20\x80\x3E\x00\x74\x1B\x56\xE8\x19"
 				"linux64"	"@_ZN17CGameEventManager11CreateEventEPKcb"
 				"windows64"	""
 			}
-			"CTFDroppedWeapon::Create"
+			"CTFDroppedWeapon::Create" // Look for string "tf_dropped_weapon", subroutine with 1 xref
 			{
 				"linux"		"@_ZN16CTFDroppedWeapon6CreateEP9CTFPlayerRK6VectorRK6QAnglePKcPK13CEconItemView"
+				"windows"	"\x55\x8B\xEC\x51\xA1\x2A\x2A\x2A\x2A\x80\xB8\x72\x0C\x00\x00\x00"
+				"linux64"	"@_ZN16CTFDroppedWeapon6CreateEP9CTFPlayerRK6VectorRK6QAnglePKcPK13CEconItemView"
+				"windows64"	""
+			}
+			// Find the string "ChargeLevelDegradeThink"
+			// It's xref'd in a few different subroutines but it should be the one where it's at the top
+			"CTFDroppedWeapon::InitPickedUpWeapon"
+			{
+				"linux"		"@_ZN16CTFDroppedWeapon18InitPickedUpWeaponEP9CTFPlayerP13CTFWeaponBase"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x08\xD9\xEE\x53"
+				"linux64"	"@_ZN16CTFDroppedWeapon18InitPickedUpWeaponEP9CTFPlayerP13CTFWeaponBase"
+				"windows64"	""
 			}
 		}
 		
 		"Functions"
         {
+			"CTFDroppedWeapon::InitPickedUpWeapon"
+			{
+				"signature"	"CTFDroppedWeapon::InitPickedUpWeapon"
+				"callconv"	"thiscall"
+				"return"	"void"
+				"this"		"entity"
+				
+				"arguments"
+				{
+					"player"
+					{
+						"type" "cbaseentity"
+					}
+					"weapon"
+					{
+						"type" "cbaseentity"
+					}
+				}
+			}
+			
 			"CGameEventManager::CreateEvent"
 			{
 				"signature" "CGameEventManager::CreateEvent"

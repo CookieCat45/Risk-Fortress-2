@@ -120,7 +120,7 @@ void LoadCommandsAndCvars()
 	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "75.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTankSpeedBoost = CreateConVar("rf2_tank_speed_boost", "1.5", "When a Tank falls below 50 percent health, speed it up by this much if the difficulty is above or equal to rf2_tank_boost_difficulty.", FCVAR_NOTIFY, true, 1.0);
 	g_cvTankBoostHealth = CreateConVar("rf2_tank_boost_health_threshold", "0.5", "If the Tank can gain a speed boost, do so when it falls below this much health.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvTankBoostDifficulty = CreateConVar("rf2_tank_boost_difficulty", "2", "For a Tank to gain a speed boost on lower health, the difficulty (not sub difficulty) level must be at least this value.", FCVAR_NOTIFY, true, 0.0, true, float(DIFFICULTY_TITANIUM));
+	g_cvTankBoostDifficulty = CreateConVar("rf2_tank_boost_difficulty", "2", "For a Tank to gain a speed boost on lower health, the difficulty (not sub difficulty) level must be at least this value.", FCVAR_NOTIFY, true, 0.0, true, float(DIFFICULTY_MAX-1));
 	g_cvTankSpawnCap = CreateConVar("rf2_tank_spawn_cap", "12", "Maximum number of tanks that can spawn in Tank Destruction mode", FCVAR_NOTIFY, true, 1.0);
 	g_cvSurvivorQuickBuild = CreateConVar("rf2_survivor_quick_build", "1", "If nonzero, Survivor team Engineer buildings will deploy instantly", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvEnemyQuickBuild = CreateConVar("rf2_enemy_quick_build", "1", "If nonzero, enemy team Engineer buildings will deploy instantly", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -135,10 +135,9 @@ void LoadCommandsAndCvars()
 	g_cvRequiredStagesForStatue = CreateConVar("rf2_statue_required_stages", "10", "How many stages need to be completed before being able to interact with the statue in the Underworld", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnableOneShotProtection = CreateConVar("rf2_enable_osp", "1", "Enables one-shot protection for Survivors. If a Survivor is at or above 90% of their health, they cannot die to a single instance of damage.", FCVAR_NOTIFY, true, 0.0);
 	g_cvOldGiantFootsteps = CreateConVar("rf2_use_old_giant_footsteps", "0", "Uses the old system for giant footstep sounds (unused footstep sounds instead of giant_common_step)", FCVAR_NOTIFY, true, 0.0);
-	g_cvPlayerAbsenceLimit = CreateConVar("rf2_player_absence_limit", "2", "How many times the player is allowed to be absent at the start of a map before their inventory is forfeited automatically", FCVAR_NOTIFY, true, 0.0);
+	g_cvPlayerAbsenceLimit = CreateConVar("rf2_player_absence_limit", "2", "How many times a player is allowed to be absent at the start of a map before their inventory is forfeited automatically", FCVAR_NOTIFY, true, 0.0);
 	g_cvMinStagesClearedToForfeit = CreateConVar("rf2_forfeit_min_stages_cleared", "2", "If the player was not present at the beginning of the run, number of stages that they need to clear before being allowed to forfeit", FCVAR_NOTIFY, true, 0.0);
-	g_cvShowMvMWaveBar = CreateConVar("rf2_enable_mvm_wavebar", "0", "EXPERIMENTAL!!! DOES NOT WORK CORRECTLY!!! Enables the display of the Mann vs. Machine wavebar during Waiting for Players", FCVAR_NOTIFY, true, 0.0);
-	
+
 	// Debug
 	RegAdminCmd("rf2_hiddenslot_test", Command_TestHiddenSlot, ADMFLAG_ROOT);
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
@@ -1759,7 +1758,7 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 			if (GetPlayerDroppedItemCount(param1) >= 25)
 			{
 				EmitSoundToClient(param1, SND_NOPE);
-				PrintCenterText(param1, "You've dropped too many items at once!\nIf you're dropping items for others because you're leaving,\nyou can use the /rf2_forfeit command instead.");
+				PrintCenterText(param1, "%t", "TooManyDrops");
 			}
 			else if (StringToInt(info) == 0) // 0 means we don't care
 			{
@@ -1819,7 +1818,6 @@ public Action Command_SetDifficulty(int client, int args)
 	
 	char name[32];
 	int level = GetCmdArgInt(1);
-	
 	if (level < DIFFICULTY_SCRAP || level >= DIFFICULTY_MAX)
 	{
 		RF2_ReplyToCommand(client, "%t", "InvalidDifficulty");
@@ -1828,7 +1826,6 @@ public Action Command_SetDifficulty(int client, int args)
 	
 	SetDifficultyLevel(level);
 	GetDifficultyName(level, name, sizeof(name));
-	
 	RF2_PrintToChatAll("%t", "DifficultySetBy", client, name);
 	return Plugin_Handled;
 }

@@ -234,8 +234,8 @@ StringMap g_hCrashedPlayerSteamIDs;
 Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
 
 // Entities
-int g_iMvMPopulator = INVALID_ENT;
 PathFollower g_iEntityPathFollower[MAX_EDICTS];
+//TFClassType g_iDroppedWeaponClass[MAX_EDICTS] = {TFClass_Unknown, ...};
 int g_iItemDamageProc[MAX_EDICTS];
 int g_iLastItemDamageProc[MAX_EDICTS];
 int g_iEntLastHitItemProc[MAX_EDICTS]; // Mainly for use in OnPlayerDeath
@@ -247,7 +247,6 @@ bool g_bCashBomb[MAX_EDICTS];
 bool g_bDontRemoveWearable[MAX_EDICTS];
 bool g_bItemWearable[MAX_EDICTS];
 bool g_bEntityGlowing[MAX_EDICTS];
-
 float g_flBusterSpawnTime;
 float g_flProjectileForcedDamage[MAX_EDICTS];
 float g_flSentryNextLaserTime[MAX_EDICTS];
@@ -291,6 +290,7 @@ DynamicDetour g_hDetourOnWeaponFired;
 DynamicDetour g_hDetourGCPreClientUpdate;
 DynamicDetour g_hDetourFindMap;
 DynamicDetour g_hDetourCreateEvent;
+DynamicDetour g_hDetourWeaponPickup;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookOnWrenchHit;
@@ -391,7 +391,6 @@ ConVar g_cvEnableOneShotProtection;
 ConVar g_cvOldGiantFootsteps;
 ConVar g_cvPlayerAbsenceLimit;
 ConVar g_cvMinStagesClearedToForfeit;
-ConVar g_cvShowMvMWaveBar;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -436,7 +435,6 @@ public const char g_szTeddyBearSounds[][] =
 #include "rf2/entityfactory.sp"
 #include "rf2/enemies.sp"
 #include "rf2/stages.sp"
-#include "rf2/wave_hud.sp"
 
 #include "rf2/customents/gamerules.sp"
 #include "rf2/customents/item_ent.sp"
@@ -556,6 +554,7 @@ public void OnPluginStart()
 	
 	if (g_hDetourCreateEvent)
 	{
+		// trigger the dhook so we can get a CGameEventManager pointer
 		CreateEvent("non_existent_event");
 	}
 }
@@ -792,6 +791,13 @@ void LoadGameData()
 	if (!g_hDetourCreateEvent || !g_hDetourCreateEvent.Enable(Hook_Post, Detour_CreateEventPost))
 	{
 		LogError("[DHooks] Failed to create detour for CGameEventManager::CreateEvent");
+	}
+	
+	
+	g_hDetourWeaponPickup = DynamicDetour.FromConf(gamedata, "CTFDroppedWeapon::InitPickedUpWeapon");
+	if (!g_hDetourWeaponPickup || !g_hDetourWeaponPickup.Enable(Hook_Post, Detour_WeaponPickupPost))
+	{
+		LogError("[DHooks] Failed to create detour for CTFDroppedWeapon::InitPickedUpWeapon");
 	}
 	
 	
@@ -1106,7 +1112,7 @@ public void OnConfigsExecuted()
 		// Here are ConVars that we don't want changed by configs
 		ConVar droppedWeaponLife = FindConVar("tf_dropped_weapon_lifetime");
 		droppedWeaponLife.Flags &= ~FCVAR_CHEAT;
-		droppedWeaponLife.SetInt(0);
+		droppedWeaponLife.SetInt(999999);
 		FindConVar("sv_quota_stringcmdspersecond").SetInt(5000); // So Engie bots don't get kicked
 		FindConVar("mp_teams_unbalance_limit").SetInt(0);
 		FindConVar("mp_forcecamera").SetBool(false);
@@ -1133,7 +1139,7 @@ public void OnConfigsExecuted()
 
 		UpdateBotQuota();
 		char class[32];
-		GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
+		TF2_GetClassString(view_as<TFClassType>(GetRandomInt(1, 9)), class, sizeof(class));
 		FindConVar("tf_bot_force_class").SetString(class);
 		FindConVar("tf_bot_quota_mode").SetString("normal");
 		FindConVar("tf_bot_defense_must_defend_time").SetInt(-1);
@@ -1375,6 +1381,7 @@ void LoadAssets()
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
 	AddSoundToDownloadsTable(SND_DRAGONBORN);
 	AddSoundToDownloadsTable(SND_1UP);
+	AddSoundToDownloadsTable(SND_EVIL_LAUGH);
 	PrecacheSoundArray(g_szTeddyBearSounds, sizeof(g_szTeddyBearSounds));
 }
 
@@ -1823,6 +1830,13 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 				break;
 			}
 		}
+	}
+	
+	if (IsCurseActive(Curse_Scarcity))
+	{
+		InsertServerCommand("ent_remove_all rf2_object_crate");
+		InsertServerCommand("ent_remove_all rf2_object_altar");
+		InsertServerCommand("ent_remove_all rf2_object_pedestal");
 	}
 	
 	Call_StartForward(g_fwGracePeriodStart);
@@ -4131,7 +4145,7 @@ public Action Timer_PlayerTimer(Handle timer)
 	
 	if (g_bServerRestarting)
 	{
-		PrintCenterTextAll("!!!SERVER IS RESTARTING!!!\nPlease rejoin shortly");
+		PrintCenterTextAll("%t", "ServerRestart");
 	}
 	
 	int maxHealth, health, healAmount, weapon, ammoType;
@@ -4329,7 +4343,7 @@ public Action Timer_PlayerTimer(Handle timer)
 						{
 							g_flPlayerHealthRegenTime[i] += 0.2;
 						}
-						else if (RF2_GetDifficulty() == DIFFICULTY_TITANIUM)
+						else if (RF2_GetDifficulty() >= DIFFICULTY_TITANIUM)
 						{
 							g_flPlayerHealthRegenTime[i] += 0.3;
 						}
@@ -4794,12 +4808,12 @@ public Action OnEurekaTeleport(int client, const char[] command, int args)
 
 	if (g_bDisableEurekaTeleport)
 	{
-		PrintCenterText(client, "You aren't allowed to teleport here!");
+		PrintCenterText(client, "%t", "EurekaBanned");
 		EmitSoundToClient(client, SND_NOPE);
 		TF2_RemoveCondition(client, TFCond_Taunting);
 		return Plugin_Handled;
 	}
-
+	
 	return Plugin_Continue;
 }
 
@@ -5397,12 +5411,6 @@ public void TF2_OnWaitingForPlayersStart()
 	if (!RF2_IsEnabled())
 		return;
 	
-	if (g_cvShowMvMWaveBar.BoolValue)
-	{
-		MvMHUD_Enable();
-		MvMHUD_UpdateStats();
-	}
-	
 	// Disable TF2 achievements and stat tracking
 	// We need to enable it here because this cvar otherwise prevents waiting for players from starting at all.
 	FindConVar("tf_bot_offline_practice").SetBool(true);
@@ -5458,11 +5466,6 @@ public void TF2_OnWaitingForPlayersEnd()
 {
 	if (!RF2_IsEnabled())
 		return;
-	
-	if (MvMHUD_IsEnabled())
-	{
-		MVMHud_Disable();
-	}
 
 	g_bWaitingForPlayers = false;
 	g_flWaitRestartTime = 0.0;
@@ -5559,7 +5562,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	{
 		SDKHook(entity, SDKHook_SpawnPost, Hook_ProjectileSpawnPost);
 	}
-
+	
 	if (classname[0] == 'i' && StrContains(classname, "item_") == 0)
 	{
 		if (StrContains(classname, "item_currencypack") == 0)
@@ -5624,6 +5627,31 @@ public void OnEntityCreated(int entity, const char[] classname)
 	{
 		RemoveEntity(entity);
 	}
+	else if (strcmp2(classname, "tf_dropped_weapon"))
+	{
+		RequestFrame(RF_WeaponDropped, EntIndexToEntRef(entity));
+	}
+}
+
+public void RF_WeaponDropped(int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+		return;
+	
+	// check the player who dropped this item
+	int offset = GetEntSendPropOffs(entity, "m_flChargeLevel", true)+4; // m_hPlayer
+	int dropper = GetEntDataEnt2(entity, offset);
+	
+	// 0 means this is plugin created since we set this to world to avoid auto deletion
+	if (dropper != 0 && (!IsValidClient(dropper) || !IsPlayerSurvivor(dropper) || IsPlayerMinion(dropper)))
+	{
+		// only survivors can drop weapons
+		RemoveEntity(entity);
+	}
+	else if (dropper != 0)
+	{
+		SetEntDataEnt2(entity, offset, 0);
+	}
 }
 
 public void Hook_NPCSpawnPost(int entity)
@@ -5637,15 +5665,18 @@ public void OnEntityDestroyed(int entity)
 		return;
 	
 	static char classname[128];
-	GetEntityClassname(entity, classname, sizeof(classname));
-	if (AreCustomEventsAvailable())
+	if (entity != INVALID_ENT)
 	{
-		Event event = CreateEvent("rf2_entity_destroyed", true);
-		if (event)
+		GetEntityClassname(entity, classname, sizeof(classname));
+		if (AreCustomEventsAvailable())
 		{
-			event.SetInt("entindex", entity);
-			event.SetString("classname", classname);
-			event.Fire(true);
+			Event event = CreateEvent("rf2_entity_destroyed", true);
+			if (event)
+			{
+				event.SetInt("entindex", entity);
+				event.SetString("classname", classname);
+				event.Fire(true);
+			}
 		}
 	}
 	
@@ -6220,7 +6251,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 			if (critType == CritType_Crit && !rolledCrit 
 				&& IsValidClient(attacker) 
 				&& IsPlayerSurvivor(attacker)
-				&& !IsPlayerCritBoosted(attacker))
+				&& (TF2_IsPlayerInCondition(attacker, TFCond_CritMmmph) || !IsPlayerCritBoosted(attacker)))
 			{
 				// Crit weapons nerf (Phlog, Backburner, Frontier Justice, Diamondback)
 				if (TF2Attrib_HookValueInt(0, "burn_damage_earns_rage", weapon)
@@ -6466,7 +6497,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (IsValidClient(victim))
 	{
-		GameRules_SetProp("m_bPlayingMannVsMachine", MvMHUD_IsEnabled()); // prevent server crash from a dhook we use
+		GameRules_SetProp("m_bPlayingMannVsMachine", false); // prevent server crash from a dhook we use
 	}
 	
 	if (!g_bRoundActive)
@@ -6990,21 +7021,25 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	if (victimIsClient && selfDamage && rangedDamage && (validWeapon || inflictorIsBuilding) && IsPlayerSurvivor(victim))
 	{
 		damage = float(RF2_GetCalculatedMaxHealth(victim)) * 0.15;
-
+		
 		// Special damage reduction rules for Soldier
 		if (TF2_GetPlayerClass(victim) == TFClass_Soldier)
 		{
-			if ((GetEntityFlags(victim) & FL_ONGROUND
-				|| !TF2_IsPlayerInCondition(victim, TFCond_BlastJumping)))
+			static float lastRocketJumpTime[MAXTF2PLAYERS];
+			if (GetEntityFlags(victim) & FL_ONGROUND
+				|| !TF2_IsPlayerInCondition(victim, TFCond_BlastJumping)
+		 		|| lastRocketJumpTime[victim]+0.5 >= GetTickedTime())
 			{
 				// Reduce self damage based on fire+reload rate IF we are not rocket jumping.
+				// Also don't blow ourselves up if we rocket jump with several rockets at once.
 				damage *= fmax(0.5, Pow(GetPlayerFireRateMod(victim) * GetPlayerReloadMod(victim), 0.75));
 			}
 			else
 			{
 				// Rocket jumping extends health regen time a bit
-				g_flPlayerHealthRegenTime[victim] += 1.5;
+				g_flPlayerHealthRegenTime[victim] += 2.0;
 				g_flPlayerHealthRegenTime[victim] = fmin(g_flPlayerHealthRegenTime[victim], 5.0);
+				lastRocketJumpTime[victim] = GetTickedTime();
 			}
 		}
 		
@@ -7854,7 +7889,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 				else
 				{
 					char classString[16];
-					GetClassString(class, classString, sizeof(classString));
+					TF2_GetClassString(class, classString, sizeof(classString));
 
 					// Some of the filenames don't have underscores before the number, yet others do. -.- (Soldier and Heavy)
 					if (class == TFClass_Soldier || class == TFClass_Heavy)
@@ -7960,7 +7995,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 				action = Plugin_Changed;
 				bool noGiantLines = (class == TFClass_Sniper || class == TFClass_Medic || class == TFClass_Engineer || class == TFClass_Spy);
 				char classString[16], newString[32];
-				GetClassString(class, classString, sizeof(classString), true);
+				TF2_GetClassString(class, classString, sizeof(classString), true);
 				if ((IsBoss(client) || g_bPlayerIsDyingBoss[client]) && !noGiantLines)
 				{
 					g_bPlayerIsDyingBoss[client] = false;

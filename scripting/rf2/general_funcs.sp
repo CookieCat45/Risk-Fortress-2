@@ -500,7 +500,7 @@ void OnDifficultyChanged(int newLevel)
 					TFBot(i).SetSkillLevel(TFBotSkill_Hard);
 			}
 			
-			case DIFFICULTY_TITANIUM:
+			case DIFFICULTY_TITANIUM, DIFFICULTY_AUSTRALIUM:
 			{
 				if (skill < TFBotSkill_Expert)
 					TFBot(i).SetSkillLevel(TFBotSkill_Expert);
@@ -522,6 +522,7 @@ int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=tr
 			case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron (Normal){default}");
 			case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel (Hard){default}");
 			case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium (Expert){default}");
+			case DIFFICULTY_AUSTRALIUM: cells = strcopy(buffer, size, "{gold}AUSTRALIUM (MASTER){default}");
 			default:  cells = strcopy(buffer, size, "unknown");
 		}
 	}
@@ -533,6 +534,7 @@ int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=tr
 			case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron{default}");
 			case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel{default}");
 			case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium{default}");
+			case DIFFICULTY_AUSTRALIUM: cells = strcopy(buffer, size, "{gold}AUSTRALIUM{default}");
 			default:  cells = strcopy(buffer, size, "unknown");
 		}
 	}
@@ -545,6 +547,11 @@ int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=tr
 	return cells;
 }
 
+bool IsCurseActive(int curse)
+{
+	return g_iDifficultyLevel >= DIFFICULTY_AUSTRALIUM && g_iLoopCount >= curse;
+}
+
 float GetDifficultyFactor(int difficulty)
 {
 	switch (difficulty)
@@ -552,7 +559,7 @@ float GetDifficultyFactor(int difficulty)
 		case DIFFICULTY_SCRAP: return DifficultyFactor_Scrap;
 		case DIFFICULTY_IRON: return DifficultyFactor_Iron;
 		case DIFFICULTY_STEEL: return DifficultyFactor_Steel;
-		case DIFFICULTY_TITANIUM: return DifficultyFactor_Titanium;
+		case DIFFICULTY_TITANIUM, DIFFICULTY_AUSTRALIUM: return DifficultyFactor_Titanium;
 	}
 	
 	return DifficultyFactor_Iron;
@@ -741,7 +748,7 @@ public MRESReturn Detour_GCPreClientUpdatePost(Address gc)
 		return MRES_Ignored;
 	
 	g_bPreventServerExit = false;
-	GameRules_SetProp("m_bPlayingMannVsMachine", MvMHUD_IsEnabled());
+	GameRules_SetProp("m_bPlayingMannVsMachine", false);
 	return MRES_Ignored;
 }
 

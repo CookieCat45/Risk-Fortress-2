@@ -151,9 +151,18 @@ enum
 	DIFFICULTY_IRON,
 	DIFFICULTY_STEEL,
 	DIFFICULTY_TITANIUM,
-
+	DIFFICULTY_AUSTRALIUM,
+	
 	DIFFICULTY_MAX,
 };
+
+enum
+{
+	Curse_Lethality = 2,// Enemy move speed increased by 50%, attack and reload speed increased by 25%
+	Curse_Wounding,		// Health regeneration disabled, all sources of healing reduced by 30%
+	Curse_Scarcity,		// Gargoyles and any objects that yield items no longer spawn
+	Curse_Annihilation,	// All enemies are crit boosted
+}
 
 enum
 {

@@ -2,23 +2,21 @@
 #pragma newdecls required
 
 int g_iWeaponCount[TF_CLASSES];
-
-// These are for Survivors, not enemies or bosses.
 int g_iWeaponIndexReplacement[TF_CLASSES][64];
 int g_iAttributeSlave = INVALID_ENT;
-
 char g_szWeaponIndexIdentifier[TF_CLASSES][64][512];
 char g_szWeaponAttributes[TF_CLASSES][64][MAX_ATTRIBUTE_STRING_LENGTH];
 char g_szWeaponClassnameReplacement[TF_CLASSES][64][64];
-
 bool g_bWeaponStripAttributes[TF_CLASSES][64];
 bool g_bWeaponHasStringAttributes[TF_CLASSES][64];
 char g_szWeaponStringAttributeName[TF_CLASSES][64][MAX_STRING_ATTRIBUTES][128];
 char g_szWeaponStringAttributeValue[TF_CLASSES][64][MAX_STRING_ATTRIBUTES][PLATFORM_MAX_PATH];
+static bool g_bDisableGiveItemForward;
+
+StringMap g_hCustomWeapons;
 
 void LoadWeapons()
 {
-	// Load base weapon stats
 	KeyValues weaponKey = CreateKeyValues("weapons");
 	char config[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, WeaponConfig);
@@ -34,7 +32,7 @@ void LoadWeapons()
 	
 	for (int i = 1; i < TF_CLASSES; i++)
 	{
-		GetClassString(view_as<TFClassType>(i), tfClassName, sizeof(tfClassName));
+		TF2_GetClassString(view_as<TFClassType>(i), tfClassName, sizeof(tfClassName));
 		
 		if (weaponKey.JumpToKey(tfClassName))
 		{
@@ -121,14 +119,125 @@ void LoadWeapons()
 	}
 	
 	delete weaponKey;
+	if (!g_hCustomWeapons)
+	{
+		g_hCustomWeapons = new StringMap();
+	}
+	else
+	{
+		// don't load more than once to avoid memory leaks
+		return;
+	}
 	
-	// Load custom weapons (TODO)
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "%s/custom_weapons", ConfigPath);
+	DirectoryListing directory = OpenDirectory(path);
+	if (directory)
+	{
+		char file[128], classStr[32], fullPath[PLATFORM_MAX_PATH], key[32], str[128], script[PLATFORM_MAX_PATH];
+		char attrKey[256];
+		FileType type;
+		int wepCount[TF_CLASSES];
+		while (directory.GetNext(file, sizeof(file), type))
+		{
+			if (type != FileType_File)
+				continue;
+			
+			TFClassType classType;
+			for (int i = 1; i <= 9; i++)
+			{
+				TF2_GetClassString(view_as<TFClassType>(i), classStr, sizeof(classStr), true);
+				if (StrContains(file, classStr, false) == 0)
+				{
+					classType = view_as<TFClassType>(i);
+					break;
+				}
+			}
+			
+			if (classType == TFClass_Unknown)
+			{
+				LogError("Custom weapons file '%s' does not correspond to any valid class.", file);
+				continue;
+			}
+			
+			weaponKey = CreateKeyValues("weapon");
+			if (!weaponKey)
+				continue;
+			
+			FormatEx(fullPath, sizeof(fullPath), "%s/%s", path, file);
+			if (!weaponKey.ImportFromFile(fullPath))
+			{
+				delete weaponKey;
+				continue;
+			}
+
+			PrintToServer("[RF2] Loading custom weapon file: %s", file);
+			StringMap map = new StringMap();
+			weaponKey.GetString("classname", str, sizeof(str), "tf_weapon_bat");
+			map.SetString("classname", str);
+			weaponKey.GetString("targetname", str, sizeof(str));
+			map.SetString("targetname", str);
+			map.SetValue("index", weaponKey.GetNum("index"));
+			map.SetValue("is_rare", weaponKey.GetNum("is_rare"));
+			map.SetValue("disable", weaponKey.GetNum("disable"));
+			map.SetValue("strip_attributes", weaponKey.GetNum("strip_attributes"));
+			if (weaponKey.JumpToKey("attributes"))
+			{
+				firstKey = true;
+				while (firstKey ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
+				{
+					firstKey = false;
+					weaponKey.GetSectionName(attrKey, sizeof(attrKey));
+					if (!TF2Attrib_IsValidAttributeName(attrKey))
+					{
+						LogError("%s: Invalid attribute '%s'", file, attrKey);
+						continue;
+					}
+					
+					map.SetValue(attrKey, weaponKey.GetFloat(NULL_STRING));
+				}
+				
+				weaponKey.GoBack();
+				weaponKey.GoBack();
+			}
+			
+			if (weaponKey.JumpToKey("scripts"))
+			{
+				int i = 1;
+				for ( ;; )
+				{
+					IntToString(i, key, sizeof(key));
+					weaponKey.GetString(key, script, sizeof(script));
+					if (script[0])
+					{
+						Format(key, sizeof(key), "SCRIPT_%d", i);
+						map.SetString(key, script);
+						i++;
+					}
+					else
+					{
+						break;
+					}
+				}
+				
+				weaponKey.GoBack();
+			}
+			
+			FormatEx(key, sizeof(key), "%s%d", classStr, wepCount[classType]);
+			map.SetString("key", key); // for easier access to the key name since we'll need it
+			g_hCustomWeapons.SetValue(key, map.Clone());
+			wepCount[classType]++;
+			delete map;
+			delete weaponKey;
+		}
+		
+		delete directory;
+	}
 }
 
 static bool g_bSetStringAttributes;
 static TFClassType g_StringAttributeClass;
 static int g_iStringAttributeWeapon;
-static bool g_bDisableGiveItemForward;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive)
@@ -377,7 +486,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 	Handle weapon = TF2Items_CreateItem(OVERRIDE_ALL|FORCE_GENERATION);
 	TF2Items_SetClassname(weapon, classname);
 	TF2Items_SetItemIndex(weapon, index);
-
+	
 	// now for the attributes:
 	if (attributes[0] || staticAttributes)
 	{
@@ -838,7 +947,7 @@ public MRESReturn DHook_MeleeSmackPost(int weapon)
 		}
 	}
 	
-	GameRules_SetProp("m_bPlayingMannVsMachine", MvMHUD_IsEnabled());
+	GameRules_SetProp("m_bPlayingMannVsMachine", false);
 	return MRES_Ignored;
 }
 
@@ -1031,39 +1140,219 @@ int AttributeNameToDefIndex(const char[] name)
 	return -1;
 }
 
-int GenerateDroppedWeapon(int weapon, const float pos[3])
+StringMap GetRandomCustomWeaponData(TFClassType class)
+{
+	char classStr[32], key[32];
+	int i;
+	ArrayList list = new ArrayList();
+	TF2_GetClassString(class, classStr, sizeof(classStr), true);
+	for ( ;; )
+	{
+		FormatEx(key, sizeof(key), "%s%d", classStr, i);
+		if (g_hCustomWeapons.ContainsKey(key))
+		{
+			DebugMsg(key);
+			StringMap map;
+			g_hCustomWeapons.GetValue(key, map);
+			list.Push(map.Clone());
+			i++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	
+	if (list.Length > 0)
+	{
+		StringMap map = list.Get(GetRandomInt(0, list.Length-1));
+		map = map.Clone();
+		for (int a = 0; a < list.Length; a++)
+		{
+			StringMap m = list.Get(a);
+			if (m)
+			{
+				delete m;
+			}
+		}
+		
+		delete list;
+		return map;
+	}
+	else
+	{
+		delete list;
+		return null;
+	}
+}
+
+int CreateCustomWeaponFromData(StringMap data, int client, bool equip=false)
+{
+	int index;
+	char classname[128], name[128];
+	data.GetValue("index", index);
+	data.GetString("classname", classname, sizeof(classname));
+	data.GetString("targetname", name, sizeof(name));
+	Handle weapon = TF2Items_CreateItem(OVERRIDE_ALL|FORCE_GENERATION);
+	TF2Items_SetClassname(weapon, classname);
+	TF2Items_SetItemIndex(weapon, index);
+	StringMapSnapshot snapshot = data.Snapshot();
+	char key[128];
+	int attribCount;
+	for (int i = 0; i < snapshot.Length; i++)
+	{
+		snapshot.GetKey(i, key, sizeof(key));
+		int attribIndex = AttributeNameToDefIndex(key);
+		if (attribIndex != -1 && !IsAttributeBlacklisted(attribIndex))
+		{
+			float value;
+			data.GetValue(key, value);
+			if (attribIndex == 834)
+			{
+				// paintkit_proto_def_index requires a bit representation of a float value
+				int intVal = RoundToFloor(value);
+				value = view_as<float>(intVal);
+				DebugMsg("%d %f", intVal, value);
+			}
+
+			TF2Items_SetNumAttributes(weapon, attribCount+1);
+			TF2Items_SetAttribute(weapon, attribCount, attribIndex, value);
+			attribCount++;
+		}
+	}
+	
+	delete snapshot;
+	TF2Items_SetLevel(weapon, 69);
+	TF2Items_SetQuality(weapon, TF2Quality_Unique);
+	g_bDisableGiveItemForward = true;
+	int wepEnt = TF2Items_GiveNamedItem(client, weapon);
+	g_bDisableGiveItemForward = false;
+	delete weapon;
+	if (equip)
+	{
+		EquipPlayerWeapon(client, wepEnt);
+	}
+		
+	if (strcmp2(classname, "tf_weapon_builder") && index == 28)
+	{
+		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 1, _, 0);
+		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 1, _, 1);
+		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 1, _, 2);
+		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 0, _, 3);
+	}
+	else if (strcmp2(classname, "tf_weapon_sapper"))
+	{
+		SetEntProp(wepEnt, Prop_Send, "m_iObjectType", 3);
+		SetEntProp(wepEnt, Prop_Data, "m_iSubType", 3);
+	}
+	
+	SetEntProp(wepEnt, Prop_Send, "m_bValidatedAttachedEntity", true);
+	return wepEnt;
+}
+
+// A weapon entity is required for this to work
+int GenerateDroppedWeapon(int weapon, const float pos[3], const char[] name="")
 {
 	if (!g_hSDKCreateDroppedWeapon)
 		return INVALID_ENT;
 	
 	int offset = GetEntSendPropOffs(weapon, "m_Item", true);
-	if (offset <= 0)
+	if (offset == -1)
+	{
+		DebugMsg("Dropped weapon creation failed: couldn't find m_Item");
 		return INVALID_ENT;
+	}
 		
 	char model[PLATFORM_MAX_PATH];
 	int modelPrecache = FindStringTable("modelprecache");
 	int modelIndex = GetEntProp(weapon, Prop_Send, "m_iWorldModelIndex");
 	if (modelIndex >= GetStringTableNumStrings(modelPrecache))
 	{
+		DebugMsg("Dropped weapon creation failed: invalid model");
 		return INVALID_ENT;
 	}
 	
 	ReadStringTable(modelPrecache, modelIndex, model, sizeof(model));
 	if (!model[0])
 	{
+		DebugMsg("Dropped weapon creation failed: invalid model");
 		return INVALID_ENT;
 	}
 	
-	DebugMsg("%d = %s", modelIndex, model);
-	ConVar droppedWeaponLife = FindConVar("tf_dropped_weapon_lifetime");
-	float oldVal = droppedWeaponLife.FloatValue;
-	droppedWeaponLife.FloatValue = 9999999.0;
-	
+	DebugMsg("Creating dropped weapon: %s", model);
+	// m_bPlayingMannVsMachine prevents dropped weapons from being created
+	bool playingMvM = asBool(GameRules_GetProp("m_bPlayingMannVsMachine"));
+	GameRules_SetProp("m_bPlayingMannVsMachine", false);
+	float ang[3];
+	ang[0] = GetRandomFloat(-180.0, 180.0);
+	ang[1] = GetRandomFloat(-180.0, 180.0);
+	ang[2] = GetRandomFloat(-180.0, 180.0);
 	int droppedWep = SDKCall(g_hSDKCreateDroppedWeapon, 
-		INVALID_ENT, pos, {0.0, 0.0, 0.0}, 
+		INVALID_ENT, 
+		pos, 
+		ang,
 		model,
 		GetEntityAddress(weapon)+view_as<Address>(offset));
-		
-	droppedWeaponLife.FloatValue = oldVal;
+	
+	int offs = GetEntSendPropOffs(droppedWep, "m_flChargeLevel", true)+4; // m_hPlayer
+	SetEntDataEnt2(droppedWep, offs, 0); // set to world to prevent being removed by other dropped weapons spawning
+	GameRules_SetProp("m_bPlayingMannVsMachine", playingMvM);
+	DispatchKeyValue(droppedWep, "targetname", name);
 	return droppedWep;
+}
+
+StringMap FindCustomWeaponByKey(const char[] key)
+{
+	if (!g_hCustomWeapons)
+		return null;
+		
+	StringMap data;
+	g_hCustomWeapons.GetValue(key, data);
+	return data.Clone();
+}
+
+public MRESReturn Detour_WeaponPickupPost(int entity, DHookParam params)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	int client = params.Get(1);
+	UpdateItemsForPlayer(client);
+	char key[128];
+	GetEntPropString(entity, Prop_Data, "m_iName", key, sizeof(key));
+	StringMap data = FindCustomWeaponByKey(key);
+	if (data)
+	{
+		int weapon = params.Get(2);
+		// refill ammo for the weapon since it'll start with none
+		int ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType");
+		if (ammoType != TFAmmoType_None && ammoType <= TFAmmoType_Secondary)
+		{
+			GivePlayerAmmo(client, 999999, ammoType, true);
+		}
+		
+		char name[128];
+		data.GetString("targetname", name, sizeof(name));
+		DispatchKeyValue(weapon, "targetname", name);
+		int i;
+		char script[256];
+		for ( ;; )
+		{
+			FormatEx(key, sizeof(key), "SCRIPT_%d", i);
+			if (data.GetString(key, script, sizeof(script)))
+			{
+				SetVariantString(script);
+				AcceptEntityInput(weapon, "RunScriptFile");
+				i++;
+			}
+			else
+			{
+				break;
+			}
+		}
+		
+		delete data;	
+	}
+	
+	return MRES_Ignored;
 }

@@ -260,14 +260,14 @@ ArrayList GetMapsForStage(int stage)
 	{
 		if (type != FileType_File)
 			continue;
-
+		
 		ReplaceString(map, sizeof(map), ".cfg", "", false);
 		if (RF2_IsMapValid(map))
 		{
 			mapList.PushString(map);
 		}
 	}
-
+	
 	delete directory;
 	return mapList;
 }

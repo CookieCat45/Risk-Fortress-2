@@ -154,7 +154,7 @@ static Action Statue_OnInteract(int client, RF2_Object_Statue statue)
 {
 	if (g_iStagesCompleted < g_cvRequiredStagesForStatue.IntValue)
 	{
-		PrintCenterText(client, "The mysterious gravestone rejects your offering... (Clear %i stages first!)", g_cvRequiredStagesForStatue.IntValue);
+		PrintCenterText(client, "%t", "StatueRejected", g_cvRequiredStagesForStatue.IntValue);
 		EmitSoundToClient(client, SND_NOPE);
 		return Plugin_Handled;
 	}

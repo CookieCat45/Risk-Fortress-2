@@ -1,6 +1,6 @@
 "RF2_Events"
 {
-    "rf2_player_fireweapon" // Note: The Dragon's Fury and Short Circuit do not fire this event
+    "rf2_player_fireweapon"
     {
         "userid"            "short"     // userid of player who fired the weapon
         "weapon_entindex"   "long"      // weapon entity index

@@ -88,12 +88,10 @@ int LoadItems(const char[] customPath="")
 			{
 				effectKey.GetSectionName(g_szUnusualEffectDisplayName[i], sizeof(g_szUnusualEffectDisplayName[]));
 				effectKey.GetString(NULL_STRING, buffer, sizeof(buffer));
-				
 				ReplaceString(buffer, sizeof(buffer), " ", ""); // remove whitespace
 				SplitString(buffer, ";", split, sizeof(split));
 				ReplaceStringEx(buffer, sizeof(buffer), split, "");
 				ReplaceStringEx(buffer, sizeof(buffer), ";", "");
-				
 				g_iUnusualEffectType[i] = StringToInt(split);
 				strcopy(g_szUnusualEffectName[i], sizeof(g_szUnusualEffectName[]), buffer);
 				g_iUnusualEffectCount++;
@@ -1376,7 +1374,7 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 				GiveItem(pillarOfHatsOwner, item, 1, true);
 				char name[64];
 				GetItemName(item, name, sizeof(name));
-				PrintCenterText(pillarOfHatsOwner, "You received 1 %s", name);
+				PrintCenterText(pillarOfHatsOwner, "%t", "PillarOfHatsDrop", name);
 				g_iMetalItemsDropped[pillarOfHatsOwner]++;
 			}
 		}
@@ -1585,7 +1583,7 @@ bool ActivateStrangeItem(int client)
 			if (crateList.Length <= 0 && !teleFound)
 			{
 				EmitSoundToClient(client, SND_NOPE);
-				PrintCenterText(client, "No objects found!");
+				PrintCenterText(client, "%t", "NoObjectsFound");
 				delete crateList;
 				return false;
 			}
@@ -1862,7 +1860,7 @@ bool ActivateStrangeItem(int client)
 		{
 			if (g_bPlayerPermaDeathMark[client])
 			{
-				PrintCenterText(client, "You can't use this if you're already marked for death!");
+				PrintCenterText(client, "%t", "AlreadyMarked");
 				EmitSoundToClient(client, SND_NOPE);
 				return false;
 			}
@@ -1878,7 +1876,7 @@ bool ActivateStrangeItem(int client)
 
 			if (deadAllies.Length <= 0)
 			{
-				PrintCenterText(client, "No allies are dead!");
+				PrintCenterText(client, "%t", "NoAlliesDead");
 				EmitSoundToClient(client, SND_NOPE);
 				delete deadAllies;
 				return false;

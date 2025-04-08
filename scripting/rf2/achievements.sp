@@ -198,7 +198,7 @@ void OnAchievementUnlocked(int client, int achievement)
 	if (PlayerHasAllAchievements(client))
 	{
 		SetCookieBool(client, g_coEarnedAllAchievements, true);
-		PrintCenterText(client, "CONGRATULATIONS!!! You've earned all of the achievements!\nYou've been rewarded with a commemorative Merc Medal!");
+		PrintCenterText(client, "%t", "AllAchievements");
 	}
 	
 	PrintHintText(client, "To view your achievements, use the /rf2_achievements command.");

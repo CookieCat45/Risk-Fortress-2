@@ -330,7 +330,7 @@ public void Timer_CheckCollectorItems(Handle timer, int client)
 		if (GetItemQuality(i) == Quality_Collectors && PlayerHasItem(client, i, true, true) 
 			&& GetCollectorItemClass(i) != TF2_GetPlayerClass(client))
 		{
-			PrintCenterText(client, "It appears that you possess Collector quality items that don't belong to your class.\nFind and use a Scrapper to convert them into ones for your class.");
+			PrintCenterText(client, "%t", "BadCollectorItems");
 			break;
 		}
 	}
@@ -374,7 +374,7 @@ void SetClassAttributes(int client)
 		if (totalAttribs > MAX_ATTRIBUTES)
 		{
 			char tfClassName[16];
-			GetClassString(class, tfClassName, sizeof(tfClassName));
+			TF2_GetClassString(class, tfClassName, sizeof(tfClassName));
 			LogError("[SetClassAttributes] Survivor class %i (%s) exceeded attribute limit of %i", view_as<int>(class), tfClassName, MAX_ATTRIBUTES);
 		}
 	}
@@ -1175,7 +1175,7 @@ void ForfeitItems(int client)
 	g_iPlayerEquipmentItem[client] = Item_Null;
 	SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
 	UpdateItemsForPlayer(client);
-	PrintCenterTextAll("%N has forfeited their items to other players.", client);
+	PrintCenterTextAll("%t", "PlayerForfeited", client);
 }
 
 void ForfeitItemsByInvIndex(int index)
@@ -1305,7 +1305,8 @@ void ForfeitItemsByInvIndex(int index)
 	delete players;
 	g_iSaveDataEquipmentItem[index] = Item_Null;
 	SetAllInArray(g_iSaveDataItem[index], sizeof(g_iSaveDataItem[]), 0);
-	PrintCenterTextAll("%s has had their inventory forfeited automatically due to their absence.", name);
+	RF2_PrintToChatAll("%t", "PlayerForfeited2", name);
+	PrintCenterTextAll("%t", "PlayerForfeited2", name);
 }
 
 bool IsInventoryAllowedToForfeit(int invIndex)

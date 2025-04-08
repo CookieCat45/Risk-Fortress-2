@@ -1056,18 +1056,33 @@ void RunScriptCode(int entity, const char[] code)
 
 static int g_iScriptSlave = INVALID_ENT;
 // Set the m_iszMessage property of "activator" in the script code to the return value
-int RunScriptCode_ReturnInt(int entity, const char[] code)
+stock int RunScriptCode_ReturnInt(int entity, const char[] code)
 {
 	if (EntRefToEntIndex(g_iScriptSlave) == INVALID_ENT)
 	{
 		g_iScriptSlave = EntIndexToEntRef(CreateEntityByName("game_text"));
 	}
-
+	
 	SetVariantString(code);
 	AcceptEntityInput(entity, "RunScriptCode", g_iScriptSlave);
 	static char name[128];
 	GetEntPropString(g_iScriptSlave, Prop_Data, "m_iszMessage", name, sizeof(name));
 	return StringToInt(name);
+}
+
+// Set the m_iszMessage property of "activator" in the script code to the return value
+stock int RunScriptCode_ReturnString(int entity, const char[] code, char[] buffer, int size)
+{
+	if (EntRefToEntIndex(g_iScriptSlave) == INVALID_ENT)
+	{
+		g_iScriptSlave = EntIndexToEntRef(CreateEntityByName("game_text"));
+	}
+	
+	SetVariantString(code);
+	AcceptEntityInput(entity, "RunScriptCode", g_iScriptSlave);
+	static char name[128];
+	GetEntPropString(g_iScriptSlave, Prop_Data, "m_iszMessage", name, sizeof(name));
+	return strcopy(buffer, size, name);
 }
 
 void CleanPathFollowers()
@@ -1080,18 +1095,6 @@ void CleanPathFollowers()
 			g_iEntityPathFollower[i] = view_as<PathFollower>(0);
 		}
 	}
-}
-
-int GetObjectiveResource()
-{
-	static int resourceRef = INVALID_ENT;
-	if (!IsValidEntity2(resourceRef))
-	{
-		int resource = FindEntityByClassname(INVALID_ENT, "tf_objective_resource");
-		resourceRef = EntIndexToEntRef(resource);
-	}
-	
-	return resourceRef;
 }
 
 public MRESReturn Detour_IsPotentiallyChaseablePost(Address addr, DHookReturn returnVal, DHookParam params)

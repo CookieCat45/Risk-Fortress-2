@@ -253,6 +253,10 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 	int health = GetClientHealth(client);
 	int maxHealth = RF2_GetCalculatedMaxHealth(client);
 	bool capOverheal = maxOverheal > 0.0;
+	if (IsCurseActive(client) && GetClientTeam(client) == TEAM_SURVIVOR)
+	{
+		amount = RoundFloat(float(amount) * 0.7);
+	}
 	
 	// we're already overhealed or at max health, don't do anything
 	if (!allowOverheal && health >= maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
@@ -358,6 +362,9 @@ int GetPlayerLevel(int client)
 
 bool CanPlayerRegen(int client)
 {
+	if (IsCurseActive(Curse_Wounding) && GetClientTeam(client) == TEAM_SURVIVOR)
+		return false;
+	
 	return (IsPlayerSurvivor(client) || IsPlayerMinion(client) ||
 		TF2_IsPlayerInCondition(client, TFCond_RuneRegen) ||
 		PlayerHasItem(client, Item_Archimedes) ||
@@ -536,11 +543,16 @@ float CalculatePlayerMaxSpeed(int client)
 		speed *= 1.0 + CalcItemMod(client, ItemSpy_StealthyScarf, 0);
 	}
 	
+	if (IsCurseActive(Curse_Lethality) && GetClientTeam(client) == TEAM_ENEMY)
+	{
+		speed *= 1.5;
+	}
+	
 	if (IsBoss(client) && GetEntProp(client, Prop_Send, "m_bDucked"))
 	{
 		speed *= 3.0; // bosses move at normal speed while crouched to avoid getting stuck
 	}
-
+	
 	if (g_bPlayerFullMinigunMoveSpeed[client] && TF2_GetPlayerClass(client) == TFClass_Heavy)
 	{
 		// full minigun move speed
@@ -729,6 +741,11 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 		}
 	}
 	
+	if (IsCurseActive(Curse_Lethality) && GetClientTeam(client) == TEAM_ENEMY)
+	{
+		multiplier *= 1.25;
+	}
+	
 	if (PlayerHasItem(client, Item_MaimLicense))
 	{
 		multiplier *= 1.0 + CalcItemMod(client, Item_MaimLicense, 0);
@@ -875,6 +892,11 @@ float GetPlayerReloadMod(int client, int weapon=INVALID_ENT)
 	multiplier *= 1.0 + CalcItemMod(client, Item_RoundedRifleman, 0);
 	multiplier *= 1.0 + CalcItemMod(client, Item_TripleA, 0);
 	multiplier *= 1.0 + CalcItemMod(client, Item_MaxHead, 3);
+	
+	if (IsCurseActive(Curse_Lethality) && GetClientTeam(client) == TEAM_ENEMY)
+	{
+		multiplier *= 1.25;
+	}
 	
 	if (g_flPlayerReloadBuffDuration[client] > 0.0)
 	{
@@ -1287,7 +1309,7 @@ float GetClassMaxSpeed(TFClassType class)
 	return 300.0;
 }
 
-void GetClassString(TFClassType class, char[] buffer, int size, bool underScore=false, bool capitalize=false)
+void TF2_GetClassString(TFClassType class, char[] buffer, int size, bool underScore=false, bool capitalize=false)
 {
 	switch (class)
 	{
@@ -1516,6 +1538,11 @@ public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam
 	{
 		float health = DHookGetParam(params, 1);
 		health *= GetPlayerHealthMult(entity);
+		if (IsCurseActive(Curse_Wounding) && GetClientTeam(entity) == TEAM_SURVIVOR)
+		{
+			health *= 0.7;
+		}
+		
 		params.Set(1, health);
 		return MRES_ChangedHandled;
 	}

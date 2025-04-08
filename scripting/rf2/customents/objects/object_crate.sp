@@ -6,6 +6,7 @@
 #define MODEL_CRATE_HAUNTED "models/player/items/crafting/halloween2015_case.mdl"
 #define MODEL_CRATE_COLLECTOR "models/props_island/mannco_case_small.mdl"
 #define MODEL_CRATE_UNUSUAL "models/workshop/cases/invasion_case/invasion_case_rare.mdl"
+#define MODEL_CRATE_WEAPON "models/items/ammocrate_rockets.mdl"
 
 static CEntityFactory g_Factory;
 enum
@@ -16,6 +17,7 @@ enum
 	Crate_Collectors,
 	Crate_Haunted,
 	Crate_Unusual,
+	Crate_Weapon,
 	CrateType_Max,
 };
 
@@ -131,8 +133,8 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 				// The cost of large and collectors crates goes up in multiplayer to discourage hogging unusual/collector items
 				cost *= 1.0 + (0.2 * float(RF2_GetSurvivorCount()-1));
 			}
-
-			case Crate_Strange: cost = g_cvObjectBaseCost.FloatValue * costMult * 1.5;
+			
+			case Crate_Strange, Crate_Weapon: cost = g_cvObjectBaseCost.FloatValue * costMult * 1.5;
 			case Crate_Unusual: cost = g_cvObjectBaseCost.FloatValue * costMult * 16.0;
 		}
 
@@ -260,6 +262,13 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 					this.Teleport(pos);
 				}
 			}
+			
+			case Crate_Weapon:
+			{
+				this.SetModel(MODEL_CRATE_WEAPON);
+				this.SetObjectName("Munitions Crate");
+				this.SetGlowColor(255, 255, 0);
+			}
 		}
 		
 		this.Cost = this.CalculateCost();
@@ -294,6 +303,7 @@ void Crate_OnMapStart()
 	PrecacheModel2(MODEL_CRATE_STRANGE, true);
 	PrecacheModel2(MODEL_CRATE_HAUNTED, true);
 	PrecacheModel2(MODEL_CRATE_COLLECTOR, true);
+	PrecacheModel2(MODEL_CRATE_WEAPON, true);
 }
 
 static void OnCreate(RF2_Object_Crate crate)
@@ -340,7 +350,7 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	if (!IsPlayerSurvivor(attacker))
 	{
 		EmitSoundToClient(attacker, SND_NOPE);
-		PrintCenterText(attacker, "Wait until the next map to use this!");
+		PrintCenterText(attacker, "%t", "WaitForNextMap");
 		return Plugin_Continue;
 	}
 	
@@ -383,6 +393,29 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	if (crate.Type == Crate_Collectors)
 	{
 		item = GetRandomCollectorItem(TF2_GetPlayerClass(attacker));
+	}
+	else if (crate.Type == Crate_Weapon)
+	{
+		pos[2] -= 30.0;
+		StringMap data = GetRandomCustomWeaponData(TF2_GetPlayerClass(attacker));
+		int dummyWep = CreateCustomWeaponFromData(data, attacker);
+		char key[32];
+		data.GetString("key", key, sizeof(key));
+		int droppedWep = GenerateDroppedWeapon(dummyWep, pos, key);
+		if (droppedWep != INVALID_ENT)
+		{
+			SetEntProp(droppedWep, Prop_Send, "m_fEffects", 
+				GetEntProp(droppedWep, Prop_Send, "m_fEffects")|EF_ITEM_BLINK);
+			
+			float vel[3];
+			vel[0] = GetRandomFloat(-150.0, 150.0);
+			vel[1] = GetRandomFloat(-150.0, 150.0);
+			vel[2] = 400.0;
+			ApplyAbsVelocityImpulse(droppedWep, vel);
+		}
+		
+		RemoveEntity(dummyWep);
+		delete data;
 	}
 	else
 	{
@@ -431,13 +464,17 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	crate.GetRenderColor(r, g, b, a);
 	crate.SetRenderColor(r, g, b, 255);
 	SpawnInfoParticle(effectName, pos, particleRemoveTime);
-	DataPack pack;
-	CreateDataTimer(removeTime, Timer_SpawnItem, pack, TIMER_FLAG_NO_MAPCHANGE);
-	pack.WriteCell(item);
-	pack.WriteCell(GetClientUserId(attacker));
-	pack.WriteFloat(pos[0]);
-	pack.WriteFloat(pos[1]);
-	pack.WriteFloat(pos[2]);
+	if (crate.Type != Crate_Weapon)
+	{
+		DataPack pack;
+		CreateDataTimer(removeTime, Timer_SpawnItem, pack, TIMER_FLAG_NO_MAPCHANGE);
+		pack.WriteCell(item);
+		pack.WriteCell(GetClientUserId(attacker));
+		pack.WriteFloat(pos[0]);
+		pack.WriteFloat(pos[1]);
+		pack.WriteFloat(pos[2]);
+	}
+	
 	CreateTimer(removeTime, Timer_DeleteEntity, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Continue;
 }

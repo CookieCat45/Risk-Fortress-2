@@ -1,5 +1,10 @@
 "Phrases"
 {
+	"AllAchievements"
+	{
+		"en"	"CONGRATULATIONS!!! You've earned all of the achievements!\nYou've been rewarded with a commemorative Merc Medal!"	
+	}
+	
 	//
 	// Names
 	//

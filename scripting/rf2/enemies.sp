@@ -44,7 +44,6 @@ static float g_flEnemySuicideBombRange[MAX_ENEMIES];
 static char g_szEnemyName[MAX_ENEMIES][MAX_NAME_LENGTH];
 static char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
 static char g_szEnemyGroup[MAX_ENEMIES][64];
-static char g_szEnemyIcon[MAX_ENEMIES][PLATFORM_MAX_PATH];
 
 // TFBot
 static int g_iEnemyBotSkill[MAX_ENEMIES];
@@ -194,16 +193,6 @@ methodmap Enemy
 	public void SetModel(const char[] model)
 	{
 		strcopy(g_szEnemyModel[this.Index], sizeof(g_szEnemyModel[]), model);
-	}
-	
-	public void SetIcon(const char[] icon)
-	{
-		strcopy(g_szEnemyIcon[this.Index], sizeof(g_szEnemyModel[]), icon);
-	}
-	
-	public int GetIcon(char[] buffer, int size)
-	{
-		return strcopy(buffer, size, g_szEnemyIcon[this.Index]);
 	}
 	
 	public int GetName(char[] buffer, int size)
@@ -791,35 +780,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemy.SetModel(MODEL_ERROR);
 		}
 		
-		if (g_cvShowMvMWaveBar.BoolValue)
-		{
-			enemyKey.GetString("icon", g_szEnemyIcon[e], sizeof(g_szEnemyIcon));
-			if (!g_szEnemyIcon[e][0])
-			{
-				if (enemy.Class == TFClass_DemoMan) // Demo is "demo" not "demoman"
-				{
-					g_szEnemyIcon[e] = "demo";
-				}
-				else
-				{
-					char classString[64];
-					GetClassString(enemy.Class, classString, sizeof(classString));
-					g_szEnemyIcon[e] = classString;
-				}
-			}
-			
-			char iconPath[PLATFORM_MAX_PATH];
-			FormatEx(iconPath, sizeof(iconPath), "materials/hud/leaderboard_class_%s.vmt", g_szEnemyIcon[e]);
-			if (FileExists(iconPath, true))
-			{
-				AddMaterialToDownloadsTable(iconPath, true);
-			}
-			else
-			{
-				LogError("[LoadEnemiesFromPack] Icon %s for enemy \"%s\" could not be found!", iconPath, g_szLoadedEnemies[e]);
-			}
-		}
-		
 		
 		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotSkill_Normal);
 		enemy.BotSkillNoOverride = asBool(enemyKey.GetNum("tf_bot_difficulty_no_override"));
@@ -1121,11 +1081,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		}
 	}
 	
-	if (MvMHUD_IsEnabled())
-	{
-		MvMHUD_UpdateStats();
-	}
-	
 	delete enemyKey;
 }
 
@@ -1387,7 +1342,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		}
 	}
 	
-	if (enemy.AlwaysCrit)
+	if (enemy.AlwaysCrit || IsCurseActive(Curse_Annihilation))
 	{
 		TF2_AddCondition(client, TFCond_CritCanteen);
 	}
@@ -1451,7 +1406,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 					}
 				}
 				
-				case DIFFICULTY_TITANIUM: TFBot(client).SetSkillLevel(TFBotSkill_Expert);
+				case DIFFICULTY_TITANIUM, DIFFICULTY_AUSTRALIUM: TFBot(client).SetSkillLevel(TFBotSkill_Expert);
 				default: TFBot(client).SetSkillLevel(enemy.BotSkill);
 			}
 		}

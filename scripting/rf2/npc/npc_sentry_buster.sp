@@ -393,7 +393,7 @@ public Action Timer_BusterSpawnWave(Handle timer)
 			{
 				if (IsClientInGame(i) && IsPlayerSurvivor(i) && !IsPlayerMinion(i) && TF2_GetPlayerClass(i) == TFClass_Engineer)
 				{
-					PrintCenterText(i, "WARNING!\nA Sentry Buster will appear in %.0f seconds.", g_flBusterSpawnTime);
+					PrintCenterText(i, "%t", "SentryBusterWarn", RoundToFloor(g_flBusterSpawnTime));
 				}
 			}
 		}

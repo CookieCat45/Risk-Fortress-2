@@ -582,7 +582,7 @@ static Action ObjectBase_OnInteract(int client, RF2_Object_Base obj)
 	if (!IsPlayerSurvivor(client) && (obj.DisallowNonSurvivorMinions || !IsPlayerMinion(client)))
 	{
 		EmitSoundToClient(client, SND_NOPE);
-		PrintCenterText(client, "Wait until the next map to use this!");
+		PrintCenterText(client, "%t", "WaitForNextMap");
 		return Plugin_Stop;
 	}
 	

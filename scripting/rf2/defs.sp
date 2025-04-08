@@ -331,22 +331,6 @@ enum
 #define TFBOTFLAG_ALWAYSATTACK (1 << 5) // Always hold IN_ATTACK
 #define TFBOTFLAG_SUICIDEBOMBER (1 << 6) // Behave like a Sentry Buster, but go after players instead of sentries
 
-// Enemies/Bosses -------------------------------------------------------------------------------------------------------------------------------------
-enum
-{
-	VoiceType_Robot,
-	VoiceType_Human,
-	VoiceType_Silent,
-};
-
-enum
-{
-	FootstepType_Robot,
-	FootstepType_GiantRobot,
-	FootstepType_Normal,
-	FootstepType_Silent,
-};
-
 
 // Weapons -------------------------------------------------------------------------------------------------------------------------------------
 #define MAX_STRING_ATTRIBUTES 8
@@ -379,4 +363,21 @@ enum
 	TFAmmoType_Jarate, // aka Grenades1, also used for Sandman/Wrap Assassin and lunchbox items
 	TFAmmoType_MadMilk, // aka Grenades2, also used for Cleaver
 	TFAmmoType_Grenades3,
+};
+
+
+// Other
+enum
+{
+	VoiceType_Robot,
+	VoiceType_Human,
+	VoiceType_Silent,
+};
+
+enum
+{
+	FootstepType_Robot,
+	FootstepType_GiantRobot,
+	FootstepType_Normal,
+	FootstepType_Silent,
 };
