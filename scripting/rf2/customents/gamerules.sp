@@ -481,6 +481,9 @@ int SpawnObjects()
 			case Crate_Haunted: count = hauntedWeight;
 			case Crate_Collectors: count = collectorWeight;
 			case Crate_Unusual: continue; // never spawn naturally
+			#if !defined DEVONLY
+			case Crate_Weapon: continue;
+			#endif
 			
 			// Non-crate objects
 			case CrateType_Max: strcopy(name, sizeof(name), "rf2_object_workbench"), count = workbenchWeight;
