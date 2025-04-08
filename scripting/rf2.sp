@@ -259,7 +259,6 @@ ArrayList g_hHHHTargets;
 ArrayList g_hMonoculusTargets;
 StringMap g_hEnemyTypeCooldowns;
 StringMap g_hEnemyTypeNumSpawned;
-StringMap g_hAllocPooledStringCache;
 
 // Timers
 Handle g_hPlayerTimer;
@@ -1255,8 +1254,6 @@ void CleanUp()
 	StopMusicTrackAll();
 	g_hCustomTracks.Clear();
 	g_hCustomTracksDuration.Clear();
-	if (g_hAllocPooledStringCache)
-		g_hAllocPooledStringCache.Clear();
 	
 	// Just to be safe...
 	int entity = MaxClients+1;
