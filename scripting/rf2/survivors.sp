@@ -1127,7 +1127,7 @@ void ForfeitItems(int client)
 				{
 					chosenItem = itemPool.Get(0);
 				}
-
+				
 				itemPool.Erase(0);
 				GiveItem(poorestPlayer, chosenItem);
 				itemCounts[poorestPlayer][i]++;

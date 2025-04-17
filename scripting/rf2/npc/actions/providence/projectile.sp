@@ -73,7 +73,7 @@ static int Update(RF2_ProvidenceProjectileAttack action, RF2_Providence boss, fl
                 "rf2_projectile_fireball", 
                 pos, angles, 1500.0, 
                 400.0));
-
+            
             fireball.BuildingDamageMult = 0.3;
         }
 	}
