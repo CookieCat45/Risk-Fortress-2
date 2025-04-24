@@ -419,7 +419,7 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 
 	if (PlayerHasItem(client, Item_MisfortuneFedora))
 	{
-		maxHealth = RoundToFloor(float(maxHealth) * CalcItemMod_HyperbolicInverted(client, Item_MisfortuneFedora, 2));
+		maxHealth = RoundToFloor(float(maxHealth) * CalcItemMod_Reciprocal(client, Item_MisfortuneFedora, 2));
 	}
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
@@ -497,7 +497,7 @@ int CalculateBuildingMaxHealth(int client, int entity)
 
 	if (PlayerHasItem(client, Item_MisfortuneFedora))
 	{
-		maxHealth = RoundToFloor(float(maxHealth) * CalcItemMod_HyperbolicInverted(client, Item_MisfortuneFedora, 2));
+		maxHealth = RoundToFloor(float(maxHealth) * CalcItemMod_Reciprocal(client, Item_MisfortuneFedora, 2));
 	}
 
 	maxHealth = imax(maxHealth, 1); // prevent 0, causes division by zero crash on client
@@ -534,7 +534,7 @@ float CalculatePlayerMaxSpeed(int client)
 		speed *= 1.0 - GetItemMod(Item_DarkHelm, 1);
 		if (GetPlayerItemCount(client, Item_DarkHelm) > 1)
 		{
-			speed *= CalcItemMod_HyperbolicInverted(client, Item_DarkHelm, 3, -1);
+			speed *= CalcItemMod_Reciprocal(client, Item_DarkHelm, 3, -1);
 		}
 	}
 	
@@ -701,7 +701,7 @@ void UpdatePlayerGravity(int client)
 		}
 	}
 	
-	SetEntityGravity(client, gravity*CalcItemMod_HyperbolicInverted(client, Item_UFO, 0));
+	SetEntityGravity(client, gravity*CalcItemMod_Reciprocal(client, Item_UFO, 0));
 }
 
 float GetPlayerCash(int client)

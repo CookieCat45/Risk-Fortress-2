@@ -1,7 +1,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static StringMap g_szObjectSpawnWeights;
+static StringMap g_hObjectSpawnWeights;
 static CEntityFactory g_Factory;
 methodmap RF2_GameRules < CBaseEntity
 {
@@ -23,15 +23,28 @@ methodmap RF2_GameRules < CBaseEntity
 	// does not include crates
 	public static void InitObjectSpawnWeights()
 	{
-		if (g_szObjectSpawnWeights)
+		if (g_hObjectSpawnWeights)
 			return;
 		
-		g_szObjectSpawnWeights = new StringMap();
-		g_szObjectSpawnWeights.SetValue("rf2_object_workbench", 20);
-		g_szObjectSpawnWeights.SetValue("rf2_object_scrapper", 5);
-		g_szObjectSpawnWeights.SetValue("rf2_object_gravestone", 3);
-		g_szObjectSpawnWeights.SetValue("rf2_object_pedestal", 5);
-		g_szObjectSpawnWeights.SetValue("rf2_object_pumpkin", 1);
+		g_hObjectSpawnWeights = new StringMap();
+		g_hObjectSpawnWeights.SetValue("rf2_object_workbench", 20);
+		g_hObjectSpawnWeights.SetValue("rf2_object_scrapper", 5);
+		g_hObjectSpawnWeights.SetValue("rf2_object_gravestone", 3);
+		g_hObjectSpawnWeights.SetValue("rf2_object_pedestal", 5);
+		g_hObjectSpawnWeights.SetValue("rf2_object_pumpkin", 1);
+	}
+	
+	public static void SetObjectWeight(const char[] classname, int weight)
+	{
+		if (!g_hObjectSpawnWeights)
+			RF2_GameRules.InitObjectSpawnWeights();
+			
+		g_hObjectSpawnWeights.SetValue(classname, weight);
+	}
+	
+	public static bool RemoveObjectFromSpawnList(const char[] classname)
+	{
+		return g_hObjectSpawnWeights.Remove(classname);
 	}
 	
 	public static void Init()
@@ -470,7 +483,7 @@ int SpawnObjects()
 	
 	char name[128];
 	int count;
-	StringMapSnapshot snapshot = g_szObjectSpawnWeights.Snapshot();
+	StringMapSnapshot snapshot = g_hObjectSpawnWeights.Snapshot();
 	for (int i = 1; i >= 0; i++)
 	{
 		if (i >= CrateType_Max)
@@ -487,7 +500,7 @@ int SpawnObjects()
 				continue;
 			}
 			
-			g_szObjectSpawnWeights.GetValue(name, count);
+			g_hObjectSpawnWeights.GetValue(name, count);
 		}
 		else
 		{

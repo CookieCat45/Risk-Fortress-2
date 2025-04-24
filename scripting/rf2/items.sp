@@ -159,9 +159,10 @@ int LoadItems(const char[] customPath="")
 			g_bItemForceShowInInventory[item] = asBool(itemKey.GetNum("force_show_inv", false));
 			g_bItemMultiplayerOnly[item] = asBool(itemKey.GetNum("multiplayer_only", false));
 			g_bItemExcludeFromLog[item] = asBool(itemKey.GetNum("exclude_from_log", false));
-			if (item == ItemScout_LongFallBoots)
+			if (item == ItemScout_LongFallBoots && !IsGoombaAvailable())
 			{
-				g_bItemInDropPool[item] = IsGoombaAvailable();
+				// this item requires the goomba stomp plugin to function
+				g_bItemInDropPool[item] = false;
 			}
 			
 			if (FileExists(g_szItemSprite[item], true))
@@ -820,7 +821,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					if (PlayerHasItem(client, item))
 					{
 						float count = CalcItemMod(client, item, 0);
-						float revSpeed = CalcItemMod_HyperbolicInverted(client, item, 1);
+						float revSpeed = CalcItemMod_Reciprocal(client, item, 1);
 						TF2Attrib_SetByName(minigun, "attack projectiles", count);
 						TF2Attrib_SetByName(minigun, "minigun spinup time decreased", revSpeed);
 					}
@@ -870,7 +871,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 		{
 			if (PlayerHasItem(client, item))
 			{
-				float amount = CalcItemMod_HyperbolicInverted(client, item, 0);
+				float amount = CalcItemMod_Reciprocal(client, item, 0);
 				TF2Attrib_SetByName(client, "deploy time decreased", amount);
 				
 				// These classes don't have weapons that benefit from accuracy bonuses, so don't bother
@@ -879,7 +880,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				{
 					int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 					int secondary = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
-					amount = CalcItemMod_HyperbolicInverted(client, item, 1);
+					amount = CalcItemMod_Reciprocal(client, item, 1);
 					
 					if (primary != INVALID_ENT)
 					{
@@ -892,7 +893,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						if (GetEntProp(secondary, Prop_Send, "m_iItemDefinitionIndex") == 1179)
 						{
 							// Special case for the Thermal Thruster
-							TF2Attrib_SetByName(secondary, "holster_anim_time", 0.8*CalcItemMod_HyperbolicInverted(client, item, 0));
+							TF2Attrib_SetByName(secondary, "holster_anim_time", 0.8*CalcItemMod_Reciprocal(client, item, 0));
 						}
 					}
 				}
@@ -946,7 +947,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				{
 					if (PlayerHasItem(client, item))
 					{
-						float chargeRate = CalcItemMod_HyperbolicInverted(client, item, 1);
+						float chargeRate = CalcItemMod_Reciprocal(client, item, 1);
 						if (GetEntProp(secondary, Prop_Send, "m_iItemDefinitionIndex") == 1150)
 						{
 							// QuickieBomb hotfix
@@ -977,7 +978,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				{
 					if (PlayerHasItem(client, item))
 					{
-						float value = GetItemMod(item, 1) * (1.0 - CalcItemMod_HyperbolicInverted(client, item, 0));
+						float value = GetItemMod(item, 1) * (1.0 - CalcItemMod_Reciprocal(client, item, 0));
 						TF2Attrib_SetByName(primary, "flame_spread_degree", value);
 						TF2Attrib_SetByName(primary, "damage bonus HIDDEN", 1.0+CalcItemMod(client, item, 2));
 						TF2Attrib_SetByName(primary, "airblast pushback scale", 1.0+CalcItemMod(client, ItemPyro_BrigadeHelm, 3));
@@ -1010,7 +1011,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					GetEntityClassname(rifle, classname, sizeof(classname));
 					if (strcmp2(classname, "tf_weapon_compound_bow"))
 					{
-						TF2Attrib_SetByName(rifle, "faster reload rate", CalcItemMod_HyperbolicInverted(client, item, 0));
+						TF2Attrib_SetByName(rifle, "faster reload rate", CalcItemMod_Reciprocal(client, item, 0));
 					}
 					else
 					{
@@ -2053,7 +2054,7 @@ float GetPlayerEquipmentItemCooldown(int client)
 	if (!IsEquipmentItem(item))
 		return 0.0;
 	
-	float cooldown = fmax(g_flEquipmentItemMinCooldown[item], g_flEquipmentItemCooldown[item] * CalcItemMod_HyperbolicInverted(client, Item_DeusSpecs, 0));
+	float cooldown = fmax(g_flEquipmentItemMinCooldown[item], g_flEquipmentItemCooldown[item] * CalcItemMod_Reciprocal(client, Item_DeusSpecs, 0));
 	bool cooldownActive = g_flPlayerEquipmentItemCooldown[client] > 0.0;
 	if (cooldownActive)
 	{
@@ -2290,7 +2291,7 @@ float CalcItemMod_Hyperbolic(int client, int item, int slot, int extraAmount=0, 
 	return 1.0 - 1.0 / (1.0 + g_flItemModifier[item][slot] * float(count));
 }
 
-float CalcItemMod_HyperbolicInverted(int client, int item, int slot, int extraAmount=0, bool allowMinions=false)
+float CalcItemMod_Reciprocal(int client, int item, int slot, int extraAmount=0, bool allowMinions=false)
 {
 	int count = g_iPlayerItem[client][item]+extraAmount;
 	if (!allowMinions && IsPlayerMinion(client) || !IsPlayerAlive(client))
@@ -2316,7 +2317,7 @@ int CalcItemModInt_Hyperbolic(int client, int item, int slot, int extraAmount=0)
 */
 
 /*
-int CalcItemModInt_HyperbolicInverted(int client, int item, int slot, int extraAmount=0)
+int CalcItemModInt_Reciprocal(int client, int item, int slot, int extraAmount=0)
 {
 	return RoundToFloor(1.0 / (1.0 + g_flItemModifier[item][slot] * float(g_iPlayerItem[client][item]+extraAmount)));
 }

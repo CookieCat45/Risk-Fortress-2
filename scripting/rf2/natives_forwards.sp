@@ -14,7 +14,7 @@ void LoadNatives()
 	CreateNative("RF2_GetPlayerItemAmount", Native_GetPlayerItemAmount);
 	CreateNative("RF2_CalcItemMod", Native_CalcItemMod);
 	CreateNative("RF2_CalcItemMod_Hyperbolic", Native_CalcItemMod_Hyperbolic);
-	CreateNative("RF2_CalcItemMod_HyperbolicInverted", Native_CalcItemMod_HyperbolicInverted);
+	CreateNative("RF2_CalcItemMod_Reciprocal", Native_CalcItemMod_Reciprocal);
 	CreateNative("RF2_GetItemMod", Native_GetItemMod);
 	CreateNative("RF2_RandChanceInt", Native_RandChanceInt);
 	CreateNative("RF2_RandChanceFloat", Native_RandChanceFloat);
@@ -50,6 +50,8 @@ void LoadNatives()
 	CreateNative("RF2_GetLoopCount", Native_GetLoopCount);
 	CreateNative("RF2_GetTeleporterEntity", Native_GetTeleporterEntity);
 	CreateNative("RF2_IsTankDestructionMode", Native_IsTankDestructionMode);
+	CreateNative("RF2_AddObjectToSpawnList", Native_AddObjectToSpawnList);
+	CreateNative("RF2_RemoveObjectFromSpawnList", Native_RemoveObjectFromSpawnList);
 }
 
 void LoadForwards()
@@ -95,9 +97,9 @@ public any Native_CalcItemMod_Hyperbolic(Handle plugin, int numParams)
 	return CalcItemMod_Hyperbolic(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4), GetNativeCell(5));
 }
 
-public any Native_CalcItemMod_HyperbolicInverted(Handle plugin, int numParams)
+public any Native_CalcItemMod_Reciprocal(Handle plugin, int numParams)
 {
-	return CalcItemMod_HyperbolicInverted(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4), GetNativeCell(5));
+	return CalcItemMod_Reciprocal(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4), GetNativeCell(5));
 }
 
 public any Native_GetItemMod(Handle plugin, int numParams)
@@ -311,4 +313,18 @@ public any Native_GetTeleporterEntity(Handle plugin, int numParams)
 public any Native_IsTankDestructionMode(Handle plugin, int numParams)
 {
 	return g_bTankBossMode;
+}
+
+public any Native_AddObjectToSpawnList(Handle plugin, int numParams)
+{
+	char classname[128];
+	GetNativeString(1, classname, sizeof(classname));
+	RF2_Gamerules.SetObjectWeight(classname, GetNativeCell(2));
+}
+
+public any Native_RemoveObjectFromSpawnList(Handle plugin, int numParams)
+{
+	char classname[128];
+	GetNativeString(1, classname, sizeof(classname));
+	return RF2_Gamerules.RemoveObjectFromSpawnList(classname);
 }

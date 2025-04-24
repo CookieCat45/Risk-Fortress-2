@@ -262,7 +262,7 @@ native float RF2_CalcItemMod_Hyperbolic(int client, int item, int slot, int extr
  * @param allowMinions	If false and the player is a minion, will be calculated with an item count of 0.
  * @return				Calculation result.
  */
-native float RF2_CalcItemMod_HyperbolicInverted(int client, int item, int slot, int extraAmount=0, bool allowMinions=false);
+native float RF2_CalcItemMod_Reciprocal(int client, int item, int slot, int extraAmount=0, bool allowMinions=false);
 
 /**
  * Returns the value of the item modifier in the specified slot.
@@ -578,6 +578,23 @@ native int RF2_GetTeleporterEntity();
  */
 native bool RF2_IsTankDestructionMode();
 
+/**
+ * Adds an object to the object spawn list.
+ * 
+ * @param classname		Classname of the object entity.
+ * @param weight		The object's spawn weight, which determines how often it will appear. For reference, rf2_object_workbench uses a weight of 20.
+ * @noreturn
+ */
+native void RF2_AddObjectToSpawnList(const char[] classname, int weight);
+
+/**
+ * Removes an object from the object spawn list.
+ * 
+ * @param classname		Classname of the object entity.
+ * @return				True if the object was in the spawn list, and was removed. False otherwise.
+ */
+native bool RF2_RemoveObjectFromSpawnList(const char[] classname);
+
 /** 
  * Called when an entity takes damage.
  * 
@@ -678,7 +695,7 @@ public void __pl_rf2_SetNTVOptional()
 	MarkNativeAsOptional("RF2_GetPlayerItemAmount");
 	MarkNativeAsOptional("RF2_CalcItemMod");
 	MarkNativeAsOptional("RF2_CalcItemMod_Hyperbolic");
-	MarkNativeAsOptional("RF2_CalcItemMod_HyperbolicInverted");
+	MarkNativeAsOptional("RF2_CalcItemMod_Reciprocal");
 	MarkNativeAsOptional("RF2_GetItemMod");
 	MarkNativeAsOptional("RF2_RandChanceInt");
 	MarkNativeAsOptional("RF2_RandChanceFloat");
@@ -714,5 +731,7 @@ public void __pl_rf2_SetNTVOptional()
 	MarkNativeAsOptional("RF2_GetLoopCount");
 	MarkNativeAsOptional("RF2_GetTeleporterEntity");
 	MarkNativeAsOptional("RF2_IsTankDestructionMode");
+	MarkNativeAsOptional("RF2_AddObjectToSpawnList");
+	MarkNativeAsOptional("RF2_RemoveObjectFromSpawnList");
 }
 #endif

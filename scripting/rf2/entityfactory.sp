@@ -41,6 +41,7 @@ void InstallEnts()
 	RF2_Providence.Init();
 	RF2_RaidBossSpawner.Init();
 	RF2_ProvidenceShieldCrystal.Init();
+	RF2_Filter_Minion.Init();
 
 	#if defined DEVONLY
 	RF2_RaidBoss_Galleom.Init();

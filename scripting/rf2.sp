@@ -470,6 +470,8 @@ public const char g_szTeddyBearSounds[][] =
 #include "rf2/customents/projectiles/projectile_shrapnel.sp"
 #include "rf2/customents/customhitbox.sp"
 
+#include "rf2/customents/filters/filter_minion.sp"
+
 #include "rf2/cookies.sp"
 #include "rf2/sql.sp"
 #include "rf2/weapons.sp"
@@ -922,6 +924,10 @@ public void OnMapStart()
 		{
 			LogError("FAILED to load custom events file %s", CUSTOM_EVENTS_FILE);
 		}
+	}
+	else
+	{
+		LogError("FAILED to load custom events file (Missing Gamedata!)");
 	}
 	
 	g_bMapChanging = false;
@@ -3814,7 +3820,7 @@ public Action Timer_PlayerHud(Handle timer)
 					else
 					{
 						Format(miscText, sizeof(miscText), "%sHard Hat Resist: %.0f%s\n", miscText,
-							(1.0-CalcItemMod_HyperbolicInverted(i, Item_ApertureHat, 0))*100.0, "%%");
+							(1.0-CalcItemMod_Reciprocal(i, Item_ApertureHat, 0))*100.0, "%%");
 					}
 				}
 			}
@@ -6377,7 +6383,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 			float time = GetItemMod(Item_ApertureHat, 1);
 			if (g_flPlayerHardHatLastResistTime[victim]+time <= GetTickedTime())
 			{
-				damage *= CalcItemMod_HyperbolicInverted(victim, Item_ApertureHat, 0);
+				damage *= CalcItemMod_Reciprocal(victim, Item_ApertureHat, 0);
 				g_flPlayerHardHatLastResistTime[victim] = GetTickedTime();
 				EmitGameSoundToClient(victim, "Player.ResistanceLight");
 				EmitGameSoundToClient(victim, "Player.ResistanceLight");
@@ -6426,7 +6432,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 			if (critType != CritType_None)
 			{
 				float dmgBonus = damage-baseDmg;
-				dmgBonus *= CalcItemMod_HyperbolicInverted(victim, Item_MetalHelmet, 1);
+				dmgBonus *= CalcItemMod_Reciprocal(victim, Item_MetalHelmet, 1);
 				damage = baseDmg+dmgBonus;
 			}
 
@@ -6721,7 +6727,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		
 		if (!selfDamage && PlayerHasItem(attacker, Item_BeaconFromBeyond) && RF2_Object_Teleporter.IsEventActive())
 		{
-			damage *= CalcItemMod_HyperbolicInverted(attacker, Item_BeaconFromBeyond, 1);
+			damage *= CalcItemMod_Reciprocal(attacker, Item_BeaconFromBeyond, 1);
 		}
 		
 		if (inflictor > 0 && GetEntItemProc(inflictor) > Item_Null && GetEntItemProc(inflictor) <= MAX_ITEMS)
@@ -6790,7 +6796,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 						laserDamage, DMG_SONIC|DMG_PREVENT_PHYSICS_FORCE, size, colors);
 					
 					float time = GetItemMod(ItemEngi_BrainiacHairpiece, 0);
-					time *= CalcItemMod_HyperbolicInverted(attacker, ItemEngi_BrainiacHairpiece, 1, -1);
+					time *= CalcItemMod_Reciprocal(attacker, ItemEngi_BrainiacHairpiece, 1, -1);
 					g_flSentryNextLaserTime[inflictor] = GetTickedTime()+time;
 				}
 			}
@@ -6908,7 +6914,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				if (PlayerHasItem(attacker, Item_Goalkeeper))
 				{
 					// Ranged damage penalty
-					damage *= CalcItemMod_HyperbolicInverted(attacker, Item_Goalkeeper, 2);
+					damage *= CalcItemMod_Reciprocal(attacker, Item_Goalkeeper, 2);
 				}
 			}
 			
@@ -6997,7 +7003,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			// If we're disguised and uncloaked, this item gives us resist
 			if (TF2_IsPlayerInCondition(victim, TFCond_Disguised) && !TF2_IsPlayerInCondition(victim, TFCond_Cloaked))
 			{
-				damage *= CalcItemMod_HyperbolicInverted(victim, ItemSpy_CounterfeitBillycock, 1);
+				damage *= CalcItemMod_Reciprocal(victim, ItemSpy_CounterfeitBillycock, 1);
 			}
 		}
 
