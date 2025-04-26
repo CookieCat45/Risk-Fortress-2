@@ -1,5 +1,5 @@
 # Risk Fortress 2
-**Risk Fortress 2** is a TF2 roguelike adventure game mode that takes a heavy inspiration from the game [Risk of Rain 2](https://store.steampowered.com/app/632360/Risk_of_Rain_2/)
+**Risk Fortress 2** is a TF2 roguelike adventure game mode that takes a heavy inspiration from the game [Risk of Rain 2](https://store.steampowered.com/app/632360/Risk_of_Rain_2/). The mercenaries are pitted against massive swarms of robots that grow stronger and stronger as time passes, and must scavenge the map for collectable items to increase their power and survive. How long can you last?
 
 [Asset Repository](https://ln5.sync.com/dl/56aea4400#rctr8jjq-fesnwkmp-yh3dzeef-j6s5daa8)<br>
 [Private Server Setup Guide](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)   
