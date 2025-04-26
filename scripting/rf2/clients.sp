@@ -44,7 +44,6 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
 	g_bPlayerEquipmentCooldownActive[client] = false;
-	g_bPlayerLawCooldown[client] = false;
 	g_bPlayerTookCollectorItem[client] = false;
 	g_bPlayerHealBurstCooldown[client] = false;
 	g_bPlayerRifleAutoFire[client] = false;

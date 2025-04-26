@@ -141,7 +141,6 @@ bool g_bPlayerExtraSentryHint[MAXTF2PLAYERS];
 bool g_bPlayerInSpawnQueue[MAXTF2PLAYERS];
 bool g_bPlayerHasVampireSapper[MAXTF2PLAYERS];
 bool g_bPlayerEquipmentCooldownActive[MAXTF2PLAYERS];
-bool g_bPlayerLawCooldown[MAXTF2PLAYERS];
 bool g_bPlayerTookCollectorItem[MAXTF2PLAYERS];
 bool g_bPlayerSpawnedByTeleporter[MAXTF2PLAYERS];
 bool g_bPlayerHealBurstCooldown[MAXTF2PLAYERS];
@@ -196,6 +195,7 @@ float g_flPlayerWarswornBuffTime[MAXTF2PLAYERS];
 float g_flPlayerMedicShieldNextUseTime[MAXTF2PLAYERS];
 float g_flPlayerNextParasiteHealTime[MAXTF2PLAYERS];
 float g_flPlayerNextExecutionerBleedTime[MAXTF2PLAYERS];
+float g_flPlayerNextLawFireTime[MAXTF2PLAYERS];
 
 int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
@@ -7226,7 +7226,8 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		
 		if (!selfDamage && !invuln)
 		{
-			if (PlayerHasItem(attacker, Item_Law) && inflictor > 0 && procItem != Item_Law && !g_bPlayerLawCooldown[attacker])
+			if (g_flPlayerNextLawFireTime[attacker] <= GetTickedTime() 
+				&& PlayerHasItem(attacker, Item_Law) && inflictor > 0 && procItem != Item_Law)
 			{
 				float random = GetItemMod(Item_Law, 0);
 				random *= proc;
@@ -7244,8 +7245,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 					SetShouldDamageOwner(rocket, false);
 					SetEntItemProc(rocket, Item_Law);
 					EmitSoundToAll(SND_LAW_FIRE, attacker, _, _, _, 0.6);
-					g_bPlayerLawCooldown[attacker] = true;
-					CreateTimer(0.4, Timer_LawCooldown, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
+					g_flPlayerNextLawFireTime[attacker] = GetTickedTime()+0.4;
 				}
 			}
 			
@@ -7557,14 +7557,6 @@ public void Timer_DecayFireRateBuff(Handle timer, int client)
 		g_iPlayerFireRateStacks[client]--;
 		UpdatePlayerFireRate(client);
 	}
-}
-
-public void Timer_LawCooldown(Handle timer, int client)
-{
-	if (!(client = GetClientOfUserId(client)))
-		return;
-
-	g_bPlayerLawCooldown[client] = false;
 }
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float velocity[3], float angles[3])
