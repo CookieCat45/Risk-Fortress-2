@@ -174,7 +174,7 @@ methodmap RF2_Providence < RF2_NPC_Base
         {
             newSequence = this.LookupSequence("Stand_ITEM1");
         }
-
+        
         if (currentSequence != newSequence)
         {
             this.ResetSequence(newSequence);

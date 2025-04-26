@@ -5467,7 +5467,7 @@ public void OnGameFrame()
 	}
 }
 
-bool g_bProjectileIgnoreShields[MAX_EDICTS];
+static bool g_bProjectileIgnoreShields[MAX_EDICTS];
 public void OnEntityCreated(int entity, const char[] classname)
 {
 	if (!RF2_IsEnabled())
