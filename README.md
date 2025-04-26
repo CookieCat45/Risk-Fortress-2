@@ -4,7 +4,7 @@
 [Private Server Setup Guide](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)   
 
 ### REQUIRED Plugins/Extensions
-SourceMod 1.12 (Unstable 1.13 versions have not been tested but they should work)      
+**SourceMod 1.12+**   
 [CBaseNPC](https://github.com/TF2-DMB/CBaseNPC/releases)   
 [TFOnTakeDamage](https://github.com/nosoop/SM-TFOnTakeDamage/releases)   
 [TF2Items](https://builds.limetech.io/?project=tf2items)   
