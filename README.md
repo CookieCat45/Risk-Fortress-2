@@ -22,10 +22,3 @@
 
 **Mentrillum** - Assisted in some plugin maintenance and updates
 
-**Woozlez** - Created the original Mann vs. Machine version of Area 52 (https://steamcommunity.com/sharedfiles/filedetails/?id=512422248)
-
-**E-Arkham** - Created the original Mann vs. Machine version of Isolation (https://steamcommunity.com/sharedfiles/filedetails/?id=512476725)
-
-**Dayal** - Created the original Mann vs. Machine version of Tropics (https://steamcommunity.com/sharedfiles/filedetails/?id=808821399)
-
-**signalmax** - Created the original Mann vs. Machine version of Metro (https://steamcommunity.com/sharedfiles/filedetails/?id=792857459)
