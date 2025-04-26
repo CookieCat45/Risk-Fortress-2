@@ -1,5 +1,5 @@
 # Risk Fortress 2
-**Risk Fortress 2** is a TF2 roguelike adventure game mode that takes a heavy inspiration from the game [Risk of Rain 2](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/map%20configs.md)
+**Risk Fortress 2** is a TF2 roguelike adventure game mode that takes a heavy inspiration from the game [Risk of Rain 2](https://store.steampowered.com/app/632360/Risk_of_Rain_2/)
 
 [Asset Repository](https://ln5.sync.com/dl/56aea4400#rctr8jjq-fesnwkmp-yh3dzeef-j6s5daa8)<br>
 [Private Server Setup Guide](https://github.com/CookieCat45/Risk-Fortress-2/blob/main/docs/private%20server.md)   
