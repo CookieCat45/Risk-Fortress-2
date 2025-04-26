@@ -319,12 +319,13 @@ public any Native_AddObjectToSpawnList(Handle plugin, int numParams)
 {
 	char classname[128];
 	GetNativeString(1, classname, sizeof(classname));
-	RF2_Gamerules.SetObjectWeight(classname, GetNativeCell(2));
+	RF2_GameRules.SetObjectWeight(classname, GetNativeCell(2));
+	return 0;
 }
 
 public any Native_RemoveObjectFromSpawnList(Handle plugin, int numParams)
 {
 	char classname[128];
 	GetNativeString(1, classname, sizeof(classname));
-	return RF2_Gamerules.RemoveObjectFromSpawnList(classname);
+	return RF2_GameRules.RemoveObjectFromSpawnList(classname);
 }

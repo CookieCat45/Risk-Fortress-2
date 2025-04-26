@@ -81,13 +81,6 @@
 				"linux64"	"199"
 				"windows64"	"198"
 			}
-			"CGameEventManager::LoadEventsFromFile"
-			{
-				"linux"		"2"
-				"windows"	"1"
-				"linux64"	"2"
-				"windows64"	"1"
-			}
 		}
 		"Signatures"
 		{
@@ -206,14 +199,6 @@
 				"linux64"	"@_ZN11CTFTankBoss24SetStartingPathTrackNodeEPc"
 				"windows64"	""
 			}
-			"CGameEventManager::CreateEvent" // Look for string "CreateEvent: event '%s' not registered."
-			{
-				"library"	"engine"
-				"linux"		"@_ZN17CGameEventManager11CreateEventEPKcb"
-				"windows"	"\x55\x8B\xEC\x56\x8B\x75\x08\x57\x85\xF6\x74\x20\x80\x3E\x00\x74\x1B\x56\xE8\x19"
-				"linux64"	"@_ZN17CGameEventManager11CreateEventEPKcb"
-				"windows64"	""
-			}
 			"CTFDroppedWeapon::Create" // Look for string "tf_dropped_weapon", subroutine with 1 xref
 			{
 				"linux"		"@_ZN16CTFDroppedWeapon6CreateEP9CTFPlayerRK6VectorRK6QAnglePKcPK13CEconItemView"
@@ -250,27 +235,6 @@
 					"weapon"
 					{
 						"type" "cbaseentity"
-					}
-				}
-			}
-			
-			"CGameEventManager::CreateEvent"
-			{
-				"signature" "CGameEventManager::CreateEvent"
-				"callconv"	"thiscall"
-				"return"	"int"
-				"this"		"address"
-				
-				"arguments"
-				{
-					"name"
-					{
-						"type" "charptr"
-					}
-					
-					"force"
-					{
-						"type" "bool"
 					}
 				}
 			}

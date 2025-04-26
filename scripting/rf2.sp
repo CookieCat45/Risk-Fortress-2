@@ -57,7 +57,6 @@ bool g_bGoombaAvailable;
 bool g_bRoundEnding;
 bool g_bInUnderworld;
 bool g_bInFinalMap;
-bool g_bCustomEventsAvailable;
 float g_flWaitRestartTime;
 int g_iFileTime;
 float g_flNextAutoReloadCheckTime;
@@ -76,7 +75,6 @@ char g_szForcedMap[256];
 char g_szMapForcerName[MAX_NAME_LENGTH];
 char g_szCurrentEnemyGroup[64];
 Address g_aEngineServer;
-Address g_aGameEventManager;
 ConVar g_cvSvCheats;
 
 // Map settings
@@ -276,7 +274,6 @@ Handle g_hSDKWeaponSwitch;
 Handle g_hSDKRealizeSpy;
 Handle g_hSDKSpawnZombie;
 Handle g_hSDKTankSetStartNode;
-Handle g_hSDKLoadEvents;
 Handle g_hSDKCreateDroppedWeapon;
 DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourSetReloadTimer;
@@ -288,7 +285,6 @@ DynamicDetour g_hDetourHHHChaseable;
 DynamicDetour g_hDetourOnWeaponFired;
 DynamicDetour g_hDetourGCPreClientUpdate;
 DynamicDetour g_hDetourFindMap;
-DynamicDetour g_hDetourCreateEvent;
 DynamicDetour g_hDetourWeaponPickup;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
@@ -552,12 +548,6 @@ public void OnPluginStart()
 		char dummy[256];
 		FindMap("thisisadummystring", dummy, 256);
 	}
-	
-	if (g_hDetourCreateEvent)
-	{
-		// trigger the dhook so we can get a CGameEventManager pointer
-		CreateEvent("non_existent_event");
-	}
 }
 
 public void OnPluginEnd()
@@ -788,28 +778,10 @@ void LoadGameData()
 	}
 	
 	
-	g_hDetourCreateEvent = DynamicDetour.FromConf(gamedata, "CGameEventManager::CreateEvent");
-	if (!g_hDetourCreateEvent || !g_hDetourCreateEvent.Enable(Hook_Post, Detour_CreateEventPost))
-	{
-		LogError("[DHooks] Failed to create detour for CGameEventManager::CreateEvent");
-	}
-	
-	
 	g_hDetourWeaponPickup = DynamicDetour.FromConf(gamedata, "CTFDroppedWeapon::InitPickedUpWeapon");
 	if (!g_hDetourWeaponPickup || !g_hDetourWeaponPickup.Enable(Hook_Post, Detour_WeaponPickupPost))
 	{
 		LogError("[DHooks] Failed to create detour for CTFDroppedWeapon::InitPickedUpWeapon");
-	}
-	
-	
-	StartPrepSDKCall(SDKCall_Raw);
-	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "CGameEventManager::LoadEventsFromFile");
-	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
-	g_hSDKLoadEvents = EndPrepSDKCall();
-	if (!g_hSDKLoadEvents)
-	{
-		LogError("[SDK] Failed to create call to CGameEventManager::LoadEventsFromFile");
 	}
 	
 	
@@ -909,25 +881,6 @@ public void OnMapStart()
 		ReplaceStringEx(fileName, sizeof(fileName), ".smx", "");
 		InsertServerCommand("sm plugins load_unlock; sm plugins reload %s", fileName);
 		return;
-	}
-	
-	g_bCustomEventsAvailable = false;
-	if (g_aGameEventManager && g_hSDKLoadEvents)
-	{
-		LogMessage("Loading custom events file %s...", CUSTOM_EVENTS_FILE);
-		if (SDKCall(g_hSDKLoadEvents, g_aGameEventManager, CUSTOM_EVENTS_FILE))
-		{
-			g_bCustomEventsAvailable = true;
-			LogMessage("%s was loaded successfully", CUSTOM_EVENTS_FILE);
-		}
-		else
-		{
-			LogError("FAILED to load custom events file %s", CUSTOM_EVENTS_FILE);
-		}
-	}
-	else
-	{
-		LogError("FAILED to load custom events file (Missing Gamedata!)");
 	}
 	
 	g_bMapChanging = false;
@@ -5270,19 +5223,6 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName
 		g_bForceRifleSound = false;
 	}
 	
-	if (AreCustomEventsAvailable())
-	{
-		Event event = CreateEvent("rf2_player_fireweapon", true);
-		if (event)
-		{
-			event.SetInt("userid", GetClientUserId(client));
-			event.SetInt("weapon_entindex", weapon);
-			event.SetString("weapon_classname", weaponName);
-			event.SetBool("crit", result);
-			event.Fire(true);
-		}
-	}
-	
 	return changed ? Plugin_Changed : Plugin_Continue;
 }
 
@@ -5533,17 +5473,6 @@ public void OnEntityCreated(int entity, const char[] classname)
 	if (!RF2_IsEnabled())
 		return;
 	
-	if (AreCustomEventsAvailable())
-	{
-		Event event = CreateEvent("rf2_entity_created", true);
-		if (event)
-		{
-			event.SetInt("entindex", entity);
-			event.SetString("classname", classname);
-			event.Fire(true);
-		}
-	}
-	
 	if (entity < 0 || entity >= MAX_EDICTS)
 		return;
 	
@@ -5667,22 +5596,6 @@ public void OnEntityDestroyed(int entity)
 	if (!RF2_IsEnabled())
 		return;
 	
-	static char classname[128];
-	if (entity != INVALID_ENT)
-	{
-		GetEntityClassname(entity, classname, sizeof(classname));
-		if (AreCustomEventsAvailable())
-		{
-			Event event = CreateEvent("rf2_entity_destroyed", true);
-			if (event)
-			{
-				event.SetInt("entindex", entity);
-				event.SetString("classname", classname);
-				event.Fire(true);
-			}
-		}
-	}
-	
 	if (entity < 0 || entity >= MAX_EDICTS)
 		return;
 	
@@ -5712,6 +5625,8 @@ public void OnEntityDestroyed(int entity)
 	}
 	
 	// We can't check npc.IsValid() here because the NPC index is invalid at this point
+	static char classname[128];
+	GetEntityClassname(entity, classname, sizeof(classname));
 	if (StrContains(classname, "rf2_npc") != -1)
 	{
 		RF2_NPC_Base npc = RF2_NPC_Base(entity);

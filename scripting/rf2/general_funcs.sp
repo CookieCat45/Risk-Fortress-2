@@ -800,17 +800,6 @@ public MRESReturn DHook_IsDedicatedServer(Address thisPtr, DHookReturn returnVal
 	return MRES_Supercede;
 }
 
-public MRESReturn Detour_CreateEventPost(Address thisPtr, DHookReturn returnVal, DHookParam params)
-{
-	g_aGameEventManager = thisPtr;
-	return MRES_Ignored;
-}
-
-bool AreCustomEventsAvailable()
-{
-	return g_bCustomEventsAvailable;
-}
-
 // StrContains(), but the string needs to be an exact match.
 // This means there must be either whitespace or out-of-bounds characters before and after the found string.
 // So if you search "apple" in "applebanana", -1 will be returned, while StrContains() would return a positive value.
