@@ -779,8 +779,8 @@ bool IsEffectBarWeapon(int weapon)
 	static char classname[32];
 	GetEntityClassname(weapon, classname, sizeof(classname));
 	
-	return (StrContains(classname, "tf_weapon_lunchbox") != INVALID_ENT
-	|| StrContains(classname, "tf_weapon_jar") != INVALID_ENT
+	return (StrContains(classname, "tf_weapon_lunchbox") == 0
+	|| StrContains(classname, "tf_weapon_jar") == 0
 	|| strcmp2(classname, "tf_weapon_cleaver")
 	|| strcmp2(classname, "tf_weapon_bat_wood")
 	|| strcmp2(classname, "tf_weapon_bat_giftwrap")
