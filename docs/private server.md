@@ -7,7 +7,7 @@ This guide is for those who wish to set up a private Risk Fortress dedicated ser
 
 ## Steps
 1. If you haven't already, download and install SRCDS, then MetaMod, SourceMod, the Risk Fortress plugin and any of its dependencies onto your server. This will not be covered here since it is outside the scope of this guide.
-2. Make sure that ANYONE you plan on having connect to your server has ALL of the necessary maps, models, materials, and sounds in their `Team Fortress 2/tf/download/` directory! Failure to ensure this may cause connecting players to be stuck on the loading screen with prolonged download times, unless your server has a FastDL directory set up. You can download all of the necessary assets [here](https://ln5.sync.com/dl/56aea4400#rctr8jjq-fesnwkmp-yh3dzeef-j6s5daa8).
+2. Make sure that ANYONE you plan on having connect to your server has ALL of the necessary maps, models, materials, and sounds in their `Team Fortress 2/tf/download/` directory! Failure to ensure this may cause connecting players to be stuck on the loading screen with prolonged download times, unless your server has a FastDL directory set up. You can download all of the necessary assets [here](https://ln5.sync.com/dl/56aea4400#rctr8jjq-fesnwkmp-yh3dzeef-j6s5daa8). **MAKE SURE THAT YOU ALSO EXTRACT THESE ASSETS INTO YOUR DEDICATED SERVER'S `tf/` DIRECTORY!**
 3. In the shortcut you use to run your server, add the `-enablefakeip` launch option.   
    **IMPORTANT: This will cause your server to show up in the community server browser! If you still want to keep your server private, set a password by adding this to your server.cfg file:**
    `sv_password "yourpasswordhere"`
