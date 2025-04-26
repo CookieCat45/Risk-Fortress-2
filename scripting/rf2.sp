@@ -7932,7 +7932,6 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 		}
 		else if (footsteps)
 		{
-			// Giant Robots have a different way of playing their footstep sounds, this way doesn't work too well. See OnPlayerRunCmd().
 			if (footstepType == FootstepType_Silent || footstepType == FootstepType_GiantRobot)
 			{
 				return Plugin_Stop;
