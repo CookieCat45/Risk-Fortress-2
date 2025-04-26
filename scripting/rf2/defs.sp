@@ -27,7 +27,6 @@
 #define	DifficultyFactor_Iron 1.0
 #define	DifficultyFactor_Steel 1.5
 #define DifficultyFactor_Titanium 2.0
-#define CUSTOM_EVENTS_FILE "resource/rf2_events.res"
 
 enum
 {
