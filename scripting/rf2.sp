@@ -5514,7 +5514,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	}
 	else if (strcmp2(classname, "tf_projectile_balloffire") || strcmp2(classname, "tf_projectile_energy_ring"))
 	{
-		// Dragon's Fury is stupid and doesn't fire CalcIsAttackCritical()
+		// Dragon's Fury is stupid and doesn't fire the calc is attack critical function
 		if (strcmp2(classname, "tf_projectile_balloffire"))
 			RequestFrame(RF_DragonFuryCritCheck, EntIndexToEntRef(entity));
 		
@@ -7773,7 +7773,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			if (charge > 0.0)
 			{
 				buttons &= ~IN_ATTACK;
-				g_bForceRifleSound = true; // We need to force the rifle sound as it won't play if we do this (see TF2_CalcIsAttackCritical)
+				g_bForceRifleSound = true; // We need to force the rifle sound as it won't play if we do this
 			}
 		}
 	}
