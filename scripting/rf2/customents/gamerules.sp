@@ -486,8 +486,10 @@ int SpawnObjects()
 	StringMapSnapshot snapshot = g_hObjectSpawnWeights.Snapshot();
 	for (int i = 1; i >= 0; i++)
 	{
+		bool notCrate;
 		if (i >= CrateType_Max)
 		{
+			notCrate = true;
 			if (i-CrateType_Max >= snapshot.Length)
 			{
 				delete snapshot;
@@ -520,7 +522,7 @@ int SpawnObjects()
 		
 		for (int a = 1; a <= count; a++)
 		{
-			if (i-1 < CrateType_Max)
+			if (!notCrate)
 			{
 				crateArray.Push(i-1);
 			}
