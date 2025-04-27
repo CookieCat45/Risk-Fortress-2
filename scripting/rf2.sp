@@ -1402,6 +1402,12 @@ void ResetConVars()
 public void OnAllPluginsLoaded()
 {
 	g_bGoombaAvailable = LibraryExists("goomba");
+	if (g_bGoombaAvailable)
+	{
+		#if !defined _goomba_included_
+		LogError("The Goomba Stomp plugin is present, but rf2.smx was compiled without goomba.inc. Please correct this.");
+		#endif
+	}
 }
 
 public void OnClientConnected(int client)
