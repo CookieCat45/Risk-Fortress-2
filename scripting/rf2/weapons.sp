@@ -1308,7 +1308,7 @@ StringMap FindCustomWeaponByKey(const char[] key)
 		
 	StringMap data;
 	g_hCustomWeapons.GetValue(key, data);
-	return data.Clone();
+	return data ? data.Clone() : null;
 }
 
 public MRESReturn Detour_WeaponPickupPost(int entity, DHookParam params)
