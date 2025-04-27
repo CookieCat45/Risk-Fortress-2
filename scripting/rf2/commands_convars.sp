@@ -2345,7 +2345,7 @@ public Action Command_ParticleTest(int client, int args)
 	{
 		case 0: TE_TFParticle(effect, pos);
 		case 1: SpawnInfoParticle(effect, pos, 15.0);
-		case 2: SpawnParticleViaTrigger(client, effect);
+		//case 2: SpawnParticleViaTrigger(client, effect);
 	}
 	
 	return Plugin_Handled;

@@ -653,19 +653,6 @@ int GetParticleEffectIndex(const char[] name)
 	return index;
 }
 
-void SpawnParticleViaTrigger(int entity, const char[] effectName, const char[] attachmentName="", int attachType=PATTACH_ABSORIGIN)
-{
-	int trigger = CreateEntityByName("trigger_particle");
-	DispatchKeyValue(trigger, "particle_name", effectName);
-	DispatchKeyValue(trigger, "attachment_name", attachmentName);
-	DispatchKeyValueInt(trigger, "attachment_type", attachType);
-	DispatchKeyValueInt(trigger, "spawnflags", 64);
-	DispatchSpawn(trigger);
-	SetVariantString("!activator");
-	AcceptEntityInput(trigger, "StartTouch", entity, entity);
-	RemoveEdict(trigger);
-}
-
 stock void TE_DrawBox(int client, const float origin[3], const float endOrigin[3], const float constMins[3], const float constMaxs[3], 
 	float duration = 0.1, int laserIndex, const int color[4])
 {

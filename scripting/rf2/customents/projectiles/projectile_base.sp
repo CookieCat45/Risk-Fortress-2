@@ -678,18 +678,18 @@ static void OnSpawnPost(int entity)
 	proj.Team == TEAM_SURVIVOR ? proj.GetRedTrail(trail, sizeof(trail)) : proj.GetBlueTrail(trail, sizeof(trail));
 	if (trail[0])
 	{
+		float pos[3];
+		proj.GetAbsOrigin(pos);
 		if (!proj.AltParticleSpawn)
 		{
-			float pos[3];
-			proj.GetAbsOrigin(pos);
 			TE_TFParticle(trail, pos, proj.index, PATTACH_ABSORIGIN_FOLLOW);
 		}
 		else
 		{
-			SpawnParticleViaTrigger(proj.index, trail, _, PATTACH_ABSORIGIN_FOLLOW);
+			SpawnInfoParticle(trail, pos, _, proj.index);
 		}
 	}
-
+	
 	proj.PlaySound(SoundType_Fire);
 }
 
