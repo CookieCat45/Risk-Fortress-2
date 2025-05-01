@@ -6,24 +6,24 @@
 		{
 			"CBasePlayer::EquipWearable"
 			{
-				"linux"		"439"
-				"windows"	"438"
-				"linux64"	"439"
-				"windows64"	"438"
+				"linux"		"440"
+				"windows"	"439"
+				"linux64"	"440"
+				"windows64"	"439"
 			}
 			"CBaseObject::StartUpgrading"
 			{
-				"linux"		"384"
-				"windows"	"383"
-				"linux64"	"384"
-				"windows64"	"383"
+				"linux"		"385"
+				"windows"	"384"
+				"linux64"	"385"
+				"windows64"	"384"
 			}
 			"CBaseObject::OnWrenchHit"
 			{
-				"linux"		"366"
-				"windows"	"365"
-				"linux64"	"366"
-				"windows64"	"365"
+				"linux"		"367"
+				"windows"	"366"
+				"linux64"	"367"
+				"windows64"	"366"
 			}
 			"CBaseEntity::TakeHealth"
 			{
@@ -34,31 +34,31 @@
 			}
 			"CBaseEntity::IsCombatItem"
 			{
-				"linux"		"88"
-				"windows"	"87"
-				"linux64"	"88"
-				"windows64"	"87"
+				"linux"		"89"
+				"windows"	"88"
+				"linux64"	"89"
+				"windows64"	"88"
 			}
 			"CPhysicsProp::VPhysicsCollision"
 			{
-				"linux"		"168"
-				"windows"	"167"
-				"linux64"	"168"
-				"windows64"	"167"
+				"linux"		"169"
+				"windows"	"168"
+				"linux64"	"169"
+				"windows64"	"168"
 			}
 			"CTFSniperRifle::ItemPostFrame"
 			{
-				"linux"		"278"
-				"windows"	"272"
-				"linux64"	"278"
-				"windows64"	"272"
+				"linux"		"279"
+				"windows"	"273"
+				"linux64"	"279"
+				"windows64"	"273"
 			}
 			"CTFWeaponBaseMelee::Smack"
 			{
-				"linux"		"477"
-				"windows"	"470"
-				"linux64"	"477"
-				"windows64"	"470"
+				"linux"		"478"
+				"windows"	"471"
+				"linux64"	"478"
+				"windows64"	"471"
 			}
 			"CVEngineServer::CreateFakeClientEx"
 			{
@@ -76,10 +76,10 @@
 			}
 			"CBaseFilter::PassesFilterImpl"
 			{
-				"linux"		"199"
-				"windows"	"198"
-				"linux64"	"199"
-				"windows64"	"198"
+				"linux"		"200"
+				"windows"	"199"
+				"linux64"	"200"
+				"windows64"	"199"
 			}
 		}
 		"Signatures"
