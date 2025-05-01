@@ -55,10 +55,10 @@
 			}
 			"CTFWeaponBaseMelee::Smack"
 			{
-				"linux"		"478"
-				"windows"	"471"
-				"linux64"	"478"
-				"windows64"	"471"
+				"linux"		"479"
+				"windows"	"472"
+				"linux64"	"479"
+				"windows64"	"472"
 			}
 			"CVEngineServer::CreateFakeClientEx"
 			{
