@@ -5007,7 +5007,7 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	}
 	else if (condition == TFCond_Disguising)
 	{
-		int offset = FindSendPropInfo("CTFPlayer", "m_bHasPasstimeBall") - 756;
+		int offset = FindSendPropInfo("CTFPlayer", "m_bHasPasstimeBall") - 760;
 		float gameTime = GetGameTime();
 		float disguiseTime = GetEntDataFloat(client, offset) - gameTime;
 		disguiseTime *= 1.0 - fmin(1.0, CalcItemMod(client, ItemSpy_CounterfeitBillycock, 2));
