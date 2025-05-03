@@ -219,6 +219,7 @@ int LoadItems(const char[] customPath="")
 				Call_PushString(file);
 				Call_PushString(g_szItemSectionName[item]);
 				Call_PushCell(item);
+				Call_PushCell(itemKey);
 				Call_Finish();
 			}
 		}

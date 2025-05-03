@@ -622,8 +622,9 @@ forward Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float
  * @param fileName			The name of the custom items file, with the .cfg extension included.
  * @param sectionName		The item's section name in the file.
  * @param index				The item's index. Note that this is NOT the item_type key, but a value assigned at runtime. You should cache this value globally.
+ * @param kv				KeyValues handle. It will be positioned in the section for your custom item.
  */
-forward void RF2_OnCustomItemLoaded(const char[] fileName, const char[] sectionName, int index);
+forward void RF2_OnCustomItemLoaded(const char[] fileName, const char[] sectionName, int index, KeyValues kv);
 
 /**
  * Called when an item is updated on a player (e.g. an item is picked up or dropped).

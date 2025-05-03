@@ -63,7 +63,7 @@ void LoadForwards()
 	g_fwOnTakeDamage = new GlobalForward("RF2_OnTakeDamage", ET_Hook, Param_Cell, Param_CellByRef, Param_CellByRef, Param_FloatByRef, Param_CellByRef, 
 		Param_CellByRef, Param_Array, Param_Array, Param_Cell, Param_Cell, Param_Cell, Param_CellByRef, Param_FloatByRef);
 
-	g_fwOnCustomItemLoaded = new GlobalForward("RF2_OnCustomItemLoaded", ET_Ignore, Param_String, Param_String, Param_Cell);
+	g_fwOnCustomItemLoaded = new GlobalForward("RF2_OnCustomItemLoaded", ET_Ignore, Param_String, Param_String, Param_Cell, Param_Cell);
 	g_fwOnPlayerItemUpdate = new GlobalForward("RF2_OnPlayerItemUpdate", ET_Ignore, Param_Cell, Param_Cell);
 }
 
