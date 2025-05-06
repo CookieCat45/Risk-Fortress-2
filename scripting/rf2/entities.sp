@@ -18,6 +18,7 @@ void RF_TakeDamage(int entity, int inflictor, int attacker, float damage, int da
 	info.Init(inflictor, attacker, weapon, damageForce, damagePosition, damage, damageType, damageCustom);
 	info.SetForceFriendlyFire(friendlyFire);
 	info.SetCritType(view_as<TakeDamageInfo_CritType>(critType));
+	SDKHooks_TakeDamage(entity, inflictor, attacker, damage, damageType, weapon, damageForce, damagePosition, false);
 	CBaseEntity(entity).TakeDamage(info);
 }
 
