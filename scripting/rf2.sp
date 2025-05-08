@@ -7644,7 +7644,9 @@ public void RF_RoBroDealDamage(DataPack pack)
 public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
 		float damageForce[3], float damagePosition[3], int damageCustom)
 {
-	Action result = Hook_OnTakeDamageAlive(victim, attacker, inflictor, damage, damageType, weapon, damageForce, damagePosition, damageCustom);
+	Action result1 = Hook_OnTakeDamageAlive(victim, attacker, inflictor, damage, damageType, 
+		weapon, damageForce, damagePosition, damageCustom);
+		
 	Call_StartForward(g_fwOnTakeDamage);
 	Call_PushCell(victim);
 	Call_PushCellRef(attacker);
@@ -7660,9 +7662,9 @@ public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflicto
 	int dummy;
 	Call_PushCellRef(dummy);
 	Call_PushFloatRef(g_flDamageProc);
-	Call_Finish(result);
-	//damage = fmin(damage, 32767.0);
-	return result;
+	Action result2;
+	Call_Finish(result2);
+	return result2 == Plugin_Continue ? result1 : result2;
 }
 
 public void Hook_BuildingOnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon,

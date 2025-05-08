@@ -2174,8 +2174,6 @@ public MRESReturn Detour_OnWeaponFired(DHookParam params)
 
 public MRESReturn DHook_IsAbleToSee(Address vision, DHookReturn returnVal, DHookParam params)
 {
-	GameRules_SetProp("m_bPlayingMannVsMachine", true); // match MvM spy logic
-	
 	// find the bot
 	int bot = INVALID_ENT;
 	for (int i = 1; i <= MaxClients; i++)
@@ -2195,6 +2193,10 @@ public MRESReturn DHook_IsAbleToSee(Address vision, DHookReturn returnVal, DHook
 		return MRES_Ignored;
 		
 	int subject = params.Get(1);
+	if (!IsValidClient(subject))
+		return MRES_Ignored;
+		
+	GameRules_SetProp("m_bPlayingMannVsMachine", true); // match MvM spy logic
 	if (TFBot(bot).ShouldRememberSpy(subject) && IsValidClient(subject) && TF2_GetPlayerClass(subject) == TFClass_Spy)
 	{
 		// we're being forced to remember this spy, so disable the mvm spy detection code
@@ -2243,6 +2245,9 @@ public MRESReturn DHook_IsAbleToSeePost(Address vision, DHookReturn returnVal, D
 			return MRES_Ignored;
 			
 		int subject = params.Get(1);
+		if (!IsValidClient(subject))
+			return MRES_Ignored;
+		
 		if (TFBot(bot).ShouldRememberSpy(subject))
 		{
 			// we can still see this spy, remember him for longer
