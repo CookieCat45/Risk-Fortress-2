@@ -7422,9 +7422,9 @@ public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflicto
 	int dummy;
 	Call_PushCellRef(dummy);
 	Call_PushFloatRef(g_flDamageProc);
-	Call_Finish(result);
-	damage = fmin(damage, 32767.0);
-	return result;
+	Action result2;
+	Call_Finish(result2);
+	return result2 == Plugin_Continue ? result1 : result2;
 }
 
 public void Hook_BuildingOnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon,
@@ -7872,7 +7872,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 
 		TFClassType class;
 		bool blacklist[MAXTF2PLAYERS];
-
+		
 		// If we're disguised, play the original sample to our teammates before doing anything.
 		if (TF2_IsPlayerInCondition(client, TFCond_Disguised) && !IsPlayerMinion(client))
 		{
