@@ -160,42 +160,43 @@ bool g_bPlayerPermaDeathMark[MAXTF2PLAYERS];
 bool g_bPlayerIsDyingBoss[MAXTF2PLAYERS];
 bool g_bPlayerPressedCanteenButton[MAXTF2PLAYERS];
 
-float g_flPlayerXP[MAXTF2PLAYERS];
-float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
-float g_flPlayerCash[MAXTF2PLAYERS];
-float g_flPlayerMaxSpeed[MAXTF2PLAYERS] = {300.0, ...};
-float g_flPlayerCalculatedMaxSpeed[MAXTF2PLAYERS] = {300.0, ...};
-float g_flPlayerHealthRegenTime[MAXTF2PLAYERS];
-float g_flPlayerNextMetalRegen[MAXTF2PLAYERS];
-float g_flPlayerEquipmentItemCooldown[MAXTF2PLAYERS];
-float g_flPlayerGiantFootstepInterval[MAXTF2PLAYERS] = {0.5, ...};
-float g_flPlayerAFKTime[MAXTF2PLAYERS];
-float g_flPlayerVampireSapperCooldown[MAXTF2PLAYERS];
-float g_flPlayerVampireSapperDamage[MAXTF2PLAYERS];
-float g_flPlayerVampireSapperDuration[MAXTF2PLAYERS];
-float g_flPlayerReloadBuffDuration[MAXTF2PLAYERS];
-float g_flPlayerNextDemoSpellTime[MAXTF2PLAYERS];
-float g_flPlayerNextFireSpellTime[MAXTF2PLAYERS];
-float g_flPlayerRegenBuffTime[MAXTF2PLAYERS];
-float g_flPlayerKnifeStunCooldown[MAXTF2PLAYERS];
-float g_flPlayerRifleHeadshotBonusTime[MAXTF2PLAYERS];
-float g_flPlayerGravityJumpBonusTime[MAXTF2PLAYERS];
-float g_flPlayerTimeSinceLastPing[MAXTF2PLAYERS];
-float g_flPlayerTimeSinceLastItemPickup[MAXTF2PLAYERS];
-float g_flPlayerCaberRechargeAt[MAXTF2PLAYERS];
-float g_flPlayerHeavyArmorPoints[MAXTF2PLAYERS] = {100.0, ...};
-float g_flPlayerShieldRegenTime[MAXTF2PLAYERS];
-float g_flPlayerRocketJumpTime[MAXTF2PLAYERS];
-float g_flPlayerLastTabPressTime[MAXTF2PLAYERS];
-float g_flPlayerHardHatLastResistTime[MAXTF2PLAYERS];
-float g_flPlayerLastBlockTime[MAXTF2PLAYERS];
-float g_flPlayerDelayedHealTime[MAXTF2PLAYERS];
-float g_flPlayerLifestealTime[MAXTF2PLAYERS];
-float g_flPlayerWarswornBuffTime[MAXTF2PLAYERS];
-float g_flPlayerMedicShieldNextUseTime[MAXTF2PLAYERS];
-float g_flPlayerNextParasiteHealTime[MAXTF2PLAYERS];
-float g_flPlayerNextExecutionerBleedTime[MAXTF2PLAYERS];
-float g_flPlayerNextLawFireTime[MAXTF2PLAYERS];
+float g_flPlayerXP[MAXPLAYERS];
+float g_flPlayerNextLevelXP[MAXPLAYERS] = {100.0, ...};
+float g_flPlayerCash[MAXPLAYERS];
+float g_flPlayerMaxSpeed[MAXPLAYERS] = {300.0, ...};
+float g_flPlayerCalculatedMaxSpeed[MAXPLAYERS] = {300.0, ...};
+float g_flPlayerHealthRegenTime[MAXPLAYERS];
+float g_flPlayerNextMetalRegen[MAXPLAYERS];
+float g_flPlayerEquipmentItemCooldown[MAXPLAYERS];
+float g_flPlayerGiantFootstepInterval[MAXPLAYERS] = {0.5, ...};
+float g_flPlayerAFKTime[MAXPLAYERS];
+float g_flPlayerVampireSapperCooldown[MAXPLAYERS];
+float g_flPlayerVampireSapperDamage[MAXPLAYERS];
+float g_flPlayerVampireSapperDuration[MAXPLAYERS];
+float g_flPlayerReloadBuffDuration[MAXPLAYERS];
+float g_flPlayerNextDemoSpellTime[MAXPLAYERS];
+float g_flPlayerNextFireSpellTime[MAXPLAYERS];
+float g_flPlayerRegenBuffTime[MAXPLAYERS];
+float g_flPlayerKnifeStunCooldown[MAXPLAYERS];
+float g_flPlayerRifleHeadshotBonusTime[MAXPLAYERS];
+float g_flPlayerGravityJumpBonusTime[MAXPLAYERS];
+float g_flPlayerTimeSinceLastPing[MAXPLAYERS];
+float g_flPlayerTimeSinceLastItemPickup[MAXPLAYERS];
+float g_flPlayerCaberRechargeAt[MAXPLAYERS];
+float g_flPlayerHeavyArmorPoints[MAXPLAYERS] = {100.0, ...};
+float g_flPlayerShieldRegenTime[MAXPLAYERS];
+float g_flPlayerRocketJumpTime[MAXPLAYERS];
+float g_flPlayerLastTabPressTime[MAXPLAYERS];
+float g_flPlayerHardHatLastResistTime[MAXPLAYERS];
+float g_flPlayerLastBlockTime[MAXPLAYERS];
+float g_flPlayerDelayedHealTime[MAXPLAYERS];
+float g_flPlayerLifestealTime[MAXPLAYERS];
+float g_flPlayerWarswornBuffTime[MAXPLAYERS];
+float g_flPlayerMedicShieldNextUseTime[MAXPLAYERS];
+float g_flPlayerNextParasiteHealTime[MAXPLAYERS];
+float g_flPlayerNextExecutionerBleedTime[MAXPLAYERS];
+float g_flPlayerNextLawFireTime[MAXPLAYERS];
+float g_flBlockMedicCall[MAXPLAYERS];
 
 int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
@@ -4570,6 +4571,7 @@ public Action Timer_AFKManager(Handle timer)
 	return Plugin_Continue;
 }
 
+
 public Action OnVoiceCommand(int client, const char[] command, int args)
 {
 	if (!RF2_IsEnabled() || !IsClientInGame(client))
@@ -4579,12 +4581,28 @@ public Action OnVoiceCommand(int client, const char[] command, int args)
 	int num2 = GetCmdArgInt(2);
 	if (num1 == 0 && num2 == 0)
 	{
-		return OnCallForMedic(client);
+		if(g_flBlockMedicCall[client] < GetTickedTime())
+			return OnCallForMedic(client);
 	}
 
 	return Plugin_Continue;
 }
+public Action OnClientCommandKeyValues(int client, KeyValues kv)
+{
+	if (!RF2_IsEnabled() || !IsClientInGame(client))
+		return Plugin_Continue;
 
+	char buffer[64];
+	KvGetSectionName(kv, buffer, sizeof(buffer));
+	//Medic E call, its really really delayed it is NOT the same as voicemenu 0 0, this is way faster.
+	if(StrEqual(buffer, "+helpme_server", false))
+	{
+		//add a delay, so if you call E it doesnt do the voice menu one, though keep the voice menu one for really epic cfg nerds.
+		g_flBlockMedicCall[client] = GetTickedTime() + 0.5;
+		return OnCallForMedic(client);
+	}
+	return Plugin_Continue;
+}
 Action OnCallForMedic(int client)
 {
 	if (!IsPlayerAlive(client))
@@ -7406,7 +7424,7 @@ public void RF_RoBroDealDamage(DataPack pack)
 public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
 		float damageForce[3], float damagePosition[3], int damageCustom)
 {
-	Action result = Hook_OnTakeDamageAlive(victim, attacker, inflictor, damage, damageType, weapon, damageForce, damagePosition, damageCustom);
+	Action result1 = Hook_OnTakeDamageAlive(victim, attacker, inflictor, damage, damageType, weapon, damageForce, damagePosition, damageCustom);
 	Call_StartForward(g_fwOnTakeDamage);
 	Call_PushCell(victim);
 	Call_PushCellRef(attacker);
