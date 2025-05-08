@@ -206,12 +206,21 @@ void ReadMapKeys(KeyValues mapKey)
 	
 	if (g_szEnemyPackName[0])
 	{
-		LoadEnemiesFromPack(g_szEnemyPackName);
+		LoadEnemiesFromPack(g_szEnemyPackName, false, true);
 	}
 	
 	if (g_szBossPackName[0])
 	{
 		LoadEnemiesFromPack(g_szBossPackName, true);
+	}
+	
+	if (mapKey.GetNum("disable_scavenger_lord") == 0)
+	{
+		int scavengerLordLevel = g_cvScavengerLordSpawnLevel.IntValue;
+		if (scavengerLordLevel > 0 && g_iEnemyLevel >= scavengerLordLevel)
+		{
+			LoadEnemiesFromPack("enemies/scavenger_lord", true);
+		}
 	}
 	
 	PrintToServer("[RF2] Enemies/bosses loaded: %i", g_iEnemyCount);

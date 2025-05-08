@@ -2,7 +2,6 @@
 #pragma newdecls required
 
 #define NULL_ENEMY view_as<Enemy>(-1)
-
 #define MAX_ENEMIES 64
 #define MAX_WEARABLES 6
 
@@ -16,20 +15,24 @@ static int g_iEnemyWeight[MAX_ENEMIES];
 static int g_iEnemyItem[MAX_ENEMIES][MAX_ITEMS];
 static int g_iEnemyActiveLimit[MAX_ENEMIES];
 static int g_iEnemySpawnLimit[MAX_ENEMIES];
-
+static int g_iEnemyEyeGlowColor[MAX_ENEMIES][3];
+static char g_szEnemyName[MAX_ENEMIES][MAX_NAME_LENGTH];
+static char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
+static char g_szEnemyGroup[MAX_ENEMIES][64];
 static float g_flEnemyBaseSpeed[MAX_ENEMIES];
 static float g_flEnemyModelScale[MAX_ENEMIES];
 static float g_flEnemyXPAward[MAX_ENEMIES];
 static float g_flEnemyCashAward[MAX_ENEMIES];
 static float g_flEnemySpawnCooldown[MAX_ENEMIES];
 static float g_flEnemyItemDamageModifier[MAX_ENEMIES];
-
+static float g_flEnemyBaseCarriedCash[MAX_ENEMIES];
 static bool g_bEnemyAlwaysCrit[MAX_ENEMIES];
 static bool g_bEnemyFullRage[MAX_ENEMIES];
 static bool g_bEnemyNoBleeding[MAX_ENEMIES];
 static bool g_bEnemyShouldGlow[MAX_ENEMIES];
 static bool g_bEnemyNoCrits[MAX_ENEMIES];
 static bool g_bEnemyEyeGlow[MAX_ENEMIES];
+static bool g_bEnemyCustomEyeGlow[MAX_ENEMIES];
 static bool g_bEnemyEngineIdleSound[MAX_ENEMIES];
 
 // Suicide Bomber (Sentry Busters)
@@ -40,10 +43,6 @@ static bool g_bEnemySuicideBombFriendlyFire[MAX_ENEMIES];
 static float g_flEnemySuicideBombDamage[MAX_ENEMIES];
 static float g_flEnemySuicideBombDelay[MAX_ENEMIES];
 static float g_flEnemySuicideBombRange[MAX_ENEMIES];
-
-static char g_szEnemyName[MAX_ENEMIES][MAX_NAME_LENGTH];
-static char g_szEnemyModel[MAX_ENEMIES][PLATFORM_MAX_PATH];
-static char g_szEnemyGroup[MAX_ENEMIES][64];
 
 // TFBot
 static int g_iEnemyBotSkill[MAX_ENEMIES];
@@ -57,6 +56,8 @@ static bool g_bEnemyBotHoldFireUntilReloaded[MAX_ENEMIES];
 static bool g_bEnemyBotAlwaysAttack[MAX_ENEMIES];
 static bool g_bEnemyBotAlwaysJump[MAX_ENEMIES];
 static bool g_bEnemyBotUberOnSight[MAX_ENEMIES];
+static bool g_bEnemyBotScavengerAI[MAX_ENEMIES];
+static bool g_bEnemyBotScavengerIgnoreEnemies[MAX_ENEMIES];
 static ArrayList g_hEnemyBotTags[MAX_ENEMIES];
 
 // Weapons
@@ -101,6 +102,20 @@ methodmap Enemy
 	public Enemy(int client)
 	{
 		return EnemyByIndex(g_iPlayerEnemyType[client]);
+	}
+	
+	public static Enemy FindByInternalName(const char[] name)
+	{
+		for (int i = 0; i < g_iEnemyCount; i++)
+		{
+			Enemy enemy = EnemyByIndex(i);
+			if (strcmp2(enemy.GetInternalName(), name))
+			{
+				return enemy;
+			}
+		}
+		
+		return NULL_ENEMY;
 	}
 	
 	public bool IsAllowedToSpawn()
@@ -292,7 +307,13 @@ methodmap Enemy
 		public get()			{ return g_bEnemyEyeGlow[this.Index]; }
 		public set(bool value)	{ g_bEnemyEyeGlow[this.Index] = value; }
 	}
-
+	
+	property bool CustomEyeGlow
+	{
+		public get()			{ return g_bEnemyCustomEyeGlow[this.Index]; }
+		public set(bool value)	{ g_bEnemyCustomEyeGlow[this.Index] = value; }
+	}
+	
 	property bool EngineSound
 	{
 		public get()			{ return g_bEnemyEngineIdleSound[this.Index]; }
@@ -340,6 +361,12 @@ methodmap Enemy
 		public get()			{ return g_flEnemySuicideBombDelay[this.Index]; }
 		public set(float value)	{ g_flEnemySuicideBombDelay[this.Index] = value; }
 	}
+	
+	property float BaseCarriedCash
+	{
+		public get()			{ return g_flEnemyBaseCarriedCash[this.Index]; }
+		public set(float value)	{ g_flEnemyBaseCarriedCash[this.Index] = value; }
+	}
 
 	property ArrayList BotTags
 	{
@@ -353,6 +380,18 @@ methodmap Enemy
 		public set(bool value)	{ g_bEnemyBotUberOnSight[this.Index] = value; }
 	}
 	
+	property bool BotScavengerAI
+	{
+		public get()			{ return g_bEnemyBotScavengerAI[this.Index]; }
+		public set(bool value)	{ g_bEnemyBotScavengerAI[this.Index] = value; }
+	}
+	
+	property bool BotScavengerIgnoreEnemies
+	{
+		public get()			{ return g_bEnemyBotScavengerIgnoreEnemies[this.Index]; }
+		public set(bool value)	{ g_bEnemyBotScavengerIgnoreEnemies[this.Index] = value; }
+	}
+
 	property int BotSkill
 	{
 		public get()			{ return g_iEnemyBotSkill[this.Index];  }
@@ -442,7 +481,21 @@ methodmap Enemy
 		public get()			{ return g_flEnemyItemDamageModifier[this.Index]; }
 		public set(float value)	{ g_flEnemyItemDamageModifier[this.Index] = value; }
 	}
-
+	
+	public void SetEyeGlowColor(const int color[3])
+	{
+		g_iEnemyEyeGlowColor[this.Index][0] = color[0];
+		g_iEnemyEyeGlowColor[this.Index][1] = color[1];
+		g_iEnemyEyeGlowColor[this.Index][2] = color[2];
+	}
+	
+	public void GetEyeGlowColor(int color[3])
+	{
+		color[0] = g_iEnemyEyeGlowColor[this.Index][0];
+		color[1] = g_iEnemyEyeGlowColor[this.Index][1];
+		color[2] = g_iEnemyEyeGlowColor[this.Index][2];
+	}
+	
 	public bool WeaponUseStaticAtts(int slot)
 	{
 		return g_bEnemyWeaponUseStaticAttributes[this.Index][slot];
@@ -693,17 +746,18 @@ Enemy EnemyByIndex(int index)
 	return view_as<Enemy>(index);
 }
 
-void LoadEnemiesFromPack(const char[] config, bool bosses=false)
+void LoadEnemiesFromPack(const char[] config, bool bosses=false, bool reset=false)
 {
 	KeyValues enemyKey = bosses ? CreateKeyValues("bosses") : CreateKeyValues("enemies");
 	char path[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, path, sizeof(path), "%s/%s.cfg", ConfigPath, config);
 	if (!enemyKey.ImportFromFile(path))
 	{
-		ThrowError("File %s does not exist", path);
+		LogError("[LoadEnemiesFromPack] File %s does not exist", path);
+		return;
 	}
 	
-	if (!bosses)
+	if (reset)
 		g_iEnemyCount = 0;
 	
 	bool firstKey;
@@ -780,7 +834,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 			enemy.SetModel(MODEL_ERROR);
 		}
 		
-		
 		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotSkill_Normal);
 		enemy.BotSkillNoOverride = asBool(enemyKey.GetNum("tf_bot_difficulty_no_override"));
 		enemy.BotBehaviorAttributes = enemyKey.GetNum("tf_bot_behavior_flags", 0);
@@ -792,6 +845,9 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.BotMeleeDistance = enemyKey.GetFloat("tf_bot_melee_distance");
 		enemy.BotMaxVisionRange = enemyKey.GetFloat("tf_bot_max_vision_range", 6000.0);
 		enemy.BotUberOnSight = asBool(enemyKey.GetNum("tf_bot_uber_on_sight", false));
+		enemy.BotScavengerAI = asBool(enemyKey.GetNum("tf_bot_scavenger_ai", false));
+		enemy.BotScavengerIgnoreEnemies = asBool(enemyKey.GetNum("tf_bot_scavenger_ignore_enemies", true));
+		enemy.BaseCarriedCash = enemyKey.GetFloat("base_carried_cash");
 		enemy.XPAward = enemyKey.GetFloat("xp_award", 15.0);
 		enemy.CashAward = enemyKey.GetFloat("cash_award", 20.0);
 		enemy.Weight = enemyKey.GetNum("weight", 50);
@@ -803,6 +859,18 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 		enemy.ShouldGlow = asBool(enemyKey.GetNum("glow", false));
 		enemy.NoCrits = asBool(enemyKey.GetNum("no_crits", false));
 		enemy.EyeGlow = asBool(enemyKey.GetNum("eye_glow", true));
+		int dummy;
+		if (enemyKey.GetNameSymbol("eye_glow_color", dummy))
+		{
+			enemyKey.GetColor("eye_glow_color", 
+				g_iEnemyEyeGlowColor[e][0], 
+				g_iEnemyEyeGlowColor[e][1], 
+				g_iEnemyEyeGlowColor[e][2],
+				dummy);
+				
+			enemy.CustomEyeGlow = true;
+		}
+		
 		enemy.EngineSound = asBool(enemyKey.GetNum("engine_idle_sound", enemy.IsBoss));
 		enemy.SuicideBomber = enemyKey.JumpToKey("suicide_bomber");
 		if (enemy.SuicideBomber)
@@ -994,7 +1062,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 							Format(g_szEnemyWearableAttributes[e][w], sizeof(g_szEnemyWearableAttributes[][]),
 								"%s ; %d = %s", g_szEnemyWearableAttributes[e][w], id, val);
 						}
-						
 					}
 					else
 					{
@@ -1007,13 +1074,12 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false)
 						break;
 					}
 				}
-
+				
 				TrimString(g_szEnemyWearableAttributes[e][w]);
 				enemyKey.GoBack();
 			}
 			
 			enemyKey.GetString("classname", g_szEnemyWearableName[e][w], sizeof(g_szEnemyWearableName[][]), "tf_wearable");
-			enemyKey.GetString("attributes", g_szEnemyWearableAttributes[e][w], sizeof(g_szEnemyWearableAttributes[][]), "");
 			enemy.SetWearableIndex(w, enemyKey.GetNum("index", 5));
 			enemy.SetWearableVisible(w, asBool(enemyKey.GetNum("visible", true)));
 			enemy.SetWearableUseStaticAtts(w, !asBool(enemyKey.GetNum("strip_attributes", false)));
@@ -1092,7 +1158,7 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 	for (int i = 0; i < g_iEnemyCount; i++)
 	{
 		Enemy enemy = EnemyByIndex(i);
-		if (enemy.IsBoss || !enemy.IsAllowedToSpawn())
+		if (enemy.IsBoss || enemy.Weight <= 0 || !enemy.IsAllowedToSpawn())
 			continue;
 		
 		for (int j = 1; j <= enemy.Weight; j++)
@@ -1123,7 +1189,7 @@ int GetRandomBoss(bool getName=false, char[] buffer="", int size=0)
 	for (int i = 0; i < g_iEnemyCount; i++)
 	{
 		Enemy enemy = EnemyByIndex(i);
-		if (!enemy.IsBoss || !enemy.IsAllowedToSpawn())
+		if (!enemy.IsBoss || enemy.Weight <= 0 || !enemy.IsAllowedToSpawn())
 			continue;
 
 		for (int j = 1; j <= enemy.Weight; j++)
@@ -1221,6 +1287,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	g_iPlayerEnemyType[client] = type;
 	g_iPlayerBaseHealth[client] = enemy.BaseHealth;
 	g_flPlayerMaxSpeed[client] = enemy.BaseSpeed;
+	SetPlayerCash(client, enemy.BaseCarriedCash * RF2_Object_Crate.GetCostMultiplier());
 	TF2_SetPlayerClass(client, enemy.Class);
 	TF2_RespawnPlayer(client);
 	if (!useSpawnPoints)
@@ -1389,6 +1456,12 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	
 	if (IsFakeClient(client))
 	{
+		if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
+		{
+			// force shield charging and sticky detonation
+			TFBot(client).AddButtonFlag(IN_ATTACK2);
+		}
+		
 		if (!enemy.BotSkillNoOverride)
 		{
 			switch (RF2_GetDifficulty())
@@ -1437,6 +1510,11 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 			TFBot(client).AddFlag(TFBOTFLAG_ROCKETJUMP);
 		}
 		
+		if (enemy.BotScavengerAI)
+		{
+			TFBot(client).AddFlag(TFBOTFLAG_SCAVENGER);
+		}
+		
 		if (enemy.BotHoldFireReload)
 		{
 			TFBot(client).AddFlag(TFBOTFLAG_HOLDFIRE);
@@ -1471,7 +1549,17 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 	if (enemy.EyeGlow)
 	{
 		float color[3];
-		color = TFBot(client).GetSkillLevel() >= TFBotSkill_Hard ? {255.0, 180.0, 36.0} : {0.0, 240.0, 255.0};
+		if (enemy.CustomEyeGlow)
+		{
+			color[0] = float(g_iEnemyEyeGlowColor[type][0]);
+			color[1] = float(g_iEnemyEyeGlowColor[type][1]);
+			color[2] = float(g_iEnemyEyeGlowColor[type][2]);
+		}
+		else
+		{
+			color = TFBot(client).GetSkillLevel() >= TFBotSkill_Hard ? {255.0, 180.0, 36.0} : {0.0, 240.0, 255.0};
+		}
+		
 		if (enemy.IsBoss)
 		{
 			if (LookupEntityAttachment(client, "eye_boss_1"))

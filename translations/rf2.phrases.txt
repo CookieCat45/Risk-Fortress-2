@@ -87,6 +87,18 @@
 		"en"		"{yellow}{1}{default} picked up {2}{3}"
 	}
 	
+	"PickupItemEnemy"
+	{
+		"#format"	"{1:N},{2:s},{3:s},{4:d}"
+		"en"		"{blue}{1}{default} picked up {2}{3} {lightgray}[{4}]"
+	}
+	
+	"PickupItemStrangeEnemy"
+	{
+		"#format"	"{1:N},{2:s},{3:s}"
+		"en"		"{blue}{1}{default} picked up {2}{3}"
+	}
+	
 	"ItemShareLimit" 
 	{
 		"#format"	"{1:d}"
@@ -603,7 +615,7 @@
 		"#format"	"{1:N}"
 		"en"		"{red}{1} was surprised to find themselves choking to death on their own blood after making the wise decision to split their own head open with a cleaver."
 	}
-
+	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// COMMAND PHRASES
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -936,6 +948,11 @@
 		"en"		"Someone needs to join RED or BLU first."
 	}
 	
+	
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// MISCELLANEOUS PHRASES
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	
 	"MinionSpawn"
 	{
 		"en"		"You're a minion! You can still help RED by attacking bots and collecting cash.\nYou can't utilize the effects of items, but you can still interact with objects and manage your inventory."
@@ -1024,5 +1041,20 @@
 	{
 		"#format"	"{1:d}"
 		"en"		"WARNING!\nA Sentry Buster will appear in {1} seconds."
+	}
+	
+	"SomeoneElseUsing"
+	{
+		"en"		"Someone else is using this right now!"
+	}
+	
+	"ChooseItemFirst"
+	{
+		"en"		"Choose an item first! (Call for Medic)"
+	}
+	
+	"ScavengerLordWarning"
+	{
+		"en"		"BEWARE!\nLord Scaventron is coming for you!"
 	}
 }

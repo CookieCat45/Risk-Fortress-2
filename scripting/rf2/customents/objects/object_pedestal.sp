@@ -203,7 +203,7 @@ static void Timer_SpinRoulette(Handle timer, int entity)
     pedestal.ItemType = item;
     if (IsValidEntity2(pedestal.ItemSprite))
         RemoveEntity(pedestal.ItemSprite);
-
+    
     pedestal.ItemSprite = CreateEntityByName("env_sprite");
     DispatchKeyValue(pedestal.ItemSprite, "model", g_szItemSprite[item]);
     DispatchKeyValueFloat(pedestal.ItemSprite, "scale", g_flItemSpriteScale[item]);

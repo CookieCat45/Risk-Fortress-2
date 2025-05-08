@@ -1,19 +1,19 @@
 #pragma newdecls required
 #pragma semicolon 1
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_RobotButlerSuicideBombAction < RF2_BaseNPCAttackAction
 {
 	public RF2_RobotButlerSuicideBombAction()
 	{
-		if (!g_Factory)
+		if (!g_ActionFactory)
 		{
-			g_Factory = new NextBotActionFactory("RF2_RobotButlerSuicideBombAction");
-			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_Factory.SetCallback(NextBotActionCallbackType_OnEnd, OnEnd);
-			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_Factory.BeginDataMapDesc()
+			g_ActionFactory = new NextBotActionFactory("RF2_RobotButlerSuicideBombAction");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnEnd, OnEnd);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_ActionFactory.BeginDataMapDesc()
 				.DefineFloatField("m_flStartTime")
 				.DefineFloatField("m_flAttackTime")
 				.DefineFloatField("m_flRecoveryTime")
@@ -21,7 +21,7 @@ methodmap RF2_RobotButlerSuicideBombAction < RF2_BaseNPCAttackAction
 			.EndDataMapDesc();
 		}
 		
-		return view_as<RF2_RobotButlerSuicideBombAction>(g_Factory.Create());
+		return view_as<RF2_RobotButlerSuicideBombAction>(g_ActionFactory.Create());
 	}
 }
 
@@ -49,13 +49,6 @@ static int OnStart(RF2_RobotButlerSuicideBombAction action, RF2_RobotButler bot,
 
 static void OnEnd(NextBotAction action, RF2_RobotButler bot, NextBotAction nextAction)
 {
-	/*
-	if (IsValidEntity2(bot.HeldItem))
-	{
-		RemoveEntity(bot.HeldItem);
-	}
-	*/
-	
 	bot.Target = INVALID_ENT;
 }
 

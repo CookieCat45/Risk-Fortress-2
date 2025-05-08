@@ -107,7 +107,7 @@ static void OnCreate(RF2_Object_Gravestone grave)
 	grave.HookInteract(Gravestone_OnInteract);
 	if (grave.Cost <= 0.0)
 	{
-		grave.Cost = 250.0 * RF2_Object_Base.GetCostMultiplier();
+		grave.Cost = 350.0 * RF2_Object_Base.GetCostMultiplier();
 	}
 	
 	char text[256];

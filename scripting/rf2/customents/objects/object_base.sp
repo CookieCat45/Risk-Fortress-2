@@ -271,7 +271,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 		this.GetWorldText(worldText, sizeof(worldText));
 		text.KeyValue("message", worldText);
 		text.KeyValueFloat("textsize", this.TextSize);
-		text.KeyValue("orientation", "1");
+		text.KeyValueInt("orientation", 1);
 		int color[4];
 		this.GetTextColor(color);
 		SetVariantColor(color);
@@ -485,8 +485,17 @@ static void OnSpawnPost(int entity)
 		char classname[128];
 		obj.GetAbsOrigin(pos);
 		obj.GetClassname(classname, sizeof(classname));
-		PrintToServer("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
-		PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
+		RF2_Object_Crate crate = RF2_Object_Crate(entity);
+		if (crate.IsValid())
+		{
+			PrintToServer("[RF2] %s spawned at %.0f %.0f %.0f (Type %d)", classname, pos[0], pos[1], pos[2], crate.Type);
+			PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f (Type %d)", classname, pos[0], pos[1], pos[2], crate.Type);
+		}
+		else
+		{
+			PrintToServer("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
+			PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
+		}
 	}
 	
 	// Because some props are marked as breakable and will break if shot without firing events. Very dumb.

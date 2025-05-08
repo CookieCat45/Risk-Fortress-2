@@ -137,13 +137,19 @@ void LoadCommandsAndCvars()
 	g_cvOldGiantFootsteps = CreateConVar("rf2_use_old_giant_footsteps", "0", "Uses the old system for giant footstep sounds (unused footstep sounds instead of giant_common_step)", FCVAR_NOTIFY, true, 0.0);
 	g_cvPlayerAbsenceLimit = CreateConVar("rf2_player_absence_limit", "2", "How many times a player is allowed to be absent at the start of a map before their inventory is forfeited automatically", FCVAR_NOTIFY, true, 0.0);
 	g_cvMinStagesClearedToForfeit = CreateConVar("rf2_forfeit_min_stages_cleared", "2", "If the player was not present at the beginning of the run, number of stages that they need to clear before being allowed to forfeit", FCVAR_NOTIFY, true, 0.0);
-
+	g_cvScavengerLordSpawnLevel = CreateConVar("rf2_scavenger_lord_spawn_level", "150", "Minimum enemy level required before the Scavenger Lord is able to spawn. 0 prevents him from spawning at all.", FCVAR_NOTIFY, true, 0.0);
+	g_cvScavengerLordMaxItems = CreateConVar("rf2_scavenger_lord_max_items", "500", "Maximum number of items the Scavenger Lord can spawn with.", FCVAR_NOTIFY, true, 0.0);
+	g_cvScavengerLordLevelItemRatio = CreateConVar("rf2_scavenger_lord_level_item_ratio", "5", "The level ratio for how many items the Scavenger Lord will have (1 per N levels)", FCVAR_NOTIFY, true, 1.0);
+	g_cvServerStarted = CreateConVar("rf2_server_started", "0", _, FCVAR_HIDDEN|FCVAR_DONTRECORD);
+	g_cvStage1StartingMap = CreateConVar("rf2_stage1_starting_map", "1", "Ensures that the server always boots on a random Stage 1 map.", _, true, 0.0);
+	
 	// Debug
 	RegAdminCmd("rf2_hiddenslot_test", Command_TestHiddenSlot, ADMFLAG_ROOT);
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
 	RegAdminCmd("rf2_debug_entitycount", Command_EntityCount, ADMFLAG_SLAY, "Shows the total number of networked entities (edicts) in the server.");
 	RegAdminCmd("rf2_debug_unlock_achievements", Command_UnlockAllAchievements, ADMFLAG_ROOT, "Unlocks every achievement.");
 	RegAdminCmd("rf2_debug_dropped_weapon_test", Command_DroppedWeaponTest, ADMFLAG_SLAY);
+	RegAdminCmd("rf2_debug_scavenger_lord", Command_SpawnScavengerLord, ADMFLAG_SLAY);
 	g_cvDebugNoMapChange = CreateConVar("rf2_debug_skip_map_change", "0", "If nonzero, prevents the map from changing on round end.", FCVAR_NOTIFY, true, 0.0);
 	g_cvDebugShowObjectSpawns = CreateConVar("rf2_debug_show_object_spawns", "0", "If nonzero, when an object spawns, its name and location will be printed to the console.", FCVAR_NOTIFY, true, 0.0);
 	g_cvDebugDontEndGame = CreateConVar("rf2_debug_dont_end_game", "0", "If nonzero, don't end the game if all of the survivors die.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -390,12 +396,7 @@ public Action Command_GiveCash(int client, int args)
 	{
 		for (int i = 0; i < matches; i++)
 		{
-			if (!IsPlayerSurvivor(clients[i]))
-			{
-				RF2_ReplyToCommand(client, "%t", "NotASurvivor", clients[i]);
-				continue;
-			}
-			else if (!IsPlayerAlive(clients[i]))
+			if (!IsPlayerAlive(clients[i]))
 			{
 				RF2_ReplyToCommand(client, "%t", "IsDead", clients[i]);
 				continue;
@@ -1263,7 +1264,7 @@ void ShowBossSpawnMenu(int client, bool asSelf=false)
 	}
 	else
 	{
-		menu.AddItem("0", "", ITEMDRAW_DISABLED);
+		menu.AddItem("0", "Spawning a robot (pass 1 to the command to spawn as self)", ITEMDRAW_DISABLED);
 	}
 
 	for (int i = 0; i < GetEnemyCount(); i++)
@@ -1341,7 +1342,7 @@ void ShowEnemySpawnMenu(int client, bool asSelf=false)
 	}
 	else
 	{
-		menu.AddItem("0", "", ITEMDRAW_DISABLED);
+		menu.AddItem("0", "Spawning a robot (pass 1 to the command to spawn as self)", ITEMDRAW_DISABLED);
 	}
 	
 	for (int i = 0; i < GetEnemyCount(); i++)
@@ -2265,7 +2266,7 @@ public Action Command_LoadEnemies(int client, int args)
 	
 	RF2_ReplyToCommand(client, "Loading enemies from config file: '%s'...", file);
 	ReplaceString(file, sizeof(file), ".cfg", "");
-	LoadEnemiesFromPack(file);
+	LoadEnemiesFromPack(file, false);
 	return Plugin_Handled;
 }
 
@@ -2404,5 +2405,28 @@ public Action Command_DroppedWeaponTest(int client, int args)
 	float pos[3];
 	GetClientEyePosition(client, pos);
 	GenerateDroppedWeapon(weapon, pos);
+	return Plugin_Handled;
+}
+
+public Action Command_SpawnScavengerLord(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (!g_bRoundActive)
+	{
+		RF2_ReplyToCommand(client, "%t", "WaitForRoundStart");
+		return Plugin_Handled;
+	}
+	
+	if (Enemy.FindByInternalName("scavenger_lord") == NULL_ENEMY)
+	{
+		LoadEnemiesFromPack("enemies/scavenger_lord", true);
+	}
+	
+	CreateTimer(0.0, Timer_SpawnScavengerLord, _, TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Handled;
 }

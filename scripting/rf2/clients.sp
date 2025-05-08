@@ -112,6 +112,7 @@ void RefreshClient(int client, bool force=false)
 	TFBot(client).BuildingTarget = INVALID_ENT;
 	TFBot(client).RepairTarget = INVALID_ENT;
 	TFBot(client).DesiredWeaponSlot = -1;
+	TFBot(client).ScavengerTarget = INVALID_ENT;
 	
 	if (g_hTFBotEngineerBuildings[client])
 	{

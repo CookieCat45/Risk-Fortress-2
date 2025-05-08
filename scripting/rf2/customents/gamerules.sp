@@ -475,6 +475,7 @@ int SpawnObjects()
 	int strangeWeight = 8;
 	int hauntedWeight = 5;
 	int collectorWeight = 8;
+	int multiWeight = 10;
 	
 	if (g_iStagesCompleted <= 0)
 	{
@@ -486,17 +487,19 @@ int SpawnObjects()
 	StringMapSnapshot snapshot = g_hObjectSpawnWeights.Snapshot();
 	for (int i = 1; i >= 0; i++)
 	{
+		int index = i-1;
 		bool notCrate;
-		if (i >= CrateType_Max)
+		if (index >= CrateType_Max)
 		{
+			index -= CrateType_Max;
 			notCrate = true;
-			if (i-CrateType_Max >= snapshot.Length)
+			if (index >= snapshot.Length)
 			{
 				delete snapshot;
 				break;
 			}
 			
-			snapshot.GetKey(i-CrateType_Max, name, sizeof(name));
+			snapshot.GetKey(index, name, sizeof(name));
 			if (strcmp2(name, "rf2_object_pumpkin") && !altar.IsValid())
 			{
 				continue;
@@ -506,7 +509,7 @@ int SpawnObjects()
 		}
 		else
 		{
-			switch (i-1)
+			switch (index)
 			{
 				case Crate_Normal: count = crateWeight;
 				case Crate_Large: count = largeWeight;
@@ -517,6 +520,7 @@ int SpawnObjects()
 				#if !defined DEVONLY
 				case Crate_Weapon: continue;
 				#endif
+				case Crate_Multi: count = multiWeight;
 			}
 		}
 		
@@ -524,7 +528,7 @@ int SpawnObjects()
 		{
 			if (!notCrate)
 			{
-				crateArray.Push(i-1);
+				crateArray.Push(index);
 			}
 			else
 			{

@@ -251,6 +251,11 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	{
 		TF2_RespawnPlayer(client);
 	}
+	
+	if (IsFakeClient(client))
+	{
+		TFBot(client).AddFlag(TFBOTFLAG_SCAVENGER);
+	}
 
 	if (loadInventory)
 	{

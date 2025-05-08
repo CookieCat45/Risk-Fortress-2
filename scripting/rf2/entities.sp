@@ -62,17 +62,24 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 	return nearestEntity;
 }
 
+// list will be sorted by distance, closest to farthest
 ArrayList GetNearestEntities(float origin[3], const char[] classname, float minDist=-1.0, float maxDist=-1.0, int team=-1, bool trace=false)
 {
 	ArrayList nearestEnts = new ArrayList();
+	ArrayList distanceList = new ArrayList(1, MAX_EDICTS); // dumb, but necessary
 	int entity = INVALID_ENT;
 	float pos[3];
+	float dist;
 	while ((entity = FindEntityByClassname(entity, classname)) != INVALID_ENT)
 	{
 		if (nearestEnts.Length > 0 && nearestEnts.FindValue(entity) != -1 || team > -1 && GetEntTeam(entity) != team)
 			continue;
 		
 		GetEntPos(entity, pos);
+		dist = GetVectorDistance(origin, pos);
+		if (minDist > 0.0 && dist < minDist || maxDist > 0.0 && dist > maxDist)
+			continue;
+			
 		if (trace)
 		{
 			pos[2] += 20.0;
@@ -80,44 +87,42 @@ ArrayList GetNearestEntities(float origin[3], const char[] classname, float minD
 			TR_TraceRayFilter(origin, pos, MASK_SOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
 			pos[2] -= 20.0;
 			origin[2] -= 20.0;
-
+			
 			if (TR_DidHit())
 				continue;
 		}
-
+		
 		nearestEnts.Push(entity);
+		distanceList.Set(entity, dist);
 	}
 
 	if (nearestEnts.Length <= 1)
 	{
+		delete distanceList;
 		return nearestEnts;
 	}
-
-	// sort the list by distance
-	int sortedCount;
-	float distance;
-	float nearestDist = -1.0;
-	float minDistSq = sq(minDist);
-	float maxDistSq = sq(maxDist);
-	for (int i = 0; i < nearestEnts.Length; i++)
-	{
-		entity = nearestEnts.Get(i);
-		distance = GetVectorDistance(origin, pos, true);
-		if ((minDist <= 0.0 || distance >= minDistSq) && (maxDist <= 0.0 || distance <= maxDistSq))
-		{
-			if (distance < nearestDist || nearestDist == -1.0)
-			{
-				nearestEnts.Erase(i);
-				nearestEnts.ShiftUp(sortedCount);
-				nearestEnts.Set(sortedCount, entity);
-				nearestDist = distance;
-				i = sortedCount;
-				sortedCount++;
-			}
-		}
-	}
-
+	
+	nearestEnts.SortCustom(Sort_NearestEntities, distanceList);
+	delete distanceList;
 	return nearestEnts;
+}
+
+int Sort_NearestEntities(int index1, int index2, ArrayList entArray, ArrayList distArray)
+{
+	int ent1 = entArray.Get(index1);
+	int ent2 = entArray.Get(index2);
+	float dist1 = distArray.Get(ent1);
+	float dist2 = distArray.Get(ent2);
+	if (dist1 < dist2)
+	{
+		return -1;
+	}
+	else if (dist1 > dist2)
+	{
+		return 1;
+	}
+	
+	return 0;
 }
 
 ArrayList GetNearestCombatChars(float origin[3], int count=0, float minDist=-1.0, float maxDist=-1.0, int avoidTeam=-1, bool trace=false)
@@ -495,35 +500,49 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 
 void PickupCash(int client, int entity)
 {
-	// If client is 0 or below, the cash is most likely being collected automatically.
-	if (client < 1 || IsPlayerSurvivor(client) || IsPlayerMinion(client))
-	{
-		ArrayList clientArray = new ArrayList();
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (!IsClientInGame(i) || !IsPlayerSurvivor(i) && !IsPlayerMinion(i))
-				continue;
-			
-			clientArray.Push(i);
-		}
+	// If client is 0 or below, the cash is most likely being collected automatically
+	// Scavengers on BLU can also pick up money
+	bool isScavenger = client > 0 && IsFakeClient(client) && GetClientTeam(client) == TEAM_ENEMY
+		&& TFBot(client).HasFlag(TFBOTFLAG_SCAVENGER);
 		
-		int receiver;
-		float mult;
-		for (int i = 0; i < clientArray.Length; i++)
+	if (client < 1 || isScavenger || IsPlayerSurvivor(client) || IsPlayerMinion(client))
+	{
+		if (isScavenger)
 		{
-			receiver = clientArray.Get(i);
-			mult = 1.0;
-			if (GetPlayerCrateBonus(receiver) > 0 && !IsBossEventActive())
+			// only the scavenger gets the money
+			AddPlayerCash(client, g_flCashValue[entity]);
+		}
+		else
+		{
+			ArrayList clientArray = new ArrayList();
+			for (int i = 1; i <= MaxClients; i++)
 			{
-				mult += 0.5;
+				if (!IsClientInGame(i) || !IsPlayerSurvivor(i) && !IsPlayerMinion(i))
+					continue;
+				
+				clientArray.Push(i);
 			}
 			
-			if (g_bRingCashBonus)
+			int receiver;
+			float mult;
+			for (int i = 0; i < clientArray.Length; i++)
 			{
-				mult += GetItemMod(ItemStrange_SpecialRing, 0);
+				receiver = clientArray.Get(i);
+				mult = 1.0;
+				if (GetPlayerCrateBonus(receiver) > 0 && !IsBossEventActive())
+				{
+					mult += 0.5;
+				}
+				
+				if (g_bRingCashBonus)
+				{
+					mult += GetItemMod(ItemStrange_SpecialRing, 0);
+				}
+				
+				AddPlayerCash(receiver, g_flCashValue[entity] * mult);
 			}
 			
-			AddPlayerCash(receiver, g_flCashValue[entity] * mult);
+			delete clientArray;
 		}
 		
 		if (client > 0)
@@ -535,8 +554,7 @@ void PickupCash(int client, int entity)
 				HealPlayer(client, CalcItemModInt(client, Item_BanditsBoots, 1));
 			}
 		}
-		
-		delete clientArray;
+
 		RemoveEntity(entity);
 	}
 }

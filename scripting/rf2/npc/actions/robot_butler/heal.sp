@@ -35,7 +35,13 @@ static int OnStart(RF2_RobotButlerHealAction action, RF2_RobotButler bot, NextBo
 	}
 	
 	bot.HeldItem = CreateEntityByName("prop_dynamic_override");
-	SetEntityModel2(bot.HeldItem, MODEL_MEDKIT);
+	SetEntityModel2(bot.HeldItem, bot.Team == TEAM_SURVIVOR ? MODEL_MEDKIT : MODEL_MEDKIT_BLUE);
+	if (bot.Team == TEAM_ENEMY)
+	{
+		SetEntityRenderMode(bot.HeldItem, RENDER_TRANSCOLOR);
+		SetEntityRenderColor(bot.HeldItem, 0, 255, 255);
+	}
+	
 	DispatchKeyValue(bot.HeldItem, "sequence", "idle");
 	DispatchSpawn(bot.HeldItem);
 	AcceptEntityInput(bot.HeldItem, "DisableCollision");

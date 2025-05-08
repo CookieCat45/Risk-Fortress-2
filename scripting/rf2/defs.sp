@@ -26,6 +26,7 @@
 #define	DifficultyFactor_Steel 1.5
 #define DifficultyFactor_Titanium 2.0
 
+
 enum
 {
 	TF2Quality_Normal,
@@ -82,7 +83,7 @@ enum
 	COLLISION_GROUP_NPC_SCRIPTED,	// USed for NPCs in scripts that should not collide with each other
 	
 	// TF2-specific collision groups
-	TFCOLLISION_GROUP_SHIELD,
+	TFCOLLISION_GROUP_GRENADES,
 	TFCOLLISION_GROUP_OBJECT,
 	TFCOLLISION_GROUP_OBJECT_SOLIDTOPLAYERMOVEMENT,
 	TFCOLLISION_GROUP_COMBATOBJECT,
@@ -230,6 +231,7 @@ enum // Move collide types
 #define SND_GAME_OVER "music/mvm_lost_wave.wav"
 #define SND_EVIL_LAUGH "rf2/sfx/evil_laugh.wav"
 #define SND_LASTMAN "mvm/mvm_warning.wav"
+#define SND_SCAVENGER_LORD_WARNING "mvm/mvm_bomb_warning.wav"
 #define SND_MONEY_PICKUP "mvm/mvm_money_pickup.wav"
 #define SND_USE_WORKBENCH "ui/item_metal_scrap_pickup.wav"
 #define SND_USE_SCRAPPER "ui/item_metal_scrap_drop.wav"
@@ -296,6 +298,7 @@ enum // Move collide types
 #define SND_HINT "ui/hint.wav"
 #define SND_LONGWAVE_USE "ui/cyoa_node_activate.wav"
 #define SND_REVIVE "misc/halloween/spell_skeleton_horde_rise.wav"
+#define SND_MULTICRATE_CYCLE "ui/buttonrollover.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
@@ -327,6 +330,8 @@ enum
 #define TFBOTFLAG_SPAMJUMP (1 << 4) // constantly jump
 #define TFBOTFLAG_ALWAYSATTACK (1 << 5) // Always hold IN_ATTACK
 #define TFBOTFLAG_SUICIDEBOMBER (1 << 6) // Behave like a Sentry Buster, but go after players instead of sentries
+#define TFBOTFLAG_SCAVENGER (1 << 7) // Scavenge the map for items
+#define TFBOTFLAG_DONESCAVENGING (1 << 8) // we're done scavenging for items
 
 
 // Weapons -------------------------------------------------------------------------------------------------------------------------------------

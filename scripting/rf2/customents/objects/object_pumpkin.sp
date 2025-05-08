@@ -50,7 +50,7 @@ static void OnCreate(RF2_Object_Pumpkin pumpkin)
 	pumpkin.SetObjectName("Magical Pumpkin");
 	if (pumpkin.Cost <= 0.0)
 	{
-		pumpkin.Cost = 350.0 * RF2_Object_Base.GetCostMultiplier();
+		pumpkin.Cost = 450.0 * RF2_Object_Base.GetCostMultiplier();
 	}
 	
 	char text[128];

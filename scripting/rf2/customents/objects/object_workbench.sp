@@ -420,7 +420,7 @@ static void OnSpawnPost(int entity)
 		sprite.KeyValueFloat("scale", g_flItemSpriteScale[bench.Item]);
 	}
 	
-	sprite.KeyValue("rendermode", "9"); // mfw no CBaseEntity.KeyValueInt
+	sprite.KeyValueInt("rendermode", 9);
 	float pos[3];
 	bench.GetAbsOrigin(pos);
 	pos[2] += bench.MapPlaced ? 60.0 : 35.0;

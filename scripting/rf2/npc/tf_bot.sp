@@ -17,6 +17,7 @@ static bool g_bTFBotEngineerAttemptingBuild[MAXPLAYERS];
 static int g_iTFBotEngineerRepairTarget[MAXPLAYERS];
 static int g_iTFBotEngineerBuildAttempts[MAXPLAYERS];
 static int g_iTFBotSpyBuildingTarget[MAXPLAYERS];
+static int g_iTFBotScavengerTarget[MAXPLAYERS] = {INVALID_ENT, ...};
 static float g_flTFBotSpyTimeInFOV[MAXPLAYERS][MAXPLAYERS];
 static float g_flTFBotLastPos[MAXPLAYERS][3];
 static float g_flTFBotSpyForgetTime[MAXPLAYERS][MAXPLAYERS];
@@ -57,7 +58,6 @@ enum //AttributeType (most of these probably don't work outside of MvM? Haven't 
 static int g_iTFBotBehaviorAttributes[MAXPLAYERS];
 
 // Note: these are plugin-specific, not the actual MissionType enum in TF2 code.
-// Do NOT set these manually, only use these to check what the bot is currently doing.
 enum TFBotMission
 {
 	MISSION_NONE, // No mission, behave normally
@@ -163,7 +163,13 @@ methodmap TFBot
 		public get() 					 { return g_TFBotStrafeDirection[this.Client];  }
 		public set(TFBotStrafeDir value) { g_TFBotStrafeDirection[this.Client] = value; }
 	}
-
+	
+	property int ScavengerTarget
+	{
+		public get() 			{ return g_iTFBotScavengerTarget[this.Client];  }
+		public set(int value) 	{ g_iTFBotScavengerTarget[this.Client] = value; }				
+	}
+	
 	// Wandering
 	property float LastSearchTime 
 	{
@@ -427,6 +433,52 @@ methodmap TFBot
 	{
 		return GetTickedTime() < this.GetSpyForgetTime(spy);
 	}
+	
+	public bool CanScavengeItem(RF2_Item item)
+	{
+		if (GetClientTeam(this.Client) == TEAM_ENEMY)
+		{
+			// we can't take these
+			if (g_bItemScavengerNoPickup[item.Type])
+			{
+				return false;
+			}
+			else if (item.Quality == Quality_Collectors)
+			{
+				return false;
+			}
+			
+			// steal everything else!
+			return true;
+		}
+		
+		// we're probably on RED - only take it if it's ours or is free for taking
+		return !IsValidClient(item.Owner) || item.Owner == this.Client || item.Subject == this.Client;
+	}
+	
+	public bool CanScavengeCrate(RF2_Object_Crate crate)
+	{
+		if (GetPlayerCash(this.Client) < crate.Cost)
+			return false;
+		
+		if (crate.Type == Crate_Weapon)
+			return false;
+		
+		if (crate.Type == Crate_Haunted && GetPlayerItemCount(this.Client, Item_HauntedKey) <= 0)
+			return false;
+		
+		if (crate.Type == Crate_Strange && GetPlayerEquipmentItem(this.Client) != Item_Null)
+			return false;
+		
+		if (GetClientTeam(this.Client) == TEAM_ENEMY)
+		{
+			// enemies don't want these crates
+			if (crate.Type == Crate_Multi || crate.Type == Crate_Collectors)
+				return false;
+		}
+		
+		return true;
+	}
 }
 
 void TFBot_Think(TFBot bot)
@@ -444,6 +496,22 @@ void TFBot_Think(TFBot bot)
 			// ignore teleporters
 			bot.GetVision().ForgetEntity(threat);
 			threat = INVALID_ENT;
+		}
+	}
+	
+	Enemy enemy = Enemy(bot.Client);
+	if (enemy != NULL_ENEMY && enemy == Enemy.FindByInternalName("scavenger_lord"))
+	{
+		// Scavenger Lord always knows where all players are, though we try to ignore minions
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (!IsClientInGame(i) || !IsPlayerSurvivor(i) || IsPlayerMinion(i))
+				continue;
+				
+			if (bot.GetVision().GetKnown(i) == NULL_KNOWN_ENTITY)
+			{
+				bot.GetVision().AddKnownEntity(i);
+			}
 		}
 	}
 	
@@ -472,8 +540,201 @@ void TFBot_Think(TFBot bot)
 			}
 		}
 	}
-
-	if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer && !IsValidEntity2(bot.BuildingTarget))
+	
+	bool isScavenging;
+	if (bot.HasFlag(TFBOTFLAG_SCAVENGER) && bot.HasFlag(TFBOTFLAG_DONESCAVENGING))
+	{
+		static float nextScavengeCheckTime[MAXPLAYERS];
+		if (nextScavengeCheckTime[bot.Client] <= tickedTime)
+		{
+			// if there's an item we can grab, continue scavenging
+			float cash = GetPlayerCash(bot.Client);
+			RF2_Item item = RF2_Item(GetNearestEntity(botPos, "rf2_item"));
+			if (item.IsValid() && bot.CanScavengeItem(item))
+			{
+				bot.ScavengerTarget = EntIndexToEntRef(item.index);
+				bot.RemoveFlag(TFBOTFLAG_DONESCAVENGING);
+			}
+			else if (cash >= g_cvObjectBaseCost.FloatValue * RF2_Object_Crate.GetCostMultiplier())
+			{
+				// try to find a crate that we can scavenge
+				int ent = MaxClients+1;
+				while ((ent = FindEntityByClassname(ent, "rf2_object_crate")) != INVALID_ENT)
+				{
+					RF2_Object_Crate crate = RF2_Object_Crate(ent);
+					if (bot.CanScavengeCrate(crate))
+					{
+						bot.RemoveFlag(TFBOTFLAG_DONESCAVENGING);
+						break;
+					}
+				}
+			}
+			else if (!IsValidEntity2(bot.ScavengerTarget))
+			{
+				// find money
+				int moneyPack = GetNearestEntity(botPos, "item_currencypack*");
+				if (moneyPack != INVALID_ENT)
+				{
+					bot.ScavengerTarget = EntIndexToEntRef(moneyPack);
+					bot.RemoveFlag(TFBOTFLAG_DONESCAVENGING);
+				}
+			}
+			
+			nextScavengeCheckTime[bot.Client] = tickedTime+0.5;
+		}
+	}
+	
+	bool scavengerFightEnemies = Enemy(bot.Client).BotScavengerIgnoreEnemies && threat > 0;
+	if (bot.HasFlag(TFBOTFLAG_SCAVENGER) && scavengerFightEnemies)
+	{
+		bot.DesiredWeaponSlot = -1;
+	}
+	
+	if (!scavengerFightEnemies && bot.HasFlag(TFBOTFLAG_SCAVENGER) && !bot.HasFlag(TFBOTFLAG_DONESCAVENGING))
+	{
+		isScavenging = true;
+		if (IsValidEntity2(bot.ScavengerTarget))
+		{
+			// ignore all enemies while scavenging?
+			if (Enemy(bot.Client) != NULL_ENEMY && Enemy(bot.Client).BotScavengerIgnoreEnemies)
+			{
+				bot.GetVision().ForgetAllKnownEntities();
+			}
+			
+			// path towards our desired item/object
+			float distance = DistBetween(bot.Client, bot.ScavengerTarget, true);
+			static char classname[64];
+			GetEntityClassname(bot.ScavengerTarget, classname, sizeof(classname));
+			float targetPos[3];
+			GetEntPos(bot.ScavengerTarget, targetPos, true);
+			TFBot_PathToPos(bot, targetPos, -1.0, true);
+			bot.DesiredWeaponSlot = -1;
+			bool isItem;
+			if (strcmp2(classname, "rf2_item"))
+			{
+				isItem = true;
+				if (distance <= 22500.0)
+				{
+					PickupItem(bot.Client, bot.ScavengerTarget);
+				}
+			}
+			else if (strcmp2(classname, "rf2_object_crate"))
+			{
+				if (RF2_Object_Crate(bot.ScavengerTarget).Cost > GetPlayerCash(bot.Client))
+				{
+					// somehow we can't afford it anymore, abort
+					bot.ScavengerTarget = INVALID_ENT;
+				}
+				else if (distance <= 22500.0)
+				{
+					// swing at it once we're close enough
+					if (RF2_Object_Crate(bot.ScavengerTarget).Type == Crate_Multi
+						&& RF2_Object_Crate(bot.ScavengerTarget).Item == Item_Null)
+					{
+						// collector multicrate?
+						FakeClientCommand(bot.Client, "voicemenu 0 0");	
+					}
+					
+					TFBot_ForceLookAtPos(bot, targetPos);
+					bot.AddButtonFlag(IN_ATTACK);
+					bot.DesiredWeaponSlot = WeaponSlot_Melee;
+				}
+			}
+			
+			if (!isItem)
+			{
+				RF2_Item item = RF2_Item(GetNearestEntity(botPos, "rf2_item", _, 1500.0));
+				if (item.IsValid() && bot.CanScavengeItem(item))
+				{
+					bot.ScavengerTarget = EntIndexToEntRef(item.index);
+				}
+			}
+		}
+		else
+		{
+			// try to find a new target
+			bot.ScavengerTarget = INVALID_ENT;
+			bot.RemoveButtonFlag(IN_ATTACK);
+			bot.DesiredWeaponSlot = -1;
+			
+			// look for items first
+			ArrayList itemList = GetNearestEntities(botPos, "rf2_item");
+			for (int i = 0; i < itemList.Length; i++)
+			{
+				RF2_Item item = RF2_Item(itemList.Get(i));
+				if (IsEquipmentItem(item.Type) && GetPlayerEquipmentItem(bot.Client) != Item_Null)
+					continue; // skip strange item if we already have one
+				
+				bool taken;
+				for (int a = 1; a <= MaxClients; a++)
+				{
+					if (a == bot.Client || !IsClientInGame(a) 
+					|| !IsFakeClient(a) || !TFBot(a).HasFlag(TFBOTFLAG_SCAVENGER))
+						continue;
+						
+					if (TFBot(a).ScavengerTarget == EntIndexToEntRef(item.index) || !bot.CanScavengeItem(item))
+					{
+						taken = true;
+						break;
+					}
+				}
+				
+				if (taken)
+					continue; // someone else wants this
+				
+				bot.ScavengerTarget = EntIndexToEntRef(item.index);
+				break;
+			}
+			
+			delete itemList;
+			if (bot.ScavengerTarget == INVALID_ENT)
+			{
+				// no items found, search for crates instead
+				ArrayList crateList = GetNearestEntities(botPos, "rf2_object_crate");
+				for (int i = 0; i < crateList.Length; i++)
+				{
+					RF2_Object_Crate crate = RF2_Object_Crate(crateList.Get(i));
+					if (!bot.CanScavengeCrate(crate))
+						continue;
+					
+					bool taken;
+					for (int a = 1; a <= MaxClients; a++)
+					{
+						if (a == bot.Client || !IsClientInGame(a) 
+						|| !IsFakeClient(a) || !TFBot(a).HasFlag(TFBOTFLAG_SCAVENGER))
+							continue;
+							
+						if (TFBot(a).ScavengerTarget == EntIndexToEntRef(crate.index))
+						{
+							taken = true;
+							break;
+						}
+					}
+					
+					if (taken)
+						continue; // someone else wants this
+					
+					bot.ScavengerTarget = EntIndexToEntRef(crate.index);
+					break;
+				}
+				
+				delete crateList;
+			}
+			
+			if (bot.ScavengerTarget == INVALID_ENT)
+			{
+				// we're finished scavenging, add this flag so we can stop
+				bot.AddFlag(TFBOTFLAG_DONESCAVENGING);
+			}
+		}
+		
+		if (!IsValidEntity2(bot.ScavengerTarget))
+		{
+			bot.ScavengerTarget = INVALID_ENT;
+			isScavenging = false;
+		}
+	}
+	else if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer && !IsValidEntity2(bot.BuildingTarget))
 	{
 		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || bot.HasFlag(TFBOTFLAG_SUICIDEBOMBER)
 			|| GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
@@ -851,7 +1112,7 @@ void TFBot_Think(TFBot bot)
 	}
 	
 	// If we aren't doing anything else, wander the map looking for enemies to attack.
-	if (bot.Mission != MISSION_TELEPORTER && !isHealing && !isSniping
+	if (!isScavenging && bot.Mission != MISSION_TELEPORTER && !isHealing && !isSniping
 		&& (class == TFClass_Spy || threat <= 0)
 		&& (class != TFClass_Engineer || bot.EngiSearchRetryTime > 0.0) 
 		&& bot.Mission != MISSION_BUILD && !bot.HasBuilt)

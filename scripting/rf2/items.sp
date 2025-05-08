@@ -29,6 +29,8 @@ bool g_bItemCanBeDropped[MAX_ITEMS] = {true, ...};
 bool g_bItemForceShowInInventory[MAX_ITEMS];
 bool g_bItemMultiplayerOnly[MAX_ITEMS];
 bool g_bItemExcludeFromLog[MAX_ITEMS];
+bool g_bItemScavengerNoSpawnWith[MAX_ITEMS];
+bool g_bItemScavengerNoPickup[MAX_ITEMS];
 bool g_bLaserHitDetected[MAX_EDICTS];
 
 // Unusual effects
@@ -159,6 +161,8 @@ int LoadItems(const char[] customPath="")
 			g_bItemForceShowInInventory[item] = asBool(itemKey.GetNum("force_show_inv", false));
 			g_bItemMultiplayerOnly[item] = asBool(itemKey.GetNum("multiplayer_only", false));
 			g_bItemExcludeFromLog[item] = asBool(itemKey.GetNum("exclude_from_log", false));
+			g_bItemScavengerNoSpawnWith[item] = asBool(itemKey.GetNum("scavenger_no_spawn_with", false));
+			g_bItemScavengerNoPickup[item] = asBool(itemKey.GetNum("scavenger_no_pickup", false));
 			if (item == ItemScout_LongFallBoots && !IsGoombaAvailable())
 			{
 				// this item requires the goomba stomp plugin to function
@@ -2327,6 +2331,41 @@ int CalcItemModInt_Reciprocal(int client, int item, int slot, int extraAmount=0)
 float GetItemProcCoeff(int item)
 {
 	return g_flItemProcCoeff[item];
+}
+
+ArrayList GetPlayerItemList(int client, int max=0, bool shuffle=false)
+{
+	ArrayList items = new ArrayList();
+	for (int i = 1; i < GetTotalItems(); i++)
+	{
+		if (GetItemQuality(i) == Quality_Community)
+			continue;
+		
+		if (g_iPlayerItem[client][i] > 0 || GetPlayerEquipmentItem(client) == i)
+		{
+			if (GetItemQuality(i) == Quality_Strange || GetItemQuality(i) == Quality_HauntedStrange)
+			{
+				items.Push(i);
+			}
+			else
+			{
+				for (int a = 1; a <= g_iPlayerItem[client][i]; a++)
+				{
+					items.Push(i);
+				}
+			}
+			
+			if (shuffle)
+			{
+				items.SwapAt(items.Length-1, GetRandomInt(0, items.Length-1));
+			}
+		}
+	}
+	
+	if (max > 0 && items.Length > max)
+		items.Resize(max);
+	
+	return items;
 }
 
 // Returns a list of items sorted by quality
