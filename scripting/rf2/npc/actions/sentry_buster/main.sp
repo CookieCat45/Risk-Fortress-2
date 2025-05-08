@@ -1,24 +1,24 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_SentryBusterMainAction < NextBotAction
 {
 	public static NextBotActionFactory GetFactory()
 	{
-		if (!g_Factory)
+		if (!g_ActionFactory)
 		{
-			g_Factory = new NextBotActionFactory("RF2_SentryBusterMain");
-			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_Factory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
-			g_Factory.BeginDataMapDesc()
+			g_ActionFactory = new NextBotActionFactory("RF2_SentryBusterMain");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_ActionFactory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
+			g_ActionFactory.BeginDataMapDesc()
 				.DefineFloatField("m_Talker")
 				.EndDataMapDesc();
 		}
 
-		return g_Factory;
+		return g_ActionFactory;
 	}
 
 	property float TalkerTime

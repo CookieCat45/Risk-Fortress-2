@@ -1,22 +1,22 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_SentryBusterDetonateAction < NextBotAction
 {
 	public RF2_SentryBusterDetonateAction()
 	{
-		if (!g_Factory)
+		if (!g_ActionFactory)
 		{
-			g_Factory = new NextBotActionFactory("RF2_SentryBusterDetonate");
-			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_Factory.BeginDataMapDesc()
+			g_ActionFactory = new NextBotActionFactory("RF2_SentryBusterDetonate");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_ActionFactory.BeginDataMapDesc()
 				.DefineFloatField("m_DetonateTime")
 				.EndDataMapDesc();
 		}
-		return view_as<RF2_SentryBusterDetonateAction>(g_Factory.Create());
+		return view_as<RF2_SentryBusterDetonateAction>(g_ActionFactory.Create());
 	}
 	
 	property float DetonateTime

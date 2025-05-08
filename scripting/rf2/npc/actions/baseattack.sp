@@ -1,16 +1,16 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_BaseNPCAttackAction < NextBotAction
 {
 	public RF2_BaseNPCAttackAction()
 	{
-		if (!g_Factory)
+		if (!g_ActionFactory)
 		{
-			g_Factory = new NextBotActionFactory("RF2_BaseNPCAttackAction");
-			g_Factory.BeginDataMapDesc()
+			g_ActionFactory = new NextBotActionFactory("RF2_BaseNPCAttackAction");
+			g_ActionFactory.BeginDataMapDesc()
 				.DefineFloatField("m_flStartTime")
 				.DefineFloatField("m_flAttackTime")
 				.DefineFloatField("m_flRecoveryTime")
@@ -18,7 +18,7 @@ methodmap RF2_BaseNPCAttackAction < NextBotAction
 				.EndDataMapDesc();
 		}
 		
-		return view_as<RF2_BaseNPCAttackAction>(g_Factory.Create());
+		return view_as<RF2_BaseNPCAttackAction>(g_ActionFactory.Create());
 	}
 	
 	// Does a trace hull hitbox attack, offset is relative to entity's origin and angles. resultPos is filled with the origin position of the attack.

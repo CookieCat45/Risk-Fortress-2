@@ -1,19 +1,19 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_ProvidenceDeathAction < NextBotAction
 {
 	public RF2_ProvidenceDeathAction()
 	{
-		if (!g_Factory)
+		if (!g_ActionFactory)
 		{
-			g_Factory = new NextBotActionFactory("RF2_ProvidenceDeathAction");
-			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_ActionFactory = new NextBotActionFactory("RF2_ProvidenceDeathAction");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
 		}
 		
-		return view_as<RF2_ProvidenceDeathAction>(g_Factory.Create());
+		return view_as<RF2_ProvidenceDeathAction>(g_ActionFactory.Create());
 	}
 }
 

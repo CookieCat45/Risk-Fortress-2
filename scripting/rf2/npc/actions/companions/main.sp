@@ -1,26 +1,26 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_CompanionMainAction < NextBotAction
 {
 	public RF2_CompanionMainAction()
 	{
-		return view_as<RF2_CompanionMainAction>(g_Factory.Create());
+		return view_as<RF2_CompanionMainAction>(g_ActionFactory.Create());
 	}
 	
 	public static NextBotActionFactory GetFactory()
 	{
-		if (!g_Factory)
+		if (!g_ActionFactory)
 		{
-			g_Factory = new NextBotActionFactory("RF2_CompanionMainAction");
-			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
-			//g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			//g_Factory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
+			g_ActionFactory = new NextBotActionFactory("RF2_CompanionMainAction");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
+			//g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			//g_ActionFactory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
 		}
 		
-		return g_Factory;
+		return g_ActionFactory;
 	}
 }
 
