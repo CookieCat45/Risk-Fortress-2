@@ -2,8 +2,8 @@
 #pragma newdecls required
 
 static Database g_hDataBase;
-static bool g_bIsDataBaseCached[MAXTF2PLAYERS];
-ArrayList g_hObtainedItems[MAXTF2PLAYERS];
+static bool g_bIsDataBaseCached[MAXPLAYERS];
+ArrayList g_hObtainedItems[MAXPLAYERS];
 
 void CreateSQL()
 {

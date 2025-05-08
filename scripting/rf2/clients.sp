@@ -167,7 +167,7 @@ int GetPlayersOnTeam(int team, bool alive=false, bool onlyHumans=false)
 int GetRandomPlayer(int team = -1, bool alive=true, bool onlyHumans=false)
 {
 	int count;
-	int playerArray[MAXTF2PLAYERS] = {-1, ...};
+	int playerArray[MAXPLAYERS] = {-1, ...};
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || onlyHumans && IsFakeClient(i) || IsSpecBot(i))
@@ -1158,17 +1158,6 @@ void ApplyVampireSapper(int client, int attacker, float damage=10.0, float durat
 	{
 		TFBot(client).RealizeSpy(attacker);
 	}
-	
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (i == attacker || i == client || !IsClientInGame(i) || !IsPlayerAlive(i) || !IsFakeClient(i) || GetClientTeam(i) == GetClientTeam(attacker))
-			continue;
-	
-		if (DistBetween(i, client) <= 800.0 && IsLOSClear(client, i, MASK_OPAQUE|CONTENTS_IGNORE_NODRAW_OPAQUE))
-		{
-			TFBot(i).RealizeSpy(attacker);
-		}
-	}
 }
 
 public Action Timer_VampireSapper(Handle timer, int client)
@@ -1197,25 +1186,28 @@ public Action Timer_VampireSapper(Handle timer, int client)
 			continue;
 		
 		GetEntPos(i, victimPos);
-		if (GetVectorDistance(pos, victimPos, true) <= Pow(range, 2.0))
+		if (GetVectorDistance(pos, victimPos, true) <= Pow(range, 2.0) && IsLOSClear(client, i))
 		{
 			RF_TakeDamage(i, attacker, attacker, g_flPlayerVampireSapperDamage[client]*0.5, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, _, sapper);
-			
 			if (!IsBoss(i))
 			{
 				TF2_StunPlayer(i, 1.0, 0.4, TF_STUNFLAG_SLOWDOWN, attacker);
 			}
 
 			totalHealing += RoundToFloor(g_flPlayerVampireSapperDamage[client]*0.5);
-
 			pos[2] += 40.0;
 			victimPos[2] += 40.0;
 			TE_SetupBeamPoints(pos, victimPos, g_iBeamModel, 0, 0, 0, 0.3, 4.0, 4.0, 0, 0.0, {125, 125, 255, 255}, 30);
 			TE_SendToAll();
-
 			count++;
 			if (count >= 5)
 				break;
+		}
+		
+		// notify about the spy if we can see our buddy getting sapped
+		if (IsFakeClient(i) && IsLOSClear(attacker, i, MASK_OPAQUE|CONTENTS_IGNORE_NODRAW_OPAQUE))
+		{
+			TFBot(i).RealizeSpy(attacker);
 		}
 	}
 

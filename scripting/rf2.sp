@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.5.7-DEVONLY"
+#define PLUGIN_VERSION "1.6.0-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.5.7"
+#define PLUGIN_VERSION "1.6.0"
 #endif
 
 #include <rf2>
@@ -71,10 +71,12 @@ bool g_bRingCashBonus;
 bool g_bEnteringUnderworld;
 bool g_bEnteringFinalArea;
 bool g_bItemSharingDisabledForMap;
+//bool g_bCustomEventsAvailable;
 char g_szForcedMap[256];
 char g_szMapForcerName[MAX_NAME_LENGTH];
 char g_szCurrentEnemyGroup[64];
 Address g_aEngineServer;
+Address g_aGameEventManager;
 ConVar g_cvSvCheats;
 
 // Map settings
@@ -84,7 +86,7 @@ float g_flGracePeriodTime = 30.0;
 float g_flStartMoneyMultiplier = 1.0;
 float g_flBossSpawnChanceBonus;
 float g_flMaxSpawnWaveTime;
-float g_flLoopMusicAt[MAXTF2PLAYERS] = {-1.0, ...};
+float g_flLoopMusicAt[MAXPLAYERS] = {-1.0, ...};
 float g_flStageBGMDuration;
 float g_flBossBGMDuration;
 
@@ -95,7 +97,7 @@ int g_iTotalItemsFound;
 int g_iTanksKilledObjective;
 int g_iTankKillRequirement = 1;
 int g_iTanksSpawned;
-int g_iMetalItemsDropped[MAXTF2PLAYERS];
+int g_iMetalItemsDropped[MAXPLAYERS];
 int g_iWorldCenterEntity = INVALID_ENT;
 int g_iTeleporterEntRef = INVALID_ENT;
 int g_iRF2GameRulesEntity = INVALID_ENT;
@@ -124,7 +126,7 @@ int g_iMainHudR = 100;
 int g_iMainHudG = 255;
 int g_iMainHudB = 100;
 char g_szHudDifficulty[128] = "Difficulty: Easy";
-char g_szObjectiveHud[MAXTF2PLAYERS][128];
+char g_szObjectiveHud[MAXPLAYERS][128];
 
 // g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i],
 // g_flPlayerNextLevelXP[i], cashString, g_szHudDifficulty, strangeItemInfo, miscText
@@ -134,100 +136,100 @@ char g_szSurvivorHudText[2048] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i
 char g_szEnemyHudText[1024] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i\n%s\n%s";
 
 // Players
-bool g_bPlayerViewingItemMenu[MAXTF2PLAYERS];
-bool g_bPlayerIsTeleporterBoss[MAXTF2PLAYERS];
-bool g_bPlayerIsAFK[MAXTF2PLAYERS];
-bool g_bPlayerExtraSentryHint[MAXTF2PLAYERS];
-bool g_bPlayerInSpawnQueue[MAXTF2PLAYERS];
-bool g_bPlayerHasVampireSapper[MAXTF2PLAYERS];
-bool g_bPlayerEquipmentCooldownActive[MAXTF2PLAYERS];
-bool g_bPlayerTookCollectorItem[MAXTF2PLAYERS];
-bool g_bPlayerSpawnedByTeleporter[MAXTF2PLAYERS];
-bool g_bPlayerHealBurstCooldown[MAXTF2PLAYERS];
-bool g_bPlayerTimingOut[MAXTF2PLAYERS];
-bool g_bPlayerMeleeMiss[MAXTF2PLAYERS];
-bool g_bPlayerIsMinion[MAXTF2PLAYERS];
-bool g_bPlayerSpawningAsMinion[MAXTF2PLAYERS];
-bool g_bPlayerRifleAutoFire[MAXTF2PLAYERS];
-bool g_bPlayerToggledAutoFire[MAXTF2PLAYERS];
-bool g_bPlayerOpenedHelpMenu[MAXTF2PLAYERS];
-bool g_bPlayerViewingItemDesc[MAXTF2PLAYERS];
-bool g_bPlayerReviveActivated[MAXTF2PLAYERS];
-bool g_bPlayerItemShareExcluded[MAXTF2PLAYERS];
-bool g_bPlayerHauntedKeyDrop[MAXTF2PLAYERS];
-bool g_bPlayerFullMinigunMoveSpeed[MAXTF2PLAYERS];
-bool g_bPlayerPermaDeathMark[MAXTF2PLAYERS];
-bool g_bPlayerIsDyingBoss[MAXTF2PLAYERS];
-bool g_bPlayerPressedCanteenButton[MAXTF2PLAYERS];
+bool g_bPlayerViewingItemMenu[MAXPLAYERS];
+bool g_bPlayerIsTeleporterBoss[MAXPLAYERS];
+bool g_bPlayerIsAFK[MAXPLAYERS];
+bool g_bPlayerExtraSentryHint[MAXPLAYERS];
+bool g_bPlayerInSpawnQueue[MAXPLAYERS];
+bool g_bPlayerHasVampireSapper[MAXPLAYERS];
+bool g_bPlayerEquipmentCooldownActive[MAXPLAYERS];
+bool g_bPlayerTookCollectorItem[MAXPLAYERS];
+bool g_bPlayerSpawnedByTeleporter[MAXPLAYERS];
+bool g_bPlayerHealBurstCooldown[MAXPLAYERS];
+bool g_bPlayerTimingOut[MAXPLAYERS];
+bool g_bPlayerMeleeMiss[MAXPLAYERS];
+bool g_bPlayerIsMinion[MAXPLAYERS];
+bool g_bPlayerSpawningAsMinion[MAXPLAYERS];
+bool g_bPlayerRifleAutoFire[MAXPLAYERS];
+bool g_bPlayerToggledAutoFire[MAXPLAYERS];
+bool g_bPlayerOpenedHelpMenu[MAXPLAYERS];
+bool g_bPlayerViewingItemDesc[MAXPLAYERS];
+bool g_bPlayerReviveActivated[MAXPLAYERS];
+bool g_bPlayerItemShareExcluded[MAXPLAYERS];
+bool g_bPlayerHauntedKeyDrop[MAXPLAYERS];
+bool g_bPlayerFullMinigunMoveSpeed[MAXPLAYERS];
+bool g_bPlayerPermaDeathMark[MAXPLAYERS];
+bool g_bPlayerIsDyingBoss[MAXPLAYERS];
+bool g_bPlayerPressedCanteenButton[MAXPLAYERS];
 
-float g_flPlayerXP[MAXTF2PLAYERS];
-float g_flPlayerNextLevelXP[MAXTF2PLAYERS] = {100.0, ...};
-float g_flPlayerCash[MAXTF2PLAYERS];
-float g_flPlayerMaxSpeed[MAXTF2PLAYERS] = {300.0, ...};
-float g_flPlayerCalculatedMaxSpeed[MAXTF2PLAYERS] = {300.0, ...};
-float g_flPlayerHealthRegenTime[MAXTF2PLAYERS];
-float g_flPlayerNextMetalRegen[MAXTF2PLAYERS];
-float g_flPlayerEquipmentItemCooldown[MAXTF2PLAYERS];
-float g_flPlayerGiantFootstepInterval[MAXTF2PLAYERS] = {0.5, ...};
-float g_flPlayerAFKTime[MAXTF2PLAYERS];
-float g_flPlayerVampireSapperCooldown[MAXTF2PLAYERS];
-float g_flPlayerVampireSapperDamage[MAXTF2PLAYERS];
-float g_flPlayerVampireSapperDuration[MAXTF2PLAYERS];
-float g_flPlayerReloadBuffDuration[MAXTF2PLAYERS];
-float g_flPlayerNextDemoSpellTime[MAXTF2PLAYERS];
-float g_flPlayerNextFireSpellTime[MAXTF2PLAYERS];
-float g_flPlayerRegenBuffTime[MAXTF2PLAYERS];
-float g_flPlayerKnifeStunCooldown[MAXTF2PLAYERS];
-float g_flPlayerRifleHeadshotBonusTime[MAXTF2PLAYERS];
-float g_flPlayerGravityJumpBonusTime[MAXTF2PLAYERS];
-float g_flPlayerTimeSinceLastPing[MAXTF2PLAYERS];
-float g_flPlayerTimeSinceLastItemPickup[MAXTF2PLAYERS];
-float g_flPlayerCaberRechargeAt[MAXTF2PLAYERS];
-float g_flPlayerHeavyArmorPoints[MAXTF2PLAYERS] = {100.0, ...};
-float g_flPlayerShieldRegenTime[MAXTF2PLAYERS];
-float g_flPlayerRocketJumpTime[MAXTF2PLAYERS];
-float g_flPlayerLastTabPressTime[MAXTF2PLAYERS];
-float g_flPlayerHardHatLastResistTime[MAXTF2PLAYERS];
-float g_flPlayerLastBlockTime[MAXTF2PLAYERS];
-float g_flPlayerDelayedHealTime[MAXTF2PLAYERS];
-float g_flPlayerLifestealTime[MAXTF2PLAYERS];
-float g_flPlayerWarswornBuffTime[MAXTF2PLAYERS];
-float g_flPlayerMedicShieldNextUseTime[MAXTF2PLAYERS];
-float g_flPlayerNextParasiteHealTime[MAXTF2PLAYERS];
-float g_flPlayerNextExecutionerBleedTime[MAXTF2PLAYERS];
-float g_flPlayerNextLawFireTime[MAXTF2PLAYERS];
+float g_flPlayerXP[MAXPLAYERS];
+float g_flPlayerNextLevelXP[MAXPLAYERS] = {100.0, ...};
+float g_flPlayerCash[MAXPLAYERS];
+float g_flPlayerMaxSpeed[MAXPLAYERS] = {300.0, ...};
+float g_flPlayerCalculatedMaxSpeed[MAXPLAYERS] = {300.0, ...};
+float g_flPlayerHealthRegenTime[MAXPLAYERS];
+float g_flPlayerNextMetalRegen[MAXPLAYERS];
+float g_flPlayerEquipmentItemCooldown[MAXPLAYERS];
+float g_flPlayerGiantFootstepInterval[MAXPLAYERS] = {0.5, ...};
+float g_flPlayerAFKTime[MAXPLAYERS];
+float g_flPlayerVampireSapperCooldown[MAXPLAYERS];
+float g_flPlayerVampireSapperDamage[MAXPLAYERS];
+float g_flPlayerVampireSapperDuration[MAXPLAYERS];
+float g_flPlayerReloadBuffDuration[MAXPLAYERS];
+float g_flPlayerNextDemoSpellTime[MAXPLAYERS];
+float g_flPlayerNextFireSpellTime[MAXPLAYERS];
+float g_flPlayerRegenBuffTime[MAXPLAYERS];
+float g_flPlayerKnifeStunCooldown[MAXPLAYERS];
+float g_flPlayerRifleHeadshotBonusTime[MAXPLAYERS];
+float g_flPlayerGravityJumpBonusTime[MAXPLAYERS];
+float g_flPlayerTimeSinceLastPing[MAXPLAYERS];
+float g_flPlayerTimeSinceLastItemPickup[MAXPLAYERS];
+float g_flPlayerCaberRechargeAt[MAXPLAYERS];
+float g_flPlayerHeavyArmorPoints[MAXPLAYERS] = {100.0, ...};
+float g_flPlayerShieldRegenTime[MAXPLAYERS];
+float g_flPlayerRocketJumpTime[MAXPLAYERS];
+float g_flPlayerLastTabPressTime[MAXPLAYERS];
+float g_flPlayerHardHatLastResistTime[MAXPLAYERS];
+float g_flPlayerLastBlockTime[MAXPLAYERS];
+float g_flPlayerDelayedHealTime[MAXPLAYERS];
+float g_flPlayerLifestealTime[MAXPLAYERS];
+float g_flPlayerWarswornBuffTime[MAXPLAYERS];
+float g_flPlayerMedicShieldNextUseTime[MAXPLAYERS];
+float g_flPlayerNextParasiteHealTime[MAXPLAYERS];
+float g_flPlayerNextExecutionerBleedTime[MAXPLAYERS];
+float g_flPlayerNextLawFireTime[MAXPLAYERS];
 
-int g_iPlayerInventoryIndex[MAXTF2PLAYERS] = {-1, ...};
-int g_iPlayerLevel[MAXTF2PLAYERS] = {1, ...};
-int g_iPlayerBaseHealth[MAXTF2PLAYERS] = {1, ...};
-int g_iPlayerCalculatedMaxHealth[MAXTF2PLAYERS] = {1, ...};
-int g_iPlayerSurvivorIndex[MAXTF2PLAYERS] = {-1, ...};
-int g_iPlayerEquipmentItemCharges[MAXTF2PLAYERS] = {1, ...};
-int g_iPlayerEnemyType[MAXTF2PLAYERS] = {-1, ...};
-int g_iPlayerEnemySpawnType[MAXTF2PLAYERS] = {-1, ...};
-int g_iPlayerBossSpawnType[MAXTF2PLAYERS] = {-1, ...};
-int g_iPlayerVoiceType[MAXTF2PLAYERS];
-int g_iPlayerVoicePitch[MAXTF2PLAYERS] = {SNDPITCH_NORMAL, ...};
-int g_iPlayerFootstepType[MAXTF2PLAYERS] = {FootstepType_Normal, ...};
-int g_iPlayerFireRateStacks[MAXTF2PLAYERS];
-int g_iPlayerAirDashCounter[MAXTF2PLAYERS];
-int g_iPlayerLastAttackedTank[MAXTF2PLAYERS] = {INVALID_ENT, ...};
+int g_iPlayerInventoryIndex[MAXPLAYERS] = {-1, ...};
+int g_iPlayerLevel[MAXPLAYERS] = {1, ...};
+int g_iPlayerBaseHealth[MAXPLAYERS] = {1, ...};
+int g_iPlayerCalculatedMaxHealth[MAXPLAYERS] = {1, ...};
+int g_iPlayerSurvivorIndex[MAXPLAYERS] = {-1, ...};
+int g_iPlayerEquipmentItemCharges[MAXPLAYERS] = {1, ...};
+int g_iPlayerEnemyType[MAXPLAYERS] = {-1, ...};
+int g_iPlayerEnemySpawnType[MAXPLAYERS] = {-1, ...};
+int g_iPlayerBossSpawnType[MAXPLAYERS] = {-1, ...};
+int g_iPlayerVoiceType[MAXPLAYERS];
+int g_iPlayerVoicePitch[MAXPLAYERS] = {SNDPITCH_NORMAL, ...};
+int g_iPlayerFootstepType[MAXPLAYERS] = {FootstepType_Normal, ...};
+int g_iPlayerFireRateStacks[MAXPLAYERS];
+int g_iPlayerAirDashCounter[MAXPLAYERS];
+int g_iPlayerLastAttackedTank[MAXPLAYERS] = {INVALID_ENT, ...};
 int g_iPlayerItemsTaken[MAX_SURVIVORS];
 int g_iPlayerItemLimit[MAX_SURVIVORS];
-int g_iPlayerVampireSapperAttacker[MAXTF2PLAYERS] = {INVALID_ENT, ...};
-int g_iPlayerLastScrapMenuItem[MAXTF2PLAYERS];
-int g_iPlayerLastItemMenuItem[MAXTF2PLAYERS];
-int g_iPlayerLastDropMenuItem[MAXTF2PLAYERS];
-int g_iPlayerLastItemLogItem[MAXTF2PLAYERS];
-int g_iPlayerUnusualsUnboxed[MAXTF2PLAYERS];
-int g_iPlayerGoombaChain[MAXTF2PLAYERS];
-int g_iPlayerLastPingedEntity[MAXTF2PLAYERS] = {INVALID_ENT, ...};
-int g_iPlayerShieldHealth[MAXTF2PLAYERS];
-int g_iPlayerCollectorSwapCount[MAXTF2PLAYERS];
-int g_iPlayerPowerupBottle[MAXTF2PLAYERS] = {INVALID_ENT, ...};
+int g_iPlayerVampireSapperAttacker[MAXPLAYERS] = {INVALID_ENT, ...};
+int g_iPlayerLastScrapMenuItem[MAXPLAYERS];
+int g_iPlayerLastItemMenuItem[MAXPLAYERS];
+int g_iPlayerLastDropMenuItem[MAXPLAYERS];
+int g_iPlayerLastItemLogItem[MAXPLAYERS];
+int g_iPlayerUnusualsUnboxed[MAXPLAYERS];
+int g_iPlayerGoombaChain[MAXPLAYERS];
+int g_iPlayerLastPingedEntity[MAXPLAYERS] = {INVALID_ENT, ...};
+int g_iPlayerShieldHealth[MAXPLAYERS];
+int g_iPlayerCollectorSwapCount[MAXPLAYERS];
+int g_iPlayerPowerupBottle[MAXPLAYERS] = {INVALID_ENT, ...};
 
-char g_szPlayerOriginalName[MAXTF2PLAYERS][MAX_NAME_LENGTH];
-ArrayList g_hPlayerExtraSentryList[MAXTF2PLAYERS];
+char g_szPlayerOriginalName[MAXPLAYERS][MAX_NAME_LENGTH];
+ArrayList g_hPlayerExtraSentryList[MAXPLAYERS];
 StringMap g_hCrashedPlayerSteamIDs;
 Handle g_hCrashedPlayerTimers[MAX_SURVIVORS];
 
@@ -251,7 +253,7 @@ float g_flSentryNextLaserTime[MAX_EDICTS];
 float g_flCashBombAmount[MAX_EDICTS];
 float g_flCashValue[MAX_EDICTS];
 float g_flTeleporterNextSpawnTime[MAX_EDICTS];
-float g_flLastHalloweenBossAttackTime[MAX_EDICTS][MAXTF2PLAYERS];
+float g_flLastHalloweenBossAttackTime[MAX_EDICTS][MAXPLAYERS];
 
 ArrayList g_hHHHTargets;
 ArrayList g_hMonoculusTargets;
@@ -275,6 +277,7 @@ Handle g_hSDKRealizeSpy;
 Handle g_hSDKSpawnZombie;
 Handle g_hSDKTankSetStartNode;
 Handle g_hSDKCreateDroppedWeapon;
+Handle g_hSDKLoadEvents;
 DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourSetReloadTimer;
 DynamicDetour g_hDetourApplyPunchImpulse;
@@ -297,6 +300,7 @@ DynamicHook g_hHookForceRespawn;
 DynamicHook g_hHookCreateFakeClientEx;
 DynamicHook g_hHookDedicatedServer;
 DynamicHook g_hHookPassesFilterImpl;
+DynamicHook g_hHookIsAbleToSee;
 
 // Forwards
 GlobalForward g_fwTeleEventStart;
@@ -414,8 +418,8 @@ Cookie g_coAlwaysShowItemCounts;
 Cookie g_coItemShareKarma;
 
 // TFBots
-TFBot g_TFBot[MAXTF2PLAYERS];
-ArrayList g_hTFBotEngineerBuildings[MAXTF2PLAYERS];
+TFBot g_TFBot[MAXPLAYERS];
+ArrayList g_hTFBotEngineerBuildings[MAXPLAYERS];
 
 public const char g_szTeddyBearSounds[][] =
 {
@@ -556,7 +560,7 @@ public void OnPluginEnd()
 	{
 		FindConVar("tf_bot_offline_practice").SetBool(false);
 		StopMusicTrackAll();
-		for (int i = 0; i < MAXTF2PLAYERS; i++)
+		for (int i = 0; i < MAXPLAYERS; i++)
 		{
 			if (IsValidClient(i))
 			{
@@ -829,7 +833,20 @@ void LoadGameData()
 	{
 		LogError("[DHooks] Failed to create dynamic hook for CBaseFilter::PassesFilterImpl");
 	}
-
+	
+	
+	g_hHookIsAbleToSee = new DynamicHook(gamedata.GetOffset("IVision::IsAbleToSee(CBaseEntity)"), HookType_Raw, ReturnType_Bool, ThisPointer_Address);
+	if (g_hHookIsAbleToSee)
+	{
+		g_hHookIsAbleToSee.AddParam(HookParamType_CBaseEntity); // subject
+		g_hHookIsAbleToSee.AddParam(HookParamType_Int); // checkFOV type
+		g_hHookIsAbleToSee.AddParam(HookParamType_VectorPtr); // visibleSpot
+	}
+	else
+	{
+		LogError("[DHooks] Failed to create dynamic hook for IVision::IsAbleToSee(CBaseEntity)");
+	}
+	
 	
 	delete gamedata;
 	gamedata = new GameData("sdkhooks.games");
@@ -881,6 +898,27 @@ public void OnMapStart()
 		ReplaceStringEx(fileName, sizeof(fileName), ".smx", "");
 		InsertServerCommand("sm plugins load_unlock; sm plugins reload %s", fileName);
 		return;
+	}
+	
+	//g_bCustomEventsAvailable = false;
+	if (g_aGameEventManager && g_hSDKLoadEvents)
+	{
+		char eventsFile[PLATFORM_MAX_PATH];
+		BuildPath(Path_SM, eventsFile, sizeof(eventsFile), "data/rf2/rf2events.res");
+		LogMessage("Loading custom events file '%s'", eventsFile);
+		if (SDKCall(g_hSDKLoadEvents, g_aGameEventManager, eventsFile))
+		{
+			//g_bCustomEventsAvailable = true;
+			LogMessage("Success!");
+		}
+		else
+		{
+			LogError("FAILED to load custom events file '%s'", eventsFile);
+		}
+	}
+	else
+	{
+		LogError("FAILED to load custom events file (Missing Gamedata!)");
 	}
 	
 	g_bMapChanging = false;
@@ -965,23 +1003,7 @@ public void OnMapStart()
 		waitTime.Flags &= ~FCVAR_DEVELOPMENTONLY;
 		waitTime.SetInt(WAIT_TIME_DEFAULT);
 		
-		// Round events
-		HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Pre);
-		HookEvent("teamplay_round_win", OnRoundEnd, EventHookMode_Post);
-		HookEvent("teamplay_broadcast_audio", OnBroadcastAudio, EventHookMode_Pre);
-		
-		// Player events
-		HookEvent("post_inventory_application", OnPostInventoryApplication, EventHookMode_Post);
-		HookEvent("player_death", OnPlayerDeath, EventHookMode_Pre);
-		HookEvent("player_chargedeployed", OnPlayerChargeDeployed, EventHookMode_Post);
-		HookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
-		HookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
-		HookEvent("player_upgradedobject", OnPlayerUpgradeObject, EventHookMode_Post);
-		HookEvent("player_team", OnChangeTeamMessage, EventHookMode_Pre);
-		HookEvent("player_connect_client", OnPlayerConnect, EventHookMode_Pre);
-		HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
-		HookEvent("player_healonhit", OnPlayerHealOnHit, EventHookMode_Pre);
-		HookEvent("npc_hurt", OnNpcHurt, EventHookMode_Post);
+		HookEvents();
 		
 		// Command listeners
 		AddCommandListener(OnVoiceCommand, "voicemenu");
@@ -1134,9 +1156,26 @@ public void OnMapEnd()
 	}
 }
 
-void CleanUp()
+void HookEvents()
 {
-	CleanPathFollowers();
+	HookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Pre);
+	HookEvent("teamplay_round_win", OnRoundEnd, EventHookMode_Post);
+	HookEvent("teamplay_broadcast_audio", OnBroadcastAudio, EventHookMode_Pre);
+	HookEvent("post_inventory_application", OnPostInventoryApplication, EventHookMode_Post);
+	HookEvent("player_death", OnPlayerDeath, EventHookMode_Pre);
+	HookEvent("player_chargedeployed", OnPlayerChargeDeployed, EventHookMode_Post);
+	HookEvent("player_dropobject", OnPlayerDropObject, EventHookMode_Post);
+	HookEvent("player_builtobject", OnPlayerBuiltObject, EventHookMode_Post);
+	HookEvent("player_upgradedobject", OnPlayerUpgradeObject, EventHookMode_Post);
+	HookEvent("player_team", OnChangeTeamMessage, EventHookMode_Pre);
+	HookEvent("player_connect_client", OnPlayerConnect, EventHookMode_Pre);
+	HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
+	HookEvent("player_healonhit", OnPlayerHealOnHit, EventHookMode_Pre);
+	HookEvent("npc_hurt", OnNpcHurt, EventHookMode_Post);
+}
+
+void UnhookEvents()
+{
 	UnhookEvent("teamplay_round_start", OnRoundStart, EventHookMode_Pre);
 	UnhookEvent("teamplay_round_win", OnRoundEnd, EventHookMode_Post);
 	UnhookEvent("teamplay_broadcast_audio", OnBroadcastAudio, EventHookMode_Pre);
@@ -1151,6 +1190,12 @@ void CleanUp()
 	UnhookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
 	UnhookEvent("player_healonhit", OnPlayerHealOnHit, EventHookMode_Pre);
 	UnhookEvent("npc_hurt", OnNpcHurt, EventHookMode_Post);
+}
+
+void CleanUp()
+{
+	CleanPathFollowers();
+	UnhookEvents();
 	RemoveCommandListener(OnVoiceCommand, "voicemenu");
 	RemoveCommandListener(OnChangeClass, "joinclass");
 	RemoveCommandListener(OnChangeTeam, "jointeam");
@@ -1433,6 +1478,17 @@ public void OnClientPutInServer(int client)
 		{
 			TFBot(client).Path = PathFollower(INVALID_FUNCTION, FilterIgnoreActors, FilterOnlyActors);
 			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_TFBotWeaponCanSwitch);
+			SDKHook(client, SDKHook_Touch, Hook_TFBotTouch);
+			SDKHook(client, SDKHook_TouchPost, Hook_TFBotTouchPost);
+			if (g_hHookIsAbleToSee)
+			{
+				IVision vision = TFBot(client).GetVision();
+				if (vision)
+				{
+					g_hHookIsAbleToSee.HookRaw(Hook_Pre, view_as<Address>(vision), DHook_IsAbleToSee);
+					g_hHookIsAbleToSee.HookRaw(Hook_Post, view_as<Address>(vision), DHook_IsAbleToSeePost);
+				}
+			}
 		}
 		else
 		{
@@ -1847,7 +1903,7 @@ void StartDifficultyVote()
 		menu.AddItem("3", "Titanium (Expert)");
 	}
 	
-	int clients[MAXTF2PLAYERS] = {-1, ...};
+	int clients[MAXPLAYERS] = {-1, ...};
 	int clientCount;
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -2073,7 +2129,6 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	ClientCommand(client, "slot10");
 	TF2Attrib_SetByName(client, "mod see enemy health", 1.0);
 	TF2Attrib_SetByName(client, "cancel falling damage", 1.0);
-	
 	TF2_AddCondition(client, TFCond_UberchargedHidden, 0.2);
 	if (g_bGracePeriod && IsPlayerSurvivor(client) && !IsPlayerMinion(client) && TF2_GetPlayerClass(client) == TFClass_Medic)
 	{
@@ -2274,7 +2329,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					g_iTotalBossesKilled++;
 					size = 3;
 					EmitSoundToAll(SND_SENTRYBUSTER_BOOM, victim, _, SNDLEVEL_SCREAMING);
-					TE_TFParticle("fireSmokeExplosion", pos);
+					TE_TFParticle("hightower_explosion", pos);
 					RequestFrame(RF_DeleteRagdoll, victim);
 				}
 			}
@@ -3163,7 +3218,7 @@ public Action OnNpcHurt(Event event, const char[] name, bool dontBroadcast)
 		int attacker = GetClientOfUserId(event.GetInt("attacker_player"));
 		if (IsValidClient(attacker))
 		{
-			int clients[MAXTF2PLAYERS];
+			int clients[MAXPLAYERS];
 			clients[0] = attacker;
 			float pos[3];
 			GetEntPos(npc, pos, true);
@@ -3171,7 +3226,6 @@ public Action OnNpcHurt(Event event, const char[] name, bool dontBroadcast)
 			EmitGameSoundToClient(attacker, GSND_CRIT);
 		}
 	}
-
 	return Plugin_Continue;
 }
 
@@ -3311,7 +3365,7 @@ public Action UserMessageHook_SayText2(UserMsg msg, BfRead bf, const int[] clien
 	return Plugin_Continue;
 }
 
-int g_iEnemySpawnPoints[MAXTF2PLAYERS];
+int g_iEnemySpawnPoints[MAXPLAYERS];
 public void Timer_EnemySpawnWave(Handle timer)
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive || g_iEnemyCount <= 0 || IsStageCleared())
@@ -3366,7 +3420,7 @@ public void Timer_EnemySpawnWave(Handle timer)
 	// Reset everyone's points
 	if (g_iRespawnWavesCompleted <= 0)
 	{
-		for (int i = 1; i < MAXTF2PLAYERS; i++)
+		for (int i = 1; i < MAXPLAYERS; i++)
 			g_iEnemySpawnPoints[i] = 0;
 	}
 	
@@ -4119,7 +4173,7 @@ public Action Timer_PlayerTimer(Handle timer)
 	bool itemShare = IsItemSharingEnabled();
 	bool missingItems;
 	bool canDisableSharing;
-	static float timeSincePingHint[MAXTF2PLAYERS];
+	static float timeSincePingHint[MAXPLAYERS];
 	float maxShareTime = g_cvItemShareMaxTime.FloatValue;
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -4856,7 +4910,7 @@ public void Hook_PreThink(int client)
 		TFBot_Think(TFBot(client));
 	}
 	
-	static float lastViewAngles[MAXTF2PLAYERS][3];
+	static float lastViewAngles[MAXPLAYERS][3];
 	if (TF2_IsPlayerInCondition(client, TFCond_Dazed) && GetEntProp(client, Prop_Send, "m_iStunFlags") & TF_STUNFLAG_BONKSTUCK)
 	{
 		// If hard stunned, force last view angle to prevent hitbox desync when rotating view
@@ -5147,7 +5201,7 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	}
 }
 
-static int g_iLastFiredWeapon[MAXTF2PLAYERS] = {INVALID_ENT, ...};
+static int g_iLastFiredWeapon[MAXPLAYERS] = {INVALID_ENT, ...};
 public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponName, bool &result)
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive)
@@ -5382,7 +5436,7 @@ public void Timer_ExtendWaitCheck(Handle timer)
 	vote.AddItem("Yes", "Yes");
 	vote.AddItem("No", "No");
 	vote.ExitButton = false;
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	int clientCount;
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -6949,7 +7003,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		// Special damage reduction rules for Soldier
 		if (TF2_GetPlayerClass(victim) == TFClass_Soldier)
 		{
-			static float lastRocketJumpTime[MAXTF2PLAYERS];
+			static float lastRocketJumpTime[MAXPLAYERS];
 			if (GetEntityFlags(victim) & FL_ONGROUND
 				|| !TF2_IsPlayerInCondition(victim, TFCond_BlastJumping)
 		 		|| lastRocketJumpTime[victim]+0.5 >= GetTickedTime())
@@ -6987,7 +7041,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		damage = fmin(damage, maxDmg);
 	}
 
-	damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
+	//damage = fmin(damage, 32767.0); // Damage in TF2 overflows after this value (16 bit)
 	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;
 }
 
@@ -7423,7 +7477,7 @@ public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflicto
 	Call_PushCellRef(dummy);
 	Call_PushFloatRef(g_flDamageProc);
 	Call_Finish(result);
-	damage = fmin(damage, 32767.0);
+	//damage = fmin(damage, 32767.0);
 	return result;
 }
 
@@ -7629,7 +7683,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		}
 	}
 	
-	static bool reloadPressed[MAXTF2PLAYERS];
+	static bool reloadPressed[MAXPLAYERS];
 	if (!bot && buttons & IN_RELOAD)
 	{
 		if (!reloadPressed[client])
@@ -7651,7 +7705,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		reloadPressed[client] = false;
 	}
 	
-	static bool attack3Pressed[MAXTF2PLAYERS];
+	static bool attack3Pressed[MAXPLAYERS];
 	if (!bot && buttons & IN_ATTACK3)
 	{
 		bool canPing = true;
@@ -7776,7 +7830,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		}
 	}
 
-	static float nextFootstepTime[MAXTF2PLAYERS];
+	static float nextFootstepTime[MAXPLAYERS];
 	if (g_iPlayerFootstepType[client] == FootstepType_GiantRobot 
 		&& GetTickedTime() >= nextFootstepTime[client] 
 		&& g_cvOldGiantFootsteps.BoolValue
@@ -7871,7 +7925,7 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 		}
 
 		TFClassType class;
-		bool blacklist[MAXTF2PLAYERS];
+		bool blacklist[MAXPLAYERS];
 
 		// If we're disguised, play the original sample to our teammates before doing anything.
 		if (TF2_IsPlayerInCondition(client, TFCond_Disguised) && !IsPlayerMinion(client))

@@ -6,8 +6,8 @@
 int g_iItemCount;
 int g_iBeamModel;
 
-int g_iPlayerItem[MAXTF2PLAYERS][MAX_ITEMS];
-int g_iPlayerEquipmentItem[MAXTF2PLAYERS];
+int g_iPlayerItem[MAXPLAYERS][MAX_ITEMS];
+int g_iPlayerEquipmentItem[MAXPLAYERS];
 int g_iItemSchemaIndex[MAX_ITEMS] = {-1, ...};
 int g_iItemQuality[MAX_ITEMS] = {Quality_None, ...};
 int g_iCollectorItemClass[MAX_ITEMS];
@@ -2622,8 +2622,8 @@ int GetPlayerItemsOfQuality(int client, int quality)
 	return total;
 }
 
-static int g_iLastShownItem[MAXTF2PLAYERS];
-Handle g_hPlayerItemDescTimer[MAXTF2PLAYERS];
+static int g_iLastShownItem[MAXPLAYERS];
+Handle g_hPlayerItemDescTimer[MAXPLAYERS];
 void ShowItemDesc(int client, int item)
 {
 	if (g_iLastShownItem[client] == item)

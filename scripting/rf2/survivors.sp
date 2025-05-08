@@ -1063,7 +1063,7 @@ void RunAbsenceCheck()
 
 void ForfeitItems(int client)
 {
-	int itemCounts[MAXTF2PLAYERS][Quality_MaxValid];
+	int itemCounts[MAXPLAYERS][Quality_MaxValid];
 	ArrayList players = new ArrayList();
 	for (int i = 1; i < Quality_MaxValid; i++)
 	{
@@ -1180,7 +1180,7 @@ void ForfeitItems(int client)
 
 void ForfeitItemsByInvIndex(int index)
 {
-	int itemCounts[MAXTF2PLAYERS][Quality_MaxValid];
+	int itemCounts[MAXPLAYERS][Quality_MaxValid];
 	ArrayList players = new ArrayList();
 	for (int i = 1; i < Quality_MaxValid; i++)
 	{

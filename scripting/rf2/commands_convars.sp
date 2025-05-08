@@ -249,7 +249,7 @@ public Action Command_GiveItem(int client, int args)
 	}
 	
 	char clientName[MAX_TARGET_LENGTH], colour[32];
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	int newAmount;
 	bool multiLanguage;
 	
@@ -319,7 +319,7 @@ public Action Command_GiveAllItems(int client, int args)
 	}
 	
 	char clientName[MAX_TARGET_LENGTH];
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	bool multiLanguage;
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
 	
@@ -377,7 +377,7 @@ public Action Command_GiveCash(int client, int args)
 	float amount = GetCmdArgFloat(2);
 	
 	char clientName[MAX_TARGET_LENGTH];
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	bool multiLanguage;
 	
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
@@ -440,7 +440,7 @@ public Action Command_GiveXP(int client, int args)
 	}
 	
 	char clientName[MAX_TARGET_LENGTH];
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	bool multiLanguage;
 	
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
@@ -626,7 +626,7 @@ public Action Command_VoteSkipWait(int client, int args)
 				vote.AddItem("Yes", "Yes");
 				vote.AddItem("No", "No");
 				vote.ExitButton = false;
-				int clients[MAXTF2PLAYERS];
+				int clients[MAXPLAYERS];
 				int clientCount;
 				for (int i = 1; i <= MaxClients; i++)
 				{
@@ -712,7 +712,7 @@ public Action Command_ExtendWait(int client, int args)
 			vote.AddItem("Yes", "Yes");
 			vote.AddItem("No", "No");
 			vote.ExitButton = false;
-			int clients[MAXTF2PLAYERS];
+			int clients[MAXPLAYERS];
 			int clientCount;
 			for (int i = 1; i <= MaxClients; i++)
 			{
@@ -1162,7 +1162,7 @@ public Action Command_AddPoints(int client, int args)
 	char arg1[32];
 	
 	char clientName[MAX_TARGET_LENGTH];
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	bool multiLanguage;
 	
 	GetCmdArg(1, arg1, sizeof(arg1)); // player(s)
@@ -1853,7 +1853,7 @@ public Action Command_MakeSurvivor(int client, int args)
 	
 	char arg1[16], clientName[MAX_NAME_LENGTH];
 	bool multiLanguage;
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
@@ -2214,7 +2214,7 @@ public Action Command_TriggerAchievement(int client, int args)
 	
 	char arg1[16], clientName[MAX_NAME_LENGTH];
 	bool multiLanguage;
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
 	if (matches < 1)

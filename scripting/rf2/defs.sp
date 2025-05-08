@@ -1,7 +1,5 @@
 #pragma semicolon 1
 #pragma newdecls required
-
-#define MAXTF2PLAYERS 36
 #define MAX_EDICTS 2048
 #define PLAYER_MINS {-24.0, -24.0, 0.0}
 #define PLAYER_MAXS {24.0, 24.0, 82.0}

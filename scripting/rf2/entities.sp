@@ -564,7 +564,7 @@ int SpawnInfoParticle(const char[] effectName, const float pos[3], float duratio
 }
 
 void TE_TFParticle(const char[] effectName, const float pos[3]=OFF_THE_MAP, int entity=-1, int attachType=PATTACH_ABSORIGIN, const char[] attachmentName="",
-bool reset=false, bool controlPoint=false, const float controlPointOffset[3]=NULL_VECTOR, int clientArray[MAXTF2PLAYERS] = {-1, ...}, int clientAmount=0)
+bool reset=false, bool controlPoint=false, const float controlPointOffset[3]=NULL_VECTOR, int clientArray[MAXPLAYERS] = {-1, ...}, int clientAmount=0)
 {
 	TE_Start("TFParticleEffect");
 	int index = GetParticleEffectIndex(effectName);
@@ -1095,8 +1095,8 @@ public MRESReturn Detour_IsPotentiallyChaseablePost(Address addr, DHookReturn re
 	return MRES_Supercede;
 }
 
-static bool g_bHidingFromMonoculus[MAXTF2PLAYERS];
-static float g_flOldAbsOrigin[MAXTF2PLAYERS][3];
+static bool g_bHidingFromMonoculus[MAXPLAYERS];
+static float g_flOldAbsOrigin[MAXPLAYERS][3];
 public MRESReturn Detour_EyeFindVictim(int monoculus, DHookReturn returnVal)
 {
 	if (!RF2_IsEnabled())

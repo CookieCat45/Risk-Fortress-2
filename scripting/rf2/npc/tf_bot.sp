@@ -1,24 +1,27 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static CNavArea g_TFBotGoalArea[MAXTF2PLAYERS];
-static int g_iTFBotFlags[MAXTF2PLAYERS];
-static int g_iTFBotForcedButtons[MAXTF2PLAYERS];
-static int g_iTFBotDesiredWeaponSlot[MAXTF2PLAYERS] = {-1, ...}; 
-static float g_flTFBotStrafeTime[MAXTF2PLAYERS];
-static float g_flTFBotStrafeTimeStamp[MAXTF2PLAYERS];
-static float g_flTFBotStuckTime[MAXTF2PLAYERS];
-static float g_flTFBotLastSearchTime[MAXTF2PLAYERS];
-static float g_flTFBotLastPosCheckTime[MAXTF2PLAYERS];
-static CNavArea g_TFBotEngineerSentryArea[MAXTF2PLAYERS];
-static float g_flTFBotEngineerSearchRetryTime[MAXTF2PLAYERS];
-static bool g_bTFBotEngineerHasBuilt[MAXTF2PLAYERS];
-static bool g_bTFBotEngineerAttemptingBuild[MAXTF2PLAYERS];
-static int g_iTFBotEngineerRepairTarget[MAXTF2PLAYERS];
-static int g_iTFBotEngineerBuildAttempts[MAXTF2PLAYERS];
-static int g_iTFBotSpyBuildingTarget[MAXTF2PLAYERS];
-static float g_flTFBotSpyTimeInFOV[MAXTF2PLAYERS][MAXTF2PLAYERS];
-static float g_flTFBotLastPos[MAXTF2PLAYERS][3];
+static CNavArea g_TFBotGoalArea[MAXPLAYERS];
+static int g_iTFBotFlags[MAXPLAYERS];
+static int g_iTFBotForcedButtons[MAXPLAYERS];
+static int g_iTFBotDesiredWeaponSlot[MAXPLAYERS] = {-1, ...}; 
+static float g_flTFBotStrafeTime[MAXPLAYERS];
+static float g_flTFBotStrafeTimeStamp[MAXPLAYERS];
+static float g_flTFBotStuckTime[MAXPLAYERS];
+static float g_flTFBotLastSearchTime[MAXPLAYERS];
+static float g_flTFBotLastPosCheckTime[MAXPLAYERS];
+static CNavArea g_TFBotEngineerSentryArea[MAXPLAYERS];
+static float g_flTFBotEngineerSearchRetryTime[MAXPLAYERS];
+static bool g_bTFBotEngineerHasBuilt[MAXPLAYERS];
+static bool g_bTFBotEngineerAttemptingBuild[MAXPLAYERS];
+static int g_iTFBotEngineerRepairTarget[MAXPLAYERS];
+static int g_iTFBotEngineerBuildAttempts[MAXPLAYERS];
+static int g_iTFBotSpyBuildingTarget[MAXPLAYERS];
+static float g_flTFBotSpyTimeInFOV[MAXPLAYERS][MAXPLAYERS];
+static float g_flTFBotLastPos[MAXPLAYERS][3];
+static float g_flTFBotSpyForgetTime[MAXPLAYERS][MAXPLAYERS];
+
+#define SPY_REMEMBER_TIME 5.0
 
 enum //AttributeType (most of these probably don't work outside of MvM? Haven't tested much.)
 {
@@ -51,7 +54,7 @@ enum //AttributeType (most of these probably don't work outside of MvM? Haven't 
 	PARACHUTE					= 1<<26,				// 67108864 demo/soldier parachute when falling
 	PROJECTILE_SHIELD			= 1<<27,				// (DOES NOT WORK) 134217728 medic projectile shield
 };
-static int g_iTFBotBehaviorAttributes[MAXTF2PLAYERS];
+static int g_iTFBotBehaviorAttributes[MAXPLAYERS];
 
 // Note: these are plugin-specific, not the actual MissionType enum in TF2 code.
 // Do NOT set these manually, only use these to check what the bot is currently doing.
@@ -64,14 +67,14 @@ enum TFBotMission
 	MISSION_BUILD, // An Engineer trying to build
 	MISSION_REPAIR, // An Engineer repairing/upgrading a building
 };
-static TFBotMission g_TFBotMissionType[MAXTF2PLAYERS];
+static TFBotMission g_TFBotMissionType[MAXPLAYERS];
 
 enum TFBotStrafeDir
 {
 	Strafe_Left,
 	Strafe_Right,
 };
-static TFBotStrafeDir g_TFBotStrafeDirection[MAXTF2PLAYERS];
+static TFBotStrafeDir g_TFBotStrafeDirection[MAXPLAYERS];
 
 methodmap TFBot
 {
@@ -308,7 +311,17 @@ methodmap TFBot
 		public get()			{ return EntRefToEntIndex(g_iTFBotSpyBuildingTarget[this.Client]); }
 		public set(int entity)	{ g_iTFBotSpyBuildingTarget[this.Client] = entity <= 0 ? entity : EntIndexToEntRef(entity); }
 	}
-
+	
+	public float GetSpyForgetTime(int spy)
+	{
+		return g_flTFBotSpyForgetTime[this.Client][spy];
+	}
+	
+	public void SetSpyForgetTime(int spy, float val)
+	{
+		g_flTFBotSpyForgetTime[this.Client][spy] = val;
+	}
+	
 	// NextBot
 	public INextBot GetNextBot() 
 	{
@@ -395,12 +408,24 @@ methodmap TFBot
 		CopyVectors(buffer, g_flTFBotLastPos[this.Client]);
 	}
 	
-	public void RealizeSpy(int spy)
+	public void RealizeSpy(int spy, bool remember=true)
 	{
 		if (g_hSDKRealizeSpy)
 		{
+			// since we are forcing the bot to realize the spy, we should have a short period
+			// where the mvm spy detection code will be disabled for them
+			if (remember)
+			{
+				this.SetSpyForgetTime(spy, GetTickedTime()+SPY_REMEMBER_TIME);
+			}
+			
 			SDKCall(g_hSDKRealizeSpy, this.Client, spy);
 		}
+	}
+	
+	public bool ShouldRememberSpy(int spy)
+	{
+		return GetTickedTime() < this.GetSpyForgetTime(spy);
 	}
 }
 
@@ -466,7 +491,7 @@ void TFBot_Think(TFBot bot)
 			}
 		}
 		
-		static float lastStuckTime[MAXTF2PLAYERS];
+		static float lastStuckTime[MAXPLAYERS];
 		if (bot.GetLocomotion().IsStuck())
 		{
 			lastStuckTime[bot.Client] = GetTickedTime();
@@ -1250,7 +1275,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		return Plugin_Continue;
 	}
 	
-	static bool reloading[MAXTF2PLAYERS];
+	static bool reloading[MAXPLAYERS];
 	int activeWep = GetActiveWeapon(client);
 	if (activeWep != INVALID_ENT && activeWep != GetPlayerWeaponSlot(client, WeaponSlot_Melee))
 	{
@@ -1312,7 +1337,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	
 	if (IsBoss(client))
 	{
-		static bool ducking[MAXTF2PLAYERS];
+		static bool ducking[MAXPLAYERS];
 		bool oldDuckState = ducking[client];
 		ducking[client] = asBool(GetEntProp(client, Prop_Send, "m_bDucked"));
 		if (oldDuckState != ducking[client])
@@ -1535,7 +1560,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		}
 		
 		delete sentryList;
-		static float timeIdle[MAXTF2PLAYERS];
+		static float timeIdle[MAXPLAYERS];
 		if (!sentry && !usingSapper && IsValidClient(threat) && bot.GetVision().IsLineOfSightClearToEntity(threat))
 		{
 			timeIdle[client] = 0.0;
@@ -1711,7 +1736,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	{
 		if (GetEntityFlags(client) & FL_ONGROUND)
 		{
-			static bool lastJumpState[MAXTF2PLAYERS];
+			static bool lastJumpState[MAXPLAYERS];
 			if (!lastJumpState[client])
 			{
 				buttons |= IN_JUMP;
@@ -1884,6 +1909,107 @@ public MRESReturn Detour_OnWeaponFired(DHookParam params)
 	}
 	
 	return MRES_Ignored;
+}
+
+public MRESReturn DHook_IsAbleToSee(Address vision, DHookReturn returnVal, DHookParam params)
+{
+	GameRules_SetProp("m_bPlayingMannVsMachine", true); // match MvM spy logic
+	
+	// find the bot
+	int bot = INVALID_ENT;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && IsFakeClient(i))
+		{
+			IVision botVision = TFBot(i).GetVision();
+			if (view_as<Address>(botVision) == vision)
+			{
+				bot = i;
+				break;
+			}
+		}
+	}
+	
+	if (bot == INVALID_ENT || !IsPlayerAlive(bot))
+		return MRES_Ignored;
+		
+	int subject = params.Get(1);
+	if (TFBot(bot).ShouldRememberSpy(subject) && IsValidClient(subject) && TF2_GetPlayerClass(subject) == TFClass_Spy)
+	{
+		// we're being forced to remember this spy, so disable the mvm spy detection code
+		GameRules_SetProp("m_bPlayingMannVsMachine", false);
+	}
+	
+	float pos[3];
+	GetEntPos(subject, pos, true);
+	CNavArea area = TheNavMesh.GetNavArea(pos, 200.0);
+	if (area == NULL_AREA)
+	{
+		// subject doesn't have a nav area below them - do our own LOS trace
+		// this fixes "godspots"
+		float eyePos[3];
+		GetClientEyePosition(bot, eyePos);
+		TR_TraceRayFilter(eyePos, pos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
+		returnVal.Value = !TR_DidHit() && view_as<IVision>(vision).IsVisibleEntityNoticed(subject);
+		GameRules_SetProp("m_bPlayingMannVsMachine", false);
+		return MRES_Supercede;
+	}
+	
+	return MRES_Ignored;
+}
+
+public MRESReturn DHook_IsAbleToSeePost(Address vision, DHookReturn returnVal, DHookParam params)
+{
+	GameRules_SetProp("m_bPlayingMannVsMachine", false);
+	if (returnVal.Value)
+	{
+		// find the bot
+		int bot = INVALID_ENT;
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (IsClientInGame(i) && IsFakeClient(i))
+			{
+				IVision botVision = TFBot(i).GetVision();
+				if (view_as<Address>(botVision) == vision)
+				{
+					bot = i;
+					break;
+				}
+			}
+		}
+		
+		if (bot == INVALID_ENT || !IsPlayerAlive(bot))
+			return MRES_Ignored;
+			
+		int subject = params.Get(1);
+		if (TFBot(bot).ShouldRememberSpy(subject))
+		{
+			// we can still see this spy, remember him for longer
+			TFBot(bot).SetSpyForgetTime(subject, fmin(TFBot(bot).GetSpyForgetTime(subject)+1.0, 
+															GetTickedTime()+SPY_REMEMBER_TIME));
+		}
+	}
+	
+	return MRES_Ignored;
+}
+
+public Action Hook_TFBotTouch(int entity, int other)
+{
+	if (GetClientTeam(entity) == TEAM_ENEMY && IsValidClient(other) && TF2_GetPlayerClass(other) == TFClass_Spy)
+	{
+		// match MvM spy logic
+		GameRules_SetProp("m_bPlayingMannVsMachine", true);
+	}
+	
+	return Plugin_Continue;
+}
+
+public void Hook_TFBotTouchPost(int entity, int other)
+{
+	if (GetClientTeam(entity) == TEAM_ENEMY && IsValidClient(other) && TF2_GetPlayerClass(other) == TFClass_Spy)
+	{
+		GameRules_SetProp("m_bPlayingMannVsMachine", false);
+	}
 }
 
 void UpdateBotQuota()

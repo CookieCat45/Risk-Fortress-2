@@ -41,7 +41,7 @@ enum
 	MAX_ACHIEVEMENTS,
 }
 
-static int g_Achievement[MAXTF2PLAYERS][MAX_ACHIEVEMENTS];
+static int g_Achievement[MAXPLAYERS][MAX_ACHIEVEMENTS];
 
 void TriggerAchievement(int client, int achievement)
 {
@@ -170,14 +170,15 @@ bool IsAchievementHidden(int achievement)
 	{
 		return !DoesUnderworldExist();
 	}
-
+	
 	if (achievement == ACHIEVEMENT_BEATGAME || achievement == ACHIEVEMENT_BEATGAMESTEEL || achievement == ACHIEVEMENT_BEATGAMETITANIUM)
 	{
 		return !DoesFinalMapExist();
 	}
 	
 	// deprecated achievements, always hidden
-	return achievement == ACHIEVEMENT_DANCE || achievement == ACHIEVEMENT_BADMAGIC || achievement == ACHIEVEMENT_AIRJUMPS;
+	return achievement == ACHIEVEMENT_DANCE || achievement == ACHIEVEMENT_BADMAGIC 
+		|| achievement == ACHIEVEMENT_AIRJUMPS || achievement == ACHIEVEMENT_DAMAGECAP;
 }
 
 void OnAchievementUnlocked(int client, int achievement)

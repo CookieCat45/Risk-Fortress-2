@@ -13,7 +13,7 @@ enum
 int g_iMaxStages;
 char g_szEnemyPackName[64];
 char g_szBossPackName[64];
-char g_szClientBGM[MAXTF2PLAYERS][PLATFORM_MAX_PATH];
+char g_szClientBGM[MAXPLAYERS][PLATFORM_MAX_PATH];
 char g_szStageBGM[PLATFORM_MAX_PATH];
 char g_szBossBGM[PLATFORM_MAX_PATH];
 char g_szUnderworldMap[PLATFORM_MAX_PATH];
@@ -490,7 +490,7 @@ void PlayCustomMusicTrackAll(int trackIndex)
 
 void StopMusicTrackAll()
 {
-	for (int i = 1; i <= MAXTF2PLAYERS; i++)
+	for (int i = 1; i <= MAXPLAYERS; i++)
 	{
 		if (i > MaxClients)
 			continue;

@@ -392,6 +392,22 @@ public void RF_ReplaceNewWeapon(DataPack pack)
 	g_bDisableGiveItemForward = false;
 	delete item;
 	EquipPlayerWeapon(client, weapon);
+	UpdateWeaponMeters(client);
+}
+
+void UpdateWeaponMeters(int client)
+{
+	CreateTimer(0.1, Timer_WeaponMeterUpdate, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public void Timer_WeaponMeterUpdate(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return;
+		
+	Event event = CreateEvent("localplayer_pickup_weapon", true);
+	event.FireToClient(client);
+	delete event;
 }
 
 public void RF_ResetGiveItemBool()
@@ -567,6 +583,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 	
 	int wepEnt = TF2Items_GiveNamedItem(client, weapon);
 	EquipPlayerWeapon(client, wepEnt);
+	UpdateWeaponMeters(client);
 	delete weapon;
 	
 	if (!visible)
@@ -1151,7 +1168,6 @@ StringMap GetRandomCustomWeaponData(TFClassType class)
 		FormatEx(key, sizeof(key), "%s%d", classStr, i);
 		if (g_hCustomWeapons.ContainsKey(key))
 		{
-			DebugMsg(key);
 			StringMap map;
 			g_hCustomWeapons.GetValue(key, map);
 			list.Push(map.Clone());
@@ -1212,7 +1228,6 @@ int CreateCustomWeaponFromData(StringMap data, int client, bool equip=false)
 				// paintkit_proto_def_index requires a bit representation of a float value
 				int intVal = RoundToFloor(value);
 				value = view_as<float>(intVal);
-				DebugMsg("%d %f", intVal, value);
 			}
 
 			TF2Items_SetNumAttributes(weapon, attribCount+1);
@@ -1231,6 +1246,7 @@ int CreateCustomWeaponFromData(StringMap data, int client, bool equip=false)
 	if (equip)
 	{
 		EquipPlayerWeapon(client, wepEnt);
+		UpdateWeaponMeters(client);
 	}
 		
 	if (strcmp2(classname, "tf_weapon_builder") && index == 28)

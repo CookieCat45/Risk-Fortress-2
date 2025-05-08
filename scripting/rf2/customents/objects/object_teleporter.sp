@@ -229,7 +229,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		DispatchSpawn(fog);
 		AcceptEntityInput(fog, "TurnOn");			
 		const float time = 3.0;
-		int oldFog[MAXTF2PLAYERS] = {INVALID_ENT, ...};
+		int oldFog[MAXPLAYERS] = {INVALID_ENT, ...};
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{

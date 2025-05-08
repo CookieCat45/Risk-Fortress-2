@@ -66,7 +66,7 @@ methodmap RF2_RobotButler < RF2_NPC_Base
 			.DefineFloatField("m_flBombDamage")
 			.DefineFloatField("m_flBombRadius")
 			.DefineFloatField("m_flHealCooldown")
-			.DefineFloatField("m_flLastHealedPlayerAt", MAXTF2PLAYERS)
+			.DefineFloatField("m_flLastHealedPlayerAt", MAXPLAYERS)
 			.DefineFloatField("m_flNextIdleVoiceAt")
 			.DefineFloatField("m_flNextHurtVoiceAt")
 			.DefineEntityField("m_hHeldItem")

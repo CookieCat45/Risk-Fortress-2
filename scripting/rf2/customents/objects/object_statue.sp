@@ -58,7 +58,7 @@ methodmap RF2_Object_Statue < RF2_Object_Base
 		vote.ExitButton = false;
 		vote.AddItem("yes", "Yes");
 		vote.AddItem("no", "No");
-		int clients[MAXTF2PLAYERS];
+		int clients[MAXPLAYERS];
 		int numClients;
 		for (int i = 1; i <= MaxClients; i++)
 		{

@@ -112,7 +112,7 @@ static Action Tree_OnInteract(int client, RF2_Object_Tree tree)
 	}
 	
 	delete mapList;
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	int clientCount;
 	for (int i = 1; i <= MaxClients; i++)
 	{
