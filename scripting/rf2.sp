@@ -198,6 +198,7 @@ float g_flPlayerMedicShieldNextUseTime[MAXPLAYERS];
 float g_flPlayerNextParasiteHealTime[MAXPLAYERS];
 float g_flPlayerNextExecutionerBleedTime[MAXPLAYERS];
 float g_flPlayerNextLawFireTime[MAXPLAYERS];
+float g_flBlockMedicCall[MAXPLAYERS];
 
 int g_iPlayerInventoryIndex[MAXPLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXPLAYERS] = {1, ...};
@@ -4782,6 +4783,7 @@ public Action Timer_AFKManager(Handle timer)
 	return Plugin_Continue;
 }
 
+
 public Action OnVoiceCommand(int client, const char[] command, int args)
 {
 	if (!RF2_IsEnabled() || !IsClientInGame(client))
@@ -4791,12 +4793,28 @@ public Action OnVoiceCommand(int client, const char[] command, int args)
 	int num2 = GetCmdArgInt(2);
 	if (num1 == 0 && num2 == 0)
 	{
-		return OnCallForMedic(client);
+		if(g_flBlockMedicCall[client] < GetTickedTime())
+			return OnCallForMedic(client);
 	}
 
 	return Plugin_Continue;
 }
+public Action OnClientCommandKeyValues(int client, KeyValues kv)
+{
+	if (!RF2_IsEnabled() || !IsClientInGame(client))
+		return Plugin_Continue;
 
+	char buffer[64];
+	KvGetSectionName(kv, buffer, sizeof(buffer));
+	//Medic E call, its really really delayed it is NOT the same as voicemenu 0 0, this is way faster.
+	if(StrEqual(buffer, "+helpme_server", false))
+	{
+		//add a delay, so if you call E it doesnt do the voice menu one, though keep the voice menu one for really epic cfg nerds.
+		g_flBlockMedicCall[client] = GetTickedTime() + 0.5;
+		return OnCallForMedic(client);
+	}
+	return Plugin_Continue;
+}
 Action OnCallForMedic(int client)
 {
 	if (!IsPlayerAlive(client))
