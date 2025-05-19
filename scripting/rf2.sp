@@ -396,6 +396,9 @@ ConVar g_cvScavengerLordMaxItems;
 ConVar g_cvScavengerLordLevelItemRatio;
 ConVar g_cvServerStarted;
 ConVar g_cvStage1StartingMap;
+ConVar g_cvAggressiveRestarting;
+ConVar g_cvGameOver;
+ConVar g_cvGamePlayedCount;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -890,6 +893,21 @@ void LoadGameData()
 
 public void OnMapStart()
 {
+	if (g_cvGameOver.BoolValue)
+	{
+		if (g_cvAggressiveRestarting.BoolValue)
+		{
+			if (GetTotalHumans(false) <= 0)
+			{
+				PrintToServer("[RF2] Everyone has left. Restarting the server...");
+				InsertServerCommand("quit");
+			}
+		}
+		
+		g_cvGamePlayedCount.IntValue++;
+		g_cvGameOver.BoolValue = false;
+	}
+	
 	if (g_bConVarsModified && !g_bPluginReloading)
 	{
 		ResetConVars();
@@ -1741,11 +1759,29 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 		g_bGracePeriod = false;
 		if (!g_bGameInitialized || GetTotalHumans(false) > 0)
 		{
+			if (g_cvAggressiveRestarting.BoolValue)
+			{
+				if (g_cvGamePlayedCount.IntValue >= 1 && GetTotalHumans(false) <= 0)
+				{
+					InsertServerCommand("quit");
+					return Plugin_Continue;
+				}
+			}
+			
 			InsertServerCommand("mp_waitingforplayers_restart 1");
 		}
 		else
 		{
 			PrintToServer("%T", "NoSurvivorsSpawned", LANG_SERVER);
+			if (g_cvAggressiveRestarting.BoolValue)
+			{
+				if (g_cvGamePlayedCount.IntValue >= 1)
+				{
+					InsertServerCommand("quit");
+					return Plugin_Continue;
+				}	
+			}
+			
 			ReloadPlugin();
 		}
 		
@@ -5666,9 +5702,16 @@ public void OnGameFrame()
 
 	if (g_flWaitRestartTime > 0.0 && GetTickedTime() >= g_flWaitRestartTime && GetTotalHumans(false) == 0)
 	{
-		PrintToServer("[RF2] Waited too long for players to join. Restarting game...");
+		PrintToServer("[RF2] Waited too long for players to join. Restarting...");
 		g_flWaitRestartTime = 0.0;
-		ReloadPlugin();
+		if (g_cvAggressiveRestarting.BoolValue)
+		{
+			InsertServerCommand("quit");
+		}
+		else
+		{
+			ReloadPlugin();
+		}
 	}
 	
 	if (g_flNextAutoReloadCheckTime > 0.0 && GetTickedTime() >= g_flNextAutoReloadCheckTime)

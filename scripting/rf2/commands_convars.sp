@@ -142,6 +142,9 @@ void LoadCommandsAndCvars()
 	g_cvScavengerLordLevelItemRatio = CreateConVar("rf2_scavenger_lord_level_item_ratio", "5", "The level ratio for how many items the Scavenger Lord will have (1 per N levels)", FCVAR_NOTIFY, true, 1.0);
 	g_cvServerStarted = CreateConVar("rf2_server_started", "0", _, FCVAR_HIDDEN|FCVAR_DONTRECORD);
 	g_cvStage1StartingMap = CreateConVar("rf2_stage1_starting_map", "1", "Ensures that the server always boots on a random Stage 1 map.", _, true, 0.0);
+	g_cvAggressiveRestarting = CreateConVar("rf2_aggressive_server_restarting", "1", "If enabled, restarts the server more frequently to avoid memory leaks");
+	g_cvGameOver = CreateConVar("rf2_game_over", "0", _, FCVAR_HIDDEN|FCVAR_DONTRECORD);
+	g_cvGamePlayedCount = CreateConVar("rf2_games_played", "0", _, FCVAR_HIDDEN|FCVAR_DONTRECORD);
 	
 	// Debug
 	RegAdminCmd("rf2_hiddenslot_test", Command_TestHiddenSlot, ADMFLAG_ROOT);

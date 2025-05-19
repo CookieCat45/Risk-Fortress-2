@@ -219,6 +219,7 @@ public void Timer_GameOver(Handle timer)
 	}
 	else
 	{
+		g_cvGameOver.BoolValue = true;
 		ReloadPlugin();
 	}
 }
