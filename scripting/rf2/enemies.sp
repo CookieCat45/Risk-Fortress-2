@@ -47,6 +47,8 @@ static float g_flEnemySuicideBombRange[MAX_ENEMIES];
 // TFBot
 static int g_iEnemyBotSkill[MAX_ENEMIES];
 static int g_iEnemyBotBehaviorAttributes[MAX_ENEMIES];
+static int g_iEnemyBotDemoStickyDetCount[MAX_ENEMIES];
+static int g_iEnemyBotForcedWeaponSlot[MAX_ENEMIES];
 static float g_flEnemyBotMeleeDistance[MAX_ENEMIES];
 static float g_flEnemyBotMaxVisionRange[MAX_ENEMIES];
 static bool g_bEnemyBotSkillNoOverride[MAX_ENEMIES];
@@ -90,6 +92,7 @@ float g_flEnemyHandScale[MAX_ENEMIES] = {1.0, ...};
 static bool g_bEnemyAllowSelfDamage[MAX_ENEMIES];
 static char g_szEnemyConditions[MAX_ENEMIES][256];
 static ArrayList g_hEnemyScripts[MAX_ENEMIES];
+static char g_szEnemyScriptCode[MAX_ENEMIES][4096];
 
 // Bosses
 static bool g_bEnemyIsBoss[MAX_ENEMIES];
@@ -410,6 +413,18 @@ methodmap Enemy
 		public set(int value)	{ g_iEnemyBotBehaviorAttributes[this.Index] = value; }
 	}
 	
+	property int BotDemoStickyDetCount
+	{
+		public get()			{ return g_iEnemyBotDemoStickyDetCount[this.Index];  }
+		public set(int value)	{ g_iEnemyBotDemoStickyDetCount[this.Index] = value; }
+	}
+	
+	property int BotForcedWeaponSlot
+	{
+		public get()			{ return g_iEnemyBotForcedWeaponSlot[this.Index];  }
+		public set(int value)	{ g_iEnemyBotForcedWeaponSlot[this.Index] = value; }
+	}
+	
 	property bool BotAggressive
 	{
 		public get()			{ return g_bEnemyBotAggressive[this.Index];  }
@@ -668,6 +683,16 @@ methodmap Enemy
 		strcopy(g_szEnemyConditions[this.Index], sizeof(g_szEnemyConditions[]), conds);
 	}
 	
+	public int GetScriptCode(char[] buffer, int size)
+	{
+		return strcopy(buffer, size, g_szEnemyScriptCode[this.Index]);
+	}
+	
+	public void SetScriptCode(const char[] code)
+	{
+		strcopy(g_szEnemyScriptCode[this.Index], sizeof(g_szEnemyScriptCode[]), code);
+	}
+	
 	property ArrayList Scripts
 	{
 		public get()				{ return g_hEnemyScripts[this.Index]; }
@@ -837,6 +862,8 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false, bool reset=fals
 		enemy.BotSkill = enemyKey.GetNum("tf_bot_difficulty", TFBotSkill_Normal);
 		enemy.BotSkillNoOverride = asBool(enemyKey.GetNum("tf_bot_difficulty_no_override"));
 		enemy.BotBehaviorAttributes = enemyKey.GetNum("tf_bot_behavior_flags", 0);
+		enemy.BotDemoStickyDetCount = enemyKey.GetNum("tf_bot_demo_sticky_det_count", 1);
+		enemy.BotForcedWeaponSlot = enemyKey.GetNum("tf_bot_forced_weapon_slot", -1);
 		enemy.BotAlwaysJump = asBool(enemyKey.GetNum("tf_bot_constant_jump", false));
 		enemy.BotAggressive = asBool(enemyKey.GetNum("tf_bot_aggressive", false));
 		enemy.BotRocketJump = asBool(enemyKey.GetNum("tf_bot_rocketjump", false));
@@ -889,6 +916,7 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false, bool reset=fals
 			delete enemy.Scripts;
 		}
 		
+		enemyKey.GetString("script_code", g_szEnemyScriptCode[e], sizeof(g_szEnemyScriptCode[]));
 		if (enemyKey.JumpToKey("scripts"))
 		{
 			enemy.Scripts = new ArrayList(PLATFORM_MAX_PATH);
@@ -1185,6 +1213,21 @@ int GetRandomEnemy(bool getName=false, char[] buffer="", int size=0)
 // Optionally can retrieve the internal name.
 int GetRandomBoss(bool getName=false, char[] buffer="", int size=0)
 {
+	int scavengerLordLevel = g_cvScavengerLordSpawnLevel.IntValue;
+	if (scavengerLordLevel > 0 && g_iEnemyLevel >= scavengerLordLevel*10)
+	{
+		// start randomly replacing bosses with Scavenger Lord once we get deep enough into enemy level
+		int chanceMax = scavengerLordLevel * 200;
+		if (RandChanceInt(0, chanceMax, imin(g_iEnemyLevel, chanceMax/2)))
+		{
+			Enemy scavengerLord = Enemy.FindByInternalName("scavenger_lord");
+			if (scavengerLord != NULL_ENEMY)
+			{
+				return scavengerLord.Index;
+			}
+		}
+	}
+	
 	ArrayList bossList = new ArrayList();
 	for (int i = 0; i < g_iEnemyCount; i++)
 	{
@@ -1201,7 +1244,7 @@ int GetRandomBoss(bool getName=false, char[] buffer="", int size=0)
 		delete bossList;
 		return -1;
 	}
-
+	
 	Enemy selected = EnemyByIndex(bossList.Get(GetRandomInt(0, bossList.Length-1)));
 	if (getName)
 	{
@@ -1355,7 +1398,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		{
 			if (GetPlayerWeaponSlot(client, i) == activeWeapon)
 			{
-				ForceWeaponSwitch(client, i);
+				ForceWeaponSwitch(client, i, true);
 				break;
 			}
 		}
@@ -1454,18 +1497,25 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		}
 	}
 	
+	char code[4096];
+	enemy.GetScriptCode(code, sizeof(code));
+	if (code[0])
+	{
+		DebugMsg("Running script code %s", code);
+		RunScriptCode(client, code);
+	}
+	
 	if (IsFakeClient(client))
 	{
-		if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
-		{
-			// force shield charging and sticky detonation
-			TFBot(client).AddButtonFlag(IN_ATTACK2);
-		}
-		
 		if (!enemy.BotSkillNoOverride)
 		{
 			switch (RF2_GetDifficulty())
 			{
+				case DIFFICULTY_SCRAP:
+				{
+					TFBot(client).SetSkillLevel(TFBotSkill_Easy);
+				}
+				
 				// Bots have more skill on higher difficulties
 				case DIFFICULTY_STEEL:
 				{
@@ -1481,6 +1531,26 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 				
 				case DIFFICULTY_TITANIUM, DIFFICULTY_AUSTRALIUM: TFBot(client).SetSkillLevel(TFBotSkill_Expert);
 				default: TFBot(client).SetSkillLevel(enemy.BotSkill);
+			}
+			
+			int skill = TFBot(client).GetSkillLevel();
+			if (g_iEnemyLevel >= 300)
+			{
+				TFBot(client).SetSkillLevel(TFBotSkill_Expert);
+			}
+			else if (g_iEnemyLevel >= 150)
+			{
+				if (skill < TFBotSkill_Hard)
+				{
+					TFBot(client).SetSkillLevel(TFBotSkill_Hard);
+				}
+			}
+			else if (g_iEnemyLevel >= 50)
+			{
+				if (skill < TFBotSkill_Normal)
+				{
+					TFBot(client).SetSkillLevel(TFBotSkill_Normal);
+				}
 			}
 		}
 		else
@@ -1530,18 +1600,18 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 			TFBot(client).AddFlag(TFBOTFLAG_SPAMJUMP);
 		}
 		
-		char scriptCode[128];
-		FormatEx(scriptCode, sizeof(scriptCode), "self.SetMaxVisionRangeOverride(%.0f)", enemy.BotMaxVisionRange);
-		RunScriptCode(client, scriptCode);
-		
+		VScriptCmd cmd;
+		cmd.Append(Format2("self.SetMaxVisionRangeOverride(%.0f)", enemy.BotMaxVisionRange));
+		cmd.Run(client);
 		if (enemy.BotTags)
 		{
 			char tag[64];
 			for (int i = 0; i < enemy.BotTags.Length; i++)
 			{
+				VScriptCmd tagCmd;
 				enemy.BotTags.GetString(i, tag, sizeof(tag));
-				FormatEx(scriptCode, sizeof(scriptCode), "self.AddBotTag(`%s`)", tag);
-				RunScriptCode(client, scriptCode);
+				tagCmd.Append(Format2("self.AddBotTag(`%s`)", tag));
+				tagCmd.Run(client);
 			}
 		}
 	}
@@ -1651,6 +1721,34 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 			OutlineTeleporterBosses();
 		}
 		
+		if (strcmp2(boss.GetInternalName(), "scavenger_lord"))
+		{
+			int givenItems;
+			int itemCount = imin(g_iEnemyLevel/g_cvScavengerLordLevelItemRatio.IntValue, g_cvScavengerLordMaxItems.IntValue);
+			while (givenItems < itemCount)
+			{
+				int item = GetRandomItem(60, 30, 3, 7);
+				if (g_bItemScavengerNoSpawnWith[item])
+					continue;
+				
+				GiveItem(client, item);
+				givenItems++;
+			}
+			
+			// also equip a random strange item
+			int randomStrange;
+			for ( ;; )
+			{
+				randomStrange = GetRandomItemEx(Quality_Strange);
+				if (!g_bItemScavengerNoSpawnWith[randomStrange] && g_bItemInDropPool[randomStrange])
+				{
+					break;
+				}
+			}
+			
+			GiveItem(client, randomStrange);
+		}
+		
 		return true;
 	}
 	else if (recursive)
@@ -1707,9 +1805,12 @@ ArrayList FindBestPlayersToSpawn(int count, bool bossRules=false)
 	{
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (players.FindValue(i) != -1 || !IsClientInGame(i))
+			if (players.FindValue(i) != -1 || !IsClientInGame(i) || IsSpecBot(i))
 				continue;
-
+			
+			if (IsScavengerLord(i))
+				continue;
+			
 			// Don't use alive players until our first retry
 			// Never use players in the spawn queue, players who are Teleporter bosses, or players not in Blue team
 			if (IsPlayerAlive(i) && retries == 0 || g_bPlayerInSpawnQueue[i] || g_bPlayerIsTeleporterBoss[i] || GetClientTeam(i) != TEAM_ENEMY)
@@ -1869,6 +1970,9 @@ void StunRadioWave()
 	{
 		if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) == TEAM_ENEMY)
 		{
+			if (IsScavengerLord(i))
+				continue;
+			
 			if (TF2_GetPlayerClass(i) == TFClass_Medic)
 			{
 				int medigun = GetPlayerWeaponSlot(i, WeaponSlot_Secondary);
@@ -1889,4 +1993,9 @@ void StunRadioWave()
 		EmitSoundToAll(SND_ENEMY_STUN);
 		EmitSoundToAll(SND_STUN);
 	}
+}
+
+bool IsScavengerLord(int client)
+{
+	return Enemy(client) != NULL_ENEMY && strcmp2(Enemy(client).GetInternalName(), "scavenger_lord");
 }

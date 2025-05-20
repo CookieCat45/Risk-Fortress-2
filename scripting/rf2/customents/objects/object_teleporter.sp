@@ -244,7 +244,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			DataPack pack;
 			CreateDataTimer(time, Timer_RestorePlayerFog, pack, TIMER_FLAG_NO_MAPCHANGE);
 			pack.WriteCell(GetClientUserId(i));
-			pack.WriteCell(EntIndexToEntRef(oldFog[i]));
+			pack.WriteCell(oldFog[i] != INVALID_ENT ? EntIndexToEntRef(oldFog[i]) : INVALID_ENT);
 		}
 		
 		CreateTimer(time, Timer_KillFog, EntIndexToEntRef(fog), TIMER_FLAG_NO_MAPCHANGE);

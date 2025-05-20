@@ -23,6 +23,7 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerFullMinigunMoveSpeed[client] = false;
 	g_bPlayerPermaDeathMark[client] = false;
 	g_bPlayerPressedCanteenButton[client] = false;
+	g_bPlayerYetiSmash[client] = false;
 	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
 	g_iPlayerPowerupBottle[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;
@@ -34,12 +35,12 @@ void RefreshClient(int client, bool force=false)
 	g_iPlayerShieldHealth[client] = 0;
 	g_flPlayerRegenBuffTime[client] = 0.0;
 	g_flPlayerDelayedHealTime[client] = 0.0;
-	g_flPlayerRifleHeadshotBonusTime[client] = 0.0;
-	g_flPlayerGravityJumpBonusTime[client] = 0.0;
 	g_flPlayerTimeSinceLastItemPickup[client] = 0.0;
 	g_flPlayerCaberRechargeAt[client] = 0.0;
 	g_flPlayerShieldRegenTime[client] = 0.0;
 	g_flPlayerMedicShieldNextUseTime[client] = 0.0;
+	g_flPlayerWealthRingRadius[client] = 0.0;
+	g_iPlayerRollerMine[client] = INVALID_ENT;
 	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
@@ -113,6 +114,7 @@ void RefreshClient(int client, bool force=false)
 	TFBot(client).RepairTarget = INVALID_ENT;
 	TFBot(client).DesiredWeaponSlot = -1;
 	TFBot(client).ScavengerTarget = INVALID_ENT;
+	TFBot(client).ForceBannerSwitch = false;
 	
 	if (g_hTFBotEngineerBuildings[client])
 	{
@@ -182,6 +184,16 @@ int GetRandomPlayer(int team = -1, bool alive=true, bool onlyHumans=false)
 	}
 
 	return playerArray[GetRandomInt(0, count>0 ? count-1 : count)];
+}
+
+bool IsRollermine(int client)
+{
+	return IsValidEntity2(g_iPlayerRollerMine[client]);
+}
+
+bool HasJetpack(int client)
+{
+	return GetTickedTime() < g_flPlayerJetpackEndTime[client];
 }
 
 int GetNearestPlayer(float pos[3], float minDist=-1.0, float maxDist=-1.0, int team = -1, bool trace=false, bool onlyHumans=false)
@@ -684,7 +696,7 @@ void UpdatePlayerGravity(int client)
 		float angles[3];
 		GetClientEyeAngles(client, angles);
 		bool weighDown = (angles[0] >= 65.0) && asBool(GetClientButtons(client) & IN_DUCK);
-		if (g_flPlayerGravityJumpBonusTime[client] > 0.0)
+		if (g_flPlayerGravityJumpBonusTime[client] >= GetTickedTime())
 		{
 			if (!weighDown)
 			{
@@ -701,6 +713,11 @@ void UpdatePlayerGravity(int client)
 		}
 	}
 	
+	if (HasJetpack(client))
+	{
+		gravity *= GetItemMod(ItemStrange_MK50, 1);
+	}
+	
 	SetEntityGravity(client, gravity*CalcItemMod_Reciprocal(client, Item_UFO, 0));
 }
 
@@ -712,13 +729,13 @@ float GetPlayerCash(int client)
 void SetPlayerCash(int client, float amount)
 {
 	g_flPlayerCash[client] = amount;
-	SetEntProp(client, Prop_Send, "m_nCurrency", RoundToFloor(g_flPlayerCash[client]));
+	//SetEntProp(client, Prop_Send, "m_nCurrency", RoundToFloor(g_flPlayerCash[client]));
 }
 
 void AddPlayerCash(int client, float amount)
 {
 	g_flPlayerCash[client] += amount;
-	SetEntProp(client, Prop_Send, "m_nCurrency", RoundToFloor(g_flPlayerCash[client]));
+	//SetEntProp(client, Prop_Send, "m_nCurrency", RoundToFloor(g_flPlayerCash[client]));
 }
 
 float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false)
@@ -728,7 +745,9 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 	if (weapon != INVALID_ENT)
 	{
 		GetEntityClassname(weapon, classname, sizeof(classname));
-		if (StrContains(classname, "tf_weapon_flaregun") != -1 || StrContains(classname, "tf_weapon_sniperrifle") != -1)
+		if (strcmp2(classname, "tf_weapon_compound_bow")
+			|| StrContains(classname, "tf_weapon_flaregun") != -1 
+			|| StrContains(classname, "tf_weapon_sniperrifle") != -1)
 		{
 			// Use reload speed modifiers for these weapons instead, because it makes more sense
 			multiplier = GetPlayerReloadMod(client, weapon);
@@ -776,7 +795,7 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 		multiplier *= 1.0 + GetItemMod(Item_SaintMark, 3);
 	}
 	
-	if (g_flPlayerRifleHeadshotBonusTime[client] > 0.0)
+	if (g_flPlayerRifleHeadshotBonusTime[client] >= GetTickedTime())
 	{
 		multiplier *= 1.0 + CalcItemMod(client, ItemSniper_VillainsVeil, 1);
 	}
@@ -873,10 +892,10 @@ void UpdatePlayerFireRate(int client)
 		int weapon = GetPlayerWeaponSlot(client, i);
 		if (weapon == INVALID_ENT)
 			continue;
-
+		
 		GetPlayerFireRateMod(client, weapon, true);
 	}
-
+	
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
 		float multiplier = GetPlayerFireRateMod(client);
@@ -884,9 +903,24 @@ void UpdatePlayerFireRate(int client)
 		multiplier = Pow(multiplier, penalty);
 		TF2Attrib_SetByName(client, "engy sentry fire rate increased", multiplier);
 	}
+	
+	// calling this here bc I'm lazy :3
+	UpdatePlayerReloadRate(client);
 }
 
-float GetPlayerReloadMod(int client, int weapon=INVALID_ENT)
+void UpdatePlayerReloadRate(int client)
+{
+	for (int i = 0; i <= WeaponSlot_Secondary; i++)
+	{
+		int weapon = GetPlayerWeaponSlot(client, i);
+		if (weapon == INVALID_ENT)
+			continue;
+		
+		GetPlayerReloadMod(client, weapon, true);
+	}
+}
+
+float GetPlayerReloadMod(int client, int weapon=INVALID_ENT, bool update=false)
 {
 	float multiplier = 1.0;
 	multiplier *= 1.0 + CalcItemMod(client, Item_RoundedRifleman, 0);
@@ -903,7 +937,7 @@ float GetPlayerReloadMod(int client, int weapon=INVALID_ENT)
 		multiplier *= 1.0 + GetItemMod(Item_SaintMark, 0);
 	}
 	
-	if (g_flPlayerRifleHeadshotBonusTime[client] > 0.0)
+	if (g_flPlayerRifleHeadshotBonusTime[client] >= GetTickedTime())
 	{
 		multiplier *= 1.0 + CalcItemMod(client, ItemSniper_VillainsVeil, 1);
 	}
@@ -940,6 +974,11 @@ float GetPlayerReloadMod(int client, int weapon=INVALID_ENT)
 	}
 	
 	multiplier = fmax(1.0 / multiplier, 0.01);
+	if (update && weapon != INVALID_ENT)
+	{
+		TF2Attrib_SetByName(weapon, "Reload time decreased", multiplier);
+	}
+	
 	return multiplier;
 }
 
@@ -1024,6 +1063,14 @@ bool PingObjects(int client)
 		obj.GetObjectName(objName, sizeof(objName));
 		FormatEx(text, sizeof(text), "%N has found: %s", client, objName);
 		obj.PingMe(text);
+		if (RF2_Object_Workbench(entity).IsValid())
+		{
+			int item = RF2_Object_Workbench(entity).Item;
+			if (item != Item_Null)
+			{
+				ShowItemDesc(client, item);
+			}
+		}
 	}
 	else
 	{
@@ -1257,8 +1304,10 @@ void OnPlayerAirDash(int client)
 		float vel[3], pos[3];
 		vel[2] = 125.0 * (1.0+CalcItemMod(client, ItemScout_MonarchWings, 0));
 		ApplyAbsVelocityImpulse(client, vel);
-		g_flPlayerGravityJumpBonusTime[client] = GetItemMod(ItemScout_MonarchWings, 2);
+		float time = GetItemMod(ItemScout_MonarchWings, 2);
+		g_flPlayerGravityJumpBonusTime[client] = GetTickedTime() + time;
 		UpdatePlayerGravity(client);
+		CreateTimer(time+0.1, Timer_UpdateGravity, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		EmitSoundToAll(SND_PARACHUTE, client);
 		GetEntPos(client, pos);
 		TE_TFParticle("taunt_flip_land", pos);
@@ -1362,7 +1411,7 @@ int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-
 				count++;
 		}
 	}
-
+	
 	return count;
 }
 
@@ -1655,7 +1704,7 @@ void SpeakResponseConcept_MVM(int client, const char[] response)
 	AcceptEntityInput(client, "SpeakResponseConcept");
 }
 
-bool ForceWeaponSwitch(int client, int slot)
+bool ForceWeaponSwitch(int client, int slot, bool reallyForce=false)
 {
 	if (!g_hSDKWeaponSwitch)
 		return false;
@@ -1664,7 +1713,33 @@ bool ForceWeaponSwitch(int client, int slot)
 	if (weapon == -1 || weapon == GetActiveWeapon(client))
 		return false;
 	
-	return SDKCall(g_hSDKWeaponSwitch, client, weapon, 0);
+	bool result = SDKCall(g_hSDKWeaponSwitch, client, weapon, 0);
+	if (!result && reallyForce)
+	{
+		// the weapon switch call failed, but defy the game's rules and switch anyway
+		SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
+	}
+	
+	return result;
+}
+
+void ForceTaunt(int client, int tauntId)
+{
+	VScriptCmd cmd;
+	cmd.Append("local weapon = Entities.CreateByClassname(`tf_weapon_bat`);");
+	cmd.Append("local active_weapon = self.GetActiveWeapon();");
+	cmd.Append("self.StopTaunt(true);");
+	cmd.Append("self.RemoveCond(7);");
+	cmd.Append("weapon.DispatchSpawn();");
+	cmd.Append(Format2("NetProps.SetPropInt(weapon, `m_AttributeManager.m_Item.m_iItemDefinitionIndex`, %d);", tauntId));
+	cmd.Append("NetProps.SetPropBool(weapon, `m_AttributeManager.m_Item.m_bInitialized`, true);");
+	cmd.Append("NetProps.SetPropBool(weapon, `m_bForcePurgeFixedupStrings`, true);");
+	cmd.Append("NetProps.SetPropEntity(self, `m_hActiveWeapon`, weapon);");
+	cmd.Append("NetProps.SetPropInt(self, `m_iFOV`, 0);");
+	cmd.Append("self.HandleTauntCommand(0);");
+	cmd.Append("NetProps.SetPropEntity(self, `m_hActiveWeapon`, active_weapon);");
+	cmd.Append("weapon.Kill();");
+	cmd.Run(client);
 }
 
 bool IsPlayerAFK(int client)
@@ -1913,7 +1988,8 @@ bool IsAdminReserved(int client)
 
 bool IsSpecBot(int client)
 {
-	return IsClientSourceTV(client) || IsClientReplay(client);
+	return IsClientSourceTV(client) || IsClientReplay(client) 
+	|| IsFakeClient(client) && !CBaseEntity(client).MyNextBotPointer(); // Sometimes, SourceTV likes to be a sneaky bastard.
 }
 
 /*

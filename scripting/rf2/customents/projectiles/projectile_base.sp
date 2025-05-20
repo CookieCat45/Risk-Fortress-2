@@ -841,6 +841,6 @@ public bool TraceFilter_Projectile(int entity, int mask, RF2_Projectile_Base sel
 	
 	if (self.Team == GetEntTeam(entity) || self.Owner == entity)
 		return false;
-
+	
 	return true;
 }

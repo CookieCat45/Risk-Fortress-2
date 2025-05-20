@@ -396,7 +396,7 @@
 	
 	"AllHumansDisconnected"
 	{
-		"en"		"All human players have disconnected from the server. Restarting the game..."
+		"en"		"All human players have disconnected from the server. Restarting..."
 	}
 
 	"On"
@@ -850,6 +850,12 @@
 	{
 		"#format"	"{1:s}"
 		"en"		"Join spectate after dying as a Survivor ({1})"
+	}
+	
+	"AltItemMenuButton"
+	{
+		"#format"	"{1:s}"
+		"en"		"Use only TAB to toggle inventory menu ({1})"
 	}
 	
 	"ItemsReloaded"

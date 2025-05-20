@@ -801,6 +801,12 @@ public MRESReturn DHook_IsDedicatedServer(Address thisPtr, DHookReturn returnVal
 	return MRES_Supercede;
 }
 
+public MRESReturn Detour_CreateEvent(Address eventManager, DHookReturn returnVal, DHookParam params)
+{
+	g_aGameEventManager = eventManager;
+	return MRES_Ignored;
+}
+
 // StrContains(), but the string needs to be an exact match.
 // This means there must be either whitespace or out-of-bounds characters before and after the found string.
 // So if you search "apple" in "applebanana", -1 will be returned, while StrContains() would return a positive value.
@@ -913,6 +919,17 @@ stock float operator%(float oper1, float oper2)
 	return fmodf(oper1, oper2);
 }
 
+stock float fclamp(float val, float min, float max)
+{
+	if (val > max)
+		return max;
+		
+	if (val < min)
+		return min;
+		
+	return val;
+}
+
 stock int imin(int val1, int val2)
 {
 	return val1 < val2 ? val1 : val2;
@@ -968,6 +985,13 @@ bool IsServerAutoRestartEnabled()
 float GetTimeSinceServerStart()
 {
 	return GetEngineTime() - g_cvHiddenServerStartTime.FloatValue;
+}
+
+char[] Format2(const char[] fmt, any ...)
+{
+	static char str[8192];
+	VFormat(str, sizeof(str), fmt, 2);
+	return str;
 }
 
 stock void DebugMsgNoSpam(const char[] message, any ...)

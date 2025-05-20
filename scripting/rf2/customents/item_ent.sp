@@ -452,7 +452,6 @@ bool PickupItem(int client, int forcedEnt=INVALID_ENT)
 	if (!item.IsValid())
 		return false;
 	
-	bool itemShare = IsItemSharingEnabled();
 	int survivorIndex = RF2_GetSurvivorIndex(client);
 	int type = item.Type;
 	int quality = GetItemQuality(item.Type);
@@ -467,8 +466,7 @@ bool PickupItem(int client, int forcedEnt=INVALID_ENT)
 	if (survivorIndex != -1) // might be a scavenger picking this up
 	{
 		// Strange items do not count towards the limit.
-		if (itemShare && g_iPlayerItemLimit[survivorIndex] > 0 && (!dropped || !item.BelongsToPlayer(client, true))
-			&& g_iPlayerItemsTaken[survivorIndex] >= g_iPlayerItemLimit[survivorIndex] && !IsEquipmentItem(type))
+		if (IsAtItemShareLimit(client) && !IsEquipmentItem(type) && (!dropped || !item.BelongsToPlayer(client, true)))
 		{
 			EmitSoundToClient(client, SND_NOPE);
 			PrintCenterText(client, "%t", "ItemShareLimit", g_iPlayerItemLimit[survivorIndex]);
@@ -495,7 +493,6 @@ bool PickupItem(int client, int forcedEnt=INVALID_ENT)
 	GetItemName(type, itemName, sizeof(itemName));
 	GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
 	GetQualityName(quality, qualityName, sizeof(qualityName));
-	
 	if (survivorIndex != -1 && type == Item_HorrificHeadsplitter)
 	{
 		TriggerAchievement(client, ACHIEVEMENT_HEADSPLITTER);
@@ -536,7 +533,7 @@ bool PickupItem(int client, int forcedEnt=INVALID_ENT)
 			}
 			
 			// Notify our player that they've reached their limit.
-			if (itemShare && g_iPlayerItemLimit[survivorIndex] > 0 && g_iPlayerItemsTaken[survivorIndex] >= g_iPlayerItemLimit[survivorIndex])
+			if (IsAtItemShareLimit(client))
 			{
 				PrintCenterText(client, "%t", "ItemShareLimit", g_iPlayerItemLimit[survivorIndex]);
 			}

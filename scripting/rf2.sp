@@ -57,12 +57,7 @@ bool g_bGoombaAvailable;
 bool g_bRoundEnding;
 bool g_bInUnderworld;
 bool g_bInFinalMap;
-float g_flWaitRestartTime;
-int g_iFileTime;
-float g_flNextAutoReloadCheckTime;
-float g_flAutoReloadTime;
-float g_flCurrentCostMult;
-float g_flHeadshotDamage;
+bool g_bScavengerLordDroppedItems;
 bool g_bChangeDetected;
 bool g_bServerRestarting;
 bool g_bForceRifleSound;
@@ -72,6 +67,12 @@ bool g_bEnteringUnderworld;
 bool g_bEnteringFinalArea;
 bool g_bItemSharingDisabledForMap;
 //bool g_bCustomEventsAvailable;
+int g_iFileTime;
+float g_flWaitRestartTime;
+float g_flNextAutoReloadCheckTime;
+float g_flAutoReloadTime;
+float g_flCurrentCostMult;
+float g_flHeadshotDamage;
 char g_szForcedMap[256];
 char g_szMapForcerName[MAX_NAME_LENGTH];
 char g_szCurrentEnemyGroup[64];
@@ -161,6 +162,7 @@ bool g_bPlayerFullMinigunMoveSpeed[MAXPLAYERS];
 bool g_bPlayerPermaDeathMark[MAXPLAYERS];
 bool g_bPlayerIsDyingBoss[MAXPLAYERS];
 bool g_bPlayerPressedCanteenButton[MAXPLAYERS];
+bool g_bPlayerYetiSmash[MAXPLAYERS];
 
 float g_flPlayerXP[MAXPLAYERS];
 float g_flPlayerNextLevelXP[MAXPLAYERS] = {100.0, ...};
@@ -198,6 +200,8 @@ float g_flPlayerMedicShieldNextUseTime[MAXPLAYERS];
 float g_flPlayerNextParasiteHealTime[MAXPLAYERS];
 float g_flPlayerNextExecutionerBleedTime[MAXPLAYERS];
 float g_flPlayerNextLawFireTime[MAXPLAYERS];
+float g_flPlayerWealthRingRadius[MAXPLAYERS];
+float g_flPlayerJetpackEndTime[MAXPLAYERS];
 float g_flBlockMedicCall[MAXPLAYERS];
 
 int g_iPlayerInventoryIndex[MAXPLAYERS] = {-1, ...};
@@ -228,6 +232,7 @@ int g_iPlayerLastPingedEntity[MAXPLAYERS] = {INVALID_ENT, ...};
 int g_iPlayerShieldHealth[MAXPLAYERS];
 int g_iPlayerCollectorSwapCount[MAXPLAYERS];
 int g_iPlayerPowerupBottle[MAXPLAYERS] = {INVALID_ENT, ...};
+int g_iPlayerRollerMine[MAXPLAYERS] = {INVALID_ENT, ...};
 
 char g_szPlayerOriginalName[MAXPLAYERS][MAX_NAME_LENGTH];
 ArrayList g_hPlayerExtraSentryList[MAXPLAYERS];
@@ -280,7 +285,6 @@ Handle g_hSDKTankSetStartNode;
 Handle g_hSDKCreateDroppedWeapon;
 Handle g_hSDKLoadEvents;
 DynamicDetour g_hDetourHandleRageGain;
-DynamicDetour g_hDetourSetReloadTimer;
 DynamicDetour g_hDetourApplyPunchImpulse;
 DynamicDetour g_hDetourOverhealBonus;
 DynamicDetour g_hDetourEyeFindVictim;
@@ -289,6 +293,7 @@ DynamicDetour g_hDetourHHHChaseable;
 DynamicDetour g_hDetourOnWeaponFired;
 DynamicDetour g_hDetourGCPreClientUpdate;
 DynamicDetour g_hDetourFindMap;
+DynamicDetour g_hDetourCreateEvent;
 DynamicDetour g_hDetourWeaponPickup;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
@@ -302,6 +307,7 @@ DynamicHook g_hHookCreateFakeClientEx;
 DynamicHook g_hHookDedicatedServer;
 DynamicHook g_hHookPassesFilterImpl;
 DynamicHook g_hHookIsAbleToSee;
+DynamicHook g_hHookPhysicsSolidMask;
 
 // Forwards
 GlobalForward g_fwTeleEventStart;
@@ -311,6 +317,7 @@ GlobalForward g_fwGracePeriodEnded;
 GlobalForward g_fwOnTakeDamage;
 GlobalForward g_fwOnCustomItemLoaded;
 GlobalForward g_fwOnPlayerItemUpdate;
+GlobalForward g_fwOnActivateStrange;
 PrivateForward g_fwOnMapStart;
 
 // ConVars
@@ -399,6 +406,7 @@ ConVar g_cvStage1StartingMap;
 ConVar g_cvAggressiveRestarting;
 ConVar g_cvGameOver;
 ConVar g_cvGamePlayedCount;
+ConVar g_cvEnableGiantPainSounds;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -425,6 +433,7 @@ Cookie g_coEarnedAllAchievements;
 Cookie g_coPingObjectsHint;
 Cookie g_coAlwaysShowItemCounts;
 Cookie g_coItemShareKarma;
+Cookie g_coAltItemMenuButton;
 
 // TFBots
 TFBot g_TFBot[MAXPLAYERS];
@@ -438,6 +447,7 @@ public const char g_szTeddyBearSounds[][] =
 };
 
 #include "rf2/overrides.sp"
+#include "rf2/vscript_funcs.sp"
 #include "rf2/items.sp"
 #include "rf2/survivors.sp"
 #include "rf2/entityfactory.sp"
@@ -533,9 +543,9 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnPluginStart()
 {
+	InstallEnts();
 	LoadGameData();
 	LoadCommandsAndCvars();
-	InstallEnts();
 	BakeCookies();
 	CreateSQL();
 	LoadTranslations("common.phrases");
@@ -557,9 +567,13 @@ public void OnPluginStart()
 	
 	if (g_hDetourFindMap)
 	{
-		// call the detoured function so we get a CVEngineServer address.
 		char dummy[256];
-		FindMap("thisisadummystring", dummy, 256);
+		FindMap("give_me_my_cvengineserver_pointer", dummy, 256);
+	}
+	
+	if (g_hDetourCreateEvent)
+	{
+		CreateEvent("give_me_my_cgameeventmanager_pointer", true);
 	}
 }
 
@@ -648,13 +662,6 @@ void LoadGameData()
 	if (!g_hSDKTankSetStartNode)
 	{
 		LogError("[SDK] Failed to create call for CTFTankBoss::SetStartingPathTrackNode");
-	}
-
-	
-	g_hDetourSetReloadTimer = DynamicDetour.FromConf(gamedata, "CTFWeaponBase::SetReloadTimer");
-	if (!g_hDetourSetReloadTimer || !g_hDetourSetReloadTimer.Enable(Hook_Pre, Detour_SetReloadTimer))
-	{
-		LogError("[DHooks] Failed to create detour for CTFWeaponBase::SetReloadTimer");
 	}
 	
 	
@@ -791,6 +798,24 @@ void LoadGameData()
 	}
 	
 	
+	g_hDetourCreateEvent = DynamicDetour.FromConf(gamedata, "CGameEventManager::CreateEvent");
+	if (!g_hDetourCreateEvent || !g_hDetourCreateEvent.Enable(Hook_Pre, Detour_CreateEvent))
+	{
+		LogError("[DHooks] Failed to create detour for CGameEventManager::CreateEvent");
+	}
+	
+	
+	StartPrepSDKCall(SDKCall_Raw);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "CGameEventManager::LoadEventsFromFile");
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	g_hSDKLoadEvents = EndPrepSDKCall();
+	if (!g_hSDKLoadEvents)
+	{
+		LogError("[SDK] Failed to create call to CGameEventManager::LoadEventsFromFile");
+	}
+	
+	
 	g_hDetourWeaponPickup = DynamicDetour.FromConf(gamedata, "CTFDroppedWeapon::InitPickedUpWeapon");
 	if (!g_hDetourWeaponPickup || !g_hDetourWeaponPickup.Enable(Hook_Post, Detour_WeaponPickupPost))
 	{
@@ -854,6 +879,13 @@ void LoadGameData()
 	else
 	{
 		LogError("[DHooks] Failed to create dynamic hook for IVision::IsAbleToSee(CBaseEntity)");
+	}
+	
+	
+	g_hHookPhysicsSolidMask = new DynamicHook(gamedata.GetOffset("CBaseEntity::PhysicsSolidMaskForEntity"), HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity);
+	if (!g_hHookPhysicsSolidMask)
+	{
+		LogError("[DHooks] Failed to create dynamic hook for CBaseEntity::PhysicsSolidMaskForEntity");
 	}
 	
 	
@@ -953,19 +985,6 @@ public void OnMapStart()
 	SplitString(mapName, "_", buffer, sizeof(buffer));
 	if (strcmp2(buffer, "rf2", false))
 	{
-		// before we do anything, check if this is a server startup
-		if (!g_cvServerStarted.BoolValue)
-		{
-			g_cvServerStarted.BoolValue = true;
-			if (g_cvStage1StartingMap.BoolValue)
-			{
-				PrintToServer("\n*\n*\n*\n[RF2] The server just booted. Choosing a random startup map...\n*\n*\n*\n");
-				g_iMaxStages = FindMaxStages(); // we need to know this for the map change function
-				ReloadPlugin(true);
-				return;
-			}
-		}
-		
 		g_bPluginEnabled = true;
 		g_bWaitingForPlayers = asBool(GameRules_GetProp("m_bInWaitingForPlayers"));
 		if (g_bLateLoad)
@@ -1126,6 +1145,18 @@ public void OnConfigsExecuted()
 {
 	if (RF2_IsEnabled() && !g_bPluginReloading)
 	{
+		// before we do anything, check if this is a server startup
+		if (!g_cvServerStarted.BoolValue)
+		{
+			g_cvServerStarted.BoolValue = true;
+			if (g_cvStage1StartingMap.BoolValue)
+			{
+				PrintToServer("\n*\n*\n*\n[RF2] The server just booted. Choosing a random startup map...\n*\n*\n*\n");
+				ReloadPlugin(true);
+				return;
+			}
+		}
+		
 		// Here are ConVars that we don't want changed by configs
 		ConVar droppedWeaponLife = FindConVar("tf_dropped_weapon_lifetime");
 		droppedWeaponLife.Flags &= ~FCVAR_CHEAT;
@@ -1209,6 +1240,7 @@ void HookEvents()
 	HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
 	HookEvent("player_healonhit", OnPlayerHealOnHit, EventHookMode_Pre);
 	HookEvent("npc_hurt", OnNpcHurt, EventHookMode_Post);
+	HookEvent("player_hurt", OnPlayerHurt, EventHookMode_Pre);
 }
 
 void UnhookEvents()
@@ -1227,6 +1259,7 @@ void UnhookEvents()
 	UnhookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
 	UnhookEvent("player_healonhit", OnPlayerHealOnHit, EventHookMode_Pre);
 	UnhookEvent("npc_hurt", OnNpcHurt, EventHookMode_Post);
+	UnhookEvent("player_hurt", OnPlayerHurt, EventHookMode_Pre);
 }
 
 void CleanUp()
@@ -1258,6 +1291,7 @@ void CleanUp()
 	g_bItemSharingDisabledForMap = false;
 	g_bInUnderworld = false;
 	g_bInFinalMap = false;
+	g_bScavengerLordDroppedItems = false;
 	g_flNextAutoReloadCheckTime = 0.0;
 	g_flAutoReloadTime = 0.0;
 	//g_flMinSpawnDistOverride = -1.0;
@@ -1338,6 +1372,8 @@ void LoadAssets()
 	AddModelToDownloadsTable(MODEL_GIANT_DEMO);
 	AddModelToDownloadsTable(MODEL_GIANT_HEAVY);
 	g_iBeamModel = PrecacheModel2(MAT_BEAM, true);
+	PrecacheModel2(MODEL_ROLLERMINE, true);
+	PrecacheModel2(MODEL_ROLLERMINE_SPIKES, true);
 	
 	// Sounds
 	PrecacheSound2(SND_ITEM_PICKUP, true);
@@ -1405,6 +1441,9 @@ void LoadAssets()
 	PrecacheSound2(SND_MULTICRATE_CYCLE, true);
 	PrecacheSound2(SND_BOSS_DEATH, true);
 	PrecacheSound2(SND_MEDSHIELD_DEPLOY, true);
+	PrecacheSound2("weapons/flame_thrower_loop.wav", true);
+	PrecacheSound2("weapons/flame_thrower_start.wav", true);
+	PrecacheSound2("weapons/flame_thrower_end.wav", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack01.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack02.mp3", true);
 	PrecacheSound2("vo/halloween_boss/knight_attack03.mp3", true);
@@ -1417,6 +1456,16 @@ void LoadAssets()
 	PrecacheScriptSound("MVM.GiantPyroLoop");
 	PrecacheScriptSound("MVM.GiantDemomanLoop");
 	PrecacheScriptSound("MVM.GiantHeavyLoop");
+	PrecacheSound2("npc/roller/mine/rmine_blades_out1.wav", true);
+	PrecacheSound2("npc/roller/mine/rmine_blades_out2.wav", true);
+	PrecacheSound2("npc/roller/mine/rmine_blades_out3.wav", true);
+	PrecacheSound2("npc/roller/mine/rmine_blades_in1.wav", true);
+	PrecacheSound2("npc/roller/mine/rmine_blades_in2.wav", true);
+	PrecacheSound2("npc/roller/mine/rmine_blades_in3.wav", true);
+	PrecacheSound2("npc/roller/mine/combine_mine_deploy1.wav", true);
+	PrecacheSound2("npc/roller/mine/rmine_explode_shock1.wav", true);
+	PrecacheSound2("npc/roller/mine/rmine_tossed1.wav", true);
+	PrecacheSound2("npc/roller/mine/rmine_seek_loop2.wav", true);
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
 	AddSoundToDownloadsTable(SND_DRAGONBORN);
@@ -1623,7 +1672,7 @@ public void OnClientDisconnect(int client)
 {
 	if (!RF2_IsEnabled())
 		return;
-
+	
 	StopMusicTrack(client);
 	if (g_bPlayerTimingOut[client] && IsPlayerSurvivor(client, false) && !IsPlayerMinion(client))
 	{
@@ -1665,6 +1714,11 @@ public void OnClientDisconnect(int client)
 			SaveSurvivorInventory(client, g_iPlayerInventoryIndex[client]);
 			CalculateSurvivorItemShare();
 		}
+	}
+	
+	if (IsValidEntity2(g_iPlayerRollerMine[client]))
+	{
+		RemoveEntity(g_iPlayerRollerMine[client]);
 	}
 	
 	g_bPlayerTimingOut[client] = false;
@@ -2203,6 +2257,8 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 	// Calculate max speed on a timer again to fix a... weird issue with players spawning in and being REALLY slow.
 	// I don't know why it happens, but this fixes it, so, cool I guess?
 	CreateTimer(0.1, Timer_FixSpeedIssue, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	SetEntityRenderMode(client, RENDER_NORMAL);
+	UpdateWeaponMeters(client);
 	return Plugin_Continue;
 }
 
@@ -2287,6 +2343,11 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	
 	StopLoopingSounds(victim);
 	KillAnnotation(victim);
+	if (IsValidEntity2(g_iPlayerRollerMine[victim]))
+	{
+		RemoveEntity(g_iPlayerRollerMine[victim]);
+	}
+	
 	if (!g_bRoundActive)
 		return action;
 	
@@ -2318,7 +2379,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			
 			case ItemDemo_ConjurersCowl, ItemMedic_WeatherMaster: event.SetString("weapon", "spellbook_lightning");
 			
-			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, 
+			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, ItemStrange_JackHat,
 				ItemStrange_CroneDome, ItemSpy_Showstopper, ItemHeavy_GoneCommando, ItemStrange_Botler: event.SetString("weapon", "pumpkindeath");
 			
 			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder, Item_RoBro, ItemMedic_MechaMedes: event.SetString("weapon", "merasmus_zap");
@@ -2332,7 +2393,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			case ItemStrange_Dragonborn: event.SetString("weapon", "spellbook_teleport");
 		}
 	}
-
+	
 	RF2_NPC_Base npc = RF2_NPC_Base(inflictor);
 	if (npc.IsValid())
 	{
@@ -2394,14 +2455,17 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					RequestFrame(RF_DeleteRagdoll, victim);
 				}
 				
-				if (IsFakeClient(victim) && TFBot(victim).HasFlag(TFBOTFLAG_SCAVENGER))
+				bool isScavengerLord = strcmp2(Enemy(victim).GetInternalName(), "scavenger_lord");
+				if (IsFakeClient(victim) && TFBot(victim).HasFlag(TFBOTFLAG_SCAVENGER)
+					&& (!isScavengerLord || !g_bScavengerLordDroppedItems))
 				{
 					RF2_Item item = RF2_Item(INVALID_ENT);
 					int prop = INVALID_ENT;
 					float botPos[3];
 					GetEntPos(victim, botPos, true);
-					const int maxDroppedItems = 100;
+					const int maxDroppedItems = 60;
 					ArrayList itemList = GetPlayerItemList(victim, maxDroppedItems, true);
+					g_bScavengerLordDroppedItems = isScavengerLord;
 					for (int i = 0; i < itemList.Length; i++)
 					{
 						item = RF2_Item(CreateEntityByName("rf2_item"));
@@ -3351,6 +3415,31 @@ public Action OnNpcHurt(Event event, const char[] name, bool dontBroadcast)
 			EmitGameSoundToClient(attacker, GSND_CRIT);
 		}
 	}
+	
+	return Plugin_Continue;
+}
+
+static float g_flPlayerNextCritSoundTime[MAXPLAYERS];
+public Action OnPlayerHurt(Event event, const char[] name, bool dontBroadcast)
+{
+	if (event.GetBool("crit") || event.GetBool("minicrit"))
+	{
+		int attacker = GetClientOfUserId(event.GetInt("attacker"));
+		if (IsValidClient(attacker))
+		{
+			if (GetTickedTime() < g_flPlayerNextCritSoundTime[attacker])
+			{
+				// prevent earrape from crit sounds on bots
+				event.SetBool("crit", false);
+				event.SetBool("minicrit", false);
+				event.SetInt("bonuseffect", -1);
+				return Plugin_Changed;
+			}
+			
+			g_flPlayerNextCritSoundTime[attacker] = GetTickedTime()+0.3;
+		}
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -3526,32 +3615,11 @@ public void Timer_SpawnScavengerLord(Handle timer)
 	GetWorldCenter(pos);
 	if (SpawnBoss(client, scavengerLord.Index, pos, false))
 	{
-		int givenItems;
-		int itemCount = imin(g_iEnemyLevel/g_cvScavengerLordLevelItemRatio.IntValue, g_cvScavengerLordMaxItems.IntValue);
-		while (givenItems < itemCount)
+		if (g_iEnemyLevel < g_cvScavengerLordSpawnLevel.IntValue*10)
 		{
-			int item = GetRandomItem(60, 30, 3, 7);
-			if (g_bItemScavengerNoSpawnWith[item])
-				continue;
-			
-			GiveItem(client, item);
-			givenItems++;
+			PrintCenterTextAll("%t", "ScavengerLordWarning");
+			EmitSoundToAll(SND_SCAVENGER_LORD_WARNING);
 		}
-		
-		// also equip a random strange item
-		int randomStrange;
-		for ( ;; )
-		{
-			randomStrange = GetRandomItemEx(Quality_Strange);
-			if (!g_bItemScavengerNoSpawnWith[randomStrange] && g_bItemInDropPool[randomStrange])
-			{
-				break;
-			}
-		}
-		
-		GiveItem(client, randomStrange);
-		PrintCenterTextAll("%t", "ScavengerLordWarning");
-		EmitSoundToAll(SND_SCAVENGER_LORD_WARNING);
 	}
 	else
 	{
@@ -3795,7 +3863,7 @@ public Action Timer_PlayerHud(Handle timer)
 	
 	int hudSeconds, strangeItem;
 	static char strangeItemInfo[128];
-	static char miscText[128];
+	static char miscText[512];
 	SetHudTextParams(-1.0, MAIN_HUD_Y, 0.15, g_iMainHudR, g_iMainHudG, g_iMainHudB, 255);
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -3980,16 +4048,21 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 			}
 			
+			if (HasJetpack(i))
+			{
+				Format(miscText, sizeof(miscText), "%sJetpack Time: %.1f\n", miscText, FloatAbs(g_flPlayerJetpackEndTime[i]-GetTickedTime()));
+			}
+			
 			if (PlayerHasItem(i, Item_MetalHelmet))
 			{
 				int maxShieldHealth = CalcItemModInt(i, Item_MetalHelmet, 2);
 				if (g_iPlayerShieldHealth[i] > 0)
 				{
-					FormatEx(miscText, sizeof(miscText), "Shield Health: %i/%i\n", g_iPlayerShieldHealth[i], maxShieldHealth);
+					Format(miscText, sizeof(miscText), "%sShield Health: %i/%i\n", miscText, g_iPlayerShieldHealth[i], maxShieldHealth);
 				}
 				else
 				{
-					FormatEx(miscText, sizeof(miscText), "***SHIELD DOWN*** %.1f\n", FloatAbs(g_flPlayerShieldRegenTime[i]-GetGameTime()));
+					Format(miscText, sizeof(miscText), "%s***SHIELD DOWN*** %.1f\n", FloatAbs(g_flPlayerShieldRegenTime[i]-GetGameTime()));
 				}
 			}
 
@@ -4032,13 +4105,15 @@ public Action Timer_PlayerHud(Handle timer)
 					}
 				}
 			}
-
+			
+			/*
 			if (PlayerHasItem(i, Item_Hachimaki) && g_flPlayerDelayedHealTime[i] > 0.0)
 			{
 				Format(miscText, sizeof(miscText), "%sDelayed Heal: %.1f\n", 
 					miscText, fmax(0.0, g_flPlayerDelayedHealTime[i]-GetTickedTime()));
 			}
-
+			*/
+			
 			if (PlayerHasItem(i, Item_LilBitey))
 			{
 				float time = fmax(0.0, g_flPlayerLifestealTime[i]-GetTickedTime());
@@ -4580,16 +4655,6 @@ public Action Timer_PlayerTimer(Handle timer)
 			g_flPlayerVampireSapperCooldown[i] -= 0.1;
 		}
 		
-		if (g_flPlayerRifleHeadshotBonusTime[i] > 0.0)
-		{
-			g_flPlayerRifleHeadshotBonusTime[i] -= 0.1;
-		}
-		
-		if (g_flPlayerGravityJumpBonusTime[i] > 0.0)
-		{
-			g_flPlayerGravityJumpBonusTime[i] -= 0.1;
-		}
-
 		if (PlayerHasItem(i, Item_Hachimaki) 
 			&& g_flPlayerDelayedHealTime[i] > 0.0 && g_flPlayerDelayedHealTime[i] <= GetTickedTime())
 		{
@@ -4608,7 +4673,7 @@ public Action Timer_PlayerTimer(Handle timer)
 			float damage = CalcItemMod(i, Item_LilBitey, 3);
 			ArrayList hitEnts = DoRadiusDamage(i, i, pos, Item_LilBitey, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE, 
 				range, 1.0, _, _, true, _, limit);
-
+			
 			if (hitEnts.Length > 0)
 			{
 				int totalHeal;
@@ -4630,6 +4695,38 @@ public Action Timer_PlayerTimer(Handle timer)
 			}
 				
 			delete hitEnts;
+		}
+		
+		if (g_flPlayerWealthRingRadius[i] > 0.0)
+		{
+			if (PlayerHasItem(i, Item_WealthHat))
+			{
+				float pos[3];
+				GetEntPos(i, pos);
+				pos[2] += 20.0;
+				TE_SetupBeamRingPoint(pos, g_flPlayerWealthRingRadius[i], g_flPlayerWealthRingRadius[i]+0.1,
+					g_iBeamModel, 0, 0, 0, 0.11, 5.0, 5.0, {255, 255, 0, 255}, 5, 0);
+				
+				TE_SendToAll();
+				float damage = GetItemMod(Item_WealthHat, 0) + CalcItemMod(i, Item_WealthHat, 1, -1);
+				ArrayList hitEnts = DoRadiusDamage(i, i, pos, Item_WealthHat, damage, DMG_IGNITE|DMG_PREVENT_PHYSICS_FORCE, 
+					g_flPlayerWealthRingRadius[i], _, _, _, true);
+				
+				int victim;
+				for (int a = 0; a < hitEnts.Length; a++)
+				{
+					victim = hitEnts.Get(a);
+					if (IsValidClient(victim))
+					{
+						TF2_IgnitePlayer(victim, i, 10.0);
+						EmitSoundToAll("misc/null.wav", victim, SNDCHAN_VOICE);
+					}
+				}
+				
+				delete hitEnts;
+			}
+			
+			g_flPlayerWealthRingRadius[i] = fmax(0.0, g_flPlayerWealthRingRadius[i]-GetItemMod(Item_WealthHat, 5));
 		}
 
 		if (g_iPlayerShieldHealth[i] <= 0 && GetGameTime() >= g_flPlayerShieldRegenTime[i] && PlayerHasItem(i, Item_MetalHelmet))
@@ -4835,6 +4932,7 @@ public Action OnVoiceCommand(int client, const char[] command, int args)
 
 	return Plugin_Continue;
 }
+
 public Action OnClientCommandKeyValues(int client, KeyValues kv)
 {
 	if (!RF2_IsEnabled() || !IsClientInGame(client))
@@ -4849,8 +4947,10 @@ public Action OnClientCommandKeyValues(int client, KeyValues kv)
 		g_flBlockMedicCall[client] = GetTickedTime() + 0.5;
 		return OnCallForMedic(client);
 	}
+	
 	return Plugin_Continue;
 }
+
 Action OnCallForMedic(int client)
 {
 	if (!IsPlayerAlive(client))
@@ -5122,6 +5222,13 @@ public void Hook_PreThink(int client)
 		TFBot_Think(TFBot(client));
 	}
 	
+	if (IsValidEntity2(g_iPlayerRollerMine[client]))
+	{
+		float pos[3];
+		GetEntPos(g_iPlayerRollerMine[client], pos);
+		CBaseEntity(client).SetLocalOrigin(pos);
+	}
+	
 	static float lastViewAngles[MAXPLAYERS][3];
 	if (TF2_IsPlayerInCondition(client, TFCond_Dazed) && GetEntProp(client, Prop_Send, "m_iStunFlags") & TF_STUNFLAG_BONKSTUCK)
 	{
@@ -5255,9 +5362,9 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 		{
 			enemy.DoSuicideBomb(client);
 		}
-		else if (IsFakeClient(client) && GetEntProp(client, Prop_Send, "m_iTauntIndex"))
+		else if (IsFakeClient(client) && GetEntProp(client, Prop_Send, "m_iTauntIndex")
+				|| IsValidEntity2(g_iPlayerRollerMine[client]))
 		{
-			// Bots never do non-weapon taunts
 			TF2_RemoveCondition(client, TFCond_Taunting);
 		}
 		else if (!GetEntProp(client, Prop_Send, "m_iTauntIndex")) // Weapon taunts are always 0
@@ -6237,7 +6344,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 	{
 		return result;
 	}
-
+	
 	static char inflictorClassname[64];
 	if (inflictor > 0)
 	{
@@ -6254,7 +6361,13 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 	{
 		damage *= Enemy(attacker).ItemDamageModifier;
 	}
-
+	
+	if (victimIsClient && damageCustom == TF_CUSTOM_BACKSTAB && GetClientTeam(victim) == TEAM_ENEMY)
+	{
+		// resist powerup blocks backstabs, so just remove it
+		TF2_RemoveCondition(victim, TFCond_RuneResist);
+	}
+	
 	if (validWeapon && IsValidClient(attacker))
 	{
 		proc *= GetWeaponProcCoefficient(weapon);
@@ -6411,7 +6524,11 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 			{
 				float bonus = 1.0;
 				bonus += CalcItemMod(attacker, Item_Antlers, 2);
-				bonus += CalcItemMod(attacker, ItemSniper_Bloodhound, 3);
+				if (CanUseCollectorItem(attacker, ItemSniper_Bloodhound))
+				{
+					bonus += CalcItemMod(attacker, ItemSniper_Bloodhound, 3);
+				}
+				
 				bonus += CalcItemMod(attacker, Item_Executioner, 4);
 				damage *= bonus;
 			}
@@ -7246,11 +7363,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			static float lastRocketJumpTime[MAXPLAYERS];
 			if (GetEntityFlags(victim) & FL_ONGROUND
 				|| !TF2_IsPlayerInCondition(victim, TFCond_BlastJumping)
-		 		|| lastRocketJumpTime[victim]+0.5 >= GetTickedTime())
+		 		|| lastRocketJumpTime[victim]+1.0 >= GetTickedTime())
 			{
 				// Reduce self damage based on fire+reload rate IF we are not rocket jumping.
 				// Also don't blow ourselves up if we rocket jump with several rockets at once.
-				damage *= fmax(0.5, Pow(GetPlayerFireRateMod(victim) * GetPlayerReloadMod(victim), 0.75));
+				damage *= Pow(GetPlayerFireRateMod(victim) * GetPlayerReloadMod(victim), 0.75);
 			}
 			else
 			{
@@ -7263,7 +7380,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		
 		if (damageType & DMG_BLAST && validWeapon)
 		{
-			damage = fmax(damage, 30.0);
+			damage = fmax(damage, float(RF2_GetCalculatedMaxHealth(victim))*0.005);
 		}
 	}
 
@@ -7285,6 +7402,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		damage = fmin(damage, maxDmg);
 	}
 	
+	damage = fmin(damage, 2147483647.0);
 	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;
 }
 
@@ -7773,6 +7891,17 @@ public void Hook_WeaponSwitchPost(int client, int weapon)
 	if (IsFakeClient(client))
 	{
 		TFBot(client).RemoveButtonFlag(IN_RELOAD);
+		if (weapon != INVALID_ENT)
+		{
+			char classname[128];
+			GetEntityClassname(weapon, classname, sizeof(classname));
+			if (strcmp2(classname, "tf_weapon_buff_item") && GetEntPropFloat(client, Prop_Send, "m_flRageMeter") >= 100.0)
+			{
+				// force bot to switch away from banner after usage
+				float time = TF2_GetPlayerClass(client) == TFClass_Soldier ? 3.0 : 5.0;
+				CreateTimer(time, Timer_ForceBannerSwitch, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+			}
+		}
 	}
 	else if (PlayerHasItem(client, ItemEngi_HeadOfDefense) && CanUseCollectorItem(client, ItemEngi_HeadOfDefense))
 	{
@@ -7819,8 +7948,22 @@ public void Hook_WeaponSwitchPost(int client, int weapon)
 			}
 		}
 	}
-	
+
 	CalculatePlayerMaxSpeed(client);
+}
+
+public void Timer_ForceBannerSwitch(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
+		return;
+		
+	int weapon = GetActiveWeapon(client);
+	char classname[128];
+	GetEntityClassname(weapon, classname, sizeof(classname));
+	if (strcmp2(classname, "tf_weapon_buff_item") && GetEntPropFloat(client, Prop_Send, "m_flRageMeter") >= 100.0)
+	{
+		TFBot(client).ForceBannerSwitch = true;
+	}
 }
 
 public Action Hook_DisableTouch(int entity, int other)
@@ -7874,7 +8017,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	// Apparently non-connected clients can call this??? (SourceTV?)
 	if (!IsClientInGame(client) || IsSpecBot(client))
 		return Plugin_Continue;
-
+	
 	bool bot = IsFakeClient(client);
 	if (!bot)
 	{
@@ -7892,10 +8035,188 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	{
 		action = TFBot_OnPlayerRunCmd(client, buttons, impulse);
 	}
+
+	if (IsRollermine(client))
+	{
+		float vel[3], ang[3], fwd[3], right[3];
+		GetClientEyeAngles(client, ang);
+		ang[0] = 0.0;
+		GetAngleVectors(ang, fwd, right, NULL_VECTOR);
+		NormalizeVector(fwd, fwd);
+		NormalizeVector(right, right);
+		float accel = GetItemMod(ItemStrange_JackHat, 0);
+		bool onGround = (GetEntityFlags(g_iPlayerRollerMine[client]) & FL_ONGROUND) != 0;
+		if (buttons & IN_DUCK && onGround)
+		{
+			accel *= 0.5; // go slower when ducking	
+		}
+		
+		if (onGround)
+		{
+			if (buttons & IN_JUMP)
+			{
+				ApplyAbsVelocityImpulse(EntRefToEntIndex(g_iPlayerRollerMine[client]), {0.0, 0.0, 400.0});
+				CBaseEntity(EntRefToEntIndex(g_iPlayerRollerMine[client])).RemoveFlag(FL_ONGROUND);
+			}
+		}
+		else
+		{
+			accel *= 0.5; // slower in the air
+		}
+		
+		if (buttons & IN_FORWARD)
+		{
+			vel[0] += 1.0 * fwd[0];
+			vel[1] += 1.0 * fwd[1];
+			vel[2] += 1.0 * fwd[2];
+		}
+		else if (buttons & IN_BACK)
+		{
+			vel[0] -= 1.0 * fwd[0];
+			vel[1] -= 1.0 * fwd[1];
+			vel[2] -= 1.0 * fwd[2];
+		}
+		
+		if (buttons & IN_MOVERIGHT)
+		{
+			vel[0] += 1.0 * right[0];
+			vel[1] += 1.0 * right[1];
+			vel[2] += 1.0 * right[2];
+		}
+		else if (buttons & IN_MOVELEFT)
+		{
+			vel[0] -= 1.0 * right[0];
+			vel[1] -= 1.0 * right[1];
+			vel[2] -= 1.0 * right[2];
+		}
+		
+		ScaleVector(vel, accel);
+		ApplyAbsVelocityImpulse(EntRefToEntIndex(g_iPlayerRollerMine[client]), vel);
+	}
 	
+	static bool jumpPressed[MAXPLAYERS];
+	static bool jetpackSound[MAXPLAYERS];
+	static int jetpackParticle[MAXPLAYERS][2];
+	if (buttons & IN_JUMP)
+	{
+		if (HasJetpack(client))
+		{
+			// MK 50
+			float power = GetItemMod(ItemStrange_MK50, 3);
+			float cap = GetItemMod(ItemStrange_MK50, 4);
+			float myVel[3];
+			GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", myVel);
+			if (myVel[2] < cap)
+			{
+				myVel[2] = fmin(cap, myVel[2]+power);
+				CBaseEntity(client).SetAbsVelocity(myVel);
+			}
+			
+			if (!jumpPressed[client])
+			{
+				if (!jetpackSound[client])
+				{
+					EmitSoundToAll("weapons/flame_thrower_loop.wav", client);
+					jetpackSound[client] = true;
+				}
+				
+				if (!IsValidEntity2(jetpackParticle[client][0]))
+				{
+					int attachment = LookupEntityAttachment(client, "foot_L");
+					if (attachment != 0)
+					{
+						float pos[3];
+						GetEntityAttachment(client, attachment, pos, NULL_VECTOR);
+						jetpackParticle[client][0] = EntIndexToEntRef(
+							SpawnInfoParticle("rockettrail_!", pos, _, client, "foot_L"));
+					}
+				}
+				
+				if (!IsValidEntity2(jetpackParticle[client][1]))
+				{
+					int attachment = LookupEntityAttachment(client, "foot_R");
+					if (attachment != 0)
+					{
+						float pos[3];
+						GetEntityAttachment(client, attachment, pos, NULL_VECTOR);
+						jetpackParticle[client][1] = EntIndexToEntRef(
+							SpawnInfoParticle("rockettrail_!", pos, _, client, "foot_R"));
+					}
+				}
+			}
+		}
+		else if (jetpackSound[client])
+		{
+			StopSound(client, SNDCHAN_AUTO, "weapons/flame_thrower_loop.wav");
+			StopSound(client, SNDCHAN_AUTO, "weapons/flame_thrower_loop.wav");
+			EmitSoundToAll("weapons/flame_thrower_end.wav", client);
+			jetpackSound[client] = false;
+			if (IsValidEntity2(jetpackParticle[client][0]))
+			{
+				RemoveEntity(jetpackParticle[client][0]);
+			}
+			if (IsValidEntity2(jetpackParticle[client][1]))
+			{
+				RemoveEntity(jetpackParticle[client][1]);
+			}
+		}
+		
+		jumpPressed[client] = true;
+	}
+	else
+	{
+		if (jetpackSound[client])
+		{
+			StopSound(client, SNDCHAN_AUTO, "weapons/flame_thrower_loop.wav");
+			StopSound(client, SNDCHAN_AUTO, "weapons/flame_thrower_loop.wav");
+			EmitSoundToAll("weapons/flame_thrower_end.wav", client);
+			jetpackSound[client] = false;
+			if (IsValidEntity2(jetpackParticle[client][0]))
+			{
+				RemoveEntity(jetpackParticle[client][0]);
+			}
+			if (IsValidEntity2(jetpackParticle[client][1]))
+			{
+				RemoveEntity(jetpackParticle[client][1]);
+			}
+		}
+		
+		jumpPressed[client] = false;
+	}
+	
+	if (buttons & IN_DUCK && HasJetpack(client))
+	{
+		float myVel[3];
+		GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", myVel);
+		myVel[2] = 0.0;
+		CBaseEntity(client).SetAbsVelocity(myVel);
+	}
+	
+	static bool scorePressed[MAXPLAYERS];
 	if (!bot && buttons & IN_SCORE)
 	{
 		g_flPlayerLastTabPressTime[client] = GetTickedTime();
+		if (!scorePressed[client])
+		{
+			if (GetCookieBool(client, g_coAltItemMenuButton))
+			{
+				if (g_bPlayerViewingItemMenu[client])
+				{
+					CancelClientMenu(client, true);
+					ClientCommand(client, "slot10");
+				}
+				else
+				{
+					ShowItemMenu(client);
+				}
+			}
+			
+			scorePressed[client] = true;
+		}
+	}
+	else
+	{
+		scorePressed[client] = false;
 	}
 
 	if (!bot && buttons & IN_ATTACK)
@@ -8209,6 +8530,14 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 			
 			if (voiceType == VoiceType_Robot)
 			{
+				if (!g_cvEnableGiantPainSounds.BoolValue)
+				{
+					if ((IsBoss(client) || g_bPlayerIsDyingBoss[client]) && (StrContains(sample, "pain", false) != -1))
+					{
+						return Plugin_Stop;
+					}
+				}
+				
 				action = Plugin_Changed;
 				bool noGiantLines = (class == TFClass_Sniper || class == TFClass_Medic || class == TFClass_Engineer || class == TFClass_Spy);
 				char classString[16], newString[32];

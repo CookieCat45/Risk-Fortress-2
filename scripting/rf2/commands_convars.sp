@@ -145,6 +145,7 @@ void LoadCommandsAndCvars()
 	g_cvAggressiveRestarting = CreateConVar("rf2_aggressive_server_restarting", "1", "If enabled, restarts the server more frequently to avoid memory leaks");
 	g_cvGameOver = CreateConVar("rf2_game_over", "0", _, FCVAR_HIDDEN|FCVAR_DONTRECORD);
 	g_cvGamePlayedCount = CreateConVar("rf2_games_played", "0", _, FCVAR_HIDDEN|FCVAR_DONTRECORD);
+	g_cvEnableGiantPainSounds = CreateConVar("rf2_enable_giant_pain_sounds", "", "Enables giant robot pain voices", FCVAR_NOTIFY, true, 0.0);
 	
 	// Debug
 	RegAdminCmd("rf2_hiddenslot_test", Command_TestHiddenSlot, ADMFLAG_ROOT);
@@ -1521,6 +1522,9 @@ void ShowClientSettingsMenu(int client)
 		FormatEx(buffer, sizeof(buffer), "%t", "ToggleTeleBoss", GetCookieBool(client, g_coBecomeBoss) ? on : off);
 		menu.AddItem("rf2_become_boss", buffer);
 	}
+	
+	FormatEx(buffer, sizeof(buffer), "%t", "AltItemMenuButton", GetCookieBool(client, g_coAltItemMenuButton) ? on : off);
+	menu.AddItem("rf2_alt_item_menu_button", buffer);
 	
 	FormatEx(buffer, sizeof(buffer), "%t", "SpecOnDeath", GetCookieBool(client, g_coSpecOnDeath) ? on : off);
 	menu.AddItem("rf2_spec_on_death", buffer);

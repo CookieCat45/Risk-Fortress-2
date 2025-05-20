@@ -551,6 +551,11 @@ int EquipItemAsWearable(int client, int item)
 			SDK_EquipWearable(client, wearable); // need to equip a 2nd time if we do this to prevent weird attachment issues
 		}
 		
+		if (IsRollermine(client))
+		{
+			SetEntityRenderMode(wearable, RENDER_NONE);
+		}
+		
 		SetEntProp(wearable, Prop_Send, "m_bValidatedAttachedEntity", true);
 		if (!IsPlayerMinion(client))
 		{
@@ -688,9 +693,11 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 				weapon = GetPlayerWeaponSlot(client, i);
 				if (weapon == INVALID_ENT)
 					continue;
-
+				
+				// heatmaker utilizes clip size for charge rate cap
+				bool heatmaker = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex") == 752;
 				ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType"); // we may not need to waste an attribute slot here
-				if (ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetWeaponClipSize(weapon) > 0)
+				if (heatmaker || ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetWeaponClipSize(weapon) > 0)
 				{
 					if (IsEnergyWeapon(weapon))
 					{
@@ -698,12 +705,20 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 						{
 							TF2Attrib_SetByName(weapon, "clip size bonus upgrade", amount);
 						}
+						else
+						{
+							TF2Attrib_RemoveByName(weapon, "clip size bonus upgrade");
+						}
 					}
 					else
 					{
 						if (PlayerHasItem(client, Item_WhaleBoneCharm))
 						{
 							TF2Attrib_SetByName(weapon, "clip size penalty HIDDEN", amount);
+						}
+						else
+						{
+							TF2Attrib_RemoveByName(weapon, "clip size penalty HIDDEN");
 						}
 					}
 				}
@@ -1022,6 +1037,8 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					{
 						TF2Attrib_SetByName(rifle, "SRifle Charge rate increased", 1.0+CalcItemMod(client, item, 0));
 					}
+					
+					UpdatePlayerReloadRate(client);
 				}
 			}
 		}
@@ -1513,6 +1530,11 @@ public void RF_SaxtonRadiusDamage(DataPack pack)
 	TriggerAchievement(attacker, ACHIEVEMENT_SAXTON);
 }
 
+public Action Hook_BlockWeaponSwitch(int client, int weapon)
+{
+	return Plugin_Stop;
+}
+
 bool ActivateStrangeItem(int client)
 {
 	if (g_iPlayerEquipmentItemCharges[client] <= 0 || IsPlayerMinion(client))
@@ -1522,8 +1544,21 @@ bool ActivateStrangeItem(int client)
 	if (GetPercentInvisible(client) > 0.0 && equipment == ItemStrange_DarkHunter)
 		return false;
 	
-	if (IsPlayerStunned(client))
+	if (IsPlayerStunned(client) || TF2_IsPlayerInCondition(client, TFCond_Taunting))
 		return false;
+		
+	if (IsRollermine(client))
+		return false;
+		
+	Call_StartForward(g_fwOnActivateStrange);
+	Call_PushCell(client);
+	Call_PushCell(equipment);
+	Action action = Plugin_Continue;
+	Call_Finish(action);
+	if (action == Plugin_Handled || action == Plugin_Stop)
+	{
+		return false;
+	}
 	
 	if (equipment == ItemStrange_PartyHat)
 	{
@@ -1571,7 +1606,7 @@ bool ActivateStrangeItem(int client)
 		{
 			TF2_AddCondition(client, TFCond_CritOnFlagCapture, GetItemMod(ItemStrange_RobotChicken, 0));
 		}
-
+		
 		case ItemStrange_Longwave:
 		{
 			bool teleFound;
@@ -1928,6 +1963,125 @@ bool ActivateStrangeItem(int client)
 			UpdatePlayerFireRate(client);
 			EmitGameSoundToAll(GSND_MVM_POWERUP, client);
 		}
+		
+		case ItemStrange_JackHat:
+		{
+			if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+			{
+				// make sure we're not hauling a building
+				int weapon = GetActiveWeapon(client);
+				char classname[128];
+				GetEntityClassname(weapon, classname, sizeof(classname));
+				if (strcmp2(classname, "tf_weapon_builder"))
+				{
+					return false;
+				}
+			}
+			
+			// prepare ourselves to become a roller mine
+			SetEntityCollisionGroup(client, TFCOLLISION_GROUP_ROCKET_BUT_NOT_WITH_OTHER_ROCKETS);
+			TF2Attrib_AddCustomPlayerAttribute(client, "no_attack", 1.0);
+			SetVariantInt(1);
+			AcceptEntityInput(client, "SetForcedTauntCam");
+			SetEntityMoveType(client, MOVETYPE_OBSERVER);
+			SetEntityRenderMode(client, RENDER_NONE);
+			if (TF2_IsPlayerInCondition(client, TFCond_Slowed))
+			{
+				int weapon = GetActiveWeapon(client);
+				if (weapon != INVALID_ENT)
+				{
+					char classname[128];
+					GetEntityClassname(weapon, classname, sizeof(classname));
+					if (strcmp2(classname, "tf_weapon_minigun"))
+					{
+						// kill minigun windup sound (this glitches the animation for a bit after but w/e)
+						SetEntPropFloat(weapon, Prop_Send, "m_flTimeWeaponIdle", GetGameTime());
+						SetEntProp(weapon, Prop_Send, "m_iWeaponState", 1);
+					}
+				}
+			}
+			
+			SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", INVALID_ENT);
+			SDKHook(client, SDKHook_WeaponCanSwitchTo, Hook_BlockWeaponSwitch);
+			SetEntProp(client, Prop_Data, "m_takedamage", DAMAGE_NO);
+			
+			// create the roller mine
+			int rollerMine = CreateEntityByName("prop_physics_multiplayer");
+			DispatchKeyValueInt(rollerMine, "nodamageforces", 1);
+			DispatchKeyValueFloat(rollerMine, "physdamagescale", 0.0);
+			SetEntPropFloat(rollerMine, Prop_Send, "m_flModelScale", 1.25);
+			SetEntityModel2(rollerMine, MODEL_ROLLERMINE);
+			float pos[3];
+			GetEntPos(client, pos, true);
+			TeleportEntity(rollerMine, pos);
+			DispatchSpawn(rollerMine);
+			SetEntProp(rollerMine, Prop_Send, "m_nSolidType", SOLID_VPHYSICS);
+			SetEntProp(rollerMine, Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER|FSOLID_NOT_STANDABLE);
+			SetEntityCollisionGroup(rollerMine, COLLISION_GROUP_PLAYER);
+			g_iPlayerRollerMine[client] = EntIndexToEntRef(rollerMine);
+			SetEntityOwner(rollerMine, client);
+			SetEntProp(rollerMine, Prop_Data, "m_iTeamNum", GetClientTeam(client));
+			CreateTimer(1.3, Timer_RollerMineSpikes, g_iPlayerRollerMine[client], TIMER_FLAG_NO_MAPCHANGE);
+			EmitSoundToAll("npc/roller/mine/combine_mine_deploy1.wav", rollerMine);
+			EmitSoundToAll("npc/roller/mine/combine_mine_deploy1.wav", rollerMine);
+			EmitSoundToAll("npc/roller/mine/rmine_tossed1.wav", rollerMine);
+			EmitSoundToAll("npc/roller/mine/rmine_tossed1.wav", rollerMine);
+			float vel[3];
+			GetEntPropVector(client, Prop_Data, "m_vecAbsVelocity", vel);
+			SetPhysVelocity(rollerMine, vel);
+			if (g_hHookPhysicsSolidMask)
+			{
+				// necessary to prevent the player from escaping the map boundaries
+				g_hHookPhysicsSolidMask.HookEntity(Hook_Pre, rollerMine, DHook_RollerMineSolidMask);	
+			}
+			
+			if (g_hHookVPhysicsCollision)
+			{
+				g_hHookVPhysicsCollision.HookEntity(Hook_Post, rollerMine, DHook_RollerMinePhysics);
+			}
+			
+			int wearable = MaxClients+1;
+			while ((wearable = FindEntityByClassname(wearable, "tf_wearable*")) != INVALID_ENT)
+			{
+				if (GetEntPropEnt(wearable, Prop_Data, "m_hOwnerEntity") == client)
+					SetEntityRenderMode(wearable, RENDER_NONE);
+			}
+			
+			while ((wearable = FindEntityByClassname(wearable, "tf_powerup_bottle")) != INVALID_ENT)
+			{
+				if (GetEntPropEnt(wearable, Prop_Data, "m_hOwnerEntity") == client)
+					SetEntityRenderMode(wearable, RENDER_NONE);
+			}
+			
+			CreateTimer(GetItemMod(ItemStrange_JackHat, 3), Timer_RollerMineEndAnim, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(GetItemMod(ItemStrange_JackHat, 3)+1.0, Timer_EndRollerMine, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		}
+		
+		case ItemStrange_PocketYeti:
+		{
+			ForceTaunt(client, 1183);
+			if (!TF2_IsPlayerInCondition(client, TFCond_Taunting)) // couldn't taunt?
+				return false;
+			
+			g_bPlayerYetiSmash[client] = true;
+			TF2_AddCondition(client, TFCond_MegaHeal, 9.0);
+			TF2_AddCondition(client, TFCond_UberchargedHidden, 9.0);
+			CreateTimer(5.3, Timer_YetiSmash, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		}
+		
+		case ItemStrange_MK50:
+		{
+			g_flPlayerJetpackEndTime[client] = GetTickedTime() + GetItemMod(ItemStrange_MK50, 0);
+			UpdatePlayerGravity(client);
+			float airControlAmount = 1.0 + GetItemMod(ItemStrange_MK50, 2);
+			if (PlayerHasItem(client, Item_Tux))
+			{
+				airControlAmount += CalcItemMod(client, Item_Tux, 1);
+			}
+			
+			TF2Attrib_SetByName(client, "increased air control", airControlAmount);
+			CreateTimer(GetItemMod(ItemStrange_MK50, 0)+0.1, Timer_UpdateGravity, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		}
 	}
 	
 	// Don't go on cooldown if our charges are above the limit; we likely dropped some battery canteens
@@ -1963,6 +2117,295 @@ bool ActivateStrangeItem(int client)
 	return true;
 }
 
+public void Timer_UpdateGravity(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
+		return;
+		
+	UpdatePlayerGravity(client);
+}
+
+public void Timer_YetiSmash(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
+		return;
+	
+	float pos[3];
+	GetEntPos(client, pos, true);
+	float damage = GetItemMod(ItemStrange_PocketYeti, 0);
+	float radius = GetItemMod(ItemStrange_PocketYeti, 1);
+	
+	// we want knockback on ragdolls, so copy the way the dragonborn helm does it
+	int team = GetClientTeam(client);
+	ArrayList blacklist = new ArrayList();
+	blacklist.Push(client);
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (client == i || !IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) == team)
+			continue;
+		
+		if (DistBetween(client, i) <= radius)
+		{
+			float randomVel[3];
+			randomVel[0] = GetRandomFloat(-99999.0, 99999.0);
+			randomVel[1] = GetRandomFloat(-99999.0, 99999.0);
+			randomVel[2] = 99999.0;
+			RF_TakeDamage(i, client, client, damage, DMG_PREVENT_PHYSICS_FORCE, ItemStrange_PocketYeti, _, randomVel);
+			float victimPos[3], ang[3], vel[3];
+			GetEntPos(i, victimPos, true);
+			GetVectorAnglesTwoPoints(pos, victimPos, ang);
+			GetAngleVectors(ang, vel, NULL_VECTOR, NULL_VECTOR);
+			NormalizeVector(vel, vel);
+			ScaleVector(vel, GetItemMod(ItemStrange_PocketYeti, 2));
+			vel[2] = GetItemMod(ItemStrange_PocketYeti, 2)*0.5;
+			ApplyAbsVelocityImpulse(i, vel);
+			TF2_AddCondition(i, TFCond_AirCurrent, 5.0);
+			blacklist.Push(i);
+		}
+	}
+	
+	// also hit other entities
+	DoRadiusDamage(client, client, pos, 
+		ItemStrange_PocketYeti, damage, DMG_PREVENT_PHYSICS_FORCE, radius, _, _, blacklist);
+
+	g_bPlayerYetiSmash[client] = false;
+	UTIL_ScreenShake(pos, 10.0, 5.0, 3.0, radius*4.0, SHAKE_START, true);
+	delete blacklist;
+}
+
+void OnRollerMineCollide(int mine, int entity)
+{
+	float ang[3], vel[3], pos1[3], pos2[3];
+	GetEntPos(mine, pos1, true);
+	GetEntPos(entity, pos2, true);
+	GetVectorAnglesTwoPoints(pos2, pos1, ang);
+	ang[0] = -45.0;
+	GetAngleVectors(ang, vel, NULL_VECTOR, NULL_VECTOR);
+	NormalizeVector(vel, vel);
+	ScaleVector(vel, 700.0);
+	SetPhysVelocity(mine, vel);
+	if (IsValidClient(entity))
+	{
+		GetVectorAnglesTwoPoints(pos1, pos2, ang);
+		ang[0] = -45.0;
+		GetAngleVectors(ang, vel, NULL_VECTOR, NULL_VECTOR);
+		NormalizeVector(vel, vel);
+		ScaleVector(vel, 700.0);
+		ApplyAbsVelocityImpulse(entity, vel);
+	}
+	
+	int owner = GetEntPropEnt(mine, Prop_Data, "m_hOwnerEntity");
+	ArrayList blacklist = new ArrayList();
+	blacklist.Push(entity);
+	
+	// hit entity takes the full damage always
+	RF_TakeDamage(entity, owner, owner, GetItemMod(ItemStrange_JackHat, 1), 
+		DMG_BLAST|DMG_PREVENT_PHYSICS_FORCE, ItemStrange_JackHat);
+	DoRadiusDamage(owner, owner, pos2, ItemStrange_JackHat, GetItemMod(ItemStrange_JackHat, 1), 
+		DMG_BLAST|DMG_PREVENT_PHYSICS_FORCE, GetItemMod(ItemStrange_JackHat, 2), _, _, blacklist);
+	
+	delete blacklist;
+	DoExplosionEffect(pos1, false);
+	EmitSoundToAll("npc/roller/mine/rmine_explode_shock1.wav", mine);
+	EmitSoundToAll("npc/roller/mine/rmine_explode_shock1.wav", mine);
+}
+
+public void Hook_RollerMineStartTouchPost(int entity, int other)
+{
+	if (IsCombatChar(other) 
+		&& GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity") != other
+		&& GetEntTeam(entity) != GetEntTeam(other))
+	{
+		OnRollerMineCollide(entity, other);
+	}
+}
+
+public void Timer_RollerMineSpikes(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+		return;
+		
+	SetEntityModel2(entity, MODEL_ROLLERMINE_SPIKES);
+	SDKHook(entity, SDKHook_StartTouchPost, Hook_RollerMineStartTouchPost);
+	char sound[PLATFORM_MAX_PATH];
+	FormatEx(sound, sizeof(sound), "npc/roller/mine/rmine_blades_out%d.wav", GetRandomInt(1, 3));
+	EmitSoundToAll(sound, entity);
+	EmitSoundToAll(sound, entity);
+	EmitSoundToAll("npc/roller/mine/rmine_seek_loop2.wav", entity);
+	EmitSoundToAll("npc/roller/mine/rmine_seek_loop2.wav", entity);
+}
+
+public void Timer_RollerMineEndAnim(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return;
+		
+	int rollerMine = EntRefToEntIndex(g_iPlayerRollerMine[client]);
+	if (rollerMine == INVALID_ENT)
+		return;
+		
+	SetEntityModel2(rollerMine, MODEL_ROLLERMINE);
+	SDKUnhook(rollerMine, SDKHook_StartTouchPost, Hook_RollerMineStartTouchPost);
+	char sound[PLATFORM_MAX_PATH];
+	FormatEx(sound, sizeof(sound), "npc/roller/mine/rmine_blades_in%d.wav", GetRandomInt(1, 3));
+	EmitSoundToAll(sound, rollerMine);
+	EmitSoundToAll(sound, rollerMine);
+	StopSound(rollerMine, SNDCHAN_AUTO, "npc/roller/mine/rmine_seek_loop2.wav");
+	StopSound(rollerMine, SNDCHAN_AUTO, "npc/roller/mine/rmine_seek_loop2.wav");
+	StopSound(rollerMine, SNDCHAN_AUTO, "npc/roller/mine/rmine_seek_loop2.wav");
+	StopSound(rollerMine, SNDCHAN_AUTO, "npc/roller/mine/rmine_seek_loop2.wav");
+}
+
+public void Timer_EndRollerMine(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
+		return;
+		
+	int rollerMine = EntRefToEntIndex(g_iPlayerRollerMine[client]);
+	if (rollerMine == INVALID_ENT)
+		return;
+	
+	SetEntityCollisionGroup(client, COLLISION_GROUP_PLAYER);
+	TF2Attrib_RemoveCustomPlayerAttribute(client, "no_attack");
+	SetVariantInt(0);
+	AcceptEntityInput(client, "SetForcedTauntCam");
+	SetEntityMoveType(client, MOVETYPE_WALK);
+	SetEntityRenderMode(client, RENDER_NORMAL);
+	SDKUnhook(client, SDKHook_WeaponCanSwitchTo, Hook_BlockWeaponSwitch);
+	SetEntProp(client, Prop_Data, "m_takedamage", DAMAGE_YES);
+	for (int i = 0; i <= WeaponSlot_Melee; i++)
+	{
+		if (IsValidEntity2(GetPlayerWeaponSlot(client, i)))
+		{
+			ForceWeaponSwitch(client, i);
+			break;
+		}	
+	}
+	
+	int wearable = MaxClients+1;
+	while ((wearable = FindEntityByClassname(wearable, "tf_wearable*")) != INVALID_ENT)
+	{
+		if (GetEntPropEnt(wearable, Prop_Data, "m_hOwnerEntity") == client)
+			SetEntityRenderMode(wearable, RENDER_NORMAL);
+	}
+	
+	while ((wearable = FindEntityByClassname(wearable, "tf_powerup_bottle")) != INVALID_ENT)
+	{
+		if (GetEntPropEnt(wearable, Prop_Data, "m_hOwnerEntity") == client)
+			SetEntityRenderMode(wearable, RENDER_NORMAL);
+	}
+	
+	float mins[3], maxs[3], playerPos[3];
+	GetEntPos(client, playerPos);
+	GetClientMins(client, mins);
+	GetClientMaxs(client, maxs);
+	TR_TraceHullFilter(playerPos, playerPos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_RollerMineEnd, client);
+	if (TR_DidHit())
+	{
+		// unstuck
+		float pos[3];
+		GetEntPos(rollerMine, pos, true);
+		float dist = 200.0;
+		CNavArea area = TheNavMesh.GetNavArea(pos, 200.0);
+		if (area)
+		{
+			// if there's a nav area directly below us, try to use that first
+			float navPos[3];
+			area.GetCenter(navPos);
+			navPos[2] += 15.0;
+			TR_TraceHullFilter(navPos, navPos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_RollerMineEnd, client);
+			if (!TR_DidHit())
+			{
+				TeleportEntity(client, navPos);
+			}
+			else
+			{
+				area = NULL_AREA;
+			}
+		}
+		
+		if (!area)
+		{
+			pos[2] += 15.0; // helps a bit to find unstuck spots closer to us
+			float spawnPos[3];
+			int filterTeam = GetClientTeam(client) == 2 ? 3 : 2;
+			while (!area)
+			{
+				area = GetSpawnPoint(pos, spawnPos, 0.0, dist, filterTeam, true, mins, maxs, MASK_PLAYERSOLID);
+				TR_TraceRayFilter(pos, spawnPos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
+				if (TR_DidHit())
+				{
+					area = NULL_AREA;
+				}
+				
+				dist += 100.0;
+			}
+			
+			TeleportEntity(client, spawnPos);
+		}
+		
+	}
+	
+	float physVel[3];
+	GetPhysVelocity(rollerMine, physVel);
+	RemoveEntity(rollerMine);
+	CBaseEntity(client).SetAbsVelocity(physVel);
+}
+
+public bool TraceFilter_RollerMineEnd(int entity, int mask, int client)
+{
+	if (EntIndexToEntRef(entity) == g_iPlayerRollerMine[client])
+		return false;
+		
+	return TraceFilter_SpawnCheck(entity, mask, GetEntTeam(client));
+}
+
+public MRESReturn DHook_RollerMineSolidMask(int entity, DHookReturn returnVal)
+{
+	returnVal.Value = MASK_PLAYERSOLID;
+	return MRES_Supercede;
+}
+
+public MRESReturn DHook_RollerMinePhysics(int entity, DHookParam params)
+{
+	int hitEntity = params.GetObjectVar(2, 108, ObjectValueType_CBaseEntityPtr);
+	if (hitEntity == 0)
+	{
+		float nextGroundCheckTime[MAX_EDICTS];
+		if (GetTickedTime() >= nextGroundCheckTime[entity] && !(CBaseEntity(entity).GetFlags() & FL_ONGROUND))
+		{
+			// check directly below us for solid ground - we don't want to allow climbing walls
+			float pos[3];
+			GetEntPos(entity, pos);
+			pos[2] -= 10.0;
+			float mins[3] = {-4.0, -4.0, -16.0};
+			float maxs[3] = {4.0, 4.0, 16.0};
+			TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_WallsOnly);
+			#if defined DEVONLY
+			TE_DrawBoxAll(pos, pos, mins, maxs, 0.2, g_iBeamModel, {0, 255, 255, 255});
+			#endif
+			if (TR_DidHit() || TR_PointOutsideWorld(pos))
+			{
+				CBaseEntity(entity).AddFlag(FL_ONGROUND);
+				nextGroundCheckTime[entity] = GetTickedTime()+0.3;
+			}
+		}
+	}
+	
+	return MRES_Ignored;
+}
+
+public bool TraceFilter_RollerMine(int entity, int mask, int self)
+{
+	if (entity == self || !IsValidClient(entity) && !IsNPC(entity))
+		return false;
+	
+	if (GetEntTeam(self) == GetEntTeam(entity))
+		return false;
+	
+	return true;
+}
+
 public void Timer_EndRingBonus(Handle timer)
 {
 	g_bRingCashBonus = false;
@@ -1991,11 +2434,7 @@ public void Timer_FusRoDah(Handle timer, int client)
 			NormalizeVector(vel, vel);
 			ScaleVector(vel, GetItemMod(ItemStrange_Dragonborn, 2));
 			vel[2] = FloatAbs(vel[2]*2.0);
-			if (IsBoss(i))
-			{
-				ScaleVector(vel, 0.4);
-			}
-			
+			TF2_AddCondition(i, TFCond_AirCurrent, 5.0);
 			TeleportEntity(i, _, _, {0.0, 0.0, 0.0});
 			TeleportEntity(i, _, _, vel);
 		}
@@ -2565,36 +3004,37 @@ public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &
 	if (!RF2_IsEnabled())
 		return Plugin_Continue;
 	
-	if (IsInvuln(victim)) // Goombas damage through Uber by default because of DMG_CRUSH, let's prevent that
+	bool canGoomba = PlayerHasItem(attacker, ItemScout_LongFallBoots) && CanUseCollectorItem(attacker, ItemScout_LongFallBoots);
+	if (!canGoomba)
+	{
+		return Plugin_Handled;
+	}
+		
+	if (IsInvuln(victim)) // Goombas damage through Uber by default, let's prevent that
 	{
 		damageMultiplier = 0.0;
 		damageBonus = 0.0;
 		return Plugin_Changed;
 	}
 	
-	if (PlayerHasItem(attacker, ItemScout_LongFallBoots) && CanUseCollectorItem(attacker, ItemScout_LongFallBoots))
+	// Goombas by default do the victim's health in damage, let's instead give it a base damage value
+	damageMultiplier = 0.0;
+	damageBonus = GetItemMod(ItemScout_LongFallBoots, 0) + (1.0 + CalcItemMod(attacker, ItemScout_LongFallBoots, 1, -1));
+	jumpPower = GetItemMod(ItemScout_LongFallBoots, 2) + (1.0 * CalcItemMod(attacker, ItemScout_LongFallBoots, 3, -1));
+	SetEntItemProc(attacker, ItemScout_LongFallBoots);
+	g_iPlayerGoombaChain[attacker]++;
+	if (g_iPlayerGoombaChain[attacker] > 8)
 	{
-		// Goombas by default do the victim's health in damage, let's instead give it a base damage value
-		damageMultiplier = 0.0;
-		damageBonus = GetItemMod(ItemScout_LongFallBoots, 0) + (1.0 + CalcItemMod(attacker, ItemScout_LongFallBoots, 1, -1));
-		jumpPower = GetItemMod(ItemScout_LongFallBoots, 2) + (1.0 * CalcItemMod(attacker, ItemScout_LongFallBoots, 3, -1));
-		SetEntItemProc(attacker, ItemScout_LongFallBoots);
-		g_iPlayerGoombaChain[attacker]++;
-		if (g_iPlayerGoombaChain[attacker] > 8)
-		{
-			EmitSoundToAll(SND_1UP, attacker);
-			EmitSoundToAll(SND_1UP, attacker);
-		}
-		
-		if (g_iPlayerGoombaChain[attacker] >= 15)
-		{
-			TriggerAchievement(attacker, ACHIEVEMENT_GOOMBACHAIN);
-		}
-		
-		return Plugin_Changed;
+		EmitSoundToAll(SND_1UP, attacker);
+		EmitSoundToAll(SND_1UP, attacker);
 	}
 	
-	return Plugin_Handled;
+	if (g_iPlayerGoombaChain[attacker] >= 15)
+	{
+		TriggerAchievement(attacker, ACHIEVEMENT_GOOMBACHAIN);
+	}
+	
+	return Plugin_Changed;
 }
 
 public int OnStompPost(int attacker, int victim, float damageMultiplier, float damageBonus, float jumpPower)
@@ -2624,9 +3064,25 @@ void DoHeadshotBonuses(int attacker, int victim, float damage)
 	
 	if (PlayerHasItem(attacker, ItemSniper_VillainsVeil) && CanUseCollectorItem(attacker, ItemSniper_VillainsVeil))
 	{
-		g_flPlayerRifleHeadshotBonusTime[attacker] = GetItemMod(ItemSniper_VillainsVeil, 2);
+		float time = GetItemMod(ItemSniper_VillainsVeil, 2);
+		g_flPlayerRifleHeadshotBonusTime[attacker] = GetTickedTime() + time;
 		UpdatePlayerFireRate(attacker);
+		CreateTimer(time+0.1, Timer_UpdateFireRate, GetClientUserId(attacker), TIMER_FLAG_NO_MAPCHANGE);
+		TF2_AddCondition(attacker, TFCond_CritHype, time);
+		int rifle = GetPlayerWeaponSlot(attacker, WeaponSlot_Primary);
+		if (rifle != INVALID_ENT)
+		{
+			SetEntPropFloat(rifle, Prop_Send, "m_flNextPrimaryAttack", GetGameTime());
+		}
 	}
+}
+
+public void Timer_UpdateFireRate(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
+		return;
+		
+	UpdatePlayerFireRate(client);
 }
 
 bool IsHauntedItem(int item)

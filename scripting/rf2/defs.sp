@@ -207,6 +207,8 @@ enum // Move collide types
 #define MODEL_CASH_BOMB "models/props_c17/cashregister01a.mdl"
 #define MODEL_MERASMUS "models/bots/merasmus/merasmus.mdl"
 #define MODEL_MEDISHIELD "models/props_mvm/mvm_player_shield2.mdl"
+#define MODEL_ROLLERMINE "models/roller.mdl"
+#define MODEL_ROLLERMINE_SPIKES "models/roller_spikes.mdl"
 
 #define MAT_DEBUGEMPTY "debug/debugempty.vmt"
 #define MAT_BEAM "materials/sprites/laser.vmt"

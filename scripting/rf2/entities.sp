@@ -553,6 +553,13 @@ void PickupCash(int client, int entity)
 			{
 				HealPlayer(client, CalcItemModInt(client, Item_BanditsBoots, 1));
 			}
+			
+			if (PlayerHasItem(client, Item_WealthHat))
+			{
+				float maxRadius = GetItemMod(Item_WealthHat, 2) + CalcItemMod(client, Item_WealthHat, 3, -1);
+				float radiusToAdd = GetItemMod(Item_WealthHat, 4);
+				g_flPlayerWealthRingRadius[client] = fmin(g_flPlayerWealthRingRadius[client]+radiusToAdd, maxRadius);
+			}
 		}
 
 		RemoveEntity(entity);
@@ -982,6 +989,27 @@ bool IsSkeleton(int entity)
 	return strcmp2(classname, "tf_zombie");
 }
 
+void ApplyAbsVelocityImpulse(int entity, const float vel[3])
+{
+	VScriptCmd cmd;
+    cmd.Append(Format2("self.ApplyAbsVelocityImpulse(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]));
+	cmd.Run(entity);
+}
+
+void SetPhysVelocity(int entity, const float vel[3])
+{
+    VScriptCmd cmd;
+    cmd.Append(Format2("self.SetPhysVelocity(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]));
+	cmd.Run(entity);
+}
+
+void GetPhysVelocity(int entity, float buffer[3])
+{
+    VScriptCmd cmd;
+    cmd.Append("self.GetPhysVelocity()");
+    cmd.Run_ReturnVector(entity, buffer);
+}
+
 int GetEntityDisplayName(int entity, char[] buffer, int size)
 {
 	static char classname[128];
@@ -1043,50 +1071,6 @@ int GetEntityDisplayName(int entity, char[] buffer, int size)
 	}
 	
 	return strcopy(buffer, size, "");
-}
-
-void ApplyAbsVelocityImpulse(int entity, const float vel[3])
-{
-	static char str[128];
-	FormatEx(str, sizeof(str), "self.ApplyAbsVelocityImpulse(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]);
-	RunScriptCode(entity, str);
-}
-
-void RunScriptCode(int entity, const char[] code)
-{
-	SetVariantString(code);
-	AcceptEntityInput(entity, "RunScriptCode");
-}
-
-static int g_iScriptSlave = INVALID_ENT;
-// Set the m_iszMessage property of "activator" in the script code to the return value
-stock int RunScriptCode_ReturnInt(int entity, const char[] code)
-{
-	if (EntRefToEntIndex(g_iScriptSlave) == INVALID_ENT)
-	{
-		g_iScriptSlave = EntIndexToEntRef(CreateEntityByName("game_text"));
-	}
-	
-	SetVariantString(code);
-	AcceptEntityInput(entity, "RunScriptCode", g_iScriptSlave);
-	static char name[128];
-	GetEntPropString(g_iScriptSlave, Prop_Data, "m_iszMessage", name, sizeof(name));
-	return StringToInt(name);
-}
-
-// Set the m_iszMessage property of "activator" in the script code to the return value
-stock int RunScriptCode_ReturnString(int entity, const char[] code, char[] buffer, int size)
-{
-	if (EntRefToEntIndex(g_iScriptSlave) == INVALID_ENT)
-	{
-		g_iScriptSlave = EntIndexToEntRef(CreateEntityByName("game_text"));
-	}
-	
-	SetVariantString(code);
-	AcceptEntityInput(entity, "RunScriptCode", g_iScriptSlave);
-	static char name[128];
-	GetEntPropString(g_iScriptSlave, Prop_Data, "m_iszMessage", name, sizeof(name));
-	return strcopy(buffer, size, name);
 }
 
 void CleanPathFollowers()

@@ -160,7 +160,13 @@ static Action OnInteract(int client, RF2_Object_Pedestal pedestal)
         RemoveEntity(pedestal.index);
         return Plugin_Handled;
     }
-
+    else if (IsPlayerSurvivor(client) && IsAtItemShareLimit(client))
+    {
+        EmitSoundToClient(client, SND_NOPE);
+        PrintCenterText(client, "%t", "ItemShareLimit", g_iPlayerItemLimit[g_iPlayerSurvivorIndex[client]]);
+        return Plugin_Continue;
+    }
+    
     if (GetPlayerCash(client) >= pedestal.Cost)
 	{
 		AddPlayerCash(client, -pedestal.Cost);

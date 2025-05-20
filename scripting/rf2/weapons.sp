@@ -984,51 +984,38 @@ public void RF_MissCheck(int client)
 	}
 }
 
-public MRESReturn Detour_SetReloadTimer(int weapon, DHookParam params)
-{
-	if (!RF2_IsEnabled())
-		return MRES_Ignored;
-	
-	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
-	if (!IsValidClient(owner))
-		return MRES_Ignored;
-	
-	float reloadTime = params.Get(1);
-	float mult = GetPlayerReloadMod(owner, GetActiveWeapon(owner));
-	int viewModel = GetEntPropEnt(owner, Prop_Send, "m_hViewModel");
-	if (IsValidEntity2(viewModel))
-	{
-		DataPack pack = new DataPack();
-		pack.WriteCell(EntIndexToEntRef(viewModel));
-		pack.WriteFloat(reloadTime/(reloadTime*mult));
-		RequestFrame(RF_VMPlaybackRate, pack);
-	}
-	
-	params.Set(1, reloadTime*mult);
-	return MRES_ChangedHandled;
-}
-
-public void RF_VMPlaybackRate(DataPack pack)
-{
-	pack.Reset();
-	int viewModel = EntRefToEntIndex(pack.ReadCell());
-	if (viewModel == INVALID_ENT)
-	{
-		delete pack;
-		return;
-	}
-	
-	float rate = pack.ReadFloat();
-	delete pack;
-	SetEntPropFloat(viewModel, Prop_Send, "m_flPlaybackRate", fmin(rate, 12.0));
-}
-
 bool g_bWasOffGround;
+static float g_flStoredCharge;
 public MRESReturn DHook_RiflePostFrame(int entity)
 {
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 	if (IsValidClient(owner))
 	{
+		if (GetClientButtons(owner) & IN_ATTACK 
+			&& GetEntPropFloat(entity, Prop_Send, "m_flNextPrimaryAttack") <= GetGameTime())
+		{
+			float charge = GetEntPropFloat(entity, Prop_Send, "m_flChargedDamage");
+			charge += GetSniperRifleChargePerTick(owner, entity, true);
+			float maxCharge = 150.0;
+			if (charge < maxCharge)
+			{
+				// if our charge is below the game's max charge of 150, subtract whatever the game will add later
+				charge = fmax(0.0, charge-GetSniperRifleChargePerTick(owner, entity));
+			}
+			
+			if (GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex") == 752)
+			{
+				// Hitman's Heatmaker has the ability to overcharge
+				// max charge scales with clip size
+				maxCharge = 225.0;
+				maxCharge = TF2Attrib_HookValueFloat(maxCharge, "mult_clipsize", entity);
+				maxCharge = TF2Attrib_HookValueFloat(maxCharge, "mult_clipsize_upgrade", entity);
+			}
+			
+			// the game will cap rifle charge at 150, so store it for us to override with later
+			g_flStoredCharge = fmin(charge, maxCharge);
+		}
+		
 		// Allow firing while in midair
 		if (!(GetEntityFlags(owner) & FL_ONGROUND))
 		{
@@ -1044,30 +1031,44 @@ public MRESReturn DHook_RiflePostFrame(int entity)
 public MRESReturn DHook_RiflePostFramePost(int entity)
 {
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
-	if (IsValidClient(owner) && g_bWasOffGround)
+	if (IsValidClient(owner))
 	{
-		SetEntPropEnt(owner, Prop_Data, "m_hGroundEntity", INVALID_ENT);
-		SetEntPropEnt(owner, Prop_Send, "m_hGroundEntity", INVALID_ENT);
+		if (g_flStoredCharge > 0.0)
+		{
+			// override the game's cap on charge rate
+			SetEntPropFloat(entity, Prop_Send, "m_flChargedDamage", g_flStoredCharge);
+		}
+		
+		if (g_bWasOffGround)
+		{
+			SetEntPropEnt(owner, Prop_Data, "m_hGroundEntity", INVALID_ENT);
+			SetEntPropEnt(owner, Prop_Send, "m_hGroundEntity", INVALID_ENT);
+		}
 	}
 	
+	g_flStoredCharge = 0.0;
 	g_bWasOffGround = false;
 	return MRES_Ignored;
 }
 
-stock void ForcePrimaryAttack(int client, int weapon)
+float GetSniperRifleChargePerTick(int client, int weapon, bool bypassLimit=false)
 {
-	SetEntProp(client, Prop_Send, "m_bLagCompensation", false);
-	SetVariantString("self.PrimaryAttack()");
-	AcceptEntityInput(weapon, "RunScriptCode");
-	SetEntProp(client, Prop_Send, "m_bLagCompensation", true);
-}
-
-stock void ForceSecondaryAttack(int client, int weapon)
-{
-	SetEntProp(client, Prop_Send, "m_bLagCompensation", false);
-	SetVariantString("self.SecondaryAttack()");
-	AcceptEntityInput(weapon, "RunScriptCode");
-	SetEntProp(client, Prop_Send, "m_bLagCompensation", true);
+	// Copy game calculations on charge rate
+	// there are other attributes that affect charge rate, but let's just worry about this one for now
+	float charge = 50.0;
+	charge = TF2Attrib_HookValueFloat(charge, "mult_sniper_charge_per_sec", weapon);
+	TFCond rune = GetPlayerRune(client);
+	bool domMode = TF2_IsPlayerInCondition(client, TFCond_PowerupModeDominant);
+	if (rune == TFCond_RuneHaste || rune == TFCond_RunePrecision)
+	{
+		charge *= domMode ? 2.0 : 3.0;
+	}
+	else if (rune == TFCond_KingRune || TF2_IsPlayerInCondition(client, TFCond_KingAura))
+	{
+		charge *= 1.5;
+	}
+	
+	return bypassLimit ? charge * GetGameFrameTime() : fclamp(charge, 0.0, 100.0) & GetGameFrameTime();
 }
 
 bool IsVoodooCursedCosmetic(int wearable)

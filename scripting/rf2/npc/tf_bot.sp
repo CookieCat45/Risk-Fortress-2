@@ -14,6 +14,7 @@ static CNavArea g_TFBotEngineerSentryArea[MAXPLAYERS];
 static float g_flTFBotEngineerSearchRetryTime[MAXPLAYERS];
 static bool g_bTFBotEngineerHasBuilt[MAXPLAYERS];
 static bool g_bTFBotEngineerAttemptingBuild[MAXPLAYERS];
+static bool g_bTFBotForceBannerSwitch[MAXPLAYERS];
 static int g_iTFBotEngineerRepairTarget[MAXPLAYERS];
 static int g_iTFBotEngineerBuildAttempts[MAXPLAYERS];
 static int g_iTFBotSpyBuildingTarget[MAXPLAYERS];
@@ -105,13 +106,13 @@ methodmap TFBot
 	// Behavior
 	property int BehaviorAttributes
 	{
-		public get() 					{ return g_iTFBotBehaviorAttributes[this.Client];  }
+		public get() 				{ return g_iTFBotBehaviorAttributes[this.Client];  }
 		public set(int value) 	
 		{
-			RunScriptCode(this.Client, "self.ClearAllBotAttributes()");
-			static char str[64];
-			FormatEx(str, sizeof(str), "self.AddBotAttribute(%d)", value);
-			RunScriptCode(this.Client, str);
+			VScriptCmd cmd;
+			cmd.Append("self.ClearAllBotAttributes();");
+			cmd.Append(Format2("self.AddBotAttribute(%d);", value));
+			cmd.Run(this.Client);
 			g_iTFBotBehaviorAttributes[this.Client] = value;
 		}
 	}
@@ -181,6 +182,12 @@ methodmap TFBot
 	{
 		public get() 			{ return g_flTFBotLastPosCheckTime[this.Client];  }
 		public set(float value) { g_flTFBotLastPosCheckTime[this.Client] = value; }
+	}
+	
+	property bool ForceBannerSwitch
+	{
+		public get() 			{ return g_bTFBotForceBannerSwitch[this.Client];  }
+		public set(bool value) 	{ g_bTFBotForceBannerSwitch[this.Client] = value; }
 	}
 	
 	// Engineer
@@ -461,6 +468,9 @@ methodmap TFBot
 		if (GetPlayerCash(this.Client) < crate.Cost)
 			return false;
 		
+		if (!crate.Active)
+			return false;
+		
 		if (crate.Type == Crate_Weapon)
 			return false;
 		
@@ -518,14 +528,15 @@ void TFBot_Think(TFBot bot)
 	float botPos[3];
 	bot.GetMyPos(botPos);
 	bool aggressiveMode;
+	bool rollerMine = IsRollermine(bot.Client);
 	TFClassType class = TF2_GetPlayerClass(bot.Client);
 	
 	// Switch to our desired weapon
 	int desiredSlot;
 	int desiredWeapon = TFBot_GetDesiredWeapon(bot, desiredSlot);
-	if (desiredWeapon != INVALID_ENT)
+	if (!rollerMine && desiredWeapon != INVALID_ENT)
 	{
-		ForceWeaponSwitch(bot.Client, desiredSlot);
+		ForceWeaponSwitch(bot.Client, desiredSlot, true);
 	}
 	
 	if (threat > 0 && bot.HasFlag(TFBOTFLAG_SUICIDEBOMBER) && GetEntityFlags(bot.Client) & FL_ONGROUND)
@@ -542,7 +553,7 @@ void TFBot_Think(TFBot bot)
 	}
 	
 	bool isScavenging;
-	if (bot.HasFlag(TFBOTFLAG_SCAVENGER) && bot.HasFlag(TFBOTFLAG_DONESCAVENGING))
+	if (bot.HasFlag(TFBOTFLAG_SCAVENGER) && bot.HasFlag(TFBOTFLAG_DONESCAVENGING) && !rollerMine)
 	{
 		static float nextScavengeCheckTime[MAXPLAYERS];
 		if (nextScavengeCheckTime[bot.Client] <= tickedTime)
@@ -584,18 +595,33 @@ void TFBot_Think(TFBot bot)
 		}
 	}
 	
-	bool scavengerFightEnemies = Enemy(bot.Client).BotScavengerIgnoreEnemies && threat > 0;
-	if (bot.HasFlag(TFBOTFLAG_SCAVENGER) && scavengerFightEnemies)
+	if (bot.HasFlag(TFBOTFLAG_SCAVENGER))
 	{
-		bot.DesiredWeaponSlot = -1;
+		bool scavengerShouldFight = bot.HasFlag(TFBOTFLAG_DONESCAVENGING) && threat > 0 || rollerMine;
+		if (scavengerShouldFight)
+		{
+			// try to switch to a ranged weapon if we have one
+			bot.DesiredWeaponSlot = -1;
+			int primary = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Primary);
+			int secondary = GetPlayerWeaponSlot(bot.Client, WeaponSlot_Secondary);
+			if (IsValidEntity2(primary))
+			{
+				ForceWeaponSwitch(bot.Client, WeaponSlot_Primary, true);
+				bot.DesiredWeaponSlot = WeaponSlot_Primary;
+			}
+			else if (IsValidEntity2(secondary))
+			{
+				ForceWeaponSwitch(bot.Client, WeaponSlot_Secondary, true);
+				bot.DesiredWeaponSlot = WeaponSlot_Secondary;
+			}
+		}
 	}
 	
-	if (!scavengerFightEnemies && bot.HasFlag(TFBOTFLAG_SCAVENGER) && !bot.HasFlag(TFBOTFLAG_DONESCAVENGING))
+	if (bot.HasFlag(TFBOTFLAG_SCAVENGER) && !bot.HasFlag(TFBOTFLAG_DONESCAVENGING) && !rollerMine)
 	{
 		isScavenging = true;
 		if (IsValidEntity2(bot.ScavengerTarget))
 		{
-			// ignore all enemies while scavenging?
 			if (Enemy(bot.Client) != NULL_ENEMY && Enemy(bot.Client).BotScavengerIgnoreEnemies)
 			{
 				bot.GetVision().ForgetAllKnownEntities();
@@ -620,10 +646,11 @@ void TFBot_Think(TFBot bot)
 			}
 			else if (strcmp2(classname, "rf2_object_crate"))
 			{
-				if (RF2_Object_Crate(bot.ScavengerTarget).Cost > GetPlayerCash(bot.Client))
+				if (RF2_Object_Crate(bot.ScavengerTarget).Cost > GetPlayerCash(bot.Client)
+					|| !RF2_Object_Crate(bot.ScavengerTarget).Active)
 				{
-					// somehow we can't afford it anymore, abort
 					bot.ScavengerTarget = INVALID_ENT;
+					bot.DesiredWeaponSlot = -1;
 				}
 				else if (distance <= 22500.0)
 				{
@@ -638,6 +665,10 @@ void TFBot_Think(TFBot bot)
 					TFBot_ForceLookAtPos(bot, targetPos);
 					bot.AddButtonFlag(IN_ATTACK);
 					bot.DesiredWeaponSlot = WeaponSlot_Melee;
+				}
+				else
+				{
+					bot.DesiredWeaponSlot = -1;
 				}
 			}
 			
@@ -725,6 +756,7 @@ void TFBot_Think(TFBot bot)
 			{
 				// we're finished scavenging, add this flag so we can stop
 				bot.AddFlag(TFBOTFLAG_DONESCAVENGING);
+				bot.DesiredWeaponSlot = -1;
 			}
 		}
 		
@@ -736,7 +768,7 @@ void TFBot_Think(TFBot bot)
 	}
 	else if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer && !IsValidEntity2(bot.BuildingTarget))
 	{
-		aggressiveMode = bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || bot.HasFlag(TFBOTFLAG_SUICIDEBOMBER)
+		aggressiveMode = rollerMine || bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || bot.HasFlag(TFBOTFLAG_SUICIDEBOMBER)
 			|| GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
 		
 		if (!aggressiveMode && threat > 0)
@@ -765,76 +797,13 @@ void TFBot_Think(TFBot bot)
 			stuckBoss = true;
 		}
 		
-		// Aggressive AI, relentlessly pursues target and strafes on higher difficulties. Mostly for melee.
+		// Aggressive AI, relentlessly pursues target
 		if (aggressiveMode)
 		{
-			if (threat > MaxClients || (stuckBoss || !IsInvuln(threat)) && class != TFClass_Spy)
+			if (threat > MaxClients || (stuckBoss || g_bPlayerYetiSmash[threat] || !IsInvuln(threat)) && class != TFClass_Spy)
 			{
-				float threatPos[3];
-				GetEntPos(threat, threatPos);
-				int skill = bot.GetSkillLevel();
-				
-				if (threat <= MaxClients && skill >= TFBotSkill_Hard)
-				{
-					float angles[3];
-					float direction[3];
-					GetVectorAnglesTwoPoints(botPos, threatPos, angles);
-					angles[0] = 0.0;
-					GetAngleVectors(angles, NULL_VECTOR, direction, NULL_VECTOR);
-					NormalizeVector(direction, direction);
-					
-					if (!bot.HasFlag(TFBOTFLAG_STRAFING)) // Do not change direction if we are already strafing
-					{
-						if (bot.DecideStrafeDirection() == Strafe_Left)
-						{
-							threatPos[0] += direction[0] * 120.0;
-							threatPos[1] += direction[1] * 120.0;
-							threatPos[2] += direction[2] * 120.0;
-						}
-						else
-						{
-							threatPos[0] += direction[0] * -120.0;
-							threatPos[1] += direction[1] * -120.0;
-							threatPos[2] += direction[2] * -120.0;
-						}
-					}
-					
-					// Don't bother if we can't "access" that area, we're most likely in a closed space such as a hallway.
-					if (TR_PointOutsideWorld(threatPos) || TR_GetPointContents(threatPos) & MASK_PLAYERSOLID)
-					{
-						GetEntPos(threat, threatPos);
-					}
-					
-					// Snap to ground
-					if (!(GetEntityFlags(threat) & FL_ONGROUND))
-					{
-						TR_TraceRayFilter(threatPos, {90.0, 0.0, 0.0}, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly, _, TRACE_WORLD_ONLY);
-						TR_GetEndPosition(threatPos);
-					}
-
-					if (!bot.HasFlag(TFBOTFLAG_STRAFING))
-					{
-						// Expert bots strafe more often.
-						if (skill >= TFBotSkill_Expert)
-						{
-							bot.StrafeTime = GetRandomFloat(0.8, 1.35);
-						}
-						else
-						{
-							bot.StrafeTime = GetRandomFloat(1.25, 1.75);
-						}
-						
-						bot.StrafeTimeStamp = tickedTime;
-						bot.AddFlag(TFBOTFLAG_STRAFING);
-					}
-					else if (bot.StrafeTimeStamp + bot.StrafeTime >= tickedTime)
-					{
-						bot.RemoveFlag(TFBOTFLAG_STRAFING);
-					}
-				}
-				
 				bot.Mission = MISSION_CHASE;
-				TFBot_PathToEntity(bot, threat, 3000.0, true);
+				TFBot_PathToEntity(bot, threat, 5000.0, true);
 			}
 		}
 	}
@@ -863,10 +832,6 @@ void TFBot_Think(TFBot bot)
 					tfArea = view_as<CTFNavArea>(TheNavAreas.Get(i));
 					if (tfArea && tfArea.HasAttributeTF(SENTRY_SPOT))
 					{
-						// Can we make it there?
-						if (!TheNavMesh.BuildPath(area, tfArea, NULL_VECTOR, INVALID_FUNCTION))
-							continue;
-
 						// Does another bot own this area?
 						bool owned;
 						for (int b = 1; b <= MaxClients; b++)
@@ -883,7 +848,11 @@ void TFBot_Think(TFBot bot)
 
 						if (owned)
 							continue;
-
+						
+						// Can we make it there?
+						if (!TheNavMesh.BuildPath(area, tfArea, NULL_VECTOR, INVALID_FUNCTION))
+							continue;
+						
 						// can't have any other nearby buildings or objects
 						if (GetNearestEntity(areaPos, "obj_*", _, 300.0) != INVALID_ENT 
 							|| GetNearestEntity(areaPos, "rf2_object*", _, 150.0) != INVALID_ENT)
@@ -971,12 +940,13 @@ void TFBot_Think(TFBot bot)
 					float pos[3];
 					GetEntPos(building, pos);
 					pos[2] += 20.0;
-					
 					float dist = DistBetween(bot.Client, building);
 					
 					// Also move around if we're trying to build something so we can place it
 					if (dist > 50.0 || GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Builder))
+					{
 						TFBot_PathToPos(bot, pos, 10000.0, true);
+					}
 					
 					if (TF2_GetObjectType2(building) == TFObject_Teleporter && dist <= 50.0)
 					{
@@ -1052,36 +1022,6 @@ void TFBot_Think(TFBot bot)
 	{
 		bot.RemoveButtonFlag(IN_JUMP);
 	}
-	
-	// This code has caused more problems than solutions.
-	/*
-	// Only for bosses for now, as they are large.
-	if (IsBoss(bot.Client))
-	{
-		if (locomotion.IsAttemptingToMove() && locomotion.IsStuck())
-		{
-			bot.StuckTime += GetTickInterval();
-		}
-		else
-		{
-			bot.StuckTime -= GetTickInterval() * 2.0;
-			if (bot.StuckTime < 0.0 || !locomotion.IsStuck())
-			{
-				bot.StuckTime = 0.0;
-			}
-		}
-		
-		// Crouch if we're stuck (but not for too long in case this is a mistake)
-		if (bot.StuckTime > 2.0 && bot.StuckTime < 8.0 && GetEntityFlags(bot.Client) & FL_ONGROUND && !TF2_IsPlayerInCondition(bot.Client, TFCond_Slowed))
-		{
-			bot.AddButtonFlag(IN_DUCK);
-		}
-		else if (bot.StuckTime <= 0.0)
-		{
-			bot.RemoveButtonFlag(IN_DUCK);
-		}
-	}
-	*/
 	
 	// should we use our strange item?
 	if (TFBot_ShouldUseEquipmentItem(bot))
@@ -1614,14 +1554,15 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		
 		if (secondary != INVALID_ENT && secondary == activeWep)
 		{
-			// TFBots have a stupid bug where they won't switch off certain weapons after use. Forcing them to let go of IN_ATTACK fixes this.
 			static char classname[32];
 			GetEntityClassname(secondary, classname, sizeof(classname));
+			/*
 			bool banner = strcmp2(classname, "tf_weapon_buff_item");
 			if (banner && threat > 0 && IsBuilding(threat))
 			{
 				buttons &= ~IN_ATTACK;
 			}
+			*/
 			
 			if ((StrContains(classname, "tf_weapon_jar") == 0 || strcmp2(classname, "tf_weapon_cleaver") || StrContains(classname, "tf_weapon_lunchbox") == 0)
 				&& GetEntProp(client, Prop_Send, "m_iAmmo", _, GetEntProp(secondary, Prop_Send, "m_iPrimaryAmmoType")) == 0)
@@ -2017,7 +1958,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		buttons |= IN_ATTACK;
 	}
 	
-	if (TF2_GetPlayerClass(bot.Client) == TFClass_Medic)
+	if (class == TFClass_Medic)
 	{
 		// should we uber upon sight of an enemy?
 		if (Enemy(bot.Client) != NULL_ENEMY && Enemy(bot.Client).BotUberOnSight && bot.GetTarget() != NULL_KNOWN_ENTITY)
@@ -2030,7 +1971,135 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		}
 	}
 	
+	// apply our forced button inputs (overrides below)
 	buttons |= bot.ForcedButtons;
+	
+	if (class == TFClass_DemoMan)
+	{
+		if (activeWep != INVALID_ENT)
+		{
+			if (activeWep == GetPlayerWeaponSlot(client, WeaponSlot_Melee))
+			{
+				buttons |= IN_ATTACK2;
+			}
+			else if (!(buttons & IN_RELOAD))
+			{
+				static char classname[128];
+				GetEntityClassname(activeWep, classname, sizeof(classname));
+				if (strcmp2(classname, "tf_weapon_pipebomblauncher"))
+				{
+					int detCount = Enemy(client) == NULL_ENEMY ? 1 : Enemy(client).BotDemoStickyDetCount;
+					int sticky = MaxClients+1;
+					int stickyCount;
+					while ((sticky = FindEntityByClassname(sticky, "tf_projectile_pipe_remote")) != INVALID_ENT)
+					{
+						if (GetEntPropEnt(sticky, Prop_Send, "m_hLauncher") == activeWep)
+						{
+							stickyCount++;
+						}
+					}
+					
+					if (stickyCount >= detCount)
+					{
+						buttons |= IN_ATTACK2;
+					}
+				}
+			}
+			
+			if (buttons & IN_ATTACK)
+			{
+				int stickyLauncher = GetPlayerWeaponSlot(client, WeaponSlot_Secondary);
+				if (stickyLauncher != INVALID_ENT)
+				{
+					char classname[128];
+					GetEntityClassname(stickyLauncher, classname, sizeof(classname));
+					if (strcmp2(classname, "tf_weapon_pipebomblauncher"))
+					{
+						// Let go of attack - don't charge our sticky launcher
+						static bool wasHoldingAttack[MAXPLAYERS];
+						float nextAttack = GetEntPropFloat(stickyLauncher, Prop_Send, "m_flNextPrimaryAttack");
+						if (GetGameTime() >= nextAttack)
+						{
+							if (wasHoldingAttack[client])
+							{
+								wasHoldingAttack[client] = false;
+								buttons &= ~IN_ATTACK;
+							}
+							
+							wasHoldingAttack[client] = true;
+						}
+						else
+						{
+							wasHoldingAttack[client] = false;
+						}
+					}
+				}
+			}
+			
+		}
+		else
+		{
+			buttons &= ~IN_ATTACK2;
+		}
+	}
+	
+	if (bot.ForceBannerSwitch)
+	{
+		// fix stupid bug where bot doesn't switch away from a banner after blowing the horn
+		int weapon = GetActiveWeapon(client);
+		bool shouldSwitch;
+		if (weapon != INVALID_ENT)
+		{
+			char classname[128];
+			GetEntityClassname(weapon, classname, sizeof(classname));
+			if (strcmp2(classname, "tf_weapon_buff_item"))
+			{
+				shouldSwitch = true;
+			}
+		}
+		
+		if (shouldSwitch)
+		{
+			buttons &= ~IN_ATTACK;
+			buttons &= ~IN_ATTACK2;
+			buttons &= ~IN_RELOAD;
+		}
+		else
+		{
+			bot.ForceBannerSwitch = false;
+		}
+	}
+	
+	if (HasJetpack(client))
+	{
+		if (IsValidEntity2(threat))
+		{
+			float pos[3], endPos[3];
+			GetEntPos(client, pos);
+			GetEntPos(threat, endPos);
+			float dist = FloatAbs(pos[2]-endPos[2]);
+			// stay just above our target
+			if (dist > 700.0)
+			{
+				// descend
+				buttons &= ~IN_JUMP;
+				buttons &= ~IN_DUCK;
+			}
+			else if (dist <= 400.0)
+			{
+				// ascend
+				buttons |= IN_JUMP;
+				buttons &= ~IN_DUCK;
+			}
+			else
+			{
+				// hover
+				buttons |= IN_DUCK;
+				buttons &= ~IN_JUMP;
+			}
+		}
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -2050,6 +2119,20 @@ static void Timer_TFBotRocketJump(Handle timer, int client)
 // -1 = let bot decide
 int TFBot_GetDesiredWeapon(TFBot bot, int &slot=WeaponSlot_Primary)
 {
+	if (Enemy(bot.Client) != NULL_ENEMY)
+	{
+		int forcedSlot = Enemy(bot.Client).BotForcedWeaponSlot;
+		if (forcedSlot != -1)
+		{
+			int weapon = GetPlayerWeaponSlot(bot.Client, forcedSlot);
+			if (weapon != INVALID_ENT)
+			{
+				slot = forcedSlot;
+				return weapon;
+			}
+		}
+	}
+	
 	int threat = INVALID_ENT;
 	CKnownEntity known = bot.GetTarget();
 	if (known != NULL_KNOWN_ENTITY)
@@ -2149,6 +2232,17 @@ public Action Hook_TFBotWeaponCanSwitch(int client, int weapon)
 		return Plugin_Stop;
 	}
 	
+	static char classname[64];
+	GetEntityClassname(weapon, classname, sizeof(classname));
+	if (strcmp2(classname, "tf_weapon_buff_item"))
+	{
+		if (GetEntPropFloat(client, Prop_Send, "m_flRageMeter") < 100.0)
+		{
+			// don't switch to banners if we don't have full rage meter
+			return Plugin_Stop;
+		}
+	}
+	
 	return Plugin_Continue;
 }
 
@@ -2178,7 +2272,7 @@ public MRESReturn DHook_IsAbleToSee(Address vision, DHookReturn returnVal, DHook
 	int bot = INVALID_ENT;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && IsFakeClient(i))
+		if (IsClientInGame(i) && IsFakeClient(i) && !IsSpecBot(i))
 		{
 			IVision botVision = TFBot(i).GetVision();
 			if (view_as<Address>(botVision) == vision)
@@ -2230,7 +2324,7 @@ public MRESReturn DHook_IsAbleToSeePost(Address vision, DHookReturn returnVal, D
 		int bot = INVALID_ENT;
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (IsClientInGame(i) && IsFakeClient(i))
+			if (IsClientInGame(i) && IsFakeClient(i) && !IsSpecBot(i))
 			{
 				IVision botVision = TFBot(i).GetVision();
 				if (view_as<Address>(botVision) == vision)

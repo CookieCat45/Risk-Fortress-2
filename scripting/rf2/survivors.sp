@@ -1321,3 +1321,14 @@ bool IsInventoryAllowedToForfeit(int invIndex)
 	
 	return g_iSaveDataCompletedStages[invIndex] >= g_cvMinStagesClearedToForfeit.IntValue;
 }
+
+bool IsAtItemShareLimit(int client)
+{
+	int survivorIndex = g_iPlayerSurvivorIndex[client];
+	if (survivorIndex == -1)
+		return false;
+		
+	return g_iPlayerItemLimit[survivorIndex] > 0
+		&& g_iPlayerItemsTaken[survivorIndex] >= g_iPlayerItemLimit[survivorIndex]
+		&& IsItemSharingEnabled();
+}

@@ -190,7 +190,8 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 			// This object's cost was set by the mapper
 			if (cost > 0.0)
 			{
-				return float(RoundToFloor(cost));
+				float finalCost = float(RoundToFloor(cost));
+				return finalCost;
 			}
 		}
 		
@@ -222,8 +223,9 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 			case Crate_Strange, Crate_Weapon: cost = g_cvObjectBaseCost.FloatValue * costMult * 1.5;
 			case Crate_Unusual: cost = g_cvObjectBaseCost.FloatValue * costMult * 16.0;
 		}
-
-		return float(RoundToFloor(cost));
+		
+		float finalCost = float(RoundToFloor(cost));
+		return finalCost;
 	}
 	
 	public void CycleMultiItem(int client=INVALID_ENT)
@@ -708,6 +710,14 @@ public Action Hook_OnCrateHit(int entity, int &attacker, int &inflictor, float &
 	RF2_Object_Crate crate = RF2_Object_Crate(entity);
 	if (!crate.Active)
 	{
+		return Plugin_Continue;
+	}
+	
+	if (IsPlayerSurvivor(attacker) && IsAtItemShareLimit(attacker)
+		&& crate.Type != Crate_Strange && crate.Type != Crate_Weapon)
+	{
+		EmitSoundToClient(attacker, SND_NOPE);
+		PrintCenterText(attacker, "%t", "ItemShareLimit", g_iPlayerItemLimit[g_iPlayerSurvivorIndex[attacker]]);
 		return Plugin_Continue;
 	}
 	

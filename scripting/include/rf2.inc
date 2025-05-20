@@ -127,6 +127,10 @@ enum
 	Item_Hachimaki = 107,
 	Item_LilBitey = 108,
 	ItemStrange_WarswornHelm = 109,
+	Item_WealthHat = 110,
+	ItemStrange_JackHat = 111,
+	ItemStrange_PocketYeti = 112,
+	ItemStrange_MK50 = 113,
 	Item_MaxValid,
 };
 
@@ -621,8 +625,8 @@ forward Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float
  * 
  * @param fileName			The name of the custom items file, with the .cfg extension included.
  * @param sectionName		The item's section name in the file.
- * @param index				The item's index. Note that this is NOT the item_type key, but a value assigned at runtime. You should cache this value globally.
- * @param kv				KeyValues handle. It will be positioned in the section for your custom item.
+ * @param index				The item's index. Note that this is NOT the `item_type` key, but a value assigned at runtime. You should cache this value globally.
+ * @param kv				KeyValues handle, which will be positioned in the section for the custom item.
  */
 forward void RF2_OnCustomItemLoaded(const char[] fileName, const char[] sectionName, int index, KeyValues kv);
 
@@ -633,6 +637,15 @@ forward void RF2_OnCustomItemLoaded(const char[] fileName, const char[] sectionN
  * @param item				Item index.
  */
 forward void RF2_OnPlayerItemUpdate(int client, int item);
+
+/**
+ * Called when a player activates their Strange item
+ * 
+ * @param client			Player index.
+ * @param item				Item index.
+ * @return Plugin_Handled/Plugin_Stop to prevent usage of the item, Plugin_Continue otherwise.
+ */
+forward Action RF2_OnActivateStrangeItem(int client, int item);
 
 // Called when the Teleporter event is started.
 forward void RF2_OnTeleporterEventStart();
