@@ -4072,7 +4072,8 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 				else
 				{
-					Format(miscText, sizeof(miscText), "%s***SHIELD DOWN*** %.1f\n", FloatAbs(g_flPlayerShieldRegenTime[i]-GetGameTime()));
+					Format(miscText, sizeof(miscText), "%s***SHIELD DOWN*** %.1f\n", miscText,
+						FloatAbs(g_flPlayerShieldRegenTime[i]-GetGameTime()));
 				}
 			}
 

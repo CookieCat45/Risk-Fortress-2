@@ -1980,7 +1980,7 @@ bool ActivateStrangeItem(int client)
 			
 			// prepare ourselves to become a roller mine
 			SetEntityCollisionGroup(client, TFCOLLISION_GROUP_ROCKET_BUT_NOT_WITH_OTHER_ROCKETS);
-			TF2Attrib_AddCustomPlayerAttribute(client, "no_attack", 1.0);
+			TF2Attrib_AddCustomPlayerAttribute(client, "no_attack", 1.0, GetItemMod(ItemStrange_JackHat, 3)+1.0);
 			SetVariantInt(1);
 			AcceptEntityInput(client, "SetForcedTauntCam");
 			SetEntityMoveType(client, MOVETYPE_OBSERVER);
@@ -2277,7 +2277,7 @@ public void Timer_EndRollerMine(Handle timer, int client)
 	{
 		if (IsValidEntity2(GetPlayerWeaponSlot(client, i)))
 		{
-			ForceWeaponSwitch(client, i);
+			ForceWeaponSwitch(client, i, true);
 			break;
 		}	
 	}
