@@ -2381,9 +2381,6 @@ public MRESReturn DHook_RollerMinePhysics(int entity, DHookParam params)
 			float mins[3] = {-4.0, -4.0, -16.0};
 			float maxs[3] = {4.0, 4.0, 16.0};
 			TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_WallsOnly);
-			#if defined DEVONLY
-			TE_DrawBoxAll(pos, pos, mins, maxs, 0.2, g_iBeamModel, {0, 255, 255, 255});
-			#endif
 			if (TR_DidHit() || TR_PointOutsideWorld(pos))
 			{
 				CBaseEntity(entity).AddFlag(FL_ONGROUND);

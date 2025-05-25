@@ -2368,11 +2368,6 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int itemProc = g_iEntLastHitItemProc[victim];
 	if (attacker > 0)
 	{
-		if (attacker != victim)
-		{
-			DoItemKillEffects(attacker, inflictor, victim, damageType, critType, assister, customkill);
-		}
-		
 		switch (itemProc)
 		{
 			case ItemSoldier_WarPig: event.SetString("weapon", "obj_sentrygun3");
@@ -2391,6 +2386,19 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			case ItemPyro_PyromancerMask, Item_OldCrown: event.SetString("weapon", "spellbook_fireball");
 			
 			case ItemStrange_Dragonborn: event.SetString("weapon", "spellbook_teleport");
+			
+			case Item_WealthHat:
+			{
+				event.SetString("weapon", "firedeath");
+				event.SetInt("customkill", TF_CUSTOM_GOLD_WRENCH);
+				event.SetInt("death_flags", deathFlags|TF_DEATHFLAG_AUSTRALIUM);
+				customkill = TF_CUSTOM_GOLD_WRENCH;
+			}
+		}
+		
+		if (attacker != victim)
+		{
+			DoItemKillEffects(attacker, inflictor, victim, damageType, critType, assister, customkill);
 		}
 	}
 	
