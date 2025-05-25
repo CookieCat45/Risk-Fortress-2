@@ -2473,7 +2473,9 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 					GetEntPos(victim, botPos, true);
 					const int maxDroppedItems = 60;
 					ArrayList itemList = GetPlayerItemList(victim, maxDroppedItems, true);
-					g_bScavengerLordDroppedItems = isScavengerLord;
+					if (!g_bScavengerLordDroppedItems)
+						g_bScavengerLordDroppedItems = isScavengerLord;
+						
 					for (int i = 0; i < itemList.Length; i++)
 					{
 						item = RF2_Item(CreateEntityByName("rf2_item"));
