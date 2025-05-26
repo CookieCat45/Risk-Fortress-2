@@ -137,9 +137,9 @@ void LoadCommandsAndCvars()
 	g_cvOldGiantFootsteps = CreateConVar("rf2_use_old_giant_footsteps", "0", "Uses the old system for giant footstep sounds (unused footstep sounds instead of giant_common_step)", FCVAR_NOTIFY, true, 0.0);
 	g_cvPlayerAbsenceLimit = CreateConVar("rf2_player_absence_limit", "2", "How many times a player is allowed to be absent at the start of a map before their inventory is forfeited automatically", FCVAR_NOTIFY, true, 0.0);
 	g_cvMinStagesClearedToForfeit = CreateConVar("rf2_forfeit_min_stages_cleared", "2", "If the player was not present at the beginning of the run, number of stages that they need to clear before being allowed to forfeit", FCVAR_NOTIFY, true, 0.0);
-	g_cvScavengerLordSpawnLevel = CreateConVar("rf2_scavenger_lord_spawn_level", "150", "Minimum enemy level required before the Scavenger Lord is able to spawn. 0 prevents him from spawning at all.", FCVAR_NOTIFY, true, 0.0);
-	g_cvScavengerLordMaxItems = CreateConVar("rf2_scavenger_lord_max_items", "500", "Maximum number of items the Scavenger Lord can spawn with.", FCVAR_NOTIFY, true, 0.0);
-	g_cvScavengerLordLevelItemRatio = CreateConVar("rf2_scavenger_lord_level_item_ratio", "5", "The level ratio for how many items the Scavenger Lord will have (1 per N levels)", FCVAR_NOTIFY, true, 1.0);
+	g_cvScavengerLordSpawnLevel = CreateConVar("rf2_scavenger_lord_spawn_level", "120", "Minimum enemy level required before the Scavenger Lord is able to spawn. 0 prevents him from spawning at all.", FCVAR_NOTIFY, true, 0.0);
+	g_cvScavengerLordMaxItems = CreateConVar("rf2_scavenger_lord_max_items", "750", "Maximum number of items the Scavenger Lord can spawn with.", FCVAR_NOTIFY, true, 0.0);
+	g_cvScavengerLordLevelItemRatio = CreateConVar("rf2_scavenger_lord_level_item_ratio", "4", "The level ratio for how many items the Scavenger Lord will have (1 per N levels)", FCVAR_NOTIFY, true, 1.0);
 	g_cvServerStarted = CreateConVar("rf2_server_started", "0", _, FCVAR_HIDDEN|FCVAR_DONTRECORD);
 	g_cvStage1StartingMap = CreateConVar("rf2_stage1_starting_map", "1", "Ensures that the server always boots on a random Stage 1 map.", _, true, 0.0);
 	g_cvAggressiveRestarting = CreateConVar("rf2_aggressive_server_restarting", "1", "If enabled, restarts the server more frequently to avoid memory leaks");

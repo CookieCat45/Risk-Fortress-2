@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.6.0-DEVONLY"
+#define PLUGIN_VERSION "1.6.1-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.6.0"
+#define PLUGIN_VERSION "1.6.1"
 #endif
 
 #include <rf2>
@@ -3466,7 +3466,7 @@ public Action Output_GraceTimerFinished(const char[] output, int caller, int act
 void EndGracePeriod()
 {
 	g_bGracePeriod = false;
-
+	
 	// Begin our enemy spawning
 	CreateTimer(5.0, Timer_EnemySpawnWave, _, TIMER_FLAG_NO_MAPCHANGE);
 	g_flBusterSpawnTime = g_cvBusterSpawnInterval.FloatValue;
@@ -3485,7 +3485,7 @@ void EndGracePeriod()
 	
 	if (Enemy.FindByInternalName("scavenger_lord") != NULL_ENEMY)
 	{
-		int chanceMax = g_cvScavengerLordSpawnLevel.IntValue * 6;
+		int chanceMax = g_cvScavengerLordSpawnLevel.IntValue * 5;
 		if (RandChanceInt(1, chanceMax, g_iEnemyLevel))
 		{
 			CreateTimer(GetRandomFloat(30.0, 50.0), Timer_SpawnScavengerLord, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -5204,6 +5204,11 @@ public void Hook_PreThink(int client)
 		{
 			PlayMusicTrack(client);
 		}
+	}
+	
+	if (!g_bServerRestarting && g_bWaitingForPlayers && !IsFakeClient(client) && !GetCookieBool(client, g_coBecomeSurvivor))
+	{
+		PrintCenterText(client, "%t", "SurvivorDisabledWarning");
 	}
 	
 	if (IsInspectButtonPressed(client))

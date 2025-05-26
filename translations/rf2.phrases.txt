@@ -409,6 +409,11 @@
 		"en"		"OFF"
 	}
 	
+	"SurvivorDisabledWarning"
+	{
+		"en"		"WARNING!\nYou have the option \"Toggle becoming a Survivor\" disabled.\nThis means that you will not join RED once the round begins.\nType /rf2_settings to re-enable it."
+	}
+	
 	"SurvivorTutorial"
 	{
 		"en"		"You're a Survivor! Break open crates with your melee weapon to obtain items.\nCrates cost money to open, kill robots on BLU to get some!"
