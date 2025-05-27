@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.6.1-DEVONLY"
+#define PLUGIN_VERSION "1.6.3-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.6.1"
+#define PLUGIN_VERSION "1.6.3"
 #endif
 
 #include <rf2>
@@ -284,6 +284,7 @@ Handle g_hSDKSpawnZombie;
 Handle g_hSDKTankSetStartNode;
 Handle g_hSDKCreateDroppedWeapon;
 Handle g_hSDKLoadEvents;
+Handle g_hSDKRaiseFlag;
 DynamicDetour g_hDetourHandleRageGain;
 DynamicDetour g_hDetourApplyPunchImpulse;
 DynamicDetour g_hDetourOverhealBonus;
@@ -603,11 +604,19 @@ void LoadGameData()
 		SetFailState("[SDK] Failed to locate gamedata file \"rf2.txt\"");
 	}
 	
+	// Courtesy of Batfoxkid
+	DynamicDetour detour = DynamicDetour.FromConf(gamedata, "EconEntity_OnOwnerKillEaterEvent_Batched");
+	if (!detour.Enable(Hook_Pre, BlockKillEaterEvent))
+	{
+		LogError("[DHooks] Could not create detour for EconEntity_OnOwnerKillEaterEvent_Batched");
+	}
+	
+	delete detour;
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "CBasePlayer::EquipWearable");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
 	g_hSDKEquipWearable = EndPrepSDKCall();
-	if(!g_hSDKEquipWearable)
+	if (!g_hSDKEquipWearable)
 	{
 		LogError("[SDK] Failed to create call for CBasePlayer::EquipWearable");
 	}
@@ -812,6 +821,15 @@ void LoadGameData()
 	if (!g_hSDKLoadEvents)
 	{
 		LogError("[SDK] Failed to create call to CGameEventManager::LoadEventsFromFile");
+	}
+	
+	
+	StartPrepSDKCall(SDKCall_Entity);
+	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFBuffItem::RaiseFlag");
+	g_hSDKRaiseFlag = EndPrepSDKCall();
+	if (!g_hSDKRaiseFlag)
+	{
+		LogError("[SDK] Failed to create call to CTFBuffItem::RaiseFlag");
 	}
 	
 	

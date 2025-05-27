@@ -807,6 +807,15 @@ public MRESReturn Detour_CreateEvent(Address eventManager, DHookReturn returnVal
 	return MRES_Ignored;
 }
 
+public MRESReturn BlockKillEaterEvent(DHookParam param)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	// fixes an odd server crash
+	return MRES_Supercede;
+}
+
 // StrContains(), but the string needs to be an exact match.
 // This means there must be either whitespace or out-of-bounds characters before and after the found string.
 // So if you search "apple" in "applebanana", -1 will be returned, while StrContains() would return a positive value.

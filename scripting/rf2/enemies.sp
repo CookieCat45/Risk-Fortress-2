@@ -1558,6 +1558,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 			TFBot(client).SetSkillLevel(enemy.BotSkill);
 		}
 		
+		enemy.BotBehaviorAttributes |= QUOTA_MANANGED;
 		if (enemy.Class == TFClass_Engineer)
 		{
 			enemy.BotBehaviorAttributes |= REMOVE_ON_DEATH;
@@ -1983,6 +1984,7 @@ void StunRadioWave()
 			}
 
 			TF2_RemoveCondition(i, TFCond_MegaHeal);
+			TF2_RemoveCondition(i, TFCond_Bonked);
 			TF2_AddCondition(i, TFCond_MVMBotRadiowave, 20.0);
 			aliveEnemies = true;
 		}

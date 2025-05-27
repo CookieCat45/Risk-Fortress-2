@@ -773,14 +773,21 @@ void TFBot_Think(TFBot bot)
 		
 		if (!aggressiveMode && threat > 0)
 		{
-			float eyePos[3], targetPos[3];
-			GetClientEyePosition(bot.Client, eyePos);
-			CBaseEntity(threat).WorldSpaceCenter(targetPos);
-			TR_TraceRayFilter(eyePos, targetPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(bot.Client));
-			if (RF2_DispenserShield(TR_GetEntityIndex()).IsValid() && IsLOSClear(bot.Client, TR_GetEntityIndex()))
+			static float nextShieldCheckTime[MAXPLAYERS];
+			if (nextShieldCheckTime[bot.Client] <= GetTickedTime())
 			{
-				// If our target is behind a bubble shield, approach the shield
-				aggressiveMode = true;
+				float eyePos[3], targetPos[3];
+				GetClientEyePosition(bot.Client, eyePos);
+				CBaseEntity(threat).WorldSpaceCenter(targetPos);
+				TR_TraceRayFilter(eyePos, targetPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(bot.Client));
+				if (RF2_DispenserShield(TR_GetEntityIndex()).IsValid() && IsLOSClear(bot.Client, TR_GetEntityIndex()))
+				{
+					// If our target is behind a bubble shield, approach the shield
+					aggressiveMode = true;
+				}
+				
+				// avoid doing too many traces for performance
+				nextShieldCheckTime[bot.Client] = GetTickedTime()+0.5;
 			}
 		}
 		
@@ -2063,6 +2070,31 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			buttons &= ~IN_ATTACK;
 			buttons &= ~IN_ATTACK2;
 			buttons &= ~IN_RELOAD;
+			int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+			if (primary != INVALID_ENT)
+			{
+				if (g_hSDKRaiseFlag)
+				{
+					// force raise the flag if we switch this way
+					SDKCall(g_hSDKRaiseFlag, weapon);	
+				}
+				
+				ForceWeaponSwitch(client, WeaponSlot_Primary, true);
+			}
+			else
+			{
+				int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
+				if (melee != INVALID_ENT)
+				{
+					if (g_hSDKRaiseFlag)
+					{
+						// force raise the flag if we switch this way
+						SDKCall(g_hSDKRaiseFlag, weapon);	
+					}
+					
+					ForceWeaponSwitch(client, WeaponSlot_Melee, true);
+				}
+			}
 		}
 		else
 		{
