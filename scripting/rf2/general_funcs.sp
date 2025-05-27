@@ -219,7 +219,7 @@ public void Timer_GameOver(Handle timer)
 	}
 	else
 	{
-		g_cvGameOver.BoolValue = true;
+		g_cvGamePlayedCount.IntValue++;
 		ReloadPlugin();
 	}
 }
