@@ -404,7 +404,6 @@ ConVar g_cvScavengerLordLevelItemRatio;
 ConVar g_cvServerStarted;
 ConVar g_cvStage1StartingMap;
 ConVar g_cvAggressiveRestarting;
-ConVar g_cvGameOver;
 ConVar g_cvGamePlayedCount;
 ConVar g_cvEnableGiantPainSounds;
 ConVar g_cvDebugNoMapChange;
@@ -925,21 +924,6 @@ void LoadGameData()
 
 public void OnMapStart()
 {
-	if (g_cvGameOver.BoolValue)
-	{
-		if (g_cvAggressiveRestarting.BoolValue)
-		{
-			if (GetTotalHumans(false) <= 0)
-			{
-				PrintToServer("[RF2] Everyone has left. Restarting the server...");
-				InsertServerCommand("quit");
-			}
-		}
-		
-		g_cvGamePlayedCount.IntValue++;
-		g_cvGameOver.BoolValue = false;
-	}
-	
 	if (g_bConVarsModified && !g_bPluginReloading)
 	{
 		ResetConVars();
@@ -5822,9 +5806,19 @@ public void OnGameFrame()
 {
 	if (!g_bPluginEnabled)
 		return;
-
+		
+	if (!g_bGameInitialized && g_cvGamePlayedCount.IntValue >= 1 
+		&& GetGameTime() >= 60.0 && g_cvAggressiveRestarting.BoolValue 
+		&& GetTotalHumans(false) <= 0)
+	{
+		// restart if everyone left and the game hasn't started
+		PrintToServer("[RF2] Everyone has left. Restarting the server...");
+		InsertServerCommand("quit");
+	}
+	
 	if (g_flWaitRestartTime > 0.0 && GetTickedTime() >= g_flWaitRestartTime && GetTotalHumans(false) == 0)
 	{
+		// restart after a while if everyone left in the middle of a game after a map change
 		PrintToServer("[RF2] Waited too long for players to join. Restarting...");
 		g_flWaitRestartTime = 0.0;
 		if (g_cvAggressiveRestarting.BoolValue)
