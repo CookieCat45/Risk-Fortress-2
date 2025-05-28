@@ -2279,6 +2279,7 @@ public void Timer_EndRollerMine(Handle timer, int client)
 	SetEntityRenderMode(client, RENDER_NORMAL);
 	SDKUnhook(client, SDKHook_WeaponCanSwitchTo, Hook_BlockWeaponSwitch);
 	SetEntProp(client, Prop_Data, "m_takedamage", DAMAGE_YES);
+	ClientCommand(client, "lastinv");
 	for (int i = 0; i <= WeaponSlot_Melee; i++)
 	{
 		if (IsValidEntity2(GetPlayerWeaponSlot(client, i)))
