@@ -2053,6 +2053,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	if (bot.ForceBannerSwitch)
 	{
 		// fix stupid bug where bot doesn't switch away from a banner after blowing the horn
+		// this bug has been driving me insane for months. if someone knows a better way to fix this, PLEASE TELL ME
 		int weapon = GetActiveWeapon(client);
 		bool shouldSwitch;
 		if (weapon != INVALID_ENT)
@@ -2070,30 +2071,9 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			buttons &= ~IN_ATTACK;
 			buttons &= ~IN_ATTACK2;
 			buttons &= ~IN_RELOAD;
-			int primary = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-			if (primary != INVALID_ENT)
+			if (g_hSDKRaiseFlag)
 			{
-				if (g_hSDKRaiseFlag)
-				{
-					// force raise the flag if we switch this way
-					SDKCall(g_hSDKRaiseFlag, weapon);	
-				}
-				
-				ForceWeaponSwitch(client, WeaponSlot_Primary, true);
-			}
-			else
-			{
-				int melee = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-				if (melee != INVALID_ENT)
-				{
-					if (g_hSDKRaiseFlag)
-					{
-						// force raise the flag if we switch this way
-						SDKCall(g_hSDKRaiseFlag, weapon);	
-					}
-					
-					ForceWeaponSwitch(client, WeaponSlot_Melee, true);
-				}
+				SDKCall(g_hSDKRaiseFlag, weapon);	
 			}
 		}
 		else
