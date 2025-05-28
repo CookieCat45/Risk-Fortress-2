@@ -2280,13 +2280,16 @@ public void Timer_EndRollerMine(Handle timer, int client)
 	SDKUnhook(client, SDKHook_WeaponCanSwitchTo, Hook_BlockWeaponSwitch);
 	SetEntProp(client, Prop_Data, "m_takedamage", DAMAGE_YES);
 	ClientCommand(client, "lastinv");
-	for (int i = 0; i <= WeaponSlot_Melee; i++)
+	if (GetActiveWeapon(client) == INVALID_ENT)
 	{
-		if (IsValidEntity2(GetPlayerWeaponSlot(client, i)))
+		for (int i = 0; i <= WeaponSlot_Melee; i++)
 		{
-			ForceWeaponSwitch(client, i, true);
-			break;
-		}	
+			if (IsValidEntity2(GetPlayerWeaponSlot(client, i)))
+			{
+				ForceWeaponSwitch(client, i, true);
+				break;
+			}
+		}
 	}
 	
 	int wearable = MaxClients+1;
