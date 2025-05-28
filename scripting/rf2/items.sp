@@ -2059,8 +2059,14 @@ bool ActivateStrangeItem(int client)
 		
 		case ItemStrange_PocketYeti:
 		{
+			if (GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") != 0) // not standing on world?
+				return false;
+			
 			ForceTaunt(client, 1183);
 			if (!TF2_IsPlayerInCondition(client, TFCond_Taunting)) // couldn't taunt?
+				return false;
+			
+			if (GetEntProp(client, Prop_Send, "m_iTauntIndex") != 1183) // wrong taunt?
 				return false;
 			
 			g_bPlayerYetiSmash[client] = true;
