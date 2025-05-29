@@ -7919,19 +7919,9 @@ public void Hook_WeaponSwitchPost(int client, int weapon)
 	if (IsFakeClient(client))
 	{
 		TFBot(client).RemoveButtonFlag(IN_RELOAD);
-		if (weapon != INVALID_ENT)
-		{
-			char classname[128];
-			GetEntityClassname(weapon, classname, sizeof(classname));
-			if (strcmp2(classname, "tf_weapon_buff_item") && GetEntPropFloat(client, Prop_Send, "m_flRageMeter") >= 100.0)
-			{
-				// force bot to switch away from banner after usage
-				float time = TF2_GetPlayerClass(client) == TFClass_Soldier ? 3.0 : 5.0;
-				CreateTimer(time, Timer_ForceBannerSwitch, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-			}
-		}
 	}
-	else if (PlayerHasItem(client, ItemEngi_HeadOfDefense) && CanUseCollectorItem(client, ItemEngi_HeadOfDefense))
+	
+	if (PlayerHasItem(client, ItemEngi_HeadOfDefense) && CanUseCollectorItem(client, ItemEngi_HeadOfDefense))
 	{
 		if (!g_bPlayerExtraSentryHint[client] && GetPlayerWeaponSlot(client, WeaponSlot_PDA2) == weapon)
 		{
@@ -7978,20 +7968,6 @@ public void Hook_WeaponSwitchPost(int client, int weapon)
 	}
 
 	CalculatePlayerMaxSpeed(client);
-}
-
-public void Timer_ForceBannerSwitch(Handle timer, int client)
-{
-	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
-		return;
-		
-	int weapon = GetActiveWeapon(client);
-	char classname[128];
-	GetEntityClassname(weapon, classname, sizeof(classname));
-	if (strcmp2(classname, "tf_weapon_buff_item") && GetEntPropFloat(client, Prop_Send, "m_flRageMeter") >= 100.0)
-	{
-		TFBot(client).ForceBannerSwitch = true;
-	}
 }
 
 public Action Hook_DisableTouch(int entity, int other)

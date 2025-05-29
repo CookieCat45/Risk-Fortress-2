@@ -14,7 +14,6 @@ static CNavArea g_TFBotEngineerSentryArea[MAXPLAYERS];
 static float g_flTFBotEngineerSearchRetryTime[MAXPLAYERS];
 static bool g_bTFBotEngineerHasBuilt[MAXPLAYERS];
 static bool g_bTFBotEngineerAttemptingBuild[MAXPLAYERS];
-static bool g_bTFBotForceBannerSwitch[MAXPLAYERS];
 static int g_iTFBotEngineerRepairTarget[MAXPLAYERS];
 static int g_iTFBotEngineerBuildAttempts[MAXPLAYERS];
 static int g_iTFBotSpyBuildingTarget[MAXPLAYERS];
@@ -182,12 +181,6 @@ methodmap TFBot
 	{
 		public get() 			{ return g_flTFBotLastPosCheckTime[this.Client];  }
 		public set(float value) { g_flTFBotLastPosCheckTime[this.Client] = value; }
-	}
-	
-	property bool ForceBannerSwitch
-	{
-		public get() 			{ return g_bTFBotForceBannerSwitch[this.Client];  }
-		public set(bool value) 	{ g_bTFBotForceBannerSwitch[this.Client] = value; }
 	}
 	
 	// Engineer
@@ -2050,35 +2043,39 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		}
 	}
 	
-	if (bot.ForceBannerSwitch)
+	// fix stupid bug where bot doesn't switch away from a banner after blowing the horn
+	static float bannerSwitchTime[MAXPLAYERS];
+	int weapon = GetActiveWeapon(client);
+	bool shouldSwitch;
+	if (weapon != INVALID_ENT)
 	{
-		// fix stupid bug where bot doesn't switch away from a banner after blowing the horn
-		// this bug has been driving me insane for months. if someone knows a better way to fix this, PLEASE TELL ME
-		int weapon = GetActiveWeapon(client);
-		bool shouldSwitch;
-		if (weapon != INVALID_ENT)
+		static char classname[128];
+		GetEntityClassname(weapon, classname, sizeof(classname));
+		if (strcmp2(classname, "tf_weapon_buff_item"))
 		{
-			char classname[128];
-			GetEntityClassname(weapon, classname, sizeof(classname));
-			if (strcmp2(classname, "tf_weapon_buff_item"))
+			if (bannerSwitchTime[client] <= 0.0 && buttons & IN_ATTACK)
+			{
+				bannerSwitchTime[client] = GetTickedTime() + 3.0;
+			}
+				
+			if (bannerSwitchTime[client] > 0.0 && GetTickedTime() >= bannerSwitchTime[client])
 			{
 				shouldSwitch = true;
 			}
 		}
-		
-		if (shouldSwitch)
-		{
-			buttons &= ~IN_ATTACK;
-			buttons &= ~IN_ATTACK2;
-			buttons &= ~IN_RELOAD;
-			if (g_hSDKRaiseFlag)
-			{
-				SDKCall(g_hSDKRaiseFlag, weapon);	
-			}
-		}
 		else
 		{
-			bot.ForceBannerSwitch = false;
+			bannerSwitchTime[client] = 0.0;
+		}
+	}
+	
+	if (shouldSwitch)
+	{
+		if (g_hSDKRaiseFlag)
+		{
+			DebugMsg("TEst");
+			SDKCall(g_hSDKRaiseFlag, weapon);
+			bannerSwitchTime[client] = 0.0;
 		}
 	}
 	
