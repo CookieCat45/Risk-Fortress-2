@@ -2066,9 +2066,6 @@ bool ActivateStrangeItem(int client)
 			if (!TF2_IsPlayerInCondition(client, TFCond_Taunting)) // couldn't taunt?
 				return false;
 			
-			if (GetEntProp(client, Prop_Send, "m_iTauntIndex") != 1183) // wrong taunt?
-				return false;
-			
 			g_bPlayerYetiSmash[client] = true;
 			TF2_AddCondition(client, TFCond_MegaHeal, 9.0);
 			TF2_AddCondition(client, TFCond_UberchargedHidden, 9.0);
