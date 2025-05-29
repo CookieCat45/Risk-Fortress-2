@@ -2073,7 +2073,6 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	{
 		if (g_hSDKRaiseFlag)
 		{
-			DebugMsg("TEst");
 			SDKCall(g_hSDKRaiseFlag, weapon);
 			bannerSwitchTime[client] = 0.0;
 		}
