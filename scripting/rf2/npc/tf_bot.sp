@@ -2044,7 +2044,6 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	}
 	
 	// fix stupid bug where bot doesn't switch away from a banner after blowing the horn
-	static float bannerSwitchTime[MAXPLAYERS];
 	int weapon = GetActiveWeapon(client);
 	bool shouldSwitch;
 	if (weapon != INVALID_ENT)
@@ -2053,19 +2052,19 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		GetEntityClassname(weapon, classname, sizeof(classname));
 		if (strcmp2(classname, "tf_weapon_buff_item"))
 		{
-			if (bannerSwitchTime[client] <= 0.0 && buttons & IN_ATTACK)
+			if (g_flBannerSwitchTime[client] <= 0.0 && buttons & IN_ATTACK)
 			{
-				bannerSwitchTime[client] = GetTickedTime() + 3.0;
+				g_flBannerSwitchTime[client] = GetGameTime() + 3.0;
 			}
 				
-			if (bannerSwitchTime[client] > 0.0 && GetTickedTime() >= bannerSwitchTime[client])
+			if (g_flBannerSwitchTime[client] > 0.0 && GetGameTime() >= g_flBannerSwitchTime[client])
 			{
 				shouldSwitch = true;
 			}
 		}
 		else
 		{
-			bannerSwitchTime[client] = 0.0;
+			g_flBannerSwitchTime[client] = 0.0;
 		}
 	}
 	
@@ -2074,7 +2073,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		if (g_hSDKRaiseFlag)
 		{
 			SDKCall(g_hSDKRaiseFlag, weapon);
-			bannerSwitchTime[client] = 0.0;
+			g_flBannerSwitchTime[client] = 0.0;
 		}
 	}
 	

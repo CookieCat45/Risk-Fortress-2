@@ -203,6 +203,7 @@ float g_flPlayerNextLawFireTime[MAXPLAYERS];
 float g_flPlayerWealthRingRadius[MAXPLAYERS];
 float g_flPlayerJetpackEndTime[MAXPLAYERS];
 float g_flBlockMedicCall[MAXPLAYERS];
+float g_flBannerSwitchTime[MAXPLAYERS];
 
 int g_iPlayerInventoryIndex[MAXPLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXPLAYERS] = {1, ...};

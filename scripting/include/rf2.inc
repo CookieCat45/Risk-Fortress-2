@@ -131,6 +131,7 @@ enum
 	ItemStrange_JackHat = 111,
 	ItemStrange_PocketYeti = 112,
 	ItemStrange_MK50 = 113,
+	ItemStrange_HumanCannonball = 114,
 	Item_MaxValid,
 };
 
