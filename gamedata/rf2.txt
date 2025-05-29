@@ -213,6 +213,13 @@
 				"linux64"	"@_ZN11CTFTankBoss24SetStartingPathTrackNodeEPc"
 				"windows64"	""
 			}
+			"CTFBuffItem::RaiseFlag" // Look for string "deploy_buff_banner"
+			{
+				"linux"		"@_ZN11CTFBuffItem9RaiseFlagEv"
+				"windows"	"\x55\x8B\xEC\x8B\x55\x08\x57\x8B\xF9"
+				"linux64"	"@_ZN11CTFBuffItem9RaiseFlagEv"
+				"windows64"	""
+			}
 			"CTFDroppedWeapon::Create" // Look for string "tf_dropped_weapon", subroutine with 1 xref
 			{
 				"linux"		"@_ZN16CTFDroppedWeapon6CreateEP9CTFPlayerRK6VectorRK6QAnglePKcPK13CEconItemView"
@@ -235,6 +242,14 @@
 				"linux"		"@_ZN17CGameEventManager11CreateEventEPKcb"
 				"windows"	"\x55\x8B\xEC\x56\x8B\x75\x08\x57\x85\xF6\x74\x20\x80\x3E\x00\x74\x1B\x56\xE8\x19"
 				"linux64"	"@_ZN17CGameEventManager11CreateEventEPKcb"
+				"windows64"	""
+			}
+			"EconEntity_OnOwnerKillEaterEvent_Batched"
+			{
+				"library"	"server"
+				"linux"		"@_Z40EconEntity_OnOwnerKillEaterEvent_BatchedP11CEconEntityP9CTFPlayerS2_18kill_eater_event_ti"
+				"windows"	"\x55\x8B\xEC\x8B\x4D\x08\x85\xC9\x0F\x84\x2A\x2A\x2A\x2A\x8B\x81\xAC\x04\x00\x00"
+				"linux64"	"@_Z40EconEntity_OnOwnerKillEaterEvent_BatchedP11CEconEntityP9CTFPlayerS2_18kill_eater_event_ti"
 				"windows64"	""
 			}
 		}
@@ -426,6 +441,14 @@
 						"type"	"int"
 					}
 				}
+			}
+			
+			"EconEntity_OnOwnerKillEaterEvent_Batched"
+			{
+				"signature"	"EconEntity_OnOwnerKillEaterEvent_Batched"
+				"callconv"	"thiscall"
+				"return"	"void"
+				"this"		"ignore"
 			}
         }
 	}

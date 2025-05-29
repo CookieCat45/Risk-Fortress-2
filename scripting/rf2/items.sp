@@ -2059,6 +2059,9 @@ bool ActivateStrangeItem(int client)
 		
 		case ItemStrange_PocketYeti:
 		{
+			if (GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") != 0) // not standing on world?
+				return false;
+			
 			ForceTaunt(client, 1183);
 			if (!TF2_IsPlayerInCondition(client, TFCond_Taunting)) // couldn't taunt?
 				return false;
@@ -2273,13 +2276,17 @@ public void Timer_EndRollerMine(Handle timer, int client)
 	SetEntityRenderMode(client, RENDER_NORMAL);
 	SDKUnhook(client, SDKHook_WeaponCanSwitchTo, Hook_BlockWeaponSwitch);
 	SetEntProp(client, Prop_Data, "m_takedamage", DAMAGE_YES);
-	for (int i = 0; i <= WeaponSlot_Melee; i++)
+	ClientCommand(client, "lastinv");
+	if (GetActiveWeapon(client) == INVALID_ENT)
 	{
-		if (IsValidEntity2(GetPlayerWeaponSlot(client, i)))
+		for (int i = 0; i <= WeaponSlot_Melee; i++)
 		{
-			ForceWeaponSwitch(client, i, true);
-			break;
-		}	
+			if (IsValidEntity2(GetPlayerWeaponSlot(client, i)))
+			{
+				ForceWeaponSwitch(client, i, true);
+				break;
+			}
+		}
 	}
 	
 	int wearable = MaxClients+1;

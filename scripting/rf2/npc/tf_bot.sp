@@ -14,7 +14,6 @@ static CNavArea g_TFBotEngineerSentryArea[MAXPLAYERS];
 static float g_flTFBotEngineerSearchRetryTime[MAXPLAYERS];
 static bool g_bTFBotEngineerHasBuilt[MAXPLAYERS];
 static bool g_bTFBotEngineerAttemptingBuild[MAXPLAYERS];
-static bool g_bTFBotForceBannerSwitch[MAXPLAYERS];
 static int g_iTFBotEngineerRepairTarget[MAXPLAYERS];
 static int g_iTFBotEngineerBuildAttempts[MAXPLAYERS];
 static int g_iTFBotSpyBuildingTarget[MAXPLAYERS];
@@ -182,12 +181,6 @@ methodmap TFBot
 	{
 		public get() 			{ return g_flTFBotLastPosCheckTime[this.Client];  }
 		public set(float value) { g_flTFBotLastPosCheckTime[this.Client] = value; }
-	}
-	
-	property bool ForceBannerSwitch
-	{
-		public get() 			{ return g_bTFBotForceBannerSwitch[this.Client];  }
-		public set(bool value) 	{ g_bTFBotForceBannerSwitch[this.Client] = value; }
 	}
 	
 	// Engineer
@@ -773,14 +766,21 @@ void TFBot_Think(TFBot bot)
 		
 		if (!aggressiveMode && threat > 0)
 		{
-			float eyePos[3], targetPos[3];
-			GetClientEyePosition(bot.Client, eyePos);
-			CBaseEntity(threat).WorldSpaceCenter(targetPos);
-			TR_TraceRayFilter(eyePos, targetPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(bot.Client));
-			if (RF2_DispenserShield(TR_GetEntityIndex()).IsValid() && IsLOSClear(bot.Client, TR_GetEntityIndex()))
+			static float nextShieldCheckTime[MAXPLAYERS];
+			if (nextShieldCheckTime[bot.Client] <= GetTickedTime())
 			{
-				// If our target is behind a bubble shield, approach the shield
-				aggressiveMode = true;
+				float eyePos[3], targetPos[3];
+				GetClientEyePosition(bot.Client, eyePos);
+				CBaseEntity(threat).WorldSpaceCenter(targetPos);
+				TR_TraceRayFilter(eyePos, targetPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(bot.Client));
+				if (RF2_DispenserShield(TR_GetEntityIndex()).IsValid() && IsLOSClear(bot.Client, TR_GetEntityIndex()))
+				{
+					// If our target is behind a bubble shield, approach the shield
+					aggressiveMode = true;
+				}
+				
+				// avoid doing too many traces for performance
+				nextShieldCheckTime[bot.Client] = GetTickedTime()+0.5;
 			}
 		}
 		
@@ -2043,30 +2043,38 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		}
 	}
 	
-	if (bot.ForceBannerSwitch)
+	// fix stupid bug where bot doesn't switch away from a banner after blowing the horn
+	static float bannerSwitchTime[MAXPLAYERS];
+	int weapon = GetActiveWeapon(client);
+	bool shouldSwitch;
+	if (weapon != INVALID_ENT)
 	{
-		// fix stupid bug where bot doesn't switch away from a banner after blowing the horn
-		int weapon = GetActiveWeapon(client);
-		bool shouldSwitch;
-		if (weapon != INVALID_ENT)
+		static char classname[128];
+		GetEntityClassname(weapon, classname, sizeof(classname));
+		if (strcmp2(classname, "tf_weapon_buff_item"))
 		{
-			char classname[128];
-			GetEntityClassname(weapon, classname, sizeof(classname));
-			if (strcmp2(classname, "tf_weapon_buff_item"))
+			if (bannerSwitchTime[client] <= 0.0 && buttons & IN_ATTACK)
+			{
+				bannerSwitchTime[client] = GetTickedTime() + 3.0;
+			}
+				
+			if (bannerSwitchTime[client] > 0.0 && GetTickedTime() >= bannerSwitchTime[client])
 			{
 				shouldSwitch = true;
 			}
 		}
-		
-		if (shouldSwitch)
-		{
-			buttons &= ~IN_ATTACK;
-			buttons &= ~IN_ATTACK2;
-			buttons &= ~IN_RELOAD;
-		}
 		else
 		{
-			bot.ForceBannerSwitch = false;
+			bannerSwitchTime[client] = 0.0;
+		}
+	}
+	
+	if (shouldSwitch)
+	{
+		if (g_hSDKRaiseFlag)
+		{
+			SDKCall(g_hSDKRaiseFlag, weapon);
+			bannerSwitchTime[client] = 0.0;
 		}
 	}
 	
