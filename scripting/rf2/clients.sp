@@ -10,7 +10,8 @@ public const TFCond g_MannpowerRunes[] =
 	TFCond_RuneResist,
 	TFCond_RuneStrength,
 	TFCond_RuneVampire,
-	TFCond_RuneWarlock,
+	// seems to cause crashes
+	//TFCond_RuneWarlock,
 	TFCond_KingRune,
 };
 
