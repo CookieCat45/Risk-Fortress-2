@@ -10,7 +10,8 @@ public const TFCond g_MannpowerRunes[] =
 	TFCond_RuneResist,
 	TFCond_RuneStrength,
 	TFCond_RuneVampire,
-	TFCond_RuneWarlock,
+	// seems to cause crashes
+	//TFCond_RuneWarlock,
 	TFCond_KingRune,
 };
 
@@ -36,6 +37,7 @@ void RefreshClient(int client, bool force=false)
 	g_flPlayerRegenBuffTime[client] = 0.0;
 	g_flPlayerDelayedHealTime[client] = 0.0;
 	g_flPlayerTimeSinceLastItemPickup[client] = 0.0;
+	g_flBannerSwitchTime[client] = 0.0;
 	g_flPlayerCaberRechargeAt[client] = 0.0;
 	g_flPlayerShieldRegenTime[client] = 0.0;
 	g_flPlayerMedicShieldNextUseTime[client] = 0.0;

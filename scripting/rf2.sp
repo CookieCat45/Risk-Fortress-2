@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.6.3-DEVONLY"
+#define PLUGIN_VERSION "1.6.4-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.6.3"
+#define PLUGIN_VERSION "1.6.4"
 #endif
 
 #include <rf2>
@@ -203,6 +203,7 @@ float g_flPlayerNextLawFireTime[MAXPLAYERS];
 float g_flPlayerWealthRingRadius[MAXPLAYERS];
 float g_flPlayerJetpackEndTime[MAXPLAYERS];
 float g_flBlockMedicCall[MAXPLAYERS];
+float g_flBannerSwitchTime[MAXPLAYERS];
 
 int g_iPlayerInventoryIndex[MAXPLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXPLAYERS] = {1, ...};
@@ -2057,7 +2058,7 @@ public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int par
 		{
 			if (!g_bPluginReloading) // Causes an error when the plugin is reloading for some reason
 			{
-				SetDifficultyLevel(GetRandomInt(DIFFICULTY_SCRAP, DIFFICULTY_STEEL));
+				SetDifficultyLevel(GetRandomInt(DIFFICULTY_SCRAP, DIFFICULTY_IRON));
 				char difficultyName[64];
 				GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName));
 				RF2_PrintToChatAll("%t", "DifficultySet", difficultyName);
@@ -4648,7 +4649,7 @@ public Action Timer_PlayerTimer(Handle timer)
 						}
 						else if (RF2_GetDifficulty() == DIFFICULTY_SCRAP)
 						{
-							healAmount = RoundFloat(float(healAmount) * 1.5);
+							healAmount = RoundFloat(float(healAmount) * 2.0);
 						}
 					}
 
@@ -5533,6 +5534,23 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 		{
 			UpdatePlayerFireRate(client);
 		}
+		else if (condition == TFCond_Slowed)
+		{
+			if (TF2_GetPlayerClass(client) == TFClass_Heavy && IsPlayerSurvivor(client))
+			{
+				// faster wind down speed
+				int minigun = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+				if (minigun != INVALID_ENT)
+				{
+					float timeIdle = GetEntPropFloat(minigun, Prop_Send, "m_flTimeWeaponIdle");
+					timeIdle = fmax(0.0, timeIdle-GetGameTime());
+					const float mult = 10.0;
+					timeIdle /= mult;
+					SetEntPropFloat(minigun, Prop_Send, "m_flTimeWeaponIdle", GetGameTime()+timeIdle);
+					SetEntPropFloat(minigun, Prop_Send, "m_flPlaybackRate", mult);
+				}
+			}
+		}
 
 		CalculatePlayerMaxSpeed(client);
 	}
@@ -5682,7 +5700,14 @@ void ForceRifleSound(int client, bool crit=false)
 			
 			case 526: // Machina
 			{
-				sound = GSND_MACHINA;
+				if (GetEntPropFloat(weapon, Prop_Send, "m_flChargedDamage") >= 150.0)
+				{
+					sound = GSND_MACHINA_FULL;
+				}
+				else
+				{
+					sound = GSND_MACHINA;
+				}
 			}
 
 			case 752: // Hitman's Heatmaker
@@ -7004,7 +7029,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	if (victimIsClient && (IsSingleplayer(false) || g_iDifficultyLevel <= DIFFICULTY_SCRAP) && IsPlayerSurvivor(victim) 
 		&& (validWeapon || !selfDamage) && (IsCombatChar(attacker) || IsCombatChar(inflictor)))
 	{
-		damage *= 0.8;
+		if (g_iDifficultyLevel <= DIFFICULTY_SCRAP)
+		{
+			damage *= 0.6;
+		}
+		else
+		{
+			damage *= 0.8;
+		}
 	}
 	
 	if ((victimIsBuilding || victimIsNpc || victimIsClient && IsBoss(victim)) && attackerIsClient && PlayerHasItem(attacker, Item_Graybanns))

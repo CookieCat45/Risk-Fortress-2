@@ -2085,6 +2085,24 @@ bool ActivateStrangeItem(int client)
 			TF2Attrib_SetByName(client, "increased air control", airControlAmount);
 			CreateTimer(GetItemMod(ItemStrange_MK50, 0)+0.1, Timer_UpdateGravity, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		}
+		
+		case ItemStrange_HumanCannonball:
+		{
+			int count = GetItemModInt(ItemStrange_HumanCannonball, 0);
+			float pos[3], ang[3], vel[3];
+			GetEntPos(client, pos);
+			ang[0] = -45.0;
+			for (int i = 1; i <= count; i++)
+			{
+				RF2_SentryBuster buster = RF2_SentryBuster.Create(client, TEAM_SURVIVOR);
+				ang[1] = GetRandomFloat(-180.0, 180.0);
+				GetAngleVectors(ang, vel, NULL_VECTOR, NULL_VECTOR);
+				NormalizeVector(vel, vel);
+				ScaleVector(vel, 400.0);
+				buster.Teleport(pos, _, vel);
+				buster.Spawn();
+			}
+		}
 	}
 	
 	// Don't go on cooldown if our charges are above the limit; we likely dropped some battery canteens
@@ -2130,7 +2148,7 @@ public void Timer_UpdateGravity(Handle timer, int client)
 
 public void Timer_YetiSmash(Handle timer, int client)
 {
-	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
+	if (!(client = GetClientOfUserId(client)) || !g_bPlayerYetiSmash[client] || !IsPlayerAlive(client))
 		return;
 	
 	float pos[3];

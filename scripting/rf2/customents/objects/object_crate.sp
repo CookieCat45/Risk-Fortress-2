@@ -264,7 +264,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 					if (i+1 >= GetTotalItems())
 						i = 0;
 						
-					if (i != this.Item && GetCollectorItemClass(i) == class)
+					if (g_bItemInDropPool[i] && i != this.Item && GetCollectorItemClass(i) == class)
 					{
 						this.Item = i;
 						break;

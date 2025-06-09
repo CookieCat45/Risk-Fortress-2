@@ -76,7 +76,7 @@ enum TFBotStrafeDir
 };
 static TFBotStrafeDir g_TFBotStrafeDirection[MAXPLAYERS];
 
-methodmap TFBot
+methodmap TFBot < CBaseCombatCharacter
 {
 	public TFBot(int client) 
 	{
@@ -434,7 +434,7 @@ methodmap TFBot
 		return GetTickedTime() < this.GetSpyForgetTime(spy);
 	}
 	
-	public bool CanScavengeItem(RF2_Item item)
+	public bool CanScavengeItem(RF2_Item item, bool pathCheck=false)
 	{
 		if (GetClientTeam(this.Client) == TEAM_ENEMY)
 		{
@@ -452,11 +452,25 @@ methodmap TFBot
 			return true;
 		}
 		
+		if (pathCheck)
+		{
+			CNavArea area = this.GetLastKnownArea();
+			if (area)
+			{
+				float itemPos[3];
+				item.WorldSpaceCenter(itemPos);
+				if (!TheNavMesh.BuildPath(area, NULL_AREA, itemPos))
+				{
+					return false;
+				}
+			}
+		}
+		
 		// we're probably on RED - only take it if it's ours or is free for taking
 		return !IsValidClient(item.Owner) || item.Owner == this.Client || item.Subject == this.Client;
 	}
 	
-	public bool CanScavengeCrate(RF2_Object_Crate crate)
+	public bool CanScavengeCrate(RF2_Object_Crate crate, bool pathCheck=false)
 	{
 		if (GetPlayerCash(this.Client) < crate.Cost)
 			return false;
@@ -478,6 +492,20 @@ methodmap TFBot
 			// enemies don't want these crates
 			if (crate.Type == Crate_Multi || crate.Type == Crate_Collectors)
 				return false;
+		}
+		
+		if (pathCheck)
+		{
+			CNavArea area = this.GetLastKnownArea();
+			if (area)
+			{
+				float cratePos[3];
+				crate.WorldSpaceCenter(cratePos);
+				if (!TheNavMesh.BuildPath(area, NULL_AREA, cratePos))
+				{
+					return false;
+				}
+			}
 		}
 		
 		return true;
@@ -554,7 +582,7 @@ void TFBot_Think(TFBot bot)
 			// if there's an item we can grab, continue scavenging
 			float cash = GetPlayerCash(bot.Client);
 			RF2_Item item = RF2_Item(GetNearestEntity(botPos, "rf2_item"));
-			if (item.IsValid() && bot.CanScavengeItem(item))
+			if (item.IsValid() && bot.CanScavengeItem(item, true))
 			{
 				bot.ScavengerTarget = EntIndexToEntRef(item.index);
 				bot.RemoveFlag(TFBOTFLAG_DONESCAVENGING);
@@ -566,7 +594,7 @@ void TFBot_Think(TFBot bot)
 				while ((ent = FindEntityByClassname(ent, "rf2_object_crate")) != INVALID_ENT)
 				{
 					RF2_Object_Crate crate = RF2_Object_Crate(ent);
-					if (bot.CanScavengeCrate(crate))
+					if (bot.CanScavengeCrate(crate, true))
 					{
 						bot.RemoveFlag(TFBOTFLAG_DONESCAVENGING);
 						break;
@@ -2044,7 +2072,6 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	}
 	
 	// fix stupid bug where bot doesn't switch away from a banner after blowing the horn
-	static float bannerSwitchTime[MAXPLAYERS];
 	int weapon = GetActiveWeapon(client);
 	bool shouldSwitch;
 	if (weapon != INVALID_ENT)
@@ -2053,19 +2080,19 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		GetEntityClassname(weapon, classname, sizeof(classname));
 		if (strcmp2(classname, "tf_weapon_buff_item"))
 		{
-			if (bannerSwitchTime[client] <= 0.0 && buttons & IN_ATTACK)
+			if (g_flBannerSwitchTime[client] <= 0.0 && buttons & IN_ATTACK)
 			{
-				bannerSwitchTime[client] = GetTickedTime() + 3.0;
+				g_flBannerSwitchTime[client] = GetGameTime() + 3.0;
 			}
 				
-			if (bannerSwitchTime[client] > 0.0 && GetTickedTime() >= bannerSwitchTime[client])
+			if (g_flBannerSwitchTime[client] > 0.0 && GetGameTime() >= g_flBannerSwitchTime[client])
 			{
 				shouldSwitch = true;
 			}
 		}
 		else
 		{
-			bannerSwitchTime[client] = 0.0;
+			g_flBannerSwitchTime[client] = 0.0;
 		}
 	}
 	
@@ -2074,7 +2101,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		if (g_hSDKRaiseFlag)
 		{
 			SDKCall(g_hSDKRaiseFlag, weapon);
-			bannerSwitchTime[client] = 0.0;
+			g_flBannerSwitchTime[client] = 0.0;
 		}
 	}
 	
