@@ -312,6 +312,7 @@ enum // Move collide types
 #define GSND_SYDNEY "Weapon_SydneySleeper.Single"
 #define GSND_BAZAAR "Weapon_Bazaar_Bargain.Single"
 #define GSND_MACHINA "Weapon_SniperRailgun.Single"
+#define GSND_MACHINA_FULL "Weapon_SniperRailgun_Large.Single"
 #define GSND_SHOOTINGSTAR "Weapon_ShootingStar.Single"
 #define GSND_AWP "Weapon_AWP.Single"
 #define GSND_MVM_POWERUP "MVM.PlayerUsedPowerup"

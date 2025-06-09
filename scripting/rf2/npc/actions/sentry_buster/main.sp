@@ -46,7 +46,20 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	actor.GetAbsOrigin(pos);
 	actor.WorldSpaceCenter(worldSpace);
 	int target = actor.Target;
-	if (!IsValidEntity2(target))
+	if (actor.Team == TEAM_SURVIVOR)
+	{
+		if (!IsValidEntity2(target) || GetEntTeam(target) == TEAM_SURVIVOR)
+		{
+			int newTarget = GetNearestEntity(worldSpace, "player", 0.0, 1200.0, TEAM_ENEMY);
+			if (IsValidEntity2(newTarget))
+			{
+				actor.Target = newTarget;
+			}
+		}
+		
+		target = actor.Target;
+	}
+	else if (!IsValidEntity2(target))
 	{
 		// target the Engineer's dispenser instead, if available
 		if (IsValidEntity2(actor.Dispenser))
@@ -77,11 +90,15 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 		}
 	}
 	
+	if (!IsValidEntity2(target))
+	{
+		return action.Continue();
+	}
+	
 	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(actor.index);
 	NextBotGroundLocomotion loco = npc.GetLocomotion();
-	
 	float targetPos[3];
-	if (GetEntProp(target, Prop_Send, "m_bCarried"))
+	if (IsBuilding(target) && GetEntProp(target, Prop_Send, "m_bCarried"))
 	{
 		int owner = GetEntPropEnt(target, Prop_Send, "m_hBuilder");
 		if (IsValidEntity2(owner))
@@ -91,11 +108,14 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	}
 	
 	GetEntPos(target, targetPos);
-	IVision vision = actor.MyNextBotPointer().GetVisionInterface();
-	if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) 
-		&& vision.IsLineOfSightClearToEntity(target) && actor.LastUnstuckTime+1.0 < GetGameTime())
+	if (actor.Team != TEAM_SURVIVOR || GetEntTeam(target) != TEAM_SURVIVOR)
 	{
-		return action.ChangeTo(RF2_SentryBusterDetonateAction(), "KABOOM");
+		IVision vision = actor.MyNextBotPointer().GetVisionInterface();
+		if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) 
+			&& vision.IsLineOfSightClearToEntity(target) && actor.LastUnstuckTime+1.0 < GetGameTime())
+		{
+			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "KABOOM");
+		}
 	}
 	
 	INextBot bot = actor.MyNextBotPointer();

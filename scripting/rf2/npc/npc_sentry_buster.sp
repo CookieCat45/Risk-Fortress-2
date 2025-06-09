@@ -65,14 +65,21 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		g_cvBusterSpawnInterval = CreateConVar("rf2_sentry_buster_spawn_interval", "100", "Interval in seconds that Sentry Busters will spawn if RED has sentries.", FCVAR_NOTIFY, true, 0.0);
 	}
 	
-	public static RF2_SentryBuster Create(int target)
+	public static RF2_SentryBuster Create(int target, int team=TEAM_ENEMY)
 	{
 		RF2_SentryBuster buster = RF2_SentryBuster(CreateEntityByName("rf2_npc_sentry_buster"));
+		buster.Team = team;
 		buster.Dispenser = INVALID_ENT;
 		buster.Target = target;
+		if (team == TEAM_SURVIVOR)
+		{
+			buster.SetRenderColor(255, 100, 100);
+			return buster;
+		}
+		
 		float targetPos[3], pos[3], mins[3], maxs[3];
 		GetEntPos(target, targetPos);
-		if (IsBuilding(target))
+		if (team == TEAM_ENEMY && IsBuilding(target))
 		{
 			int builder = GetEntPropEnt(target, Prop_Send, "m_hBuilder");
 			if (IsValidClient(builder))
@@ -95,9 +102,9 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 			ArrayList spawnPoints = new ArrayList();
 			while ((spawnPoint = FindEntityByClassname(spawnPoint, "info_player_teamspawn")) != INVALID_ENT)
 			{
-				if (GetEntTeam(spawnPoint) != buster.Team || GetEntProp(spawnPoint, Prop_Data, "m_bDisabled"))
+				if (GetEntTeam(spawnPoint) != team || GetEntProp(spawnPoint, Prop_Data, "m_bDisabled"))
 					continue;
-
+				
 				GetEntPos(spawnPoint, pos);
 				TR_TraceHullFilter(pos, pos, mins, maxs, MASK_NPCSOLID_BRUSHONLY, TraceFilter_WallsOnly, TRACE_WORLD_ONLY);
 				if (!TR_DidHit())
@@ -141,7 +148,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 			{
 				SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER");
 			}
-
+			
 			delete playerList;
 		}
 		
@@ -206,6 +213,9 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		for(int i = 0, max = victims.Length; i < max; ++i)
 		{
 			CBaseCombatCharacter victim = victims.Get(i);
+			if (this.Team == TEAM_SURVIVOR && GetEntTeam(victim.index) == TEAM_SURVIVOR)
+				continue;
+			
 			victim.WorldSpaceCenter(victimCenter);
 			SubtractVectors(victimCenter, center, delta);
 
@@ -248,7 +258,6 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		}
 		
 		delete victims;
-		
 		ArrayList playerList = new ArrayList();
 		for (int i = 1; i <= MaxClients; i++)
 		{
@@ -285,16 +294,12 @@ static void OnCreate(RF2_SentryBuster buster)
 {
 	CBaseNPC npc = buster.BaseNpc;
 	buster.Path.SetMinLookAheadDistance(1024.0);
-	
 	int health = RoundToFloor(BUSTER_BASE_HEALTH * GetEnemyHealthMult());
 	buster.SetProp(Prop_Data, "m_iHealth", health);
 	buster.SetPropFloat(Prop_Data, "m_flModelScale", 1.75);
 	
 	// We robots, don't bleed
 	buster.SetProp(Prop_Data, "m_bloodColor", -1);
-	// For triggers
-	//buster.AddFlag(FL_CLIENT);
-	
 	buster.SetModel(MODEL_BUSTER);
 	buster.SetProp(Prop_Data, "m_moveXPoseParameter", buster.LookupPoseParameter("move_x"));
 	buster.SetProp(Prop_Data, "m_moveYPoseParameter", buster.LookupPoseParameter("move_y"));
@@ -302,7 +307,6 @@ static void OnCreate(RF2_SentryBuster buster)
 	buster.SetProp(Prop_Data, "m_runSequence", buster.LookupSequence("Run_MELEE"));
 	buster.SetProp(Prop_Data, "m_airSequence", buster.LookupSequence("a_jumpfloat_ITEM1"));
 	buster.Target = INVALID_ENT;
-	
 	buster.Hook_HandleAnimEvent(HandleAnimEvent);
 	buster.SetProp(Prop_Data, "m_iTeamNum", TEAM_ENEMY);
 	buster.SetProp(Prop_Send, "m_nSkin", 1);
@@ -477,5 +481,12 @@ static void Timer_BusterSpawnRetry(Handle timer, int sentry)
 
 bool IsSentryBusterActive()
 {
-	return FindEntityByClassname(MaxClients + 1, "rf2_npc_sentry_buster") != INVALID_ENT;
+	int buster = MaxClients+1;
+	while ((buster = FindEntityByClassname(buster, "rf2_npc_sentry_buster")) != INVALID_ENT)
+	{
+		if (GetEntTeam(buster) == TEAM_ENEMY)
+			return true;
+	}
+	
+	return false;
 }
