@@ -806,6 +806,11 @@ bool IsCombatChar(int entity)
 	// Dispenser shields extend tf_taunt_prop, which extends CBaseCombatCharacter
 	if (RF2_DispenserShield(entity).IsValid())
 		return false;
+		
+	static char classname[64];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	if (strcmp2(classname, "tf_taunt_prop"))
+		return false;
 	
 	return entity > 0 && CBaseEntity(entity).IsCombatCharacter();
 }
