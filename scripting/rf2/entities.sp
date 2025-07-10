@@ -32,7 +32,10 @@ int GetNearestEntity(float origin[3], const char[] classname, float minDist=-1.0
 	float maxDistSq = sq(maxDist);
 	while ((entity = FindEntityByClassname(entity, classname)) != INVALID_ENT)
 	{
-		if (team > -1 && GetEntTeam(entity) != team)
+		if (!IsValidEntity2(entity) || team > -1 && GetEntTeam(entity) != team)
+			continue;
+			
+		if (IsValidClient(entity) && !IsPlayerAlive(entity))
 			continue;
 		
 		GetEntPos(entity, pos);
@@ -72,7 +75,10 @@ ArrayList GetNearestEntities(float origin[3], const char[] classname, float minD
 	float dist;
 	while ((entity = FindEntityByClassname(entity, classname)) != INVALID_ENT)
 	{
-		if (nearestEnts.Length > 0 && nearestEnts.FindValue(entity) != -1 || team > -1 && GetEntTeam(entity) != team)
+		if (!IsValidEntity2(entity) || nearestEnts.Length > 0 && nearestEnts.FindValue(entity) != -1 || team > -1 && GetEntTeam(entity) != team)
+			continue;
+		
+		if (IsValidClient(entity) && !IsPlayerAlive(entity))
 			continue;
 		
 		GetEntPos(entity, pos);

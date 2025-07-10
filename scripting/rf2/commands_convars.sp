@@ -33,6 +33,7 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_trigger_achievement", Command_TriggerAchievement, ADMFLAG_SLAY, "Trigger an achievement for a player. /rf2_trigger_achievement <player> <achievement ID>");
 	RegAdminCmd("rf2_load_enemies", Command_LoadEnemies, ADMFLAG_ROOT, "Loads an enemy configuration file.");
 	RegAdminCmd("rf2_load_bosses", Command_LoadBosses, ADMFLAG_ROOT, "Loads a boss configuration file.");
+	RegAdminCmd("rf2_changeteam", Command_ChangeTeam, ADMFLAG_SLAY);
 	
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
@@ -2434,5 +2435,35 @@ public Action Command_SpawnScavengerLord(int client, int args)
 	}
 	
 	CreateTimer(0.0, Timer_SpawnScavengerLord, _, TIMER_FLAG_NO_MAPCHANGE);
+	return Plugin_Handled;
+}
+
+public Action Command_ChangeTeam(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	char arg1[16], clientName[MAX_NAME_LENGTH];
+	bool multiLanguage;
+	int clients[MAXPLAYERS];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	
+	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
+	if (matches < 1)
+	{
+		ReplyToTargetError(client, matches);
+		return Plugin_Handled;
+	}
+	else if (matches >= 1)
+	{
+		for (int i = 0; i < matches; i++)
+		{
+			ChangeClientTeam(clients[i], GetCmdArgInt(2));
+		}
+	}
+	
 	return Plugin_Handled;
 }

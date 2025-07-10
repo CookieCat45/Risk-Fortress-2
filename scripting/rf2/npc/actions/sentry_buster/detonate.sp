@@ -47,7 +47,7 @@ static int OnStart(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor
 	actor.ResetSequence(sequence);
 	actor.SetPropFloat(Prop_Data, "m_flCycle", 0.0);
 	actor.SetProp(Prop_Data, "m_takedamage", 0);
-	EmitGameSoundToAll("MVM.SentryBusterSpin", actor.index);
+	EmitSoundToAll(")mvm/sentrybuster/mvm_sentrybuster_spin.wav", actor.index);
 	float duration = actor.SequenceDuration(sequence);
 	if (actor.Team == TEAM_SURVIVOR)
 	{
@@ -66,7 +66,9 @@ static int Update(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor,
 {
 	if (GetGameTime() > action.DetonateTime)
 	{
+		StopSound(actor, SNDCHAN_AUTO, ")mvm/sentrybuster/mvm_sentrybuster_spin.wav");
 		actor.Detonate();
 	}
+	
 	return action.Continue();
 }
