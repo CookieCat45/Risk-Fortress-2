@@ -754,7 +754,7 @@ static void Timer_SuicideBomb(Handle timer, int client)
 	
 	float pos[3];
 	GetEntPos(client, pos, true);
-	TE_TFParticle("fireSmokeExplosion", pos);
+	TE_TFParticle("hightower_explosion", pos);
 	SetEntityHealth(client, 1);
 	TF2_RemoveCondition(client, TFCond_PreventDeath);
 	TF2_RemoveCondition(client, TFCond_UberchargedHidden);

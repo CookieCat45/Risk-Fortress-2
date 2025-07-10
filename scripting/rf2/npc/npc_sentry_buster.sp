@@ -185,8 +185,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 	{
 		float pos[3];
 		this.GetAbsOrigin(pos);
-		TE_TFParticle("explosionTrail_seeds_mvm", pos);
-		TE_TFParticle("fluidSmokeExpl_ring_mvm", pos);
+		TE_TFParticle("hightower_explosion", pos);
 		EmitGameSoundToAll("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
 		EmitGameSoundToAll("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
 		UTIL_ScreenShake(pos, 25.0, 5.0, 5.0, 1000.0, SHAKE_START, false);
