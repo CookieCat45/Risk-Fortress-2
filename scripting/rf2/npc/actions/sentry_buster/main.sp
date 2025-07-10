@@ -48,12 +48,29 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	int target = actor.Target;
 	if (actor.Team == TEAM_SURVIVOR)
 	{
-		if (!IsValidEntity2(target) || GetEntTeam(target) == TEAM_SURVIVOR)
+		if (!IsValidEntity2(target) || IsValidClient(target) && !IsPlayerAlive(target) || GetEntTeam(target) == TEAM_SURVIVOR)
 		{
 			int newTarget = GetNearestEntity(worldSpace, "player", 0.0, 1200.0, TEAM_ENEMY);
 			if (IsValidEntity2(newTarget))
 			{
 				actor.Target = newTarget;
+			}
+			else
+			{
+				newTarget = GetNearestEntity(worldSpace, "rf2_npc*", 0.0, 1200.0, TEAM_ENEMY);
+				if (IsValidEntity2(newTarget))
+				{
+					actor.Target = newTarget;
+				}
+			}
+		}
+		
+		if (!IsValidEntity2(actor.Target) || IsValidClient(actor.Target) && !IsPlayerAlive(actor.Target))
+		{
+			int owner = GetEntPropEnt(actor, Prop_Data, "m_hOwnerEntity");
+			if (IsValidEntity2(owner))
+			{
+				actor.Target = owner;
 			}
 		}
 		
@@ -129,30 +146,33 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 		actor.BaseNpc.flGravity = 800.0;
 	}
 	
-	if (loco.GetGroundSpeed() <= 85.0 && DistBetween(actor.index, target) <= g_cvSuicideBombRange.FloatValue || loco.IsStuck())
+	if (actor.Team != TEAM_SURVIVOR)
 	{
-		int attempts = actor.RepathAttempts;
-		if (attempts >= 60)
+		if (loco.GetGroundSpeed() <= 85.0 && DistBetween(actor.index, target) <= g_cvSuicideBombRange.FloatValue || loco.IsStuck())
 		{
-			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "Fuck we're stuck!");
+			int attempts = actor.RepathAttempts;
+			if (attempts >= 60)
+			{
+				return action.ChangeTo(RF2_SentryBusterDetonateAction(), "Fuck we're stuck!");
+			}
+			else if (attempts >= 20 && !jumping)
+			{
+				loco.Jump();
+				actor.BaseNpc.flGravity = 400.0;
+				actor.RepathAttempts += 30;
+			}
+			else if (attempts < 20)
+			{
+				actor.RepathAttempts++;
+			}
 		}
-		else if (attempts >= 20 && !jumping)
+		else
 		{
-			loco.Jump();
-			actor.BaseNpc.flGravity = 400.0;
-			actor.RepathAttempts += 30;
+			actor.RepathAttempts = 0;
 		}
-		else if (attempts < 20)
-		{
-			actor.RepathAttempts++;
-		}
-	}
-	else
-	{
-		actor.RepathAttempts = 0;
 	}
 	
-	if (action.TalkerTime < GetGameTime())
+	if (action.TalkerTime < GetGameTime() && actor.Team != TEAM_SURVIVOR)
 	{
 		action.TalkerTime = GetGameTime() + 4.0;
 		EmitGameSoundToAll("MVM.SentryBusterIntro", actor.index);

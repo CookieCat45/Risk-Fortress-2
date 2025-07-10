@@ -2089,18 +2089,11 @@ bool ActivateStrangeItem(int client)
 		case ItemStrange_HumanCannonball:
 		{
 			int count = GetItemModInt(ItemStrange_HumanCannonball, 0);
-			float pos[3], ang[3], vel[3];
-			GetEntPos(client, pos);
-			ang[0] = -45.0;
+			float time;
 			for (int i = 1; i <= count; i++)
 			{
-				RF2_SentryBuster buster = RF2_SentryBuster.Create(client, TEAM_SURVIVOR);
-				ang[1] = GetRandomFloat(-180.0, 180.0);
-				GetAngleVectors(ang, vel, NULL_VECTOR, NULL_VECTOR);
-				NormalizeVector(vel, vel);
-				ScaleVector(vel, 400.0);
-				buster.Teleport(pos, _, vel);
-				buster.Spawn();
+				CreateTimer(time, Timer_RedSentryBuster, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+				time += 1.0;
 			}
 		}
 	}
@@ -2136,6 +2129,29 @@ bool ActivateStrangeItem(int client)
 	
 	g_iPlayerEquipmentItemCharges[client]--;
 	return true;
+}
+
+public void Timer_RedSentryBuster(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || !IsPlayerAlive(client))
+		return;
+		
+	float pos[3], ang[3], vel[3];
+	GetEntPos(client, pos);
+	ang[0] = -45.0;
+	RF2_SentryBuster buster = RF2_SentryBuster.Create(client, TEAM_SURVIVOR);
+	ang[1] = GetRandomFloat(-180.0, 180.0);
+	GetAngleVectors(ang, vel, NULL_VECTOR, NULL_VECTOR);
+	NormalizeVector(vel, vel);
+	ScaleVector(vel, 400.0);
+	SetEntityOwner(buster.index, client);
+	buster.SetPropFloat(Prop_Send, "m_flModelScale", 0.5);
+	buster.Teleport(pos);
+	buster.Spawn();
+	buster.DoUnstuckChecks = false;
+	EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
+	TE_TFParticle("eyeboss_tp_player", pos);
+	EmitSoundToAll(SND_TELEPORTER_BLU, buster.index);
 }
 
 public void Timer_UpdateGravity(Handle timer, int client)

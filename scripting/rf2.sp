@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.6.4-DEVONLY"
+#define PLUGIN_VERSION "1.6.5-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.6.4"
+#define PLUGIN_VERSION "1.6.5"
 #endif
 
 #include <rf2>
@@ -1459,6 +1459,7 @@ void LoadAssets()
 	PrecacheScriptSound("MVM.GiantPyroLoop");
 	PrecacheScriptSound("MVM.GiantDemomanLoop");
 	PrecacheScriptSound("MVM.GiantHeavyLoop");
+	PrecacheSound2(")mvm/sentrybuster/mvm_sentrybuster_spin.wav", true);
 	PrecacheSound2("npc/roller/mine/rmine_blades_out1.wav", true);
 	PrecacheSound2("npc/roller/mine/rmine_blades_out2.wav", true);
 	PrecacheSound2("npc/roller/mine/rmine_blades_out3.wav", true);
@@ -1469,6 +1470,21 @@ void LoadAssets()
 	PrecacheSound2("npc/roller/mine/rmine_explode_shock1.wav", true);
 	PrecacheSound2("npc/roller/mine/rmine_tossed1.wav", true);
 	PrecacheSound2("npc/roller/mine/rmine_seek_loop2.wav", true);
+	char sample[PLATFORM_MAX_PATH];
+	for (int i = 1; i <= 18; i++)
+	{
+		if (i > 9)
+		{
+			FormatEx(sample, sizeof(sample), "mvm/player/footsteps/robostep_%i.wav", i);
+		}
+		else
+		{
+			FormatEx(sample, sizeof(sample), "mvm/player/footsteps/robostep_0%i.wav", i);
+		}
+		
+		PrecacheSound2(sample);
+	}
+	
 	AddSoundToDownloadsTable(SND_LASER);
 	AddSoundToDownloadsTable(SND_WEAPON_CRIT);
 	AddSoundToDownloadsTable(SND_DRAGONBORN);
@@ -2378,7 +2394,8 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			case ItemDemo_ConjurersCowl, ItemMedic_WeatherMaster: event.SetString("weapon", "spellbook_lightning");
 			
 			case Item_Dangeresque, Item_SaxtonHat, ItemSniper_HolyHunter, ItemStrange_JackHat,
-				ItemStrange_CroneDome, ItemSpy_Showstopper, ItemHeavy_GoneCommando, ItemStrange_Botler: event.SetString("weapon", "pumpkindeath");
+				ItemStrange_CroneDome, ItemSpy_Showstopper, ItemHeavy_GoneCommando, 
+				ItemStrange_Botler, ItemStrange_HumanCannonball: event.SetString("weapon", "pumpkindeath");
 			
 			case ItemEngi_BrainiacHairpiece, ItemStrange_VirtualViewfinder, Item_RoBro, ItemMedic_MechaMedes: event.SetString("weapon", "merasmus_zap");
 			
@@ -7153,6 +7170,12 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			}
 		}
 		
+		if (damageType & DMG_MELEE && GetClientTeam(attacker) != TEAM_SURVIVOR)
+		{
+			// getting juggled by melee attacks is annoying
+			damageType |= DMG_PREVENT_PHYSICS_FORCE;
+		}
+		
 		if (inflictorIsBuilding)
 		{
 			if (PlayerHasItem(attacker, ItemEngi_BrainiacHairpiece) && CanUseCollectorItem(attacker, ItemEngi_BrainiacHairpiece))
@@ -8622,8 +8645,6 @@ public Action PlayerSoundHook(int clients[64], int& numClients, char sample[PLAT
 					{
 						FormatEx(sample, sizeof(sample), "mvm/player/footsteps/robostep_0%i.wav", random);
 					}
-						
-					PrecacheSound2(sample);
 				}
 				
 				// Match MVM.BotStep

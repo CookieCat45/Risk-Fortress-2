@@ -252,7 +252,15 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 					
 					float force[3];
 					CalculateMeleeDamageForce(damage, delta, 1.0, force);
-					RF_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST, _, _, force, center);
+					if (this.Team == TEAM_SURVIVOR)
+					{
+						RF_TakeDamage(victim.index, this.index, this.GetPropEnt(Prop_Data, "m_hOwnerEntity"),
+							GetItemMod(ItemStrange_HumanCannonball, 2), DMG_BLAST, ItemStrange_HumanCannonball);
+					}
+					else
+					{
+						RF_TakeDamage(victim.index, this.index, this.index, damage, DMG_BLAST, _, _, force, center);
+					}
 				}
 			}
 		}
@@ -339,7 +347,25 @@ static MRESReturn HandleAnimEvent(int actor, Handle params)
 	int event = DHookGetParamObjectPtrVar(params, 1, 0, ObjectValueType_Int);
 	if (event == 7001)
 	{
-		EmitGameSoundToAll("MVM.SentryBusterStep", actor);
+		if (GetEntTeam(actor) == TEAM_SURVIVOR)
+		{
+			char sample[PLATFORM_MAX_PATH];
+			int random = GetRandomInt(1, 18);
+			if (random > 9)
+			{
+				FormatEx(sample, sizeof(sample), "mvm/player/footsteps/robostep_%i.wav", random);
+			}
+			else
+			{
+				FormatEx(sample, sizeof(sample), "mvm/player/footsteps/robostep_0%i.wav", random);
+			}
+			
+			EmitSoundToAll(sample, actor);
+		}
+		else
+		{
+			EmitGameSoundToAll("MVM.SentryBusterStep", actor);
+		}
 	}
 
 	return MRES_Ignored;
@@ -438,7 +464,7 @@ void DoSentryBusterWave()
 		{
 			CreateTimer(1.0, Timer_BusterSpawnRetry, EntIndexToEntRef(sentryList.Get(i)), TIMER_FLAG_NO_MAPCHANGE);
 		}
-		else
+		else if (buster.Team != TEAM_SURVIVOR)
 		{
 			EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
 			EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
@@ -472,7 +498,7 @@ static void Timer_BusterSpawnRetry(Handle timer, int sentry)
 	{
 		CreateTimer(1.0, Timer_BusterSpawnRetry, EntIndexToEntRef(sentry), TIMER_FLAG_NO_MAPCHANGE);
 	}
-	else
+	else if (buster.Team != TEAM_SURVIVOR)
 	{
 		EmitGameSoundToAll("MVM.SentryBusterLoop", buster.index);
 		EmitGameSoundToAll("MVM.SentryBusterIntro", buster.index);
