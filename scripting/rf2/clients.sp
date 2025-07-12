@@ -1009,12 +1009,9 @@ bool DoesPlayerHaveOSP(int client)
 bool PingObjects(int client)
 {
 	int entity = GetClientAimTarget(client, false);
-	if (entity == INVALID_ENT)
-		return false;
-		
 	RF2_Object_Base obj = RF2_Object_Base(entity);
 	char text[256];
-	if (IsCombatChar(entity) && IsLOSClear(client, entity))
+	if (IsValidEntity2(entity) && IsCombatChar(entity) && IsLOSClear(client, entity))
 	{
 		// ping enemies
 		char phrase[64];
