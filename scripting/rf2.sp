@@ -7617,6 +7617,8 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		if (attackerIsClient && !selfDamage && !invuln && PlayerHasAnyRune(victim))
 		{
 			if (PlayerHasItem(attacker, Item_Ballcap) && GetEntItemProc(attacker) != Item_Ballcap
+				// FIXME: Somehow, procing Rotation Sensation with the rollermine causes a server crash.
+				&& GetEntItemProc(attacker) != ItemStrange_JackHat 
 				&& RandChanceFloatEx(attacker, 0.001, 1.0, GetItemMod(Item_Ballcap, 0)*proc))
 			{
 				TFCond rune = GetPlayerRune(victim);
