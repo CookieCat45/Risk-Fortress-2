@@ -6572,6 +6572,14 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 					proc *= 0.5;
 				}
 			}
+			else if (strcmp2(inflictorClassname, "tf_projectile_flare"))
+			{
+				if (damageCustom != TF_CUSTOM_BURNING_FLARE && damageCustom != TF_CUSTOM_FLARE_PELLET && damageCustom != 0)
+				{
+					// this is splash damage from detonator or scorch
+					proc *= 0.5;
+				}
+			}
 		}
 		else if (strcmp2(inflictorClassname, "entity_medigun_shield"))
 		{
@@ -6583,14 +6591,16 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 		}
 	}
 	
-	bool afterburn = damageType & DMG_BURN && (damageCustom == TF_CUSTOM_BURNING || damageCustom == TF_CUSTOM_BURNING_FLARE 
-		|| damageCustom == TF_CUSTOM_BURNING_ARROW || damageCustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING);
+	bool afterburn = damageType & DMG_BURN 
+		&& (damageCustom == TF_CUSTOM_BURNING 
+		|| damageCustom == TF_CUSTOM_BURNING_FLARE 
+		|| damageCustom == TF_CUSTOM_BURNING_ARROW);
 
 	if (afterburn)
 	{
 		proc *= 0.0;
 	}
-
+	
 	switch (damageCustom)
 	{
 		case TF_CUSTOM_BLEEDING:
@@ -7882,13 +7892,6 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				{
 					TriggerAchievement(attacker, ACHIEVEMENT_BIGDAMAGE);
 				}
-				
-				/*
-				if (damage >= 32767.0 && damageCustom != TF_CUSTOM_BACKSTAB && !selfDamage)
-				{
-					TriggerAchievement(attacker, ACHIEVEMENT_DAMAGECAP);
-				}
-				*/
 			}
 
 			if (PlayerHasItem(attacker, Item_OldCrown) && validWeapon)

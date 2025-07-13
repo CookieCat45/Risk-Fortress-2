@@ -787,14 +787,6 @@ float GetWeaponProcCoefficient(int weapon)
 	{
 		return 0.5;
 	}
-	else
-	{
-		int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-		if (index == 740 || index == 351) // Scorch Shot/Detonator
-		{
-			return 0.5;
-		}
-	}
 	
 	return 1.0;
 }
