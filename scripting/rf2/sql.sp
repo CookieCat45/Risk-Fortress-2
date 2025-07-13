@@ -280,8 +280,8 @@ void UpdateSQLAchievement(int client, int achievement, int value)
 	char name[64];
 	GetAchievementInternalName(achievement, name, sizeof(name));
 	FormatEx(formatter, sizeof(formatter), "INSERT INTO achievements (steamid, name, progress) VALUES ('%d', '%s', '%d')", 
-			id, name, value);
-		action.AddQuery(formatter);
+		id, name, value);
+	action.AddQuery(formatter);
 	FormatEx(formatter, sizeof(formatter), "UPDATE achievements SET "
 		... "progress = %d "
 		... "WHERE steamid = %d AND name = \"%s\";", value, id, name);
