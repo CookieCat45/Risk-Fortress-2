@@ -226,7 +226,10 @@ void DataBase_OnDisconnected(int client)
 	{
 		GetAchievementInternalName(i, name, sizeof(name));
 		int value = GetAchievementProgress(client, i);
-
+		
+		FormatEx(formatter, sizeof(formatter), "INSERT INTO achievements (steamid, name, progress) VALUES ('%d', '%s', '%d')", 
+			id, name, value);
+		action.AddQuery(formatter);
 		FormatEx(formatter, sizeof(formatter), "UPDATE achievements SET "
 		... "progress = %d "
 		... "WHERE steamid = %d AND name = \"%s\";", value, id, name);
@@ -240,7 +243,11 @@ void DataBase_OnDisconnected(int client)
 		{
 			index = g_hObtainedItems[client].FindString(g_szItemSectionName[i]);
 		}
-
+		
+		FormatEx(formatter, sizeof(formatter), "INSERT INTO item_log (steamid, name, obtained) VALUES ('%d', '%s', '%d')", 
+			id, g_szItemSectionName[i], index == -1 ? 0 : 1);
+			
+		action.AddQuery(formatter);
 		FormatEx(formatter, sizeof(formatter), "UPDATE item_log SET "
 		... "obtained = %d "
 		... "WHERE steamid = %d AND name = \"%s\";", index == -1 ? 0 : 1, id, g_szItemSectionName[i]);
@@ -272,6 +279,9 @@ void UpdateSQLAchievement(int client, int achievement, int value)
 	char formatter[256];
 	char name[64];
 	GetAchievementInternalName(achievement, name, sizeof(name));
+	FormatEx(formatter, sizeof(formatter), "INSERT INTO achievements (steamid, name, progress) VALUES ('%d', '%s', '%d')", 
+			id, name, value);
+		action.AddQuery(formatter);
 	FormatEx(formatter, sizeof(formatter), "UPDATE achievements SET "
 		... "progress = %d "
 		... "WHERE steamid = %d AND name = \"%s\";", value, id, name);
@@ -297,9 +307,13 @@ void AddItemToSQL(int client, int item)
 	{
 		return;
 	}
-
+	
 	Transaction action = new Transaction();
 	char formatter[256];
+	FormatEx(formatter, sizeof(formatter), "INSERT INTO item_log (steamid, name, obtained) VALUES ('%d', '%s', '1')", 
+		id, g_szItemSectionName[item]);
+	
+	action.AddQuery(formatter);
 	FormatEx(formatter, sizeof(formatter), "UPDATE item_log SET "
 		... "obtained = 1 "
 		... "WHERE steamid = %d AND name = \"%s\";", id, g_szItemSectionName[item]);
