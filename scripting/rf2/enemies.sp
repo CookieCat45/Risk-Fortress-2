@@ -1559,6 +1559,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		}
 		
 		enemy.BotBehaviorAttributes |= QUOTA_MANANGED;
+		enemy.BotBehaviorAttributes |= DISABLE_DODGE;
 		if (enemy.Class == TFClass_Engineer)
 		{
 			enemy.BotBehaviorAttributes |= REMOVE_ON_DEATH;
