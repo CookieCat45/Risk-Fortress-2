@@ -1211,7 +1211,10 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 		}
 	}
 	
-	if (damageCustom == TF_CUSTOM_HEADSHOT || damageCustom == TF_CUSTOM_HEADSHOT_DECAPITATION || damageCustom == TF_CUSTOM_PENETRATE_HEADSHOT)
+	if (damageCustom == TF_CUSTOM_HEADSHOT 
+		|| damageCustom == TF_CUSTOM_HEADSHOT_DECAPITATION 
+		|| damageCustom == TF_CUSTOM_PENETRATE_HEADSHOT
+		|| damageCustom == TF_CUSTOM_BLEEDING && g_bPlayerHeadshotBleeding[victim])
 	{
 		DataPack pack = new DataPack();
 		pack.WriteCell(attacker);

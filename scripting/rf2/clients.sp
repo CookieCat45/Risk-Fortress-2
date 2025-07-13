@@ -25,6 +25,7 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerPermaDeathMark[client] = false;
 	g_bPlayerPressedCanteenButton[client] = false;
 	g_bPlayerYetiSmash[client] = false;
+	g_bPlayerHeadshotBleeding[client] = false;
 	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
 	g_iPlayerPowerupBottle[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;

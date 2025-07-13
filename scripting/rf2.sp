@@ -163,6 +163,7 @@ bool g_bPlayerPermaDeathMark[MAXPLAYERS];
 bool g_bPlayerIsDyingBoss[MAXPLAYERS];
 bool g_bPlayerPressedCanteenButton[MAXPLAYERS];
 bool g_bPlayerYetiSmash[MAXPLAYERS];
+bool g_bPlayerHeadshotBleeding[MAXPLAYERS];
 
 float g_flPlayerXP[MAXPLAYERS];
 float g_flPlayerNextLevelXP[MAXPLAYERS] = {100.0, ...};
@@ -5474,6 +5475,10 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 			TF2_AddCondition(client, TFCond_PreventDeath);
 		}
 	}
+	else if (condition == TFCond_Bleeding)
+	{
+		g_bPlayerHeadshotBleeding[client] = false;
+	}
 	else if (condition == TFCond_BlastJumping)
 	{
 		if (PlayerHasItem(client, ItemSoldier_HawkWarrior) && CanUseCollectorItem(client, ItemSoldier_HawkWarrior))
@@ -6863,6 +6868,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				g_flHeadshotDamage = damage;
 				if (IsValidClient(victim) && PlayerHasItem(attacker, ItemSniper_Bloodhound) && CanUseCollectorItem(attacker, ItemSniper_Bloodhound))
 				{
+					g_bPlayerHeadshotBleeding[victim] = true;
 					int stacks = GetItemModInt(ItemSniper_Bloodhound, 0) + CalcItemModInt(attacker, ItemSniper_Bloodhound, 1, -1);
 					for (int i = 1; i <= stacks; i++)
 					{
@@ -7592,6 +7598,19 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 				TE_SetupBeamPoints(victimPos, attackerPos, 
 					g_iBeamModel, 0, 0, 0, 0.5, 8.0, 8.0, 0, 10.0, {255, 50, 50, 255}, 20);
 				TE_SendToAll();
+			}
+		}
+		
+		if (attackerIsClient && validWeapon)
+		{
+			int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+			if (index == 740)
+			{
+				// remove scorch shot knockback
+				if (!TF2_IsPlayerInCondition(victim, TFCond_ImmuneToPushback))
+				{
+					TF2_AddCondition(victim, TFCond_ImmuneToPushback, 0.001);
+				}
 			}
 		}
 
