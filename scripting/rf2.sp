@@ -6543,6 +6543,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 						&& PlayerHasItem(attacker, ItemSoldier_Compatriot) 
 						&& CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
 					{
+						damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_Compatriot, 2);
 						float chance = CalcItemMod_Hyperbolic(attacker, ItemSoldier_Compatriot, 0);
 						if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
 						{
