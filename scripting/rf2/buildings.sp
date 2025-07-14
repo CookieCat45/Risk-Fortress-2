@@ -95,6 +95,26 @@ TFObjectType TF2_GetObjectType2(int entity)
 // False = Allow destroying
 void SetSentryBuildState(int client, bool state)
 {
+	// if main sentry is built, reduce cost for disposables
+	int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
+	if (wrench != INVALID_ENT)
+	{
+		char classname[64];
+		GetEntityClassname(wrench, classname, sizeof(classname));
+		if (!strcmp2(classname, "tf_weapon_robot_arm"))
+		{
+			int sentry = GetBuiltObject(client, TFObject_Sentry);
+			if (state && sentry != INVALID_ENT)
+			{
+				TF2Attrib_SetByName(wrench, "mod wrench builds minisentry", 1.0);
+			}
+			else
+			{
+				TF2Attrib_RemoveByName(wrench, "mod wrench builds minisentry");
+			}
+		}
+	}
+	
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)
 	{
