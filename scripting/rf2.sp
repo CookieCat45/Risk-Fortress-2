@@ -8468,16 +8468,36 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 		attack3Pressed[client] = false;
 	}
 	
-	if (buttons & IN_ATTACK && g_bPlayerRifleAutoFire[client] && TF2_GetPlayerClass(client) == TFClass_Sniper)
+	if (buttons & IN_ATTACK)
 	{
-		int rifle = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
-		if (rifle == GetActiveWeapon(client))
+		if (g_bPlayerRifleAutoFire[client] && TF2_GetPlayerClass(client) == TFClass_Sniper)
 		{
-			float charge = GetEntPropFloat(rifle, Prop_Send, "m_flChargedDamage")/1.5;
-			if (charge > 0.0)
+			int rifle = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
+			if (rifle == GetActiveWeapon(client))
 			{
-				buttons &= ~IN_ATTACK;
-				g_bForceRifleSound = true; // We need to force the rifle sound as it won't play if we do this
+				float charge = GetEntPropFloat(rifle, Prop_Send, "m_flChargedDamage")/1.5;
+				if (charge > 0.0)
+				{
+					buttons &= ~IN_ATTACK;
+					g_bForceRifleSound = true; // We need to force the rifle sound as it won't play if we do this
+				}
+			}
+		}
+		else if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+		{
+			// Fix disposables not working with wrangler
+			int sentry = GetBuiltObject(client, TFObject_Sentry);
+			if (sentry != INVALID_ENT && GetEntProp(sentry, Prop_Send, "m_bPlayerControlled"))
+			{
+				int entity = MaxClients+1;
+				int offset = FindSendPropInfo("CObjectSentrygun", "m_bPlayerControlled") - 8; // m_bFireNextFrame
+				while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
+				{
+					if (entity == sentry || GetEntPropEnt(entity, Prop_Send, "m_hBuilder") != client)
+						continue;
+						
+					SetEntData(entity, offset, true);
+				}
 			}
 		}
 	}
