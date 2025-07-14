@@ -118,7 +118,7 @@ void LoadCommandsAndCvars()
 	g_cvItemShareMaxTime = CreateConVar("rf2_item_share_max_time", "50.0", "If a player hasn't picked up a new item after this many seconds, they will be ignored by the item share system.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "5000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
 	g_cvTankHealthScale = CreateConVar("rf2_tank_health_scale", "0.08", "How much a Tank's health will scale per enemy level, in decimal percentage.");
-	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "75.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);
+	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "65.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTankSpeedBoost = CreateConVar("rf2_tank_speed_boost", "1.5", "When a Tank falls below 50 percent health, speed it up by this much if the difficulty is above or equal to rf2_tank_boost_difficulty.", FCVAR_NOTIFY, true, 1.0);
 	g_cvTankBoostHealth = CreateConVar("rf2_tank_boost_health_threshold", "0.5", "If the Tank can gain a speed boost, do so when it falls below this much health.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvTankBoostDifficulty = CreateConVar("rf2_tank_boost_difficulty", "2", "For a Tank to gain a speed boost on lower health, the difficulty (not sub difficulty) level must be at least this value.", FCVAR_NOTIFY, true, 0.0, true, float(DIFFICULTY_MAX-1));

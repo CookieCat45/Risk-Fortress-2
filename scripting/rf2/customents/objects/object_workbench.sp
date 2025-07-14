@@ -294,7 +294,7 @@ static void OnSpawnPost(int entity)
 	else if (bench.ItemQuality == Quality_None)
 	{
 		// choose a random item quality if mapper doesn't force a specific one
-		if (GetRandomInt(1, 40) == 1 && !RF2_Object_Workbench.IsAnyComposterActive())
+		if (GetRandomInt(1, 40) == 1 && !RF2_Object_Workbench.IsAnyComposterActive() && !IsScrapItem(bench.Item))
 		{
 			// 1 in 40 for a composter (trades 2 greens for a collectors)
 			bench.IsComposter = true;
