@@ -1700,10 +1700,14 @@ void SpeakResponseConcept(int client, const char[] response)
 
 void SpeakResponseConcept_MVM(int client, const char[] response)
 {
+	AcceptEntityInput(client, "ClearContext");
 	SetVariantString("IsMvMDefender:1");
+	AcceptEntityInput(client, "AddContext");
+	SetVariantString("randomnum:100");
 	AcceptEntityInput(client, "AddContext");
 	SetVariantString(response);
 	AcceptEntityInput(client, "SpeakResponseConcept");
+	AcceptEntityInput(client, "ClearContext");
 }
 
 bool ForceWeaponSwitch(int client, int slot, bool reallyForce=false)

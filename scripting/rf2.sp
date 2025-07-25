@@ -2924,8 +2924,6 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 		if (hitCount > 0)
 		{
 			EmitSoundToAll(SND_THUNDER, medic);
-			UTIL_ScreenShake(eyePos, 20.0, 5.0*hitCount, 8.0, range*3.0, SHAKE_START, true);
-			
 			if (!vaccinator)
 			{
 				Handle msg;
@@ -2944,6 +2942,8 @@ public Action OnPlayerChargeDeployed(Event event, const char[] name, bool dontBr
 					BfWriteByte(msg, 255);
 					EndMessage();
 				}
+				
+				UTIL_ScreenShake(eyePos, 20.0, 5.0*hitCount, 8.0, range*3.0, SHAKE_START, true);
 			}
 
 			if (hitCount >= 5)
@@ -6431,16 +6431,18 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 	{
 		procItem = GetEntItemProc(inflictor);
 	}
-
+	
 	if (procItem != Item_Null && IsValidClient(attacker) && IsEnemy(attacker))
 	{
 		damage *= Enemy(attacker).ItemDamageModifier;
 	}
 	
-	if (victimIsClient && damageCustom == TF_CUSTOM_BACKSTAB && GetClientTeam(victim) == TEAM_ENEMY)
+	if (victimIsClient && damageCustom == TF_CUSTOM_BACKSTAB && !IsBoss(victim)
+		&& GetClientTeam(victim) == TEAM_ENEMY && TF2_IsPlayerInCondition(victim, TFCond_RuneResist))
 	{
-		// resist powerup blocks backstabs, so just remove it
-		TF2_RemoveCondition(victim, TFCond_RuneResist);
+		// resist powerup blocks backstabs in vanilla, so just kill the bot instantly
+		RF_TakeDamage(victim, inflictor, attacker, 99999999.0, DMG_PREVENT_PHYSICS_FORCE|DMG_MELEE, _, weapon);
+		return Plugin_Handled;
 	}
 	
 	if (validWeapon && IsValidClient(attacker))
