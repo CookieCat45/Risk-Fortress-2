@@ -21,5 +21,5 @@
 ### Credits
 **Soy Bing** - Created the layouts for Hellscape and Robot Factory
 
-**Mentrillum** - Assisted in some plugin maintenance and updates
+**Mentrillum, Artvin** - Assisted in some plugin maintenance and updates
 
