@@ -265,21 +265,25 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		}
 		
 		delete victims;
-		ArrayList playerList = new ArrayList();
-		for (int i = 1; i <= MaxClients; i++)
+		if (this.Team != TEAM_SURVIVOR)
 		{
-			if (IsValidClient(i) && IsPlayerAlive(i) && IsPlayerSurvivor(i))
+			ArrayList playerList = new ArrayList();
+			for (int i = 1; i <= MaxClients; i++)
 			{
-				playerList.Push(i);
+				if (IsValidClient(i) && IsPlayerAlive(i) && IsPlayerSurvivor(i))
+				{
+					playerList.Push(i);
+				}
 			}
+			
+			if (playerList.Length > 0)
+			{
+				SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER_DOWN");
+			}
+			
+			delete playerList;
 		}
 		
-		if (playerList.Length > 0)
-		{
-			SpeakResponseConcept_MVM(playerList.Get(GetRandomInt(0, playerList.Length-1)), "TLK_MVM_SENTRY_BUSTER_DOWN");
-		}
-		
-		delete playerList;
 		RemoveEntity(this.index);
 	}
 }

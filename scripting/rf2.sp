@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.6.6-DEVONLY"
+#define PLUGIN_VERSION "1.6.7-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.6.6"
+#define PLUGIN_VERSION "1.6.7"
 #endif
 
 #include <rf2>
@@ -8493,7 +8493,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 			{
 				int entity = MaxClients+1;
 				int offset = FindSendPropInfo("CObjectSentrygun", "m_bPlayerControlled") - 8; // m_bFireNextFrame
-				while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
+				while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)
 				{
 					if (entity == sentry || GetEntPropEnt(entity, Prop_Send, "m_hBuilder") != client)
 						continue;
