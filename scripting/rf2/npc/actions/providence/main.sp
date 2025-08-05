@@ -37,7 +37,7 @@ static int Update(RF2_ProvidenceMainAction action, RF2_Providence boss, float in
 		boss.GetNewTarget(TargetMethod_ClosestNew, TargetType_NoMinions);
         boss.SwitchTargetTime = GetGameTime() + 12.0;
 	}
-
+    
     if (boss.IsTargetValid())
     {
         if (GetGameTime() >= boss.NextAttackTime && IsLOSClear(boss.index, boss.Target))

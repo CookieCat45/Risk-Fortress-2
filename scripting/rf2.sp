@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.6.7-DEVONLY"
+#define PLUGIN_VERSION "1.6.8-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.6.7"
+#define PLUGIN_VERSION "1.6.8"
 #endif
 
 #include <rf2>
@@ -4844,7 +4844,7 @@ public Action Timer_PlayerTimer(Handle timer)
 		{
 			if (!g_bPlayerViewingItemDesc[i] && IsClientInGame(i) 
 				&& !IsFakeClient(i) && GetClientTeam(i) != TEAM_ENEMY 
-				&& !IsBossEventActive()
+				&& (stageCleared || !IsBossEventActive())
 				&& (stageCleared || (GetCookieBool(i, g_coTutorialSurvivor) && GetCookieBool(i, g_coTutorialItemPickup)))
 				&& (stageCleared || GetCookieBool(i, g_coAlwaysShowItemCounts)))
 			{
@@ -6440,8 +6440,8 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 	if (victimIsClient && damageCustom == TF_CUSTOM_BACKSTAB && !IsBoss(victim)
 		&& GetClientTeam(victim) == TEAM_ENEMY && TF2_IsPlayerInCondition(victim, TFCond_RuneResist))
 	{
-		// resist powerup blocks backstabs in vanilla, so just kill the bot instantly
-		RF_TakeDamage(victim, inflictor, attacker, 99999999.0, DMG_PREVENT_PHYSICS_FORCE|DMG_MELEE, _, weapon);
+		// resist powerup blocks backstabs in vanilla, so just remove the powerup
+		TF2_RemoveCondition(victim, TFCond_RuneResist);
 		return Plugin_Handled;
 	}
 	
@@ -6546,7 +6546,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				}
 				else if (validWeapon)
 				{
-					if (victimIsClient && !IsBoss(victim) && !IsPlayerStunned(victim)
+					if (attacker != victim && victimIsClient && !IsBoss(victim) && !IsPlayerStunned(victim)
 						&& PlayerHasItem(attacker, ItemSoldier_Compatriot) 
 						&& CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
 					{
