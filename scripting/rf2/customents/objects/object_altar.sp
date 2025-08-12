@@ -57,16 +57,19 @@ static void OnCreate(RF2_Object_Altar altar)
 	altar.TextDist = 100.0;
 	altar.ShouldBlink = false;
 	altar.SetModel(MODEL_ALTAR);
-	altar.SetWorldText("(1 Gargoyle Key) Call for Medic to activate");
+	char text[256];
+	FormatEx(text, sizeof(text), "(%d Gargoyle Keys) Call for Medic to activate", g_iGargoyleKeyCost);
+	altar.SetWorldText(text);
 	altar.SetObjectName("Gargoyle Altar");
 	altar.HookInteract(OnInteract);
 }
 
 static Action OnInteract(int client, RF2_Object_Altar altar)
 {
-	if (PlayerHasItem(client, Item_HauntedKey, true))
+	if (GetPlayerItemCount(client, Item_HauntedKey, true) >= g_iGargoyleKeyCost)
 	{
-		GiveItem(client, Item_HauntedKey, -1);
+		GiveItem(client, Item_HauntedKey, -g_iGargoyleKeyCost);
+		g_iGargoyleKeyCost = 4;
 		float pos[3];
 		altar.WorldSpaceCenter(pos);
 		TE_TFParticle("ghost_appearation", pos);
@@ -87,7 +90,7 @@ static Action OnInteract(int client, RF2_Object_Altar altar)
 	else
 	{
 		EmitSoundToClient(client, SND_NOPE);
-		PrintCenterText(client, "%t", "AltarNoKeys");
+		PrintCenterText(client, "%t", "AltarNoKeys", g_iGargoyleKeyCost);
 	}
 	
 	return Plugin_Handled;

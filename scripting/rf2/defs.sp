@@ -47,6 +47,10 @@ enum
 	TF2Quality_Decorated,
 };
 
+#define TF_CUSTOM_KRAMPUS_MELEE 84
+#define TF_CUSTOM_KRAMPUS_RANGED 85
+#define TF_CUSTOM_TAUNT_ENGINEER_TRICKSHOT 86
+
 enum
 {
 	SOLID_NONE,
@@ -301,6 +305,7 @@ enum // Move collide types
 #define SND_LONGWAVE_USE "ui/cyoa_node_activate.wav"
 #define SND_REVIVE "misc/halloween/spell_skeleton_horde_rise.wav"
 #define SND_MULTICRATE_CYCLE "ui/buttonrollover.wav"
+#define SND_SHIELD_BREAK "physics/glass/glass_sheet_break3.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds

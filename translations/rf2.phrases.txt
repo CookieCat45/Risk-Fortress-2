@@ -362,7 +362,8 @@
 	
 	"AltarNoKeys"
 	{
-		"en"		"You don't have any Gargoyle Keys to use this!"
+		"#format"	"{1:d}"
+		"en"		"You need {1} Gargoyle Keys to use this!"
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

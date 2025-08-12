@@ -204,10 +204,9 @@ int GetNearestPlayer(float pos[3], float minDist=-1.0, float maxDist=-1.0, int t
 	float distance;
 	float nearestDist = -1.0;
 	int nearestPlayer = INVALID_ENT;
-
 	float minDistSq = sq(minDist);
 	float maxDistSq = sq(maxDist);
-
+	
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerAlive(i) || onlyHumans && IsFakeClient(i))
@@ -436,6 +435,22 @@ int CalculatePlayerMaxHealth(int client, bool partialHeal=true, bool fullHeal=fa
 		maxHealth = RoundToFloor(float(maxHealth) * CalcItemMod_Reciprocal(client, Item_MisfortuneFedora, 2));
 	}
 	
+	float runeHealthMult = 1.0;
+	if (GetClientTeam(client) == TEAM_ENEMY && PlayerHasAnyRune(client))
+	{
+		TFCond rune = GetPlayerRune(client);
+		switch (rune)
+		{
+			case TFCond_RuneRegen: 		runeHealthMult = 2.0;
+			case TFCond_RuneVampire: 	runeHealthMult = 2.0;
+			case TFCond_RuneHaste:		runeHealthMult = 1.5;
+			case TFCond_RuneResist:		runeHealthMult = 1.5;
+			case TFCond_RuneStrength:	runeHealthMult = 1.5;
+			default: 					runeHealthMult = 1.5;
+		}
+	}
+	
+	maxHealth = RoundToFloor(float(maxHealth)*runeHealthMult);
 	if (TF2_GetPlayerClass(client) == TFClass_Engineer)
 	{
 		TF2Attrib_SetByName(client, "engy building health bonus", healthScale);
@@ -815,7 +830,7 @@ float GetPlayerFireRateMod(int client, int weapon=INVALID_ENT, bool update=false
 		else
 		{
 			int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-			if (index == 527 || index == 1104) // Widowmaker/Air Strike
+			if (index == 527 || index == 1104 || index == 730) // Widowmaker/Air Strike/Beggar's Bazooka
 			{
 				const float penalty = 0.5;
 				multiplier = Pow(multiplier, penalty);

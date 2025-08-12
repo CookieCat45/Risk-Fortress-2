@@ -213,6 +213,19 @@ bool DoEntitiesIntersect(int ent1, int ent2)
 	return false;
 }
 
+// true if projectile uses vphysics to move
+bool IsPhysicsProjectile(int entity)
+{
+	if (RF2_Projectile_Base(entity).IsValid())
+		return true;
+		
+	static char classname[128];
+	GetEntityClassname(entity, classname, sizeof(classname));
+	return strcmp2(classname, "tf_projectile_pipe")
+		|| strcmp2(classname, "tf_projectile_pipe_remote")
+		|| StrContains(classname, "tf_projectile_jar") != -1;
+}
+
 // SPELL PROJECTILES WILL ONLY WORK IF THE OWNER ENTITY IS A PLAYER! DO NOT TRY THEM WITH ANYTHING ELSE!
 int ShootProjectile(int owner=INVALID_ENT, const char[] classname, const float pos[3], const float angles[3],
 	float speed, float damage=-1.0, float arc=0.0, bool allowCrit=true, bool spawn=true)
@@ -477,18 +490,24 @@ public Action Timer_CashMagnet(Handle timer, int entity)
 	
 	float pos[3], playerPos[3], angles[3], vel[3];
 	GetEntPos(entity, pos);
-	
+	float dist;
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsPlayerSurvivor(i))
 			continue;
 		
-		if (PlayerHasItem(i, Item_BanditsBoots))
+		GetEntPos(i, playerPos);
+		dist = GetVectorDistance(pos, playerPos, true);
+		if (dist <= 14400.0)
 		{
-			GetEntPos(i, playerPos);
-			playerPos[2] += 75.0;
-			if (GetVectorDistance(pos, playerPos, true) <= sq(CalcItemMod(i, Item_BanditsBoots, 2)))
+			EmitGameSoundToAll("MVM.MoneyPickup", i);
+			PickupCash(i, entity);
+		}
+		else if (PlayerHasItem(i, Item_BanditsBoots))
+		{
+			if (dist <= sq(CalcItemMod(i, Item_BanditsBoots, 2)))
 			{
+				playerPos[2] += 75.0;
 				GetVectorAnglesTwoPoints(pos, playerPos, angles);
 				GetAngleVectors(angles, vel, NULL_VECTOR, NULL_VECTOR);
 				NormalizeVector(vel, vel);

@@ -975,12 +975,14 @@ public void RF_MissCheck(int client)
 	
 	bool missed = g_bPlayerMeleeMiss[client];
 	g_bPlayerMeleeMiss[client] = false;
-	if (missed)
+	static float lastSelfDamageTime[MAXPLAYERS];
+	if (missed && lastSelfDamageTime[client]+0.4 <= GetTickedTime())
 	{
 		// don't trigger damage hooks
 		float damage = CalcItemMod(client, Item_HorrificHeadsplitter, 1);
 		SDKHooks_TakeDamage(client, client, client, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE);
 		TF2_MakeBleed(client, client, 5.0);
+		lastSelfDamageTime[client] = GetTickedTime();
 	}
 }
 
@@ -1077,6 +1079,7 @@ bool IsVoodooCursedCosmetic(int wearable)
 	return index >= 5617 && index <= 5625;
 }
 
+/*
 bool IsWeaponTauntBanned(int weapon)
 {
 	char classname[64];
@@ -1096,6 +1099,25 @@ bool IsWeaponTauntBanned(int weapon)
 		|| strcmp2(classname, "tf_weapon_sword")
 		|| strcmp2(classname, "tf_weapon_katana")
 		|| strcmp2(classname, "tf_weapon_sentry_revenge");
+}
+*/
+
+bool IsTauntCustomDamageType(int damagecustom)
+{
+	return damagecustom == TF_CUSTOM_TAUNT_HADOUKEN
+		|| damagecustom == TF_CUSTOM_TAUNT_ARROW_STAB
+		|| damagecustom == TF_CUSTOM_TAUNT_ALLCLASS_GUITAR_RIFF
+		|| damagecustom == TF_CUSTOM_TAUNT_ARMAGEDDON
+		|| damagecustom == TF_CUSTOM_TAUNT_HIGH_NOON
+		|| damagecustom == TF_CUSTOM_TAUNT_BARBARIAN_SWING
+		|| damagecustom == TF_CUSTOM_TAUNT_ENGINEER_ARM
+		|| damagecustom == TF_CUSTOM_TAUNT_ENGINEER_SMASH
+		|| damagecustom == TF_CUSTOM_TAUNT_ENGINEER_TRICKSHOT
+		|| damagecustom == TF_CUSTOM_TAUNT_FENCING
+		|| damagecustom == TF_CUSTOM_TAUNT_GRAND_SLAM
+		|| damagecustom == TF_CUSTOM_TAUNT_GRENADE
+		|| damagecustom == TF_CUSTOM_TAUNT_UBERSLICE
+		|| damagecustom == TF_CUSTOM_TAUNTATK_GASBLAST;
 }
 
 bool IsEnergyWeapon(int weapon)

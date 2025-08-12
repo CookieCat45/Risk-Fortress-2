@@ -131,7 +131,7 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 		if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) 
 			&& vision.IsLineOfSightClearToEntity(target) && actor.LastUnstuckTime+1.0 < GetGameTime())
 		{
-			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "KABOOM");
+			return action.SuspendFor(RF2_SentryBusterDetonateAction(), "KABOOM");
 		}
 	}
 	

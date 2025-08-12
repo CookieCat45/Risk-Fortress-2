@@ -53,6 +53,7 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 			.DefineBoolField("m_bDoUnstuckChecks")
 			.DefineBoolField("m_bCanBeHeadshot")
 			.DefineBoolField("m_bCanBeBackstabbed")
+			.DefineBoolField("m_bDisableFriendlyFire")
 			.DefineFloatField("m_flBaseBackstabDamage")
 			.DefineFloatField("m_flLastUnstuckTime")
 			.DefineFloatField("m_flDormantTime")
@@ -161,13 +162,26 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		{
 			return asBool(this.GetProp(Prop_Data, "m_bCanBeBackstabbed"));
 		}
-
+		
 		public set(bool value)
 		{
 			this.SetProp(Prop_Data, "m_bCanBeBackstabbed", value);
 		}
 	}
-
+	
+	property bool DisableFriendlyFire
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bDisableFriendlyFire"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bDisableFriendlyFire", value);
+		}
+	}
+	
 	property float BaseBackstabDamage
 	{
 		public get()
@@ -539,6 +553,7 @@ CEntityFactory GetBaseNPCFactory()
 
 static void OnCreate(RF2_NPC_Base npc)
 {
+	SDKHook(npc.index, SDKHook_OnTakeDamage, OnTakeDamage);
 	SDKHook(npc.index, SDKHook_OnTakeDamageAlivePost, OnTakeDamageAlivePost);
 	SDKHook(npc.index, SDKHook_ThinkPost, ThinkPost);
 	SDKHook(npc.index, SDKHook_SpawnPost, OnSpawnPost);
@@ -547,6 +562,7 @@ static void OnCreate(RF2_NPC_Base npc)
 	npc.AddFlag(FL_NPC);
 	npc.DefendTeam = -1;
 	npc.DoUnstuckChecks = true;
+	npc.DisableFriendlyFire = true;
 	npc.BaseBackstabDamage = 750.0;
 	npc.Path = PathFollower(INVALID_FUNCTION, FilterIgnoreActors, FilterOnlyActors);
 	
@@ -608,6 +624,22 @@ static void OnSpawnPost(int entity)
 		npc.SetStuckPos(pos);
 		CreateTimer(0.5, Timer_UnstuckCheck, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
+}
+
+static Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
+		float damageForce[3], float damagePosition[3], int damagecustom)
+{
+	RF2_NPC_Base npc = RF2_NPC_Base(victim);
+	if (npc.DisableFriendlyFire)
+	{
+		if (GetEntTeam(attacker) == npc.Team || GetEntTeam(inflictor) == npc.Team)
+		{
+			// no friendly fire
+			return Plugin_Stop;
+		}
+	}
+	
+	return Plugin_Continue;
 }
 
 static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3], int damageCustom)

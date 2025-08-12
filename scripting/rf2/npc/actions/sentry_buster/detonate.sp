@@ -35,6 +35,22 @@ methodmap RF2_SentryBusterDetonateAction < NextBotAction
 
 static int OnStart(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor, NextBotAction prevAction)
 {
+	if (actor.Team == TEAM_SURVIVOR)
+	{
+		// don't detonate if another one of my buddies nearby already is
+		int entity = MaxClients+1;
+		while ((entity = FindEntityByClassname(entity, "rf2_npc_sentry_buster")) != INVALID_ENT)
+		{
+			RF2_SentryBuster buster = RF2_SentryBuster(entity);
+			if (buster.Team == actor.Team && buster.Detonating 
+				&& DistBetween(actor.index, buster.index, true) <= Pow(g_cvSuicideBombRange.FloatValue, 2.0))
+			{
+				return action.Done("A nearby ally is detonating, wait for them to finish.");
+			}
+		}
+	}
+	
+	actor.Detonating = true;
 	actor.DoUnstuckChecks = false;
 	int sequence = actor.LookupSequence("taunt04");
 	actor.SetProp(Prop_Data, "m_takedamage", DAMAGE_NO);
@@ -58,7 +74,6 @@ static int OnStart(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor
 	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(actor.index);
 	npc.flWalkSpeed = 0.0;
 	npc.flRunSpeed = 0.0;
-
 	return action.Continue();
 }
 

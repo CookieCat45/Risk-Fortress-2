@@ -296,12 +296,8 @@ static void OnCreate(RF2_RobotButler bot)
 	PrecacheModel2(MODEL_MEDKIT, true);
 	PrecacheModel2(MODEL_MEDKIT_BLUE, true);
 	SDKHook(bot.index, SDKHook_SpawnPost, OnSpawnPost);
-	
-	// TODO: add friendly fire blocking to npc_base instead
-	// hooking this to actually prevent friendly fire damage so items don't proc from it
 	SDKHook(bot.index, SDKHook_OnTakeDamage, OnTakeDamage);
 	SDKHook(bot.index, SDKHook_OnTakeDamageAlivePost, OnTakeDamageAlivePost);
-	
 	bot.SuicideBombAt = GetGameTime()+90.0;
 	bot.HealCooldown = 25.0;
 	bot.BombDamage = 650.0;
@@ -378,13 +374,6 @@ static Action Timer_BotRegenHealth(Handle timer, int entity)
 static Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
 		float damageForce[3], float damagePosition[3], int damagecustom)
 {
-	RF2_RobotButler bot = RF2_RobotButler(victim);
-	if (GetEntTeam(attacker) == bot.Team || GetEntTeam(inflictor) == bot.Team)
-	{
-		// no friendly fire
-		return Plugin_Stop;
-	}
-	
 	if (damagetype & DMG_CRIT)
 	{
 		damagetype &= ~DMG_CRIT; // crit damage immunity

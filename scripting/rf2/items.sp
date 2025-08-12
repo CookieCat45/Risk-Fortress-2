@@ -790,7 +790,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			{
 				float pushForce = 1.0 + CalcItemMod_Hyperbolic(client, Item_UFO, 1);
 				TF2Attrib_SetByName(client, "airblast vulnerability multiplier", pushForce);
-				TF2Attrib_SetByName(client, "damage force increase", pushForce);
+				//TF2Attrib_SetByName(client, "damage force increase", pushForce);
 			}
 		}
 		case ItemEngi_Teddy:
@@ -2459,7 +2459,7 @@ public void Timer_FusRoDah(Handle timer, int client)
 	
 	float range = GetItemMod(ItemStrange_Dragonborn, 0);
 	int team = GetClientTeam(client);
-	float eyePos[3], targetPos[3], angles[3], vel[3];
+	float eyePos[3], targetPos[3], pos[3], angles[3], vel[3], vel1[3], vel2[3];
 	GetClientEyePosition(client, eyePos);
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -2484,13 +2484,50 @@ public void Timer_FusRoDah(Handle timer, int client)
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "tf_projectile*")) != INVALID_ENT)
 	{
-		if (GetEntTeam(entity) != team && DistBetween(client, entity) <= range*1.25)
+		if (GetEntTeam(entity) != team && DistBetween(client, entity, true) <= range*1.25)
 		{
-			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
-			ScaleVector(vel, -2.0);
-			TeleportEntity(entity, _, _, vel);
+			GetEntPos(entity, pos, true);
+			if (IsPhysicsProjectile(entity))
+			{
+				GetPhysVelocity(entity, vel1);
+			}
+			else
+			{
+				GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel1);
+			}
+			
+			int owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+			
+			if (IsValidEntity2(owner) && IsCombatChar(owner) 
+				&& (!IsValidClient(owner) || IsPlayerAlive(owner))
+				&& IsLOSClear(entity, owner, MASK_PLAYERSOLID_BRUSHONLY))
+			{
+				// return to sender if possible
+				GetEntPos(owner, targetPos, true);
+				GetVectorAnglesTwoPoints(pos, targetPos, angles);
+				GetAngleVectors(angles, vel2, NULL_VECTOR, NULL_VECTOR);
+				NormalizeVector(vel2, vel2);
+				ScaleVector(vel2, GetVectorLength(vel1) * 2.0);
+				CopyVectors(vel2, vel1);
+			}
+			else
+			{
+				ScaleVector(vel1, -2.0);
+			}
+			
+			if (IsPhysicsProjectile(entity))
+			{
+				SetPhysVelocity(entity, vel1);
+			}
+			
+			CBaseEntity(entity).SetAbsVelocity(vel1);
 			SetEntityOwner(entity, client);
 			SetEntTeam(entity, team);
+			g_bDontDamageOwner[entity] = true;
+			if (HasEntProp(entity, Prop_Send, "m_hThrower"))
+			{
+				SetEntPropEnt(entity, Prop_Send, "m_hThrower", client);
+			}
 		}
 	}
 	
@@ -2498,11 +2535,29 @@ public void Timer_FusRoDah(Handle timer, int client)
 	RF2_Projectile_Base proj;
 	while ((entity = FindEntityByClassname(entity, "rf2_projectile*")) != INVALID_ENT)
 	{
-		if (GetEntTeam(entity) != team && DistBetween(client, entity) <= range*1.25)
+		if (GetEntTeam(entity) != team && DistBetween(client, entity, true) <= range*1.25)
 		{
-			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
-			ScaleVector(vel, -2.0);
-			ApplyAbsVelocityImpulse(entity, vel);
+			GetEntPos(entity, pos, true);
+			GetPhysVelocity(entity, vel1);
+			int owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+			if (IsValidEntity2(owner) && IsCombatChar(owner) 
+				&& (!IsValidClient(owner) || IsPlayerAlive(owner))
+				&& IsLOSClear(entity, owner, MASK_PLAYERSOLID_BRUSHONLY))
+			{
+				// return to sender if possible
+				GetEntPos(owner, targetPos, true);
+				GetVectorAnglesTwoPoints(pos, targetPos, angles);
+				GetAngleVectors(angles, vel2, NULL_VECTOR, NULL_VECTOR);
+				NormalizeVector(vel2, vel2);
+				ScaleVector(vel2, GetVectorLength(vel1) * 2.0);
+				SetPhysVelocity(entity, vel2);
+			}
+			else
+			{
+				ScaleVector(vel1, -2.0);
+				SetPhysVelocity(entity, vel1);
+			}
+			
 			proj = RF2_Projectile_Base(entity);
 			if (proj.Homing)
 			{
@@ -2510,8 +2565,8 @@ public void Timer_FusRoDah(Handle timer, int client)
 			}
 			
 			proj.Owner = client;
-			proj.DamageOwner = true;
 			proj.Team = team;
+			proj.DamageOwner = false;
 		}
 	}
 	

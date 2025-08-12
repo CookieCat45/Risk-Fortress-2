@@ -55,6 +55,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 			.DefineIntField("m_runSequence")
 			.DefineIntField("m_airSequence")
 			.DefineIntField("m_iRepathAttempts")
+			.DefineBoolField("m_bDetonating")
 			.DefineEntityField("m_hDispenser")
 		.EndDataMapDesc();
 		g_Factory.Install();
@@ -74,6 +75,12 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		if (team == TEAM_SURVIVOR)
 		{
 			buster.SetRenderColor(255, 100, 100);
+			buster.SetGlowColor(255, 0, 0, 255);
+			if (IsValidEntity2(buster.HealthText))
+			{
+				RemoveEntity(buster.HealthText);
+			}
+			
 			return buster;
 		}
 		
@@ -174,10 +181,23 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		{
 			return this.GetPropEnt(Prop_Data, "m_hDispenser");
 		}
-
+		
 		public set(int value)
 		{
 			this.SetPropEnt(Prop_Data, "m_hDispenser", value);
+		}
+	}
+	
+	property bool Detonating
+	{
+		public get()
+		{
+			return this.GetProp(Prop_Data, "m_bDetonating");
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bDetonating", value);
 		}
 	}
 	
@@ -187,8 +207,12 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		this.GetAbsOrigin(pos);
 		TE_TFParticle("hightower_explosion", pos);
 		EmitGameSoundToAll("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
-		EmitGameSoundToAll("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
-		UTIL_ScreenShake(pos, 25.0, 5.0, 5.0, 1000.0, SHAKE_START, false);
+		if (this.Team != TEAM_SURVIVOR)
+		{
+			EmitGameSoundToAll("MVM.SentryBusterExplode", SOUND_FROM_WORLD, .origin = pos);
+			UTIL_ScreenShake(pos, 25.0, 5.0, 5.0, 1000.0, SHAKE_START, false);
+		}
+		
 		ArrayList victims = new ArrayList();
 		int entity = MaxClients+1;
 		while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
@@ -336,8 +360,8 @@ static void OnCreate(RF2_SentryBuster buster)
 	buster.SetGlowColor(0, 100, 255, 255);
 	npc.SetBodyMins(PLAYER_MINS);
 	npc.SetBodyMaxs(PLAYER_MAXS);
-	RF2_HealthText text = CreateHealthText(buster.index, 150.0, 20.0, "SENTRY BUSTER");
-	text.SetHealthColor(HEALTHCOLOR_HIGH, {70, 150, 255, 255});
+	buster.HealthText = CreateHealthText(buster.index, 150.0, 20.0, "SENTRY BUSTER");
+	buster.HealthText.SetHealthColor(HEALTHCOLOR_HIGH, {70, 150, 255, 255});
 }
 
 static void OnRemove(RF2_SentryBuster buster)
