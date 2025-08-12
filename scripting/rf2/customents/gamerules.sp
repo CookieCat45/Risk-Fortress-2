@@ -500,7 +500,7 @@ int SpawnObjects()
 			}
 			
 			snapshot.GetKey(index, name, sizeof(name));
-			if (strcmp2(name, "rf2_object_pumpkin") && !altar.IsValid())
+			if (strcmp2(name, "rf2_object_pumpkin") && (!altar.IsValid() || g_iGargoyleKeyCost > 1))
 			{
 				continue;
 			}

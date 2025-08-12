@@ -2378,7 +2378,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	int inflictor = event.GetInt("inflictor_entindex");
 	int weaponIndex = event.GetInt("weapon_def_index");
-	int weaponId = event.GetInt("weaponid");
+	//int weaponId = event.GetInt("weaponid");
 	int damageType = event.GetInt("damagebits");
 	int customkill = event.GetInt("customkill");
 	int assister = GetClientOfUserId(event.GetInt("assister"));
@@ -2546,7 +2546,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			
 			cashAmount += GetPlayerCash(victim);
 			pos[2] += 20.0;
-			int cashEntity = SpawnCashDrop(cashAmount, pos, size);
+			SpawnCashDrop(cashAmount, pos, size);
 			if (IsValidClient(attacker))
 			{
 				if (!g_bPlayerHauntedKeyDrop[attacker])
