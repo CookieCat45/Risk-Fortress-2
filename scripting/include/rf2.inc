@@ -12,7 +12,7 @@
 #define TEAM_ENEMY 3
 
 // Items -------------------------------------------------------------------------------------------------------------------------------------
-#define MAX_ITEMS 200
+#define MAX_ITEMS 250
 #define MAX_ITEM_MODIFIERS 16
 
 enum
@@ -35,7 +35,7 @@ enum
 	Item_Law = 15,
 	ItemStrange_VirtualViewfinder = 16,
 	Item_RoBro = 17,
-	ItemStrange_Spellbook = 18,
+	Item_Horace = 18,
 	Item_HorsemannHead = 19,
 	Item_Monoculus = 20,
 	Item_SaxtonHat = 21,
@@ -122,6 +122,16 @@ enum
 	ItemStrange_OneWayTicket = 102,
 	ItemStrange_LittleBuddy = 103,
 	Item_ApertureHat = 104,
+	Item_Capacitor = 105,
+	Item_Ballcap = 106,
+	Item_Hachimaki = 107,
+	Item_LilBitey = 108,
+	ItemStrange_WarswornHelm = 109,
+	Item_WealthHat = 110,
+	ItemStrange_JackHat = 111,
+	ItemStrange_PocketYeti = 112,
+	ItemStrange_MK50 = 113,
+	ItemStrange_HumanCannonball = 114,
 	Item_MaxValid,
 };
 
@@ -146,9 +156,18 @@ enum
 	DIFFICULTY_IRON,
 	DIFFICULTY_STEEL,
 	DIFFICULTY_TITANIUM,
-
+	DIFFICULTY_AUSTRALIUM,
+	
 	DIFFICULTY_MAX,
 };
+
+enum
+{
+	Curse_Lethality = 2,// Enemy move speed increased by 50%, attack and reload speed increased by 25%
+	Curse_Wounding,		// Health regeneration disabled, all sources of healing reduced by 30%
+	Curse_Scarcity,		// Gargoyles and any objects that yield items no longer spawn
+	Curse_Annihilation,	// All enemies are crit boosted
+}
 
 enum
 {
@@ -248,7 +267,7 @@ native float RF2_CalcItemMod_Hyperbolic(int client, int item, int slot, int extr
  * @param allowMinions	If false and the player is a minion, will be calculated with an item count of 0.
  * @return				Calculation result.
  */
-native float RF2_CalcItemMod_HyperbolicInverted(int client, int item, int slot, int extraAmount=0, bool allowMinions=false);
+native float RF2_CalcItemMod_Reciprocal(int client, int item, int slot, int extraAmount=0, bool allowMinions=false);
 
 /**
  * Returns the value of the item modifier in the specified slot.
@@ -489,7 +508,8 @@ native ArrayList RF2_DoRadiusDamage(int attacker, int inflictor, const float pos
 	float radius, float minFalloffMult=0.3, bool allowSelfDamage=false, ArrayList blacklist=null, bool returnHitEnts=false);
 
 /**
- * Applies damage to an entity, using an item.
+ * Applies damage to an entity. 
+ * Can associate an item with the damage dealt using the `procItem` parameter.
  *
  * @param entity         Entity index taking damage
  * @param inflictor      Inflictor entity index
@@ -563,11 +583,28 @@ native int RF2_GetTeleporterEntity();
  */
 native bool RF2_IsTankDestructionMode();
 
+/**
+ * Adds an object to the object spawn list.
+ * 
+ * @param classname		Classname of the object entity.
+ * @param weight		The object's spawn weight, which determines how often it will appear. For reference, rf2_object_workbench uses a weight of 20.
+ * @noreturn
+ */
+native void RF2_AddObjectToSpawnList(const char[] classname, int weight);
+
+/**
+ * Removes an object from the object spawn list.
+ * 
+ * @param classname		Classname of the object entity.
+ * @return				True if the object was in the spawn list, and was removed. False otherwise.
+ */
+native bool RF2_RemoveObjectFromSpawnList(const char[] classname);
+
 /** 
  * Called when an entity takes damage.
  * 
  * @param victim			Entity taking damage
- * @param attacker 			Entity responsible for the daamge
+ * @param attacker 			Entity responsible for the damage
  * @param inflictor 		Entity dealing the damage
  * @param damage			Damage being dealt
  * @param damageType		Damage flags
@@ -575,22 +612,24 @@ native bool RF2_IsTankDestructionMode();
  * @param damageForce		Velocity of damage force
  * @param damagePosition	Origin of damage
  * @param damageCustom		Custom damage type
- * @param attackerItem		Item associated with the attacker, usually only set if the attacker is a client
- * @param inflictorItem		Item associated with the inflictor, usually only set if the inflictor is something like a projectile triggered by an item
+ * @param attackerItem		Item associated with the attacker, usually set if the attacker is a client
+ * @param inflictorItem		Item associated with the inflictor, usually set if the inflictor is something like a projectile triggered by an item
+ * @param critType			Crit type. 0 = none, 1 = crit, 2 = mini-crit
  * @param procCoeff			Proc coefficient
  * @return Plugin_Stop/Plugin_Handled to prevent damage, Plugin_Changed if any parameters are changed, Plugin_Continue otherwise
  */
 forward Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, 
-	float damageForce[3], float damagePosition[3], int damageCustom, int attackerItem, int inflictorItem, float &procCoeff);
+	float damageForce[3], float damagePosition[3], int damageCustom, int attackerItem, int inflictorItem, int &critType, float &procCoeff);
 
 /**
  * Called when an item is loaded from a custom items file in the `configs/rf2/custom_items/` directory.
  * 
  * @param fileName			The name of the custom items file, with the .cfg extension included.
  * @param sectionName		The item's section name in the file.
- * @param index				The item's index. Note that this is not the item_type key, but a value assigned at load time. You should cache this value globally.
+ * @param index				The item's index. Note that this is NOT the `item_type` key, but a value assigned at runtime. You should cache this value globally.
+ * @param kv				KeyValues handle, which will be positioned in the section for the custom item.
  */
-forward void RF2_OnCustomItemLoaded(const char[] fileName, const char[] sectionName, int index);
+forward void RF2_OnCustomItemLoaded(const char[] fileName, const char[] sectionName, int index, KeyValues kv);
 
 /**
  * Called when an item is updated on a player (e.g. an item is picked up or dropped).
@@ -599,6 +638,15 @@ forward void RF2_OnCustomItemLoaded(const char[] fileName, const char[] sectionN
  * @param item				Item index.
  */
 forward void RF2_OnPlayerItemUpdate(int client, int item);
+
+/**
+ * Called when a player activates their Strange item
+ * 
+ * @param client			Player index.
+ * @param item				Item index.
+ * @return Plugin_Handled/Plugin_Stop to prevent usage of the item, Plugin_Continue otherwise.
+ */
+forward Action RF2_OnActivateStrangeItem(int client, int item);
 
 // Called when the Teleporter event is started.
 forward void RF2_OnTeleporterEventStart();
@@ -662,7 +710,7 @@ public void __pl_rf2_SetNTVOptional()
 	MarkNativeAsOptional("RF2_GetPlayerItemAmount");
 	MarkNativeAsOptional("RF2_CalcItemMod");
 	MarkNativeAsOptional("RF2_CalcItemMod_Hyperbolic");
-	MarkNativeAsOptional("RF2_CalcItemMod_HyperbolicInverted");
+	MarkNativeAsOptional("RF2_CalcItemMod_Reciprocal");
 	MarkNativeAsOptional("RF2_GetItemMod");
 	MarkNativeAsOptional("RF2_RandChanceInt");
 	MarkNativeAsOptional("RF2_RandChanceFloat");
@@ -698,5 +746,7 @@ public void __pl_rf2_SetNTVOptional()
 	MarkNativeAsOptional("RF2_GetLoopCount");
 	MarkNativeAsOptional("RF2_GetTeleporterEntity");
 	MarkNativeAsOptional("RF2_IsTankDestructionMode");
+	MarkNativeAsOptional("RF2_AddObjectToSpawnList");
+	MarkNativeAsOptional("RF2_RemoveObjectFromSpawnList");
 }
 #endif

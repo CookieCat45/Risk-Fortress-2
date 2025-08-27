@@ -38,6 +38,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 			.DefineBoolField("m_bActive", _, "active")
 			.DefineBoolField("m_bMapPlaced")
 			.DefineBoolField("m_bDisallowNonSurvivorMinions")
+			.DefineBoolField("m_bShouldBlink")
 			.DefineEntityField("m_hGlow")
 			.DefineColorField("m_GlowColor")
 			.DefineEntityField("m_hWorldTextEnt")
@@ -79,6 +80,28 @@ methodmap RF2_Object_Base < CBaseAnimating
 		}
 	}
 	
+	property bool ShouldBlink
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bShouldBlink"));
+		}
+		
+		public set(bool value)
+		{
+			if (value)
+			{
+				this.Effects |= EF_ITEM_BLINK;
+			}
+			else
+			{
+				this.Effects &= ~EF_ITEM_BLINK;
+			}
+			
+			this.SetProp(Prop_Data, "m_bShouldBlink", value);
+		}
+	}
+
 	property bool Active
 	{
 		public get()
@@ -93,7 +116,9 @@ methodmap RF2_Object_Base < CBaseAnimating
 			{
 				this.GetRenderColor(r, g, b, a);
 				this.SetRenderColor(r, g, b, 255);
-				this.Effects |= EF_ITEM_BLINK;
+				
+				if (this.ShouldBlink)
+					this.Effects |= EF_ITEM_BLINK;
 			}
 			else
 			{
@@ -246,7 +271,7 @@ methodmap RF2_Object_Base < CBaseAnimating
 		this.GetWorldText(worldText, sizeof(worldText));
 		text.KeyValue("message", worldText);
 		text.KeyValueFloat("textsize", this.TextSize);
-		text.KeyValue("orientation", "1");
+		text.KeyValueInt("orientation", 1);
 		int color[4];
 		this.GetTextColor(color);
 		SetVariantColor(color);
@@ -422,7 +447,6 @@ methodmap RF2_Object_Base < CBaseAnimating
 		g = (g & 0xff) << 8;
 		b = (b & 0xff) << 16;
 		a = (a & 0xff) << 24;
-		
 		this.SetProp(type, prop, r | g | b | a, _, element);
 	}
 }
@@ -433,6 +457,7 @@ static void OnCreate(RF2_Object_Base obj)
 	obj.HookInteract(ObjectBase_OnInteract);
 	obj.Effects |= EF_ITEM_BLINK;
 	obj.Active = true;
+	obj.ShouldBlink = true;
 	obj.MapPlaced = true; // Assume this object is map placed, set to false in CreateObject()
 	obj.TextZOffset = 50.0;
 	obj.TextSize = 6.0;
@@ -448,6 +473,7 @@ static void OnCreate(RF2_Object_Base obj)
 	
 	SDKHook(obj.index, SDKHook_SpawnPost, OnSpawnPost);
 	obj.AcceptInput("EnableCollision");
+	CreateTimer(0.2, Timer_RemovalCheck, EntIndexToEntRef(obj.index), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 static void OnSpawnPost(int entity)
@@ -459,13 +485,33 @@ static void OnSpawnPost(int entity)
 		char classname[128];
 		obj.GetAbsOrigin(pos);
 		obj.GetClassname(classname, sizeof(classname));
-		PrintToServer("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
-		PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
+		RF2_Object_Crate crate = RF2_Object_Crate(entity);
+		if (crate.IsValid())
+		{
+			PrintToServer("[RF2] %s spawned at %.0f %.0f %.0f (Type %d)", classname, pos[0], pos[1], pos[2], crate.Type);
+			PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f (Type %d)", classname, pos[0], pos[1], pos[2], crate.Type);
+		}
+		else
+		{
+			PrintToServer("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
+			PrintToConsoleAll("[RF2] %s spawned at %.0f %.0f %.0f", classname, pos[0], pos[1], pos[2]);
+		}
 	}
 	
 	// Because some props are marked as breakable and will break if shot without firing events. Very dumb.
 	obj.SetProp(Prop_Data, "m_takedamage", DAMAGE_EVENTS_ONLY);
 	CreateTimer(0.5, Timer_WorldText, EntIndexToEntRef(obj.index), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+}
+
+static void Timer_RemovalCheck(Handle timer, int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+		return;
+
+	if (!g_bRoundActive || g_bWaitingForPlayers)
+	{
+		RemoveEntity(entity);
+	}
 }
 
 static Action Timer_WorldText(Handle timer, int entity)
@@ -478,7 +524,7 @@ static Action Timer_WorldText(Handle timer, int entity)
 	{
 		if (IsValidEntity2(obj.WorldText))
 		{
-			RemoveEntity2(obj.WorldText);
+			RemoveEntity(obj.WorldText);
 		}
 		
 		return Plugin_Continue;
@@ -498,7 +544,7 @@ static Action Timer_WorldText(Handle timer, int entity)
 	{
 		if (GetCurrentTeleporter().index != obj.index || RF2_Object_Teleporter(obj.index).EventState != TELE_EVENT_ACTIVE)
 		{
-			RemoveEntity2(obj.WorldText);
+			RemoveEntity(obj.WorldText);
 		}
 	}
 	
@@ -545,7 +591,7 @@ static Action ObjectBase_OnInteract(int client, RF2_Object_Base obj)
 	if (!IsPlayerSurvivor(client) && (obj.DisallowNonSurvivorMinions || !IsPlayerMinion(client)))
 	{
 		EmitSoundToClient(client, SND_NOPE);
-		PrintCenterText(client, "Wait until the next map to use this!");
+		PrintCenterText(client, "%t", "WaitForNextMap");
 		return Plugin_Stop;
 	}
 	
@@ -576,7 +622,7 @@ RF2_Object_Base CreateObject(const char[] classname, const float pos[3], bool sp
 	delete trace;
 	if (!TR_PointOutsideWorld(endPos))
 	{
-		if (!RF2_Object_Workbench(obj.index).IsValid())
+		if (!RF2_Object_Workbench(obj.index).IsValid() && !RF2_Object_Pedestal(obj.index).IsValid())
 		{
 			angles[0] = GetRandomFloat(-25.0, 25.0);
 			angles[1] = GetRandomFloat(-180.0, 180.0);

@@ -4,11 +4,16 @@
 #define MAX_STAGE_MAPS 16
 #define MAX_STAGES 32
 
-int g_iMaxStages;
+enum
+{
+	SpecialMap_Underworld,
+	SpecialMap_Final,
+};
 
+int g_iMaxStages;
 char g_szEnemyPackName[64];
 char g_szBossPackName[64];
-char g_szClientBGM[MAXTF2PLAYERS][PLATFORM_MAX_PATH];
+char g_szClientBGM[MAXPLAYERS][PLATFORM_MAX_PATH];
 char g_szStageBGM[PLATFORM_MAX_PATH];
 char g_szBossBGM[PLATFORM_MAX_PATH];
 char g_szUnderworldMap[PLATFORM_MAX_PATH];
@@ -17,91 +22,100 @@ int g_iCurrentCustomTrack = -1;
 ArrayList g_hCustomTracks;
 ArrayList g_hCustomTracksDuration;
 
-void LoadMapSettings(const char[] mapName)
+bool FindSpecialMap(int type)
 {
-	KeyValues mapKey = CreateKeyValues("stages");
-	char config[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
-	if (!mapKey.ImportFromFile(config))
+	char path[PLATFORM_MAX_PATH];
+	switch (type)
 	{
-		delete mapKey;
-		ThrowError("File %s does not exist", config);
+		case SpecialMap_Underworld: BuildPath(Path_SM, path, sizeof(path), "%s/maps/underworld", ConfigPath);
+		case SpecialMap_Final: BuildPath(Path_SM, path, sizeof(path), "%s/maps/final", ConfigPath);
+		default: return false;
 	}
 	
-	bool found;
-	static int stageKv = 1;
-	if (g_szUnderworldMap[0] && StrContains(mapName, g_szUnderworldMap, false) == 0)
+	DirectoryListing directory = OpenDirectory(path);
+	if (!directory)
+		return false;
+
+	char map[128];
+	FileType fileType;
+	while (directory.GetNext(map, sizeof(map), fileType))
 	{
-		if (mapKey.JumpToKey("special") && mapKey.JumpToKey("underworld"))
+		if (fileType != FileType_File)
+			continue;
+
+		if (StrContains(map, ".cfg", false) != -1)
 		{
-			ReadMapKeys(mapKey);
-			found = true;
-		}
-		else
-		{
-			LogError("Tried to load settings for underworld map (%s) but somehow, the section doesn't exist. Not good!", mapName);
+			ReplaceString(map, sizeof(map), ".cfg", "", false);
+			if (!IsMapValid(map))
+				return false;
+
+			switch (type)
+			{
+				case SpecialMap_Underworld: strcopy(g_szUnderworldMap, sizeof(g_szUnderworldMap), map);
+				case SpecialMap_Final: strcopy(g_szFinalMap, sizeof(g_szFinalMap), map);
+			}
+			
+			PrintToServer("[RF2] Found special map type %i: %s", type, map);
+			delete directory;
+			return true;
 		}
 	}
-	else if (g_szFinalMap[0] && StrContains(mapName, g_szFinalMap, false) == 0)
+
+	delete directory;
+	return false;
+}
+
+void LoadMapSettings(const char[] mapName)
+{
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "%s/maps", ConfigPath);
+	KeyValues mapKey = new KeyValues("map");
+
+	// Check for special maps first
+	char underworld[PLATFORM_MAX_PATH], final[PLATFORM_MAX_PATH];
+	FormatEx(underworld, sizeof(underworld), "%s/underworld/%s.cfg", path, mapName);
+	FormatEx(final, sizeof(final), "%s/final/%s.cfg", path, mapName);
+	if (mapKey.ImportFromFile(underworld) || mapKey.ImportFromFile(final))
 	{
-		if (mapKey.JumpToKey("special") && mapKey.JumpToKey("final"))
+		PrintToServer("[RF2] Loading settings for SPECIAL map: %s", mapName);
+		ReadMapKeys(mapKey);
+		delete mapKey;
+		return;
+	}
+
+	char dir[PLATFORM_MAX_PATH];
+	bool found;
+	for (int i = 1; i <= g_iMaxStages; i++)
+	{
+		FormatEx(dir, sizeof(dir), "%s/stage%i/%s.cfg", path, i, mapName);
+		if (mapKey.ImportFromFile(dir))
 		{
-			ReadMapKeys(mapKey);
 			found = true;
+			break;
 		}
-		else
-		{
-			LogError("Tried to load settings for final map (%s) but somehow, the section doesn't exist. Not good!", mapName);
-		}
+	}
+
+	if (found)
+	{
+		PrintToServer("[RF2] Loading settings for map: %s", mapName);
+		ReadMapKeys(mapKey);
 	}
 	else
 	{
-		char mapString[PLATFORM_MAX_PATH], section[16], mapId[8];
-		FormatEx(section, sizeof(section), "stage%i", stageKv);
-		mapKey.JumpToKey(section);
-		for (int map = 1; map <= MAX_STAGE_MAPS; map++)
-		{
-			FormatEx(mapId, sizeof(mapId), "map%i", map);
-			if (mapKey.JumpToKey(mapId))
-			{
-				mapKey.GetString("name", mapString, sizeof(mapString));
-				if (StrContains(mapName, mapString) == 0)
-				{
-					found = true;
-					ReadMapKeys(mapKey);
-					stageKv = 1;
-					break;
-				}
-			}
-			
-			mapKey.GoBack();
-		}
+		LogError("Could not locate settings for map %s, using defaults!", mapName);
+		g_szStageBGM = NULL;
+		g_szBossBGM = NULL;
+		g_flStageBGMDuration = 0.0;
+		g_flBossBGMDuration = 0.0;
+		g_szEnemyPackName = "";
+		g_szBossPackName = "";
+		g_flGracePeriodTime = 30.0;
+		g_flStartMoneyMultiplier = 1.0;
+		g_bDisableEurekaTeleport = false;
+		g_bDisableItemDropping = false;
 	}
-	
+
 	delete mapKey;
-	if (!found)
-	{
-		if (stageKv >= RF2_GetMaxStages())
-		{
-			LogError("Could not locate map settings for map %s, using defaults!", mapName);
-			g_szStageBGM = NULL;
-			g_szBossBGM = NULL;
-			g_flStageBGMDuration = 0.0;
-			g_flBossBGMDuration = 0.0;
-			g_szEnemyPackName = "";
-			g_szBossPackName = "";
-			g_flGracePeriodTime = 30.0;
-			g_flStartMoneyMultiplier = 1.0;
-			g_bDisableEurekaTeleport = false;
-			g_bDisableItemDropping = false;
-			stageKv = 1;
-		}
-		else
-		{
-			stageKv++;
-			LoadMapSettings(mapName);
-		}
-	}
 }
 
 void ReadMapKeys(KeyValues mapKey)
@@ -192,12 +206,21 @@ void ReadMapKeys(KeyValues mapKey)
 	
 	if (g_szEnemyPackName[0])
 	{
-		LoadEnemiesFromPack(g_szEnemyPackName);
+		LoadEnemiesFromPack(g_szEnemyPackName, false, true);
 	}
 	
 	if (g_szBossPackName[0])
 	{
 		LoadEnemiesFromPack(g_szBossPackName, true);
+	}
+	
+	if (mapKey.GetNum("disable_scavenger_lord") == 0)
+	{
+		int scavengerLordLevel = g_cvScavengerLordSpawnLevel.IntValue;
+		if (scavengerLordLevel > 0 && g_iEnemyLevel >= scavengerLordLevel)
+		{
+			LoadEnemiesFromPack("enemies/scavenger_lord", true);
+		}
 	}
 	
 	PrintToServer("[RF2] Enemies/bosses loaded: %i", g_iEnemyCount);
@@ -212,22 +235,13 @@ void ReadMapKeys(KeyValues mapKey)
 
 int FindMaxStages()
 {
-	KeyValues mapKey = CreateKeyValues("stages");
-	char config[PLATFORM_MAX_PATH], stage[16];
-	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
-	if (!mapKey.ImportFromFile(config))
+	int stageCount;
+	char path[PLATFORM_MAX_PATH], dir[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "%s/maps", ConfigPath);
+	for ( ;; )
 	{
-		delete mapKey;
-		ThrowError("File %s does not exist", config);
-	}
-	
-	int stageCount = 0;
-	for (int i = 1; i <= MAX_STAGES; i++)
-	{
-		mapKey.Rewind();
-		FormatEx(stage, sizeof(stage), "stage%i", i);
-		
-		if (mapKey.JumpToKey(stage))
+		FormatEx(dir, sizeof(dir), "%s/stage%i", path, stageCount+1);
+		if (DirExists(dir))
 		{
 			stageCount++;
 		}
@@ -236,23 +250,76 @@ int FindMaxStages()
 			break;
 		}
 	}
+
+	return stageCount;
+}
+
+ArrayList GetMapsForStage(int stage)
+{
+	ArrayList mapList = new ArrayList(128);
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "%s/maps/stage%i", ConfigPath, stage);
+	DirectoryListing directory = OpenDirectory(path);
+	if (!directory)
+		return mapList;
 	
-	mapKey.Rewind();
-	mapKey.JumpToKey("special");
-	if (mapKey.JumpToKey("underworld"))
+	char map[128];
+	FileType type;
+	while (directory.GetNext(map, sizeof(map), type))
 	{
-		mapKey.GetString("name", g_szUnderworldMap, sizeof(g_szUnderworldMap));
-		mapKey.GoBack();
+		if (type != FileType_File)
+			continue;
+		
+		ReplaceString(map, sizeof(map), ".cfg", "", false);
+		if (RF2_IsMapValid(map))
+		{
+			mapList.PushString(map);
+		}
+	}
+	
+	delete directory;
+	return mapList;
+}
+
+bool RF2_IsMapValid(char[] mapName)
+{
+	if (!IsMapValid(mapName))
+		return false;
+	
+	// If it's the underworld map or the final map, we don't have to do anything here
+	if (g_szUnderworldMap[0] && StrContains(g_szUnderworldMap, mapName, false) == 0 
+		|| g_szFinalMap[0] && StrContains(g_szFinalMap, mapName, false) == 0)
+	{
+		return true;
+	}
+	
+	FileType type;
+	char path[PLATFORM_MAX_PATH], dir[PLATFORM_MAX_PATH], map[128];
+	BuildPath(Path_SM, path, sizeof(path), "%s/maps", ConfigPath);
+	for (int i = 1; i <= g_iMaxStages; i++)
+	{
+		FormatEx(dir, sizeof(dir), "%s/stage%i", path, i);
+		DirectoryListing directory = OpenDirectory(dir);
+		if (!directory)
+			continue;
+
+		while (directory.GetNext(map, sizeof(map), type))
+		{
+			if (type != FileType_File)
+				continue;
+
+			ReplaceString(map, sizeof(map), ".cfg", "", false);
+			if (StrContains(map, mapName) == 0)
+			{
+				delete directory;
+				return true;
+			}
+		}
+
+		delete directory;
 	}
 
-	if (mapKey.JumpToKey("final"))
-	{
-		mapKey.GetString("name", g_szFinalMap, sizeof(g_szFinalMap));
-		mapKey.GoBack();
-	}
-	
-	delete mapKey;
-	return stageCount;
+	return false;
 }
 
 void SetNextStage(int stage)
@@ -268,98 +335,6 @@ void SetNextStage(int stage)
 	mapList.GetString(GetRandomInt(0, mapList.Length-1), mapName, sizeof(mapName));
 	g_bMapChanging = true;
 	ForceChangeLevel(mapName, "RF2 automatic map change");
-}
-
-ArrayList GetMapsForStage(int stage)
-{
-	KeyValues mapKey = CreateKeyValues("stages");
-	char config[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
-	if (!mapKey.ImportFromFile(config))
-	{
-		delete mapKey;
-		ThrowError("File %s does not exist", config);
-	}
-	
-	ArrayList mapList = new ArrayList(128);
-	char section[16], mapId[8], mapName[PLATFORM_MAX_PATH];
-	FormatEx(section, sizeof(section), "stage%i", stage);
-	mapKey.JumpToKey(section);
-	for (int map = 0; map <= MAX_STAGE_MAPS; map++)
-	{
-		FormatEx(mapId, sizeof(mapId), "map%i", map+1);
-		if (mapKey.JumpToKey(mapId))
-		{
-			mapKey.GetString("name", mapName, sizeof(mapName));
-			if (!mapName[0] || !IsMapValid(mapName))
-			{
-				LogError("[GetMapsForStage] %s for stage %i (%s) is invalid!", mapId, stage, mapName);
-				continue;
-			}
-			
-			mapList.PushString(mapName);
-			mapKey.GoBack();
-		}
-		else
-		{
-			break;
-		}
-	}
-	
-	return mapList;
-}
-
-bool RF2_IsMapValid(char[] mapName)
-{
-	if (!IsMapValid(mapName))
-		return false;
-	
-	// If it's the underworld map or the final map, we don't have to do anything here
-	if (g_szUnderworldMap[0] && StrContains(g_szUnderworldMap, mapName, false) == 0 || g_szFinalMap[0] && StrContains(g_szFinalMap, mapName, false) == 0)
-	{
-		return true;
-	}
-	
-	KeyValues mapKey = CreateKeyValues("stages");
-	char config[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, config, sizeof(config), "%s/%s", ConfigPath, MapConfig);
-	if (!mapKey.ImportFromFile(config))
-	{
-		delete mapKey;
-		ThrowError("File %s does not exist", config);
-	}
-	
-	char section[16], mapKvName[256], mapId[8];
-	for (int i = 0; i <= RF2_GetMaxStages(); i++)
-	{
-		FormatEx(section, sizeof(section), "stage%i", i+1);
-		mapKey.JumpToKey(section);
-		for (int map = 0; map <= MAX_STAGE_MAPS; map++)
-		{
-			FormatEx(mapId, sizeof(mapId), "map%i", map+1);
-			if (map > 0)
-				mapKey.GoBack();
-			
-			if (mapKey.JumpToKey(mapId))
-			{
-				mapKey.GetString("name", mapKvName, sizeof(mapKvName), "map_unknown");
-				if (StrContains(mapName, mapKvName) != -1)
-				{
-					delete mapKey;
-					return true;
-				}
-			}
-			else
-			{
-				break;
-			}
-		}
-		
-		mapKey.Rewind();
-	}
-	
-	delete mapKey;
-	return false;
 }
 
 bool IsInUnderworld()
@@ -524,7 +499,7 @@ void PlayCustomMusicTrackAll(int trackIndex)
 
 void StopMusicTrackAll()
 {
-	for (int i = 1; i <= MAXTF2PLAYERS; i++)
+	for (int i = 1; i <= MAXPLAYERS; i++)
 	{
 		if (i > MaxClients)
 			continue;

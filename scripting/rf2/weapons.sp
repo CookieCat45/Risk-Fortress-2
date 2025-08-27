@@ -2,18 +2,18 @@
 #pragma newdecls required
 
 int g_iWeaponCount[TF_CLASSES];
+int g_iWeaponIndexReplacement[TF_CLASSES][64];
+int g_iAttributeSlave = INVALID_ENT;
+char g_szWeaponIndexIdentifier[TF_CLASSES][64][512];
+char g_szWeaponAttributes[TF_CLASSES][64][MAX_ATTRIBUTE_STRING_LENGTH];
+char g_szWeaponClassnameReplacement[TF_CLASSES][64][64];
+bool g_bWeaponStripAttributes[TF_CLASSES][64];
+bool g_bWeaponHasStringAttributes[TF_CLASSES][64];
+char g_szWeaponStringAttributeName[TF_CLASSES][64][MAX_STRING_ATTRIBUTES][128];
+char g_szWeaponStringAttributeValue[TF_CLASSES][64][MAX_STRING_ATTRIBUTES][PLATFORM_MAX_PATH];
+static bool g_bDisableGiveItemForward;
 
-// These are for Survivors, not enemies or bosses.
-int g_iWeaponIndexReplacement[TF_CLASSES][MAX_WEAPONS];
-
-char g_szWeaponIndexIdentifier[TF_CLASSES][MAX_WEAPONS][PLATFORM_MAX_PATH];
-char g_szWeaponAttributes[TF_CLASSES][MAX_WEAPONS][MAX_ATTRIBUTE_STRING_LENGTH];
-char g_szWeaponClassnameReplacement[TF_CLASSES][MAX_WEAPONS][64];
-
-bool g_bWeaponStripAttributes[TF_CLASSES][MAX_WEAPONS];
-bool g_bWeaponHasStringAttributes[TF_CLASSES][MAX_WEAPONS];
-char g_szWeaponStringAttributeName[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][128];
-char g_szWeaponStringAttributeValue[TF_CLASSES][MAX_WEAPONS][MAX_STRING_ATTRIBUTES][PLATFORM_MAX_PATH];
+StringMap g_hCustomWeapons;
 
 void LoadWeapons()
 {
@@ -32,7 +32,7 @@ void LoadWeapons()
 	
 	for (int i = 1; i < TF_CLASSES; i++)
 	{
-		GetClassString(view_as<TFClassType>(i), tfClassName, sizeof(tfClassName));
+		TF2_GetClassString(view_as<TFClassType>(i), tfClassName, sizeof(tfClassName));
 		
 		if (weaponKey.JumpToKey(tfClassName))
 		{
@@ -40,7 +40,39 @@ void LoadWeapons()
 			while (firstKey ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
 			{
 				weaponKey.GetSectionName(g_szWeaponIndexIdentifier[i][count], sizeof(g_szWeaponIndexIdentifier[][]));
-				weaponKey.GetString("add_attributes", g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]));
+				if (weaponKey.JumpToKey("attributes"))
+				{
+					char key[128], val[128];
+					for (int a = 1; a > 0; a++)
+					{
+						if (a == 1 && !weaponKey.GotoFirstSubKey(false))
+							break;
+						
+						weaponKey.GetSectionName(key, sizeof(key));
+						int id = AttributeNameToDefIndex(key);
+						if (id != -1)
+						{
+							weaponKey.GetString(NULL_STRING, val, sizeof(val));
+							Format(g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]),
+								"%s%d = %s ; ", g_szWeaponAttributes[i][count], id, val);
+						}
+						else
+						{
+							LogError("[ERROR] Invalid attribute '%s' in '%s'", key, config);
+						}
+						
+						if (!weaponKey.GotoNextKey(false))
+						{
+							weaponKey.GoBack();
+							break;
+						}
+					}
+					
+					TrimString(g_szWeaponAttributes[i][count]);
+					weaponKey.GoBack();
+				}
+				//weaponKey.GetString("add_attributes", g_szWeaponAttributes[i][count], sizeof(g_szWeaponAttributes[][]));
+
 				weaponKey.GetString("classname", g_szWeaponClassnameReplacement[i][count], sizeof(g_szWeaponClassnameReplacement[][]));
 				g_iWeaponIndexReplacement[i][count] = weaponKey.GetNum("index", -1);
 				g_bWeaponStripAttributes[i][count] = asBool(weaponKey.GetNum("strip_attributes", false));
@@ -87,17 +119,130 @@ void LoadWeapons()
 	}
 	
 	delete weaponKey;
+	if (!g_hCustomWeapons)
+	{
+		g_hCustomWeapons = new StringMap();
+	}
+	else
+	{
+		// don't load more than once to avoid memory leaks
+		return;
+	}
+	
+	char path[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, path, sizeof(path), "%s/custom_weapons", ConfigPath);
+	DirectoryListing directory = OpenDirectory(path);
+	if (directory)
+	{
+		char file[128], classStr[32], fullPath[PLATFORM_MAX_PATH], key[32], str[128], script[PLATFORM_MAX_PATH];
+		char attrKey[256];
+		FileType type;
+		int wepCount[TF_CLASSES];
+		while (directory.GetNext(file, sizeof(file), type))
+		{
+			if (type != FileType_File)
+				continue;
+			
+			TFClassType classType;
+			for (int i = 1; i <= 9; i++)
+			{
+				TF2_GetClassString(view_as<TFClassType>(i), classStr, sizeof(classStr), true);
+				if (StrContains(file, classStr, false) == 0)
+				{
+					classType = view_as<TFClassType>(i);
+					break;
+				}
+			}
+			
+			if (classType == TFClass_Unknown)
+			{
+				LogError("Custom weapons file '%s' does not correspond to any valid class.", file);
+				continue;
+			}
+			
+			weaponKey = CreateKeyValues("weapon");
+			if (!weaponKey)
+				continue;
+			
+			FormatEx(fullPath, sizeof(fullPath), "%s/%s", path, file);
+			if (!weaponKey.ImportFromFile(fullPath))
+			{
+				delete weaponKey;
+				continue;
+			}
+
+			PrintToServer("[RF2] Loading custom weapon file: %s", file);
+			StringMap map = new StringMap();
+			weaponKey.GetString("classname", str, sizeof(str), "tf_weapon_bat");
+			map.SetString("classname", str);
+			weaponKey.GetString("targetname", str, sizeof(str));
+			map.SetString("targetname", str);
+			map.SetValue("index", weaponKey.GetNum("index"));
+			map.SetValue("is_rare", weaponKey.GetNum("is_rare"));
+			map.SetValue("disable", weaponKey.GetNum("disable"));
+			map.SetValue("strip_attributes", weaponKey.GetNum("strip_attributes"));
+			if (weaponKey.JumpToKey("attributes"))
+			{
+				firstKey = true;
+				while (firstKey ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
+				{
+					firstKey = false;
+					weaponKey.GetSectionName(attrKey, sizeof(attrKey));
+					if (!TF2Attrib_IsValidAttributeName(attrKey))
+					{
+						LogError("%s: Invalid attribute '%s'", file, attrKey);
+						continue;
+					}
+					
+					map.SetValue(attrKey, weaponKey.GetFloat(NULL_STRING));
+				}
+				
+				weaponKey.GoBack();
+				weaponKey.GoBack();
+			}
+			
+			if (weaponKey.JumpToKey("scripts"))
+			{
+				int i = 1;
+				for ( ;; )
+				{
+					IntToString(i, key, sizeof(key));
+					weaponKey.GetString(key, script, sizeof(script));
+					if (script[0])
+					{
+						Format(key, sizeof(key), "SCRIPT_%d", i);
+						map.SetString(key, script);
+						i++;
+					}
+					else
+					{
+						break;
+					}
+				}
+				
+				weaponKey.GoBack();
+			}
+			
+			FormatEx(key, sizeof(key), "%s%d", classStr, wepCount[classType]);
+			map.SetString("key", key); // for easier access to the key name since we'll need it
+			g_hCustomWeapons.SetValue(key, map.Clone());
+			wepCount[classType]++;
+			delete map;
+			delete weaponKey;
+		}
+		
+		delete directory;
+	}
 }
 
 static bool g_bSetStringAttributes;
 static TFClassType g_StringAttributeClass;
-static int g_iStringAttributeWeapon; // Not to be confused with entity indexes
-static bool g_bDisableGiveItemForward;
+static int g_iStringAttributeWeapon;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
 {
 	if (!RF2_IsEnabled() || !g_bRoundActive)
 		return Plugin_Continue;
-	
+
 	if (g_bDisableGiveItemForward || !IsPlayerSurvivor(client) || IsPlayerMinion(client))
 		return Plugin_Continue;
 	
@@ -198,7 +343,7 @@ public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, 
 			g_iStringAttributeWeapon = i;
 		}
 
-		if (totalAttribs > MAX_STATIC_ATTRIBUTES)
+		if (totalAttribs >= MAX_STATIC_ATTRIBUTES)
 		{
 			LogError("[TF2Items_OnGiveNamedItem] Item %i (%s) exceeded static attribute limit of %i", index, classname, MAX_STATIC_ATTRIBUTES);
 		}
@@ -247,6 +392,22 @@ public void RF_ReplaceNewWeapon(DataPack pack)
 	g_bDisableGiveItemForward = false;
 	delete item;
 	EquipPlayerWeapon(client, weapon);
+	UpdateWeaponMeters(client);
+}
+
+void UpdateWeaponMeters(int client)
+{
+	CreateTimer(0.1, Timer_WeaponMeterUpdate, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public void Timer_WeaponMeterUpdate(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)))
+		return;
+		
+	Event event = CreateEvent("localplayer_pickup_weapon", true);
+	event.FireToClient(client);
+	delete event;
 }
 
 public void RF_ResetGiveItemBool()
@@ -258,6 +419,35 @@ public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index
 {
 	if (!RF2_IsEnabled() || !IsValidEntity2(entity))
 		return 0;
+	
+	if (index == 812 || index == 222 || index == 1121) // Make the Cleaver/Milk work with Whale Bone Charm
+	{
+		SetEntProp(entity, Prop_Data, "m_iPrimaryAmmoType", TFAmmoType_Secondary);
+		SetEntProp(client, Prop_Send, "m_iAmmo", 1, _, TFAmmoType_Secondary);
+	}
+	
+	int attribArray[32];
+	float valueArray[32];
+	int count = TF2Attrib_GetSOCAttribs(entity, attribArray, valueArray, MAX_STATIC_ATTRIBUTES);
+	for (int n = 0; n < count; n++)
+	{
+		bool shouldSet;
+		
+		// Allow these attributes so that war paints can work on weapons with overriden stats
+		if (attribArray[n] == 834)
+		{
+			shouldSet = TF2Attrib_HookValueInt(0, "paintkit_proto_def_index", entity) == 0;
+		}
+		else if (attribArray[n] == 725)
+		{
+			shouldSet = TF2Attrib_HookValueInt(0, "set_item_texture_wear", entity) == 0;
+		}
+		
+		if (shouldSet)
+		{
+			TF2Attrib_SetByDefIndex(entity, attribArray[n], valueArray[n]);
+		}
+	}
 	
 	if (g_bSetStringAttributes)
 	{
@@ -296,7 +486,7 @@ public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index
 
 public void RF_MeleeSmackHook(int entity)
 {
-	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+	if (!g_hHookMeleeSmack || (entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return;
 	
 	int client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
@@ -336,7 +526,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 			
 			if (staticAttribCount > 0)
 			{
-				int totalAttribs = imin(attribCount+staticAttribCount, MAX_STATIC_ATTRIBUTES);
+				int totalAttribs = imin(attribCount+staticAttribCount, MAX_STATIC_ATTRIBUTES-1);
 				TF2Items_SetNumAttributes(weapon, totalAttribs);
 				
 				for (int i = 0; i < staticAttribCount; i++)
@@ -346,7 +536,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 					
 					TF2Items_SetAttribute(weapon, attribSlot, attribArray[i], valueArray[i]);
 					attribSlot++;
-					if (attribSlot >= MAX_STATIC_ATTRIBUTES)
+					if (attribSlot >= MAX_STATIC_ATTRIBUTES-1)
 					{
 						maxAttribs = true;
 						break;
@@ -371,7 +561,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 				TF2Items_SetAttribute(weapon, attribSlot, attrib, val);
 				attribSlot++;
 				
-				if (attribSlot >= MAX_STATIC_ATTRIBUTES)
+				if (attribSlot >= MAX_STATIC_ATTRIBUTES-1)
 				{
 					maxAttribs = true;
 					break;
@@ -381,7 +571,8 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 		
 		if (maxAttribs) // Uh oh.
 		{
-			LogError("[CreateWeapon] Maximum number of static attributes reached (%i) on weapon \"%s\" index %i\n\"%s\"\nstatic attribute count = %i", MAX_ATTRIBUTES, classname, index, attributes, staticAttribCount);
+			LogError("[CreateWeapon] Maximum number of static attributes reached (%i) on weapon \"%s\" index %i\n\"%s\"\nstatic attribute count = %i", 
+				MAX_STATIC_ATTRIBUTES, classname, index, attributes, staticAttribCount);
 		}
 		
 		TF2Items_SetNumAttributes(weapon, attribSlot+1);
@@ -392,6 +583,7 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 	
 	int wepEnt = TF2Items_GiveNamedItem(client, weapon);
 	EquipPlayerWeapon(client, wepEnt);
+	UpdateWeaponMeters(client);
 	delete weapon;
 	
 	if (!visible)
@@ -494,7 +686,7 @@ bool visible = true, const char[] model="", int quality=0, int level=0)
 		}
 	}
 	
-	if (totalAttribs > MAX_ATTRIBUTES)
+	if (totalAttribs >= MAX_ATTRIBUTES)
 	{
 		LogError("[CreateWearable] Wearable %i (%s) exceeded attribute limit of %i", index, classname, MAX_ATTRIBUTES);
 	}
@@ -599,14 +791,13 @@ float GetWeaponProcCoefficient(int weapon)
 	return 1.0;
 }
 
-/*
 bool IsEffectBarWeapon(int weapon)
 {
 	static char classname[32];
 	GetEntityClassname(weapon, classname, sizeof(classname));
 	
-	return (StrContains(classname, "tf_weapon_lunchbox") != INVALID_ENT
-	|| StrContains(classname, "tf_weapon_jar") != INVALID_ENT
+	return (StrContains(classname, "tf_weapon_lunchbox") == 0
+	|| StrContains(classname, "tf_weapon_jar") == 0
 	|| strcmp2(classname, "tf_weapon_cleaver")
 	|| strcmp2(classname, "tf_weapon_bat_wood")
 	|| strcmp2(classname, "tf_weapon_bat_giftwrap")
@@ -615,16 +806,40 @@ bool IsEffectBarWeapon(int weapon)
 	|| strcmp2(classname, "tf_wearable_demoshield")
 	|| strcmp2(classname, "tf_wearable_razorback"));
 }
-*/
 
-int SDK_GetWeaponClipSize(int entity)
+int GetWeaponClipSize(int entity)
 {
-	if (g_hSDKGetMaxClip1)
+	static char str[256];
+	FormatEx(str, sizeof(str), "NetProps.SetPropString(activator, `m_iszMessage`, self.GetMaxClip1().tostring())");
+	int clip = RunScriptCode_ReturnInt(entity, str);
+	if (IsEnergyWeapon(entity))
 	{
-		return SDKCall(g_hSDKGetMaxClip1, entity);
+		return clip/5;
 	}
-		
-	return -1;
+
+	return clip;
+}
+
+int GetWeaponClip(int entity)
+{
+	if (IsEnergyWeapon(entity))
+	{
+		return RoundToFloor(GetEntPropFloat(entity, Prop_Send, "m_flEnergy")/5.0);
+	}
+
+	return GetEntProp(entity, Prop_Send, "m_iClip1");
+}
+
+void SetWeaponClip(int entity, int clip)
+{
+	if (IsEnergyWeapon(entity))
+	{
+		SetEntPropFloat(entity, Prop_Send, "m_flEnergy", float(clip)*5.0);
+	}
+	else
+	{
+		SetEntProp(entity, Prop_Send, "m_iClip1", clip);
+	}
 }
 
 void SDK_EquipWearable(int client, int entity)
@@ -635,12 +850,58 @@ void SDK_EquipWearable(int client, int entity)
 	}
 }
 
+public MRESReturn Detour_GetOverhealBonus(int medigun, DHookReturn returnVal, DHookParam params)
+{
+	// if a player has a powerup, they cannot be overhealed normally
+	// so we need to recalculate what the overheal bonus would be and override it
+	int target = params.Get(1);
+	if (PlayerHasAnyRune(target))
+	{
+		static ConVar maxHealthBoost;
+		if (!maxHealthBoost)
+		{
+			maxHealthBoost = FindConVar("tf_max_health_boost");
+		}
+		
+		float overhealBonus = maxHealthBoost.FloatValue - 1.0;
+		float mod = 1.0;
+		mod = TF2Attrib_HookValueFloat(mod, "mult_medigun_overheal_amount", medigun);
+		mod = TF2Attrib_HookValueFloat(mod, "mult_patient_overheal_penalty", target);
+		int activeWep = GetActiveWeapon(target);
+		if (activeWep != INVALID_ENT)
+		{
+			mod = TF2Attrib_HookValueFloat(mod, "mult_patient_overheal_penalty_active", activeWep);
+		}
+		
+		if (mod >= 1.0)
+		{
+			overhealBonus += mod;
+		}
+		else if (mod < 1.0 && overhealBonus > 0.0)
+		{
+			overhealBonus *= mod;
+			overhealBonus += 1.0;
+		}
+		
+		// Safety net
+		if (overhealBonus < 1.0)
+		{
+			overhealBonus = 1.0;
+		}
+
+		returnVal.Value = overhealBonus;
+		return MRES_Supercede;
+	}
+
+	return MRES_Ignored;
+}
+
 public MRESReturn DHook_MeleeSmack(int weapon)
 {
 	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
 	if (IsValidClient(owner) && PlayerHasItem(owner, Item_HorrificHeadsplitter))
 	{
-		g_bMeleeMiss[owner] = true;
+		g_bPlayerMeleeMiss[owner] = true;
 	}
 	
 	// Melee goes through bubble shields (still makes the sound of hitting it but whatever)
@@ -649,6 +910,21 @@ public MRESReturn DHook_MeleeSmack(int weapon)
 	{
 		SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_NONE);
 		SetEntityCollisionGroup(entity, COLLISION_GROUP_NONE);
+	}
+
+	if (IsValidClient(owner))
+	{
+		// also goes through friendly NPCs
+		entity = MaxClients+1;
+		int team = GetClientTeam(owner);
+		while ((entity = FindEntityByClassname(entity, "rf2_npc*")) != INVALID_ENT)
+		{
+			if (team != GetEntTeam(entity))
+				continue;
+
+			SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_NONE);
+			SetEntityCollisionGroup(entity, COLLISION_GROUP_NONE);
+		}
 	}
 	
 	// Don't hit teammates (note: only works for BLU team(?), but that's what we want anyway)
@@ -659,7 +935,7 @@ public MRESReturn DHook_MeleeSmack(int weapon)
 public MRESReturn DHook_MeleeSmackPost(int weapon)
 {
 	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
-	if (IsValidClient(owner) && g_bMeleeMiss[owner])
+	if (IsValidClient(owner) && g_bPlayerMeleeMiss[owner])
 	{
 		if (PlayerHasItem(owner, Item_HorrificHeadsplitter))
 		{
@@ -673,6 +949,20 @@ public MRESReturn DHook_MeleeSmackPost(int weapon)
 		SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_VPHYSICS);
 		SetEntityCollisionGroup(entity, TFCOLLISION_GROUP_COMBATOBJECT);
 	}
+
+	if (IsValidClient(owner))
+	{
+		entity = MaxClients+1;
+		int team = GetClientTeam(owner);
+		while ((entity = FindEntityByClassname(entity, "rf2_npc*")) != INVALID_ENT)
+		{
+			if (team != GetEntTeam(entity))
+				continue;
+				
+			SetEntProp(entity, Prop_Send, "m_nSolidType", SOLID_BBOX);
+			SetEntityCollisionGroup(entity, TFCOLLISION_GROUP_TANK);
+		}
+	}
 	
 	GameRules_SetProp("m_bPlayingMannVsMachine", false);
 	return MRES_Ignored;
@@ -683,62 +973,51 @@ public void RF_MissCheck(int client)
 	if (!(client = GetClientOfUserId(client)))
 		return;
 	
-	bool missed = g_bMeleeMiss[client];
-	g_bMeleeMiss[client] = false;
-	if (missed)
+	bool missed = g_bPlayerMeleeMiss[client];
+	g_bPlayerMeleeMiss[client] = false;
+	static float lastSelfDamageTime[MAXPLAYERS];
+	if (missed && lastSelfDamageTime[client]+0.4 <= GetTickedTime())
 	{
 		// don't trigger damage hooks
 		float damage = CalcItemMod(client, Item_HorrificHeadsplitter, 1);
 		SDKHooks_TakeDamage(client, client, client, damage, DMG_SLASH|DMG_PREVENT_PHYSICS_FORCE);
 		TF2_MakeBleed(client, client, 5.0);
+		lastSelfDamageTime[client] = GetTickedTime();
 	}
-}
-
-public MRESReturn Detour_SetReloadTimer(int weapon, DHookParam params)
-{
-	if (!RF2_IsEnabled())
-		return MRES_Ignored;
-	
-	int owner = GetEntPropEnt(weapon, Prop_Send, "m_hOwnerEntity");
-	if (!IsValidClient(owner))
-		return MRES_Ignored;
-	
-	float reloadTime = params.Get(1);
-	float mult = GetPlayerReloadMod(owner, GetActiveWeapon(owner));
-	int viewModel = GetEntPropEnt(owner, Prop_Send, "m_hViewModel");
-	if (IsValidEntity2(viewModel))
-	{
-		DataPack pack = new DataPack();
-		pack.WriteCell(EntIndexToEntRef(viewModel));
-		pack.WriteFloat(reloadTime/(reloadTime*mult));
-		RequestFrame(RF_VMPlaybackRate, pack);
-	}
-	
-	params.Set(1, reloadTime*mult);
-	return MRES_ChangedHandled;
-}
-
-public void RF_VMPlaybackRate(DataPack pack)
-{
-	pack.Reset();
-	int viewModel = EntRefToEntIndex(pack.ReadCell());
-	if (viewModel == INVALID_ENT)
-	{
-		delete pack;
-		return;
-	}
-	
-	float rate = pack.ReadFloat();
-	delete pack;
-	SetEntPropFloat(viewModel, Prop_Send, "m_flPlaybackRate", fmin(rate, 12.0));
 }
 
 bool g_bWasOffGround;
+static float g_flStoredCharge;
 public MRESReturn DHook_RiflePostFrame(int entity)
 {
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 	if (IsValidClient(owner))
 	{
+		if (GetClientButtons(owner) & IN_ATTACK 
+			&& GetEntPropFloat(entity, Prop_Send, "m_flNextPrimaryAttack") <= GetGameTime())
+		{
+			float charge = GetEntPropFloat(entity, Prop_Send, "m_flChargedDamage");
+			charge += GetSniperRifleChargePerTick(owner, entity, true);
+			float maxCharge = 150.0;
+			if (charge < maxCharge)
+			{
+				// if our charge is below the game's max charge of 150, subtract whatever the game will add later
+				charge = fmax(0.0, charge-GetSniperRifleChargePerTick(owner, entity));
+			}
+			
+			if (GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex") == 752)
+			{
+				// Hitman's Heatmaker has the ability to overcharge
+				// max charge scales with clip size
+				maxCharge = 225.0;
+				maxCharge = TF2Attrib_HookValueFloat(maxCharge, "mult_clipsize", entity);
+				maxCharge = TF2Attrib_HookValueFloat(maxCharge, "mult_clipsize_upgrade", entity);
+			}
+			
+			// the game will cap rifle charge at 150, so store it for us to override with later
+			g_flStoredCharge = fmin(charge, maxCharge);
+		}
+		
 		// Allow firing while in midair
 		if (!(GetEntityFlags(owner) & FL_ONGROUND))
 		{
@@ -754,14 +1033,44 @@ public MRESReturn DHook_RiflePostFrame(int entity)
 public MRESReturn DHook_RiflePostFramePost(int entity)
 {
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
-	if (IsValidClient(owner) && g_bWasOffGround)
+	if (IsValidClient(owner))
 	{
-		SetEntPropEnt(owner, Prop_Data, "m_hGroundEntity", INVALID_ENT);
-		SetEntPropEnt(owner, Prop_Send, "m_hGroundEntity", INVALID_ENT);
+		if (g_flStoredCharge > 0.0)
+		{
+			// override the game's cap on charge rate
+			SetEntPropFloat(entity, Prop_Send, "m_flChargedDamage", g_flStoredCharge);
+		}
+		
+		if (g_bWasOffGround)
+		{
+			SetEntPropEnt(owner, Prop_Data, "m_hGroundEntity", INVALID_ENT);
+			SetEntPropEnt(owner, Prop_Send, "m_hGroundEntity", INVALID_ENT);
+		}
 	}
 	
+	g_flStoredCharge = 0.0;
 	g_bWasOffGround = false;
 	return MRES_Ignored;
+}
+
+float GetSniperRifleChargePerTick(int client, int weapon, bool bypassLimit=false)
+{
+	// Copy game calculations on charge rate
+	// there are other attributes that affect charge rate, but let's just worry about this one for now
+	float charge = 50.0;
+	charge = TF2Attrib_HookValueFloat(charge, "mult_sniper_charge_per_sec", weapon);
+	TFCond rune = GetPlayerRune(client);
+	bool domMode = TF2_IsPlayerInCondition(client, TFCond_PowerupModeDominant);
+	if (rune == TFCond_RuneHaste || rune == TFCond_RunePrecision)
+	{
+		charge *= domMode ? 2.0 : 3.0;
+	}
+	else if (rune == TFCond_KingRune || TF2_IsPlayerInCondition(client, TFCond_KingAura))
+	{
+		charge *= 1.5;
+	}
+	
+	return bypassLimit ? charge * GetGameFrameTime() : fclamp(charge, 0.0, 100.0) & GetGameFrameTime();
 }
 
 bool IsVoodooCursedCosmetic(int wearable)
@@ -770,6 +1079,7 @@ bool IsVoodooCursedCosmetic(int wearable)
 	return index >= 5617 && index <= 5625;
 }
 
+/*
 bool IsWeaponTauntBanned(int weapon)
 {
 	char classname[64];
@@ -789,6 +1099,25 @@ bool IsWeaponTauntBanned(int weapon)
 		|| strcmp2(classname, "tf_weapon_sword")
 		|| strcmp2(classname, "tf_weapon_katana")
 		|| strcmp2(classname, "tf_weapon_sentry_revenge");
+}
+*/
+
+bool IsTauntCustomDamageType(int damagecustom)
+{
+	return damagecustom == TF_CUSTOM_TAUNT_HADOUKEN
+		|| damagecustom == TF_CUSTOM_TAUNT_ARROW_STAB
+		|| damagecustom == TF_CUSTOM_TAUNT_ALLCLASS_GUITAR_RIFF
+		|| damagecustom == TF_CUSTOM_TAUNT_ARMAGEDDON
+		|| damagecustom == TF_CUSTOM_TAUNT_HIGH_NOON
+		|| damagecustom == TF_CUSTOM_TAUNT_BARBARIAN_SWING
+		|| damagecustom == TF_CUSTOM_TAUNT_ENGINEER_ARM
+		|| damagecustom == TF_CUSTOM_TAUNT_ENGINEER_SMASH
+		|| damagecustom == TF_CUSTOM_TAUNT_ENGINEER_TRICKSHOT
+		|| damagecustom == TF_CUSTOM_TAUNT_FENCING
+		|| damagecustom == TF_CUSTOM_TAUNT_GRAND_SLAM
+		|| damagecustom == TF_CUSTOM_TAUNT_GRENADE
+		|| damagecustom == TF_CUSTOM_TAUNT_UBERSLICE
+		|| damagecustom == TF_CUSTOM_TAUNTATK_GASBLAST;
 }
 
 bool IsEnergyWeapon(int weapon)
@@ -825,7 +1154,244 @@ bool IsAttributeBlacklisted(int id)
 	id == 731 || // "weapon_allow_inspect"
 	id == 817 || // "inspect_viewmodel_offset"
 	id == 724 || // "weapon_stattrak_module_scale"
-	id == 25 || // "hidden secondary max ammo penalty" (don't need these, players have infinite ammo)
-	id == 37 || // "hidden primary max ammo bonus"
-	id >= 76 && id <= 79; // more maxammo attributes
+	id == 328; // "disable fancy class select anim"
+}
+
+int AttributeNameToDefIndex(const char[] name)
+{
+	if (!TF2Attrib_IsValidAttributeName(name))
+		return -1;
+	
+	int tempWearable = EntRefToEntIndex(g_iAttributeSlave);
+	if (tempWearable == INVALID_ENT)
+	{
+		tempWearable = CreateEntityByName("tf_wearable");
+		g_iAttributeSlave = EntIndexToEntRef(tempWearable);
+	}
+	
+	TF2Attrib_SetFromStringValue(tempWearable, name, "1");
+	Address attrib = TF2Attrib_GetByName(tempWearable, name);
+	if (attrib)
+	{
+		TF2Attrib_RemoveByName(tempWearable, name);
+		return TF2Attrib_GetDefIndex(attrib);
+	}
+	
+	return -1;
+}
+
+StringMap GetRandomCustomWeaponData(TFClassType class)
+{
+	char classStr[32], key[32];
+	int i;
+	ArrayList list = new ArrayList();
+	TF2_GetClassString(class, classStr, sizeof(classStr), true);
+	for ( ;; )
+	{
+		FormatEx(key, sizeof(key), "%s%d", classStr, i);
+		if (g_hCustomWeapons.ContainsKey(key))
+		{
+			StringMap map;
+			g_hCustomWeapons.GetValue(key, map);
+			list.Push(map.Clone());
+			i++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	
+	if (list.Length > 0)
+	{
+		StringMap map = list.Get(GetRandomInt(0, list.Length-1));
+		map = map.Clone();
+		for (int a = 0; a < list.Length; a++)
+		{
+			StringMap m = list.Get(a);
+			if (m)
+			{
+				delete m;
+			}
+		}
+		
+		delete list;
+		return map;
+	}
+	else
+	{
+		delete list;
+		return null;
+	}
+}
+
+int CreateCustomWeaponFromData(StringMap data, int client, bool equip=false)
+{
+	int index;
+	char classname[128], name[128];
+	data.GetValue("index", index);
+	data.GetString("classname", classname, sizeof(classname));
+	data.GetString("targetname", name, sizeof(name));
+	Handle weapon = TF2Items_CreateItem(OVERRIDE_ALL|FORCE_GENERATION);
+	TF2Items_SetClassname(weapon, classname);
+	TF2Items_SetItemIndex(weapon, index);
+	StringMapSnapshot snapshot = data.Snapshot();
+	char key[128];
+	int attribCount;
+	for (int i = 0; i < snapshot.Length; i++)
+	{
+		snapshot.GetKey(i, key, sizeof(key));
+		int attribIndex = AttributeNameToDefIndex(key);
+		if (attribIndex != -1 && !IsAttributeBlacklisted(attribIndex))
+		{
+			float value;
+			data.GetValue(key, value);
+			if (attribIndex == 834)
+			{
+				// paintkit_proto_def_index requires a bit representation of a float value
+				int intVal = RoundToFloor(value);
+				value = view_as<float>(intVal);
+			}
+
+			TF2Items_SetNumAttributes(weapon, attribCount+1);
+			TF2Items_SetAttribute(weapon, attribCount, attribIndex, value);
+			attribCount++;
+		}
+	}
+	
+	delete snapshot;
+	TF2Items_SetLevel(weapon, 69);
+	TF2Items_SetQuality(weapon, TF2Quality_Unique);
+	g_bDisableGiveItemForward = true;
+	int wepEnt = TF2Items_GiveNamedItem(client, weapon);
+	g_bDisableGiveItemForward = false;
+	delete weapon;
+	if (equip)
+	{
+		EquipPlayerWeapon(client, wepEnt);
+		UpdateWeaponMeters(client);
+	}
+		
+	if (strcmp2(classname, "tf_weapon_builder") && index == 28)
+	{
+		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 1, _, 0);
+		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 1, _, 1);
+		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 1, _, 2);
+		SetEntProp(wepEnt, Prop_Send, "m_aBuildableObjectTypes", 0, _, 3);
+	}
+	else if (strcmp2(classname, "tf_weapon_sapper"))
+	{
+		SetEntProp(wepEnt, Prop_Send, "m_iObjectType", 3);
+		SetEntProp(wepEnt, Prop_Data, "m_iSubType", 3);
+	}
+	
+	SetEntProp(wepEnt, Prop_Send, "m_bValidatedAttachedEntity", true);
+	return wepEnt;
+}
+
+// A weapon entity is required for this to work
+int GenerateDroppedWeapon(int weapon, const float pos[3], const char[] name="")
+{
+	if (!g_hSDKCreateDroppedWeapon)
+		return INVALID_ENT;
+	
+	int offset = GetEntSendPropOffs(weapon, "m_Item", true);
+	if (offset == -1)
+	{
+		DebugMsg("Dropped weapon creation failed: couldn't find m_Item");
+		return INVALID_ENT;
+	}
+		
+	char model[PLATFORM_MAX_PATH];
+	int modelPrecache = FindStringTable("modelprecache");
+	int modelIndex = GetEntProp(weapon, Prop_Send, "m_iWorldModelIndex");
+	if (modelIndex >= GetStringTableNumStrings(modelPrecache))
+	{
+		DebugMsg("Dropped weapon creation failed: invalid model");
+		return INVALID_ENT;
+	}
+	
+	ReadStringTable(modelPrecache, modelIndex, model, sizeof(model));
+	if (!model[0])
+	{
+		DebugMsg("Dropped weapon creation failed: invalid model");
+		return INVALID_ENT;
+	}
+	
+	DebugMsg("Creating dropped weapon: %s", model);
+	// m_bPlayingMannVsMachine prevents dropped weapons from being created
+	bool playingMvM = asBool(GameRules_GetProp("m_bPlayingMannVsMachine"));
+	GameRules_SetProp("m_bPlayingMannVsMachine", false);
+	float ang[3];
+	ang[0] = GetRandomFloat(-180.0, 180.0);
+	ang[1] = GetRandomFloat(-180.0, 180.0);
+	ang[2] = GetRandomFloat(-180.0, 180.0);
+	int droppedWep = SDKCall(g_hSDKCreateDroppedWeapon, 
+		INVALID_ENT, 
+		pos, 
+		ang,
+		model,
+		GetEntityAddress(weapon)+view_as<Address>(offset));
+	
+	int offs = GetEntSendPropOffs(droppedWep, "m_flChargeLevel", true)+4; // m_hPlayer
+	SetEntDataEnt2(droppedWep, offs, 0); // set to world to prevent being removed by other dropped weapons spawning
+	GameRules_SetProp("m_bPlayingMannVsMachine", playingMvM);
+	DispatchKeyValue(droppedWep, "targetname", name);
+	return droppedWep;
+}
+
+StringMap FindCustomWeaponByKey(const char[] key)
+{
+	if (!g_hCustomWeapons)
+		return null;
+		
+	StringMap data;
+	g_hCustomWeapons.GetValue(key, data);
+	return data ? data.Clone() : null;
+}
+
+public MRESReturn Detour_WeaponPickupPost(int entity, DHookParam params)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	int client = params.Get(1);
+	UpdateItemsForPlayer(client);
+	char key[128];
+	GetEntPropString(entity, Prop_Data, "m_iName", key, sizeof(key));
+	StringMap data = FindCustomWeaponByKey(key);
+	if (data)
+	{
+		int weapon = params.Get(2);
+		// refill ammo for the weapon since it'll start with none
+		int ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType");
+		if (ammoType != TFAmmoType_None && ammoType <= TFAmmoType_Secondary)
+		{
+			GivePlayerAmmo(client, 999999, ammoType, true);
+		}
+		
+		char name[128];
+		data.GetString("targetname", name, sizeof(name));
+		DispatchKeyValue(weapon, "targetname", name);
+		int i;
+		char script[256];
+		for ( ;; )
+		{
+			FormatEx(key, sizeof(key), "SCRIPT_%d", i);
+			if (data.GetString(key, script, sizeof(script)))
+			{
+				SetVariantString(script);
+				AcceptEntityInput(weapon, "RunScriptFile");
+				i++;
+			}
+			else
+			{
+				break;
+			}
+		}
+		
+		delete data;	
+	}
+	
+	return MRES_Ignored;
 }

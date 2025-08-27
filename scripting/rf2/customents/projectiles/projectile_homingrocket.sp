@@ -3,7 +3,7 @@
 #define MODEL_SENTRYROCKET "models/weapons/w_models/w_rocket.mdl"
 
 static CEntityFactory g_Factory;
-static const char g_szRocketExplodeSounds[][] = 
+public const char g_szRocketExplodeSounds[][] = 
 {
 	"weapons/explode1.wav",
 	"weapons/explode2.wav",

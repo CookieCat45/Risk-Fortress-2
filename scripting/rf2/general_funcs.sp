@@ -214,19 +214,21 @@ public void Timer_GameOver(Handle timer)
 	
 	if (g_iStagesCompleted == 0 && !IsInUnderworld())
 	{
-		InsertServerCommand("mp_waitingforplayers_restart 1");
+		InsertServerCommand("mp_waitingforplayers_restart 1; tf_bot_quota 0; tf_bot_kick all");
 		CreateTimer(1.2, Timer_ReloadPluginNoMapChange, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	else
 	{
-		ReloadPlugin(true);
+		g_cvGamePlayedCount.IntValue++;
+		ReloadPlugin();
 	}
 }
 
 void ReloadPlugin(bool changeMap=true)
-{
+{	
 	if (!g_bMapChanging)
 	{
+		ConVar tournament = FindConVar("mp_tournament");
 		for (int i = 1; i <= MaxClients; i++)
 		{
 			if (!IsClientInGame(i) || IsSpecBot(i))
@@ -240,6 +242,11 @@ void ReloadPlugin(bool changeMap=true)
 				TF2_RemoveAllWeapons(i);
 				TF2_RemoveAllWearables(i);
 				SilentlyKillPlayer(i);
+			}
+
+			if (!IsFakeClient(i))
+			{
+				SendConVarValue(i, tournament, "0");
 			}
 		}
 		
@@ -494,7 +501,7 @@ void OnDifficultyChanged(int newLevel)
 					TFBot(i).SetSkillLevel(TFBotSkill_Hard);
 			}
 			
-			case DIFFICULTY_TITANIUM:
+			case DIFFICULTY_TITANIUM, DIFFICULTY_AUSTRALIUM:
 			{
 				if (skill < TFBotSkill_Expert)
 					TFBot(i).SetSkillLevel(TFBotSkill_Expert);
@@ -516,6 +523,7 @@ int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=tr
 			case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron (Normal){default}");
 			case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel (Hard){default}");
 			case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium (Expert){default}");
+			case DIFFICULTY_AUSTRALIUM: cells = strcopy(buffer, size, "{gold}AUSTRALIUM (MASTER){default}");
 			default:  cells = strcopy(buffer, size, "unknown");
 		}
 	}
@@ -527,6 +535,7 @@ int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=tr
 			case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron{default}");
 			case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel{default}");
 			case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium{default}");
+			case DIFFICULTY_AUSTRALIUM: cells = strcopy(buffer, size, "{gold}AUSTRALIUM{default}");
 			default:  cells = strcopy(buffer, size, "unknown");
 		}
 	}
@@ -539,6 +548,11 @@ int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=tr
 	return cells;
 }
 
+bool IsCurseActive(int curse)
+{
+	return g_iDifficultyLevel >= DIFFICULTY_AUSTRALIUM && g_iLoopCount >= curse;
+}
+
 float GetDifficultyFactor(int difficulty)
 {
 	switch (difficulty)
@@ -546,7 +560,7 @@ float GetDifficultyFactor(int difficulty)
 		case DIFFICULTY_SCRAP: return DifficultyFactor_Scrap;
 		case DIFFICULTY_IRON: return DifficultyFactor_Iron;
 		case DIFFICULTY_STEEL: return DifficultyFactor_Steel;
-		case DIFFICULTY_TITANIUM: return DifficultyFactor_Titanium;
+		case DIFFICULTY_TITANIUM, DIFFICULTY_AUSTRALIUM: return DifficultyFactor_Titanium;
 	}
 	
 	return DifficultyFactor_Iron;
@@ -557,15 +571,22 @@ void UpdateGameDescription()
 	#if defined _SteamWorks_Included
 	if (GetExtensionFileStatus("SteamWorks.ext") == 1)
 	{
-		char desc[256], difficultyName[32];
-		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
-		FormatEx(desc, sizeof(desc), "Risk Fortress 2 (Stage %d - %s)", g_iStagesCompleted+1, difficultyName);
-		SteamWorks_SetGameDescription(desc);
+		if (g_bGameInitialized)
+		{
+			char desc[256], difficultyName[32];
+			GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
+			FormatEx(desc, sizeof(desc), "Risk Fortress 2 (Stage %d - %s)", g_iStagesCompleted+1, difficultyName);
+			SteamWorks_SetGameDescription(desc);
+		}
+		else
+		{
+			SteamWorks_SetGameDescription("Risk Fortress 2 (Waiting for Players...)");
+		}
 	}
 	#endif
 }
 
-// It does not matter if the .mdl extension is included in the path or not.
+// Works with or without the .mdl extension in the file path
 void AddModelToDownloadsTable(const char[] file, bool precache=true)
 {
 	char buffer[PLATFORM_MAX_PATH], extension[16];
@@ -780,6 +801,21 @@ public MRESReturn DHook_IsDedicatedServer(Address thisPtr, DHookReturn returnVal
 	return MRES_Supercede;
 }
 
+public MRESReturn Detour_CreateEvent(Address eventManager, DHookReturn returnVal, DHookParam params)
+{
+	g_aGameEventManager = eventManager;
+	return MRES_Ignored;
+}
+
+public MRESReturn BlockKillEaterEvent(DHookParam param)
+{
+	if (!RF2_IsEnabled())
+		return MRES_Ignored;
+	
+	// fixes an odd server crash
+	return MRES_Supercede;
+}
+
 // StrContains(), but the string needs to be an exact match.
 // This means there must be either whitespace or out-of-bounds characters before and after the found string.
 // So if you search "apple" in "applebanana", -1 will be returned, while StrContains() would return a positive value.
@@ -881,24 +917,26 @@ stock float sq(float num)
 	return Pow(num, 2.0);
 }
 
-float LerpFloats(const float a, const float b, float t)
+stock float fmodf(float num, float denom)
 {
-	if (t < 0.0)
-	{
-		t = 0.0;
-	}
-	if (t > 1.0)
-	{
-		t = 1.0;
-	}
-
-	return a + (b - a) * t;
+	return num - denom * RoundToFloor(num / denom);
 }
 
 // not implemented by default -_-
 stock float operator%(float oper1, float oper2)
 {
 	return fmodf(oper1, oper2);
+}
+
+stock float fclamp(float val, float min, float max)
+{
+	if (val > max)
+		return max;
+		
+	if (val < min)
+		return min;
+		
+	return val;
 }
 
 stock int imin(int val1, int val2)
@@ -958,6 +996,13 @@ float GetTimeSinceServerStart()
 	return GetEngineTime() - g_cvHiddenServerStartTime.FloatValue;
 }
 
+char[] Format2(const char[] fmt, any ...)
+{
+	static char str[8192];
+	VFormat(str, sizeof(str), fmt, 2);
+	return str;
+}
+
 stock void DebugMsgNoSpam(const char[] message, any ...)
 {
 	#if defined DEVONLY
@@ -974,6 +1019,11 @@ stock void DebugMsgNoSpam(const char[] message, any ...)
 		strcopy(lastMessage, sizeof(lastMessage), buffer);
 		lastTime = time;
 	}
+	#else
+	if (message[0]) // prevent compile warning
+	{
+	
+	}
 	#endif
 }
 
@@ -984,5 +1034,10 @@ stock void DebugMsg(const char[] message, any ...)
 	VFormat(buffer, sizeof(buffer), message, 2);
 	PrintToChatAll("[DEBUG] %s", buffer);
 	PrintToServer("[DEBUG] %s", buffer);
+	#else
+	if (message[0]) // prevent compile warning
+	{
+	
+	}
 	#endif
 }

@@ -229,7 +229,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		DispatchSpawn(fog);
 		AcceptEntityInput(fog, "TurnOn");			
 		const float time = 3.0;
-		int oldFog[MAXTF2PLAYERS] = {INVALID_ENT, ...};
+		int oldFog[MAXPLAYERS] = {INVALID_ENT, ...};
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
@@ -244,7 +244,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			DataPack pack;
 			CreateDataTimer(time, Timer_RestorePlayerFog, pack, TIMER_FLAG_NO_MAPCHANGE);
 			pack.WriteCell(GetClientUserId(i));
-			pack.WriteCell(EntIndexToEntRef(oldFog[i]));
+			pack.WriteCell(oldFog[i] != INVALID_ENT ? EntIndexToEntRef(oldFog[i]) : INVALID_ENT);
 		}
 		
 		CreateTimer(time, Timer_KillFog, EntIndexToEntRef(fog), TIMER_FLAG_NO_MAPCHANGE);
@@ -373,12 +373,12 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 
 		this.ToggleObjects(true);
 		this.EventState = TELE_EVENT_COMPLETE;
-		this.Effects = EF_ITEM_BLINK;
+		this.Effects |= EF_ITEM_BLINK;
 		this.TextSize = 6.0;
 		this.SetWorldText("Call for Medic to go to the next stage!");
 		
 		if (IsValidEntity2(this.Bubble.index))
-			RemoveEntity2(this.Bubble.index);
+			RemoveEntity(this.Bubble.index);
 		
 		EmitSoundToAll(SND_TELEPORTER_CHARGED);
 		StopMusicTrackAll();
@@ -400,6 +400,10 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			if (entity == this.index)
 				continue;
 			
+			RF2_Object_Pedestal pedestal = RF2_Object_Pedestal(entity);
+			if (pedestal.IsValid() && pedestal.Spinning)
+				continue;
+
 			if (DistBetween(this.index, entity) > this.Radius)
 			{
 				RF2_Object_Base(entity).Active = state;
@@ -426,6 +430,10 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			if (RF2_Object_Teleporter(entity).IsValid())
 				continue;
 			
+			RF2_Object_Pedestal pedestal = RF2_Object_Pedestal(entity);
+			if (pedestal.IsValid() && pedestal.Spinning)
+				continue;
+
 			RF2_Object_Base(entity).Active = state;
 		}
 	}
@@ -459,7 +467,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			GetQualityColorTag(GetItemQuality(randomItem), quality, sizeof(quality));
 			RF2_PrintToChatAll("%t", "TeleporterItemReward", i, quality, name);
 			PrintCenterText(i, "%t", "GotItemReward", name);
-			if (PlayerHasItem(i, Item_CheatersLament_Recharging) && !g_bPlayerReviveActivated[i])
+			if (PlayerHasItem(i, Item_CheatersLament_Recharging, true, true) && !g_bPlayerReviveActivated[i])
 			{
 				GiveItem(i, Item_CheatersLament, 1, true);
 				GiveItem(i, Item_CheatersLament_Recharging, -1);
@@ -530,7 +538,7 @@ static void OnRemove(RF2_Object_Teleporter teleporter)
 {
 	if (teleporter.Bubble.IsValid())
 	{
-		RemoveEntity2(teleporter.Bubble.index);
+		RemoveEntity(teleporter.Bubble.index);
 	}
 }
 

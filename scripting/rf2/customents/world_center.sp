@@ -27,7 +27,6 @@ methodmap RF2_WorldCenter < CBaseEntity
 	}
 }
 
-// Returns entity index for legacy reasons
 int GetWorldCenter(float vec[3])
 {
 	int entity = g_iWorldCenterEntity;

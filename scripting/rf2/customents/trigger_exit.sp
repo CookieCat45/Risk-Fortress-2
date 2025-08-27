@@ -170,7 +170,7 @@ static void OnCreate(RF2_Trigger_Exit trigger)
 	trigger.UpdateWorldText();
 	CBaseEntity text = CBaseEntity(trigger.WorldText);
 	text.KeyValueFloat("textsize", 18.0);
-	text.KeyValue("orientation", "1");
+	text.KeyValueInt("orientation", 1);
 	SetVariantColor({0, 255, 255, 255});
 	text.AcceptInput("SetColor");
 	float pos[3];
@@ -196,7 +196,7 @@ static Action Timer_VoteCheck(Handle timer, int entity)
 	
 	if (GameRules_GetRoundState() == RoundState_TeamWin)
 	{
-		RemoveEntity2(entity);
+		RemoveEntity(entity);
 		return Plugin_Stop;
 	}
 	

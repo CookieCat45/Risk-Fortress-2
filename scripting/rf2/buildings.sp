@@ -95,6 +95,26 @@ TFObjectType TF2_GetObjectType2(int entity)
 // False = Allow destroying
 void SetSentryBuildState(int client, bool state)
 {
+	// if main sentry is built, reduce cost for disposables
+	int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
+	if (wrench != INVALID_ENT)
+	{
+		char classname[64];
+		GetEntityClassname(wrench, classname, sizeof(classname));
+		if (!strcmp2(classname, "tf_weapon_robot_arm"))
+		{
+			int sentry = GetBuiltObject(client, TFObject_Sentry);
+			if (state && sentry != INVALID_ENT)
+			{
+				TF2Attrib_SetByName(wrench, "mod wrench builds minisentry", 1.0);
+			}
+			else
+			{
+				TF2Attrib_RemoveByName(wrench, "mod wrench builds minisentry");
+			}
+		}
+	}
+	
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != INVALID_ENT)
 	{
@@ -143,33 +163,11 @@ public MRESReturn DHook_StartUpgradingPost(int entity, DHookReturn returnVal, DH
 		{
 			GameRules_SetProp("m_bInSetup", false);
 		}
-
+		
 		GameRules_SetProp("m_bPlayingMannVsMachine", false);
 	}
 	
 	g_bWasInSetup = false;
-	return MRES_Ignored;
-}
-
-public MRESReturn Detour_SentryGunAttack(int entity)
-{
-	if (RF2_IsEnabled())
-	{
-		int owner = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
-		if (IsValidClient(owner) && IsPlayerAlive(owner))
-		{
-			if (GetEntProp(entity, Prop_Send, "m_bPlayerControlled") || GetEntPropEnt(entity, Prop_Send, "m_hEnemy") > 0)
-			{
-				float gameTime = GetGameTime();
-				int offset = FindSendPropInfo("CObjectSentrygun", "m_iState") + 4; // m_flNextAttack
-				float time = GetEntDataFloat(entity, offset);
-				time -= gameTime;
-				time *= GetPlayerFireRateMod(owner, entity);
-				SetEntDataFloat(entity, offset, gameTime+time, true);
-			}
-		}
-	}
-	
 	return MRES_Ignored;
 }
 

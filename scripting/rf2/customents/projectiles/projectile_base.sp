@@ -70,7 +70,6 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			.DefineEntityField("m_hThruster")
 			.DefineIntField("m_OnCollide")
 			.DefineIntField("m_hIgnoredEnts")
-			.DefineBoolField("m_bIsCrits")
 		.EndDataMapDesc();
 		g_Factory.Install();
 	}
@@ -377,25 +376,6 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		}
 	}
 
-	property bool IsCrits
-	{
-		public get()
-		{
-			return asBool(this.GetProp(Prop_Data, "m_bIsCrits"));
-		}
-		
-		public set(bool value)
-		{
-			this.SetProp(Prop_Data, "m_bIsCrits", value);
-			if (value)
-			{
-				float pos[3];
-				this.GetAbsOrigin(pos);
-				TE_TFParticle("critical_rocket_blue", pos, this.index, PATTACH_ABSORIGIN_FOLLOW);
-			}
-		}
-	}
-
 	property PrivateForward OnCollide
 	{
 		public get()
@@ -481,7 +461,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 	
 	public void Remove()
 	{
-		RemoveEntity2(this.index);
+		RemoveEntity(this.index);
 	}
 	
 	public void PlaySound(int type, int channel=SNDCHAN_AUTO, int level=SNDLEVEL_NORMAL, int flags=SND_NOFLAGS, float volume=SNDVOL_NORMAL, int pitch=SNDPITCH_NORMAL)
@@ -546,10 +526,6 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 	public ArrayList Explode(int damageType=DMG_BLAST, bool effect=true, bool sound=true, bool returnHitEnts=false)
 	{
 		ArrayList blacklist, hitEnts;
-		if (this.IsCrits)
-		{
-			damageType |= DMG_ACID;
-		}
 		if (IsValidEntity2(this.ImpactTarget) && IsCombatChar(this.ImpactTarget))
 		{
 			RF_TakeDamage(this.ImpactTarget, this.index, this.Owner, this.DirectDamage, damageType, GetEntItemProc(this.index));
@@ -559,7 +535,7 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 		
 		float pos[3];
 		this.WorldSpaceCenter(pos);
-		hitEnts = DoRadiusDamage(this.Owner, this.index, pos, GetEntItemProc(this.index), 
+		hitEnts = DoRadiusDamage(IsValidEntity2(this.Owner) ? this.Owner : this.index, this.index, pos, GetEntItemProc(this.index), 
 			this.Damage, damageType, this.Radius, this.FalloffMult, this.DamageOwner, blacklist, returnHitEnts);
 		
 		if (blacklist)
@@ -656,8 +632,9 @@ static void OnCreate(RF2_Projectile_Base proj)
 	proj.BuildingDamageMult = 1.0;
 	proj.SetHitboxMins({-20.0, -20.0, -20.0});
 	proj.SetHitboxMaxs({20.0, 20.0, 20.0});
+	proj.KeyValueInt("nodamageforces", 1); // otherwise bullets and explosions push us around
 	SetEntityCollisionGroup(proj.index, COLLISION_GROUP_PROJECTILE);
-	proj.AddFlag(FL_GRENADE); // so airblasting works
+	proj.AddFlag(FL_GRENADE);
 	proj.OnCollide = new PrivateForward(ET_Hook, Param_Any, Param_Cell);
 	proj.HookOnCollide(Projectile_OnCollide);
 	SDKHook(proj.index, SDKHook_SpawnPost, OnSpawnPost);
@@ -685,7 +662,7 @@ static void OnRemove(RF2_Projectile_Base proj)
 	
 	if (IsValidEntity2(proj.Thruster))
 	{
-		RemoveEntity2(proj.Thruster);
+		RemoveEntity(proj.Thruster);
 	}
 }
 
@@ -701,18 +678,18 @@ static void OnSpawnPost(int entity)
 	proj.Team == TEAM_SURVIVOR ? proj.GetRedTrail(trail, sizeof(trail)) : proj.GetBlueTrail(trail, sizeof(trail));
 	if (trail[0])
 	{
+		float pos[3];
+		proj.GetAbsOrigin(pos);
 		if (!proj.AltParticleSpawn)
 		{
-			float pos[3];
-			proj.GetAbsOrigin(pos);
 			TE_TFParticle(trail, pos, proj.index, PATTACH_ABSORIGIN_FOLLOW);
 		}
 		else
 		{
-			SpawnParticleViaTrigger(proj.index, trail, _, PATTACH_ABSORIGIN_FOLLOW);
+			SpawnInfoParticle(trail, pos, _, proj.index);
 		}
 	}
-
+	
 	proj.PlaySound(SoundType_Fire);
 }
 
@@ -741,14 +718,8 @@ public void OnVPhysicsUpdate(int entity)
 		proj.GetAbsOrigin(pos);
 		proj.GetHitboxMins(mins);
 		proj.GetHitboxMaxs(maxs);
-		TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID|MASK_NPCSOLID, TraceFilter_Projectile, proj, TRACE_ENTITIES_ONLY);
+		TR_TraceHullFilter(pos, pos, mins, maxs, MASK_SOLID|MASK_PLAYERSOLID|MASK_NPCSOLID, TraceFilter_Projectile, proj, TRACE_ENTITIES_ONLY);
 		int hitEntity = TR_GetEntityIndex();
-		if (hitEntity <= 0)
-		{
-			TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID|MASK_NPCSOLID, TraceFilter_DispenserShield, _, TRACE_ENTITIES_ONLY);
-			hitEntity = TR_GetEntityIndex();
-		}
-		
 		if (hitEntity > 0)
 		{
 			// the dhook doesn't seem to work properly on players/npcs, so pretend we're colliding with them
@@ -782,7 +753,7 @@ public void OnVPhysicsUpdate(int entity)
 			NormalizeVector(vel, vel);
 			ScaleVector(vel, proj.HomingSpeed);
 			proj.SetAbsAngles(ang);
-			SDK_ApplyAbsVelocityImpulse(proj.index, vel);
+			ApplyAbsVelocityImpulse(proj.index, vel);
 		}
 		else if (GetGameTime() > proj.LastHomingTime+5.0)
 		{
@@ -865,16 +836,11 @@ public void Projectile_OnCollide(RF2_Projectile_Base proj, int other)
 
 public bool TraceFilter_Projectile(int entity, int mask, RF2_Projectile_Base self)
 {
-	if (entity == self.index || !IsValidClient(entity) && !IsNPC(entity))
+	if (entity == self.index || !IsValidClient(entity) && !IsNPC(entity) && !RF2_DispenserShield(entity).IsValid())
 		return false;
 	
 	if (self.Team == GetEntTeam(entity) || self.Owner == entity)
 		return false;
 	
-	if (RF2_DispenserShield(entity).IsValid())
-	{
-		return true;
-	}
-
 	return true;
 }

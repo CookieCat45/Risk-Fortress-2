@@ -107,7 +107,7 @@ static void OnCreate(RF2_Object_Gravestone grave)
 	grave.HookInteract(Gravestone_OnInteract);
 	if (grave.Cost <= 0.0)
 	{
-		grave.Cost = 250.0 * RF2_Object_Base.GetCostMultiplier();
+		grave.Cost = 350.0 * RF2_Object_Base.GetCostMultiplier();
 	}
 	
 	char text[256];
@@ -131,7 +131,7 @@ static Action Gravestone_OnInteract(int client, RF2_Object_Gravestone grave)
 		EmitSoundToAll(SND_BOSS_SUMMON);
 		EmitSoundToAll(SND_BOSS_RUMBLE);
 		EmitGameSoundToAll("Halloween.skeleton_laugh_giant");
-		PrintCenterTextAll("The Skeleton King has awoken!\n  Slay him for a Gargoyle Key!");
+		PrintCenterTextAll("%t", "SkeletonKingSpawn");
 		if (grave.SummonSkeletonKing() == INVALID_ENT)
 		{
 			RequestFrame(RF_GraveSpawnRetry, EntIndexToEntRef(grave.index));
@@ -142,7 +142,7 @@ static Action Gravestone_OnInteract(int client, RF2_Object_Gravestone grave)
 		}
 		else
 		{
-			RemoveEntity2(grave.index);
+			RemoveEntity(grave.index);
 		}
 	}
 	else
@@ -166,20 +166,20 @@ public void RF_GraveSpawnRetry(int entity)
 	}
 	else
 	{
-		RemoveEntity2(grave.index);
+		RemoveEntity(grave.index);
 	}
 }
 
 public void Output_OnSkeletonKingDeath(const char[] output, int caller, int activator, float delay)
 {
-	PrintCenterTextAll("The Skeleton King has been defeated!");
+	PrintCenterTextAll("%t", "SkeletonKingDeath");
 	EmitSoundToAll(SND_BOSS_DEFEATED);
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (IsClientInGame(i) && IsPlayerSurvivor(i))
 		{
 			GiveItem(i, Item_HauntedKey, 1, true);
-			PrintCenterText(i, "You have been awarded 1 Gargoyle Key.");
+			PrintCenterText(i, "%t", "GargoyleKeyAward");
 		}
 	}
 }

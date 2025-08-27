@@ -49,7 +49,8 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 			if (!PlayerHasItem(client, item, true) || GetItemQuality(item) == Quality_Community || GetItemQuality(item) == Quality_Strange)
 				continue;	
 			
-			if (!collector && GetItemQuality(item) == Quality_Collectors && GetCollectorItemClass(item) != class)
+			if (g_iPlayerCollectorSwapCount[client] < 2 && !collector 
+				&& GetItemQuality(item) == Quality_Collectors && GetCollectorItemClass(item) != class)
 			{
 				FormatEx(display, sizeof(display), "%T", "ScrapCollectors", client);
 				menu.InsertItem(0, "scrap_collectors", display);
@@ -120,7 +121,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 				TFClassType class = TF2_GetPlayerClass(param1);
 				for (int i = 1; i < GetTotalItems(); i++)
 				{
-					if (GetItemQuality(i) != Quality_Collectors || !PlayerHasItem(param1, i))
+					if (GetItemQuality(i) != Quality_Collectors || !PlayerHasItem(param1, i, true))
 						continue;
 					
 					if (GetCollectorItemClass(i) == class)
@@ -161,6 +162,7 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 				}
 				
 				EmitSoundToClient(param1, SND_USE_SCRAPPER);
+				g_iPlayerCollectorSwapCount[param1]++;
 				RF2_Object_Scrapper.ShowScrapMenu(param1, false);
 				delete itemList;
 			}

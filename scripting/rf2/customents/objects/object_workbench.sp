@@ -38,6 +38,7 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 			.DefineIntField("m_iCustomItemReward", _, "custom_item_reward")
 			.DefineIntField("m_iCost")
 			.DefineIntField("m_iReward")
+			.DefineBoolField("m_bIsComposter", _, "is_composter")
 			.DefineEntityField("m_hDisplaySprite")
 		.EndDataMapDesc();
 		g_Factory.Install();
@@ -134,6 +135,19 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 			this.SetProp(Prop_Data, "m_iReward", value);
 		}
 	}
+
+	property bool IsComposter
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bIsComposter"));
+		}
+		
+		public set (bool value)
+		{
+			this.SetProp(Prop_Data, "m_bIsComposter", value);
+		}
+	}
 	
 	property CBaseEntity Sprite
 	{
@@ -146,6 +160,111 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 		{
 			this.SetPropEnt(Prop_Data, "m_hDisplaySprite", sprite.index);
 		}
+	}
+
+	public Action DoTrade(int client)
+	{
+		ArrayList itemArray = new ArrayList();
+		ArrayList itemsToTrade = new ArrayList();
+		int scrapItem;
+		int benchItem = this.ItemQuality == Quality_Collectors ? GetRandomCollectorItem(TF2_GetPlayerClass(client)) : this.Item;
+		
+		for (int i = 1; i < GetTotalItems(); i++)
+		{
+			if (i != benchItem && GetItemQuality(i) == this.TradeQuality && PlayerHasItem(client, i, true))
+			{
+				if (IsScrapItem(i)) // priority
+				{
+					scrapItem = i;
+					continue;
+				}
+				
+				itemArray.Push(i);
+			}
+		}
+		
+		if (scrapItem != Item_Null)
+		{
+			int scrapCount = GetPlayerItemCount(client, scrapItem, true);
+			do 
+			{
+				itemsToTrade.Push(scrapItem);
+			}
+			while (itemsToTrade.Length < scrapCount && itemsToTrade.Length < this.Cost);
+		}
+		
+		if (itemsToTrade.Length < this.Cost && itemArray.Length > 0)
+		{
+			int item, index;
+			int itemCounts[MAX_ITEMS];
+			do
+			{
+				index = GetRandomInt(0, itemArray.Length-1);
+				item = itemArray.Get(index);
+				if (itemCounts[item] < GetPlayerItemCount(client, item, true))
+				{
+					itemsToTrade.Push(item);
+					itemCounts[item]++;
+				}
+				else
+				{
+					itemArray.Erase(index);
+				}
+			}
+			while (itemArray.Length > 0 && itemsToTrade.Length < this.Cost);
+		}
+		
+		delete itemArray;
+		char qualityName[32];
+		GetQualityName(this.TradeQuality, qualityName, sizeof(qualityName));
+		if (itemsToTrade.Length >= this.Cost)
+		{
+			int item, lastItem;
+			bool oneItem = true;
+			for (int i = 0; i < itemsToTrade.Length; i++)
+			{
+				item = itemsToTrade.Get(i);
+				if (lastItem != Item_Null && item != lastItem)
+				{
+					oneItem = false;
+				}
+				
+				GiveItem(client, item, -1, false);
+				lastItem = item;
+			}
+			
+			GiveItem(client, benchItem, this.Reward, true);
+			EmitSoundToAll(SND_USE_WORKBENCH, client);
+			ShowItemDesc(client, benchItem);
+			if (oneItem)
+			{
+				PrintCenterText(client, "%t", "UsedWorkbench", this.Cost, g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item, true), g_szItemName[item], this.Reward);
+			}
+			else
+			{
+				PrintCenterText(client, "%t", "UsedWorkbenchMulti", this.Cost, qualityName, g_szItemName[benchItem], this.Reward);
+			}
+		}
+		else
+		{
+			PrintCenterText(client, "%t", "NoExchange", this.Cost, qualityName);
+			EmitSoundToClient(client, SND_NOPE);
+		}
+		
+		delete itemsToTrade;
+		return Plugin_Handled;
+	}
+	
+	public static bool IsAnyComposterActive()
+	{
+		int entity = MaxClients+1;
+		while ((entity = FindEntityByClassname(entity, "rf2_object_workbench")) != INVALID_ENT)
+		{
+			if (RF2_Object_Workbench(entity).IsComposter)
+				return true;
+		}
+		
+		return false;
 	}
 }
 
@@ -164,11 +283,24 @@ static void OnCreate(RF2_Object_Workbench bench)
 
 static void OnSpawnPost(int entity)
 {
+	if (!IsMapRunning())
+		return;
+	
 	RF2_Object_Workbench bench = RF2_Object_Workbench(entity);
-	if (IsMapRunning())
+	if (bench.IsComposter)
+	{
+		bench.ItemQuality = Quality_Collectors;
+	}
+	else if (bench.ItemQuality == Quality_None)
 	{
 		// choose a random item quality if mapper doesn't force a specific one
-		if (bench.ItemQuality == Quality_None)
+		if (GetRandomInt(1, 40) == 1 && !RF2_Object_Workbench.IsAnyComposterActive() && !IsScrapItem(bench.Item))
+		{
+			// 1 in 40 for a composter (trades 2 greens for a collectors)
+			bench.IsComposter = true;
+			bench.ItemQuality = Quality_Collectors;
+		}
+		else
 		{
 			int result;
 			if (RandChanceInt(1, 100, 65, result))
@@ -184,48 +316,123 @@ static void OnSpawnPost(int entity)
 				bench.ItemQuality = Quality_Unusual;
 			}
 		}
-		
-		// use item quality as trade quality if mapper doesn't force a specific one
-		bool forcedTradeQuality;
-		if (bench.TradeQuality == Quality_None)
+	}
+	else if (IsInUnderworld() && bench.ItemQuality != Quality_Haunted && !IsScrapItem(bench.Item)
+		&& GetRandomInt(1, 40) == 1 && !RF2_Object_Workbench.IsAnyComposterActive())
+	{
+		// also allow composters to spawn in hell
+		bench.IsComposter = true;
+		bench.ItemQuality = Quality_Collectors;
+		bench.TradeQuality = Quality_Genuine;
+	}
+	
+	// use item quality as trade quality if mapper doesn't force a specific one
+	bool forcedTradeQuality;
+	if (bench.TradeQuality == Quality_None)
+	{
+		if (bench.IsComposter)
 		{
-			bench.TradeQuality = bench.ItemQuality;
+			bench.TradeQuality = Quality_Genuine;
 		}
 		else
 		{
-			forcedTradeQuality = true;
+			bench.TradeQuality = bench.ItemQuality;
 		}
-		
-		// choose a random item if mapper doesn't force a specific one
-		if (bench.Item == Item_Null)
+	}
+	else
+	{
+		forcedTradeQuality = true;
+	}
+	
+	// choose a random item if mapper doesn't force a specific one
+	if (bench.Item == Item_Null)
+	{
+		int quality = forcedTradeQuality ? bench.TradeQuality : bench.ItemQuality;
+		ArrayList validItems = GetSortedItemList(true, false);
+		for (int i = validItems.Length-1; i >= 0; i--)
 		{
-			bench.Item = GetRandomItemEx(forcedTradeQuality ? bench.TradeQuality : bench.ItemQuality);
+			if (GetItemQuality(validItems.Get(i)) != quality)
+			{
+				validItems.Erase(i);
+			}
 		}
-		
-		char text[256], qualityName[32];
-		GetQualityName(bench.TradeQuality, qualityName, sizeof(qualityName));
-		bench.Cost = bench.CustomItemCost > 1 ? bench.CustomItemCost : 1;
-		bench.Reward = bench.CustomItemReward > 1 ? bench.CustomItemReward : 1;
-		
+
+		// try not to have duplicates
+		int other = MaxClients+1;
+		int index = -1;
+		RF2_Object_Workbench otherBench;
+		while ((other  = FindEntityByClassname(other, "rf2_object_workbench")) != INVALID_ENT)
+		{
+			otherBench = RF2_Object_Workbench(other);
+			if (otherBench.Item != Item_Null)
+			{
+				index = validItems.FindValue(otherBench.Item);
+				if (index != -1)
+				{
+					validItems.Erase(index);
+				}
+			}
+		}
+
+		if (validItems.Length > 0)
+		{
+			bench.Item = validItems.Get(GetRandomInt(0, validItems.Length-1));
+		}
+		else
+		{
+			bench.Item = GetRandomItemEx(quality);
+		}
+
+		delete validItems;
+	}
+	
+	char text[256], qualityName[32];
+	GetQualityName(bench.TradeQuality, qualityName, sizeof(qualityName));
+	bench.Cost = bench.CustomItemCost > 1 ? bench.CustomItemCost : bench.IsComposter ? 2 : 1;
+	bench.Reward = bench.CustomItemReward > 1 ? bench.CustomItemReward : 1;
+	
+	if (bench.IsComposter)
+	{
+		FormatEx(text, sizeof(text), "Call for Medic\nTo trade for %i Collector's quality item!\n(Requires %i %s %s)", bench.Reward,
+			bench.Cost, qualityName, bench.Cost > 1 ? "items" : "item");
+	}
+	else
+	{
 		FormatEx(text, sizeof(text), "Call for Medic\nTo trade for %i %s!\n(Requires %i %s %s)", bench.Reward,
 			g_szItemName[bench.Item], bench.Cost, qualityName, bench.Cost > 1 ? "items" : "item");
-		
-		bench.SetWorldText(text);
-		bench.TextZOffset = 100.0;
-		char name[256];
-		FormatEx(name, sizeof(name), "Workbench (%s)", g_szItemName[bench.Item]);
-		bench.SetObjectName(name);
-		CBaseEntity sprite = CBaseEntity(CreateEntityByName("env_sprite"));
-		bench.Sprite = sprite;
+	}
+	
+	bench.SetWorldText(text);
+	bench.TextZOffset = bench.IsComposter ? 115.0 : 100.0;
+	char name[256];
+	FormatEx(name, sizeof(name), "Workbench (%s)", g_szItemName[bench.Item]);
+	bench.SetObjectName(name);
+	CBaseEntity sprite = CBaseEntity(CreateEntityByName("env_sprite"));
+	bench.Sprite = sprite;
+	if (bench.IsComposter)
+	{
+		sprite.KeyValue("model", "materials/hud/backpack_01.vmt");
+		sprite.KeyValueFloat("scale", 0.04);
+	}
+	else
+	{
 		sprite.KeyValue("model", g_szItemSprite[bench.Item]);
 		sprite.KeyValueFloat("scale", g_flItemSpriteScale[bench.Item]);
-		sprite.KeyValue("rendermode", "9"); // mfw no CBaseEntity.KeyValueInt
-		float pos[3];
-		bench.GetAbsOrigin(pos);
-		pos[2] += bench.MapPlaced ? 60.0 : 35.0;
-		sprite.Teleport(pos);
-		sprite.Spawn();
-		int color[4] = {255, 255, 255, 255};
+	}
+	
+	sprite.KeyValueInt("rendermode", 9);
+	float pos[3];
+	bench.GetAbsOrigin(pos);
+	pos[2] += bench.MapPlaced ? 60.0 : 35.0;
+	sprite.Teleport(pos);
+	sprite.Spawn();
+	int color[4] = {255, 255, 255, 255};
+	if (bench.IsComposter)
+	{
+		color = {255, 100, 100, 255};
+	}
+	else
+	{
 		switch (GetItemQuality(bench.Item))
 		{
 			case Quality_Genuine:		color = {125, 255, 125, 255};
@@ -235,111 +442,21 @@ static void OnSpawnPost(int entity)
 			case Quality_Haunted, 
 				Quality_HauntedStrange:	color = {125, 255, 255, 255};
 		}
-		
-		sprite.SetRenderColor(color[0], color[1], color[2], color[3]);
-		bench.SetGlowColor(color[0], color[1], color[2], color[3]);
 	}
+	
+	sprite.SetRenderColor(color[0], color[1], color[2], color[3]);
+	bench.SetGlowColor(color[0], color[1], color[2], color[3]);
 }
 
 static void OnRemove(RF2_Object_Workbench bench)
 {
 	if (bench.Sprite.IsValid())
 	{
-		RemoveEntity2(bench.Sprite.index);
+		RemoveEntity(bench.Sprite.index);
 	}
 }
 
 static Action Workbench_OnInteract(int client, RF2_Object_Workbench bench)
 {
-	ArrayList itemArray = new ArrayList();
-	ArrayList itemsToTrade = new ArrayList();
-	int quality = bench.TradeQuality;
-	int benchItem = bench.Item;
-	int cost = bench.Cost;
-	int scrapItem;
-	
-	for (int i = 1; i < GetTotalItems(); i++)
-	{
-		if (i != benchItem && GetItemQuality(i) == quality && PlayerHasItem(client, i, true))
-		{
-			if (IsScrapItem(i)) // priority
-			{
-				scrapItem = i;
-				continue;
-			}
-			
-			itemArray.Push(i);
-		}
-	}
-	
-	if (scrapItem != Item_Null)
-	{
-		int scrapCount = GetPlayerItemCount(client, scrapItem, true);
-		do 
-		{
-			itemsToTrade.Push(scrapItem);
-		}
-		while (itemsToTrade.Length < scrapCount && itemsToTrade.Length < cost);
-	}
-	
-	if (itemsToTrade.Length < cost && itemArray.Length > 0)
-	{
-		int item, index;
-		int itemCounts[MAX_ITEMS];
-		do
-		{
-			index = GetRandomInt(0, itemArray.Length-1);
-			item = itemArray.Get(index);
-			if (itemCounts[item] < GetPlayerItemCount(client, item, true))
-			{
-				itemsToTrade.Push(item);
-				itemCounts[item]++;
-			}
-			else
-			{
-				itemArray.Erase(index);
-			}
-		}
-		while (itemArray.Length > 0 && itemsToTrade.Length < cost);
-	}
-	
-	delete itemArray;
-	char qualityName[32];
-	GetQualityName(quality, qualityName, sizeof(qualityName));
-	if (itemsToTrade.Length >= cost)
-	{
-		int item, lastItem;
-		bool oneItem = true;
-		for (int i = 0; i < itemsToTrade.Length; i++)
-		{
-			item = itemsToTrade.Get(i);
-			if (lastItem != Item_Null && item != lastItem)
-			{
-				oneItem = false;
-			}
-			
-			GiveItem(client, item, -1, false);
-			lastItem = item;
-		}
-		
-		GiveItem(client, benchItem, bench.Reward, true);
-		EmitSoundToAll(SND_USE_WORKBENCH, client);
-		ShowItemDesc(client, benchItem);
-		if (oneItem)
-		{
-			PrintCenterText(client, "%t", "UsedWorkbench", cost, g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item, true), g_szItemName[item], bench.Reward);
-		}
-		else
-		{
-			PrintCenterText(client, "%t", "UsedWorkbenchMulti", cost, qualityName, g_szItemName[benchItem], bench.Reward);
-		}
-	}
-	else
-	{
-		PrintCenterText(client, "%t", "NoExchange", cost, qualityName);
-		EmitSoundToClient(client, SND_NOPE);
-	}
-	
-	delete itemsToTrade;
-	return Plugin_Handled;
+	return bench.DoTrade(client);
 }

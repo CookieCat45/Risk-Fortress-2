@@ -1,6 +1,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+static StringMap g_hObjectSpawnWeights;
 static CEntityFactory g_Factory;
 methodmap RF2_GameRules < CBaseEntity
 {
@@ -17,6 +18,33 @@ methodmap RF2_GameRules < CBaseEntity
 		}
 		
 		return CEntityFactory.GetFactoryOfEntity(this.index) == g_Factory;
+	}
+	
+	// does not include crates
+	public static void InitObjectSpawnWeights()
+	{
+		if (g_hObjectSpawnWeights)
+			return;
+		
+		g_hObjectSpawnWeights = new StringMap();
+		g_hObjectSpawnWeights.SetValue("rf2_object_workbench", 20);
+		g_hObjectSpawnWeights.SetValue("rf2_object_scrapper", 5);
+		g_hObjectSpawnWeights.SetValue("rf2_object_gravestone", 3);
+		g_hObjectSpawnWeights.SetValue("rf2_object_pedestal", 5);
+		g_hObjectSpawnWeights.SetValue("rf2_object_pumpkin", 1);
+	}
+	
+	public static void SetObjectWeight(const char[] classname, int weight)
+	{
+		if (!g_hObjectSpawnWeights)
+			RF2_GameRules.InitObjectSpawnWeights();
+			
+		g_hObjectSpawnWeights.SetValue(classname, weight);
+	}
+	
+	public static bool RemoveObjectFromSpawnList(const char[] classname)
+	{
+		return g_hObjectSpawnWeights.Remove(classname);
 	}
 	
 	public static void Init()
@@ -52,6 +80,7 @@ methodmap RF2_GameRules < CBaseEntity
 			.DefineInputFunc("SetEnemyGroup", InputFuncValueType_String, Input_SetEnemyGroup)
 			.DefineInputFunc("EnableMinionSpawning", InputFuncValueType_Void, Input_EnableMinionSpawning)
 			.DefineInputFunc("DisableMinionSpawning", InputFuncValueType_Void, Input_DisableMinionSpawning)
+			.DefineInputFunc("RunRF2Command", InputFuncValueType_String, Input_RunRF2Command)
 			.DefineOutput("OnTeleporterEventStart")
 			.DefineOutput("OnTeleporterEventComplete")
 			.DefineOutput("OnTankDestructionStart")
@@ -231,6 +260,9 @@ static void OnCreate(RF2_GameRules gamerules)
 		RF2_Object_Teleporter.GetDefaultTeleModel(teleModel, sizeof(teleModel));
 		gamerules.SetTeleModel(teleModel);
 	}
+	
+	
+	RF2_GameRules.InitObjectSpawnWeights();
 }
 
 public void Input_ForceStartTeleporter(int entity, int activator, int caller, int value)
@@ -240,6 +272,25 @@ public void Input_ForceStartTeleporter(int entity, int activator, int caller, in
 	{
 		teleporter.Prepare();
 	}
+}
+
+public void Input_RunRF2Command(int entity, int activator, int caller, const char[] value)
+{
+	static char command[128], val[1024];
+	strcopy(val, sizeof(val), value);
+	TrimString(val);
+	int split = SplitString(val, " ", command, sizeof(command));
+	if (split == -1)
+	{
+		strcopy(command, sizeof(command), val);
+	}
+	
+	// only allow rf2_ commands
+	TrimString(command);
+	if (StrContains(command, "rf2_") != 0)
+		return;
+		
+	InsertServerCommand(val);
 }
 
 public void Input_TriggerWin(int entity, int activator, int caller, int value)
@@ -404,18 +455,16 @@ int SpawnObjects()
 	float spawnPos[3], nearestPos[3], worldCenter[3], worldMins[3], worldMaxs[3];
 	float spreadDistance = g_cvObjectSpreadDistance.FloatValue;
 	
-	// Need to get the size of the map so we know how far we can spawn objects
+	// get the approximate size of the map so we know how far we can spawn objects
 	GetEntPropVector(0, Prop_Send, "m_WorldMins", worldMins);
 	GetEntPropVector(0, Prop_Send, "m_WorldMaxs", worldMaxs);
 	float length = FloatAbs(worldMins[0]) + FloatAbs(worldMaxs[0]);
 	float width = FloatAbs(worldMins[1]) + FloatAbs(worldMaxs[1]);
 	float distance = SquareRoot(length * width);
-	int worldCenterEnt = GetWorldCenter(worldCenter);
-	if (worldCenterEnt == INVALID_ENT)
+	if (GetWorldCenter(worldCenter) == INVALID_ENT)
 	{
 		char mapName[256];
 		GetCurrentMap(mapName, sizeof(mapName));
-		// minor issue, so only LogMessage
 		LogMessage("Warning! Map %s has no rf2_world_center entity!!", mapName);
 	}
 	
@@ -426,17 +475,7 @@ int SpawnObjects()
 	int strangeWeight = 8;
 	int hauntedWeight = 5;
 	int collectorWeight = 8;
-	
-	// Non-crate object weights are separate
-	int workbenchWeight = 20;
-	int scrapperWeight = 12;
-	int graveWeight = 3;
-	int pumpkinWeight = 1;
-	
-	if (!altar.IsValid())
-	{
-		pumpkinWeight = 0;
-	}
+	int multiWeight = 10;
 	
 	if (g_iStagesCompleted <= 0)
 	{
@@ -445,34 +484,51 @@ int SpawnObjects()
 	
 	char name[128];
 	int count;
-	const int objectCount = 10;
-	for (int i = 1; i <= objectCount; i++)
+	StringMapSnapshot snapshot = g_hObjectSpawnWeights.Snapshot();
+	for (int i = 1; i >= 0; i++)
 	{
-		switch (i-1)
+		int index = i-1;
+		bool notCrate;
+		if (index >= CrateType_Max)
 		{
-			/*
-			* Don't forget to increment objectCount when adding new objects here!!!
-			*/
-
-			case Crate_Normal: count = crateWeight;
-			case Crate_Large: count = largeWeight;
-			case Crate_Strange: count = strangeWeight;
-			case Crate_Haunted: count = hauntedWeight;
-			case Crate_Collectors: count = collectorWeight;
-			case Crate_Unusual: continue; // never spawn naturally
+			index -= CrateType_Max;
+			notCrate = true;
+			if (index >= snapshot.Length)
+			{
+				delete snapshot;
+				break;
+			}
 			
-			// Non-crate objects
-			case CrateType_Max: strcopy(name, sizeof(name), "rf2_object_workbench"), count = workbenchWeight;
-			case CrateType_Max+1: strcopy(name, sizeof(name), "rf2_object_scrapper"), count = scrapperWeight;
-			case CrateType_Max+2: strcopy(name, sizeof(name), "rf2_object_gravestone"), count = graveWeight;
-			case CrateType_Max+3: strcopy(name, sizeof(name), "rf2_object_pumpkin"), count = pumpkinWeight;
+			snapshot.GetKey(index, name, sizeof(name));
+			if (strcmp2(name, "rf2_object_pumpkin") && (!altar.IsValid() || g_iGargoyleKeyCost > 1))
+			{
+				continue;
+			}
+			
+			g_hObjectSpawnWeights.GetValue(name, count);
+		}
+		else
+		{
+			switch (index)
+			{
+				case Crate_Normal: count = crateWeight;
+				case Crate_Large: count = largeWeight;
+				case Crate_Strange: count = strangeWeight;
+				case Crate_Haunted: count = hauntedWeight;
+				case Crate_Collectors: count = collectorWeight;
+				case Crate_Unusual: continue; // never spawn naturally
+				#if !defined DEVONLY
+				case Crate_Weapon: continue;
+				#endif
+				case Crate_Multi: count = multiWeight;
+			}
 		}
 		
-		for (int j = 1; j <= count; j++)
+		for (int a = 1; a <= count; a++)
 		{
-			if (i-1 < CrateType_Max)
+			if (!notCrate)
 			{
-				crateArray.Push(i-1);
+				crateArray.Push(index);
 			}
 			else
 			{
@@ -502,7 +558,9 @@ int SpawnObjects()
 		}
 	}
 	
-	PrintToServer("[RF2] Object Spawn Counts\nCrates: %i (Bonus: %i)\nOther: %i", minCrates+bonusCrates, bonusCrates, spawnCount-minCrates-bonusCrates);
+	PrintToServer("[RF2] Object Spawn Counts\nCrates: %i (Bonus: %i)\nOther: %i", 
+		minCrates+bonusCrates, bonusCrates, spawnCount-minCrates-bonusCrates);
+		
 	int scrapperCount, strangeCrates;
 	int strangeCrateLimit = imax(imin(RoundToCeil(float(minCrates)*0.08), survivorCount), 4);
 	RF2_Object_Crate crate;
@@ -530,11 +588,9 @@ int SpawnObjects()
 			objectArray.GetString(GetRandomInt(0, objectArray.Length-1), name, sizeof(name));
 			if (strcmp2(name, "rf2_object_scrapper"))
 			{
-				scrapperCount++;
 				// Only 3 scrappers
-				if (scrapperCount >= 3)
-					remove = true;
-				
+				scrapperCount++;
+				remove = (scrapperCount >= 3);
 			}
 			else if (strcmp2(name, "rf2_object_gravestone") || strcmp2(name, "rf2_object_pumpkin"))
 			{
@@ -560,6 +616,7 @@ int SpawnObjects()
 		else
 		{
 			crate = SpawnCrate(crateArray.Get(GetRandomInt(0, crateArray.Length-1)), spawnPos, spawns > minCrates);
+			
 			if (crate.Type == Crate_Strange)
 			{
 				strangeCrates++;
@@ -617,14 +674,14 @@ void DespawnObjects(bool force=false)
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "rf2_item")) != INVALID_ENT)
 	{
-		RemoveEntity2(entity);
+		RemoveEntity(entity);
 	}
 	
 	while ((entity = FindEntityByClassname(entity, "rf2_object*")) != INVALID_ENT)
 	{
 		if (force || !RF2_Object_Base(entity).MapPlaced)
 		{
-			RemoveEntity2(entity);
+			RemoveEntity(entity);
 		}
 	}
 }

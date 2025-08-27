@@ -49,6 +49,14 @@ methodmap RF2_Item < CBaseEntity
 		}
 	}
 	
+	property int Quality
+	{
+		public get()
+		{
+			return GetItemQuality(this.Type);
+		}
+	}
+	
 	property bool Dropped
 	{
 		public get()
@@ -148,8 +156,8 @@ methodmap RF2_Item < CBaseEntity
 		FormatEx(worldText, sizeof(worldText), "%s\nCall for Medic to pick up", g_szItemName[this.Type]);
 		text.KeyValue("message", worldText);
 		text.KeyValueFloat("textsize", 6.0);
-		text.KeyValue("orientation", "1");
-		text.KeyValue("rendermode", "9");
+		text.KeyValueInt("orientation", 1);
+		text.KeyValueInt("rendermode", 9);
 		switch (g_iItemQuality[this.Type])
 		{
 			case Quality_Normal:		SetVariantColor({255, 255, 255, 160});
@@ -176,16 +184,23 @@ methodmap RF2_Item < CBaseEntity
 			return;
 		
 		static char worldText[256], ownerText[128];
+		float ownTime;
 		ownerText = "";
 		if (IsValidClient(this.Owner))
 		{
+			static char numString[16];
+			ownTime = this.OwnTime;
+			if (ownTime > 0.0)
+			{
+				FormatEx(numString, sizeof(numString), " [%.0f]", ownTime);
+			}
 			if (IsValidClient(this.Subject))
 			{
-				FormatEx(ownerText, sizeof(ownerText), "(Belongs to %N - Dropped for %N [%.0f])\n", this.Owner, this.Subject, this.OwnTime);
+				FormatEx(ownerText, sizeof(ownerText), "(Belongs to %N - Dropped for %N%s)\n", this.Owner, this.Subject, numString);
 			}
 			else
 			{
-				FormatEx(ownerText, sizeof(ownerText), "(Belongs to %N [%.0f])\n", this.Owner, this.OwnTime);
+				FormatEx(ownerText, sizeof(ownerText), "(Belongs to %N%s)\n", this.Owner, numString);
 			}
 		}
 		
@@ -252,7 +267,7 @@ static void OnCreate(RF2_Item item)
 	item.OriginalOwner = INVALID_ENT;
 	item.Subject = INVALID_ENT;
 	item.WorldText = INVALID_ENT;
-	item.KeyValue("rendermode", "9");
+	item.KeyValueInt("rendermode", 9);
 	SDKHook(item.index, SDKHook_Spawn, OnSpawn); // should wait for item index to be set
 }
 
@@ -337,7 +352,7 @@ public Action Timer_UpdateItems(Handle timer)
 		{
 			if (IsValidEntity2(item.WorldText))
 			{
-				RemoveEntity2(item.WorldText);
+				RemoveEntity(item.WorldText);
 				item.WorldText = INVALID_ENT;
 			}
 			
@@ -374,6 +389,10 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, f
 			CopyVectors(pos, pos2);
 			pos2[2] += 50.0;
 			ShowAnnotation(subject, pos2, text, 8.0, INVALID_ENT, item.index);
+			if (IsFakeClient(subject))
+			{
+				TFBot(subject).RemoveFlag(TFBOTFLAG_DONESCAVENGING);
+			}
 		}
 	}
 	
@@ -402,45 +421,55 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, f
 		int index = RF2_GetSurvivorIndex(client);
 		if (GetItemQuality(type) == Quality_Unusual)
 		{
-			g_iItemsTaken[index] -= 3;
+			g_iPlayerItemsTaken[index] -= 3;
 		}
 		else
 		{
-			g_iItemsTaken[index]--;
+			g_iPlayerItemsTaken[index]--;
 		}
 		
-		g_iItemsTaken[index] = imax(0, g_iItemsTaken[index]);
+		g_iPlayerItemsTaken[index] = imax(0, g_iPlayerItemsTaken[index]);
 	}
 	
 	return item;
 }
 
-bool PickupItem(int client)
+bool PickupItem(int client, int forcedEnt=INVALID_ENT)
 {
-	if (g_flPlayerTimeSinceLastItemPickup[client]+0.2 > GetTickedTime())
+	if (g_flPlayerTimeSinceLastItemPickup[client]+0.1 > GetTickedTime())
 		return false;
 	
-	RF2_Item item = GetItemInPickupRange(client);
-	if (item.IsValid())
+	RF2_Item item;
+	if (forcedEnt != INVALID_ENT)
 	{
-		bool itemShare = IsItemSharingEnabled();
-		int survivorIndex = RF2_GetSurvivorIndex(client);
-		int type = item.Type;
-		int quality = GetItemQuality(item.Type);
-		bool dropped = item.Dropped;
-		
-		// hotfix
-		if (GetPlayersOnTeam(TEAM_SURVIVOR, false, false) <= 1)
-		{
-			g_iItemLimit[survivorIndex] = 0;
-		}
-		
+		item = RF2_Item(forcedEnt);
+	}
+	else
+	{
+		item = GetItemInPickupRange(client);
+	}
+	
+	if (!item.IsValid())
+		return false;
+	
+	int survivorIndex = RF2_GetSurvivorIndex(client);
+	int type = item.Type;
+	int quality = GetItemQuality(item.Type);
+	bool dropped = item.Dropped;
+	
+	// hotfix
+	if (survivorIndex != -1 && GetPlayersOnTeam(TEAM_SURVIVOR, false, false) <= 1)
+	{
+		g_iPlayerItemLimit[survivorIndex] = 0;
+	}
+	
+	if (survivorIndex != -1) // might be a scavenger picking this up
+	{
 		// Strange items do not count towards the limit.
-		if (itemShare && g_iItemLimit[survivorIndex] > 0 && (!dropped || !item.BelongsToPlayer(client, true))
-			&& g_iItemsTaken[survivorIndex] >= g_iItemLimit[survivorIndex] && !IsEquipmentItem(type))
+		if (IsAtItemShareLimit(client) && !IsEquipmentItem(type) && (!dropped || !item.BelongsToPlayer(client, true)))
 		{
 			EmitSoundToClient(client, SND_NOPE);
-			PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[survivorIndex]);
+			PrintCenterText(client, "%t", "ItemShareLimit", g_iPlayerItemLimit[survivorIndex]);
 			return true;
 		}
 		
@@ -450,82 +479,80 @@ bool PickupItem(int client)
 			PrintCenterText(client, "%t", "NotForYou");
 			return true;
 		}
-		
-		if (quality == Quality_Collectors)
-		{
-			g_bPlayerTookCollectorItem[client] = true;
-		}
-		
-		GiveItem(client, type, 1, true);
-		RemoveEntity2(item.index);
-		ShowItemDesc(client, type);
-		char qualityTag[32], itemName[128], qualityName[32];
-		GetItemName(type, itemName, sizeof(itemName));
-		GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
-		GetQualityName(quality, qualityName, sizeof(qualityName));
-		
-		if (type == Item_HorrificHeadsplitter)
-		{
-			TriggerAchievement(client, ACHIEVEMENT_HEADSPLITTER);
-		}
-		
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (IsClientInGame(i) && !IsFakeClient(i) && !GetCookieBool(i, g_coDisableItemMessages))
-			{
-				if (IsEquipmentItem(type))
-				{
-					RF2_PrintToChat(i, "%t", "PickupItemStrange", client, qualityTag, itemName);
-				}
-				else
-				{
-					RF2_PrintToChat(i, "%t", "PickupItem", client, qualityTag, itemName, GetPlayerItemCount(client, type, true));
-				}
-			}
-		}
-		
-		EmitSoundToAll(SND_ITEM_PICKUP, client);
-		if (!dropped || item.BelongsToPlayer(client) && client != item.Subject)
-		{
-			if (!dropped)
-				g_iTotalItemsFound++;
-			
-			if (!IsEquipmentItem(type))
-			{
-				if (quality == Quality_Unusual)
-				{
-					g_iItemsTaken[survivorIndex] += 3;
-				}
-				else
-				{
-					g_iItemsTaken[survivorIndex]++;
-				}
-				
-				// Notify our player that they've reached their limit.
-				if (itemShare && g_iItemLimit[survivorIndex] > 0 && g_iItemsTaken[survivorIndex] >= g_iItemLimit[survivorIndex])
-				{
-					PrintCenterText(client, "%t", "ItemShareLimit", g_iItemLimit[survivorIndex]);
-				}
-			}
-		}
-		
-		if (g_bPlayerViewingItemMenu[client])
-		{
-			ShowItemMenu(client);
-		}
-		
-		if (!GetCookieBool(client, g_coTutorialItemPickup))
-		{
-			PrintKeyHintText(client, "%t", "ItemPickupTutorial2");
-			CreateTimer(13.0, Timer_ItemPickupTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-			
-		}
-		
-		g_flPlayerTimeSinceLastItemPickup[client] = GetTickedTime();
-		return true;
 	}
 	
-	return false;
+	if (quality == Quality_Collectors)
+	{
+		g_bPlayerTookCollectorItem[client] = true;
+	}
+	
+	GiveItem(client, type, 1, true);
+	RemoveEntity(item.index);
+	ShowItemDesc(client, type);
+	char qualityTag[32], itemName[128], qualityName[32];
+	GetItemName(type, itemName, sizeof(itemName));
+	GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
+	GetQualityName(quality, qualityName, sizeof(qualityName));
+	if (survivorIndex != -1 && type == Item_HorrificHeadsplitter)
+	{
+		TriggerAchievement(client, ACHIEVEMENT_HEADSPLITTER);
+	}
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && !IsFakeClient(i) && !GetCookieBool(i, g_coDisableItemMessages))
+		{
+			if (IsEquipmentItem(type))
+			{
+				RF2_PrintToChat(i, "%t", GetClientTeam(client) == TEAM_ENEMY ? "PickupItemStrangeEnemy" : "PickupItemStrange", 
+					client, qualityTag, itemName);
+			}
+			else
+			{
+				RF2_PrintToChat(i, "%t", GetClientTeam(client) == TEAM_ENEMY ? "PickupItemEnemy" : "PickupItem", 
+					client, qualityTag, itemName, GetPlayerItemCount(client, type, true));
+			}
+		}
+	}
+	
+	EmitSoundToAll(SND_ITEM_PICKUP, client);
+	if (survivorIndex != -1 && (!dropped || item.BelongsToPlayer(client) && client != item.Subject))
+	{
+		if (!dropped)
+			g_iTotalItemsFound++;
+		
+		if (!IsEquipmentItem(type))
+		{
+			if (quality == Quality_Unusual)
+			{
+				g_iPlayerItemsTaken[survivorIndex] += 3;
+			}
+			else
+			{
+				g_iPlayerItemsTaken[survivorIndex]++;
+			}
+			
+			// Notify our player that they've reached their limit.
+			if (IsAtItemShareLimit(client))
+			{
+				PrintCenterText(client, "%t", "ItemShareLimit", g_iPlayerItemLimit[survivorIndex]);
+			}
+		}
+	}
+	
+	if (survivorIndex != -1 && g_bPlayerViewingItemMenu[client])
+	{
+		ShowItemMenu(client);
+	}
+	
+	if (survivorIndex != -1 && !GetCookieBool(client, g_coTutorialItemPickup))
+	{
+		PrintKeyHintText(client, "%t", "ItemPickupTutorial2");
+		CreateTimer(13.0, Timer_ItemPickupTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	}
+	
+	g_flPlayerTimeSinceLastItemPickup[client] = GetTickedTime();
+	return true;
 }
 
 static void Timer_ItemPickupTutorial(Handle timer, int client)

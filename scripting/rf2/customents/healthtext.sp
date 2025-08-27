@@ -189,7 +189,7 @@ public void RF_UpdateText(int entity)
 	RF2_HealthText text = RF2_HealthText(entity);
 	if (!IsValidEntity2(text.Target))
 	{
-		RemoveEntity2(text.index);
+		RemoveEntity(text.index);
 		return;
 	}
 	
@@ -199,7 +199,7 @@ public void RF_UpdateText(int entity)
 	{
 		if (!IsPlayerAlive(target.index))
 		{
-			RemoveEntity2(text.index);
+			RemoveEntity(text.index);
 			return;
 		}
 	}

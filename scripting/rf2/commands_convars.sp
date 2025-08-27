@@ -31,7 +31,10 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_tp_to_altar", Command_AltarTeleport, ADMFLAG_SLAY, "Teleports to an altar if one exists");
 	RegAdminCmd("rf2_view_afk_times", Command_ViewAFKTimes, ADMFLAG_SLAY, "View player AFK times");
 	RegAdminCmd("rf2_trigger_achievement", Command_TriggerAchievement, ADMFLAG_SLAY, "Trigger an achievement for a player. /rf2_trigger_achievement <player> <achievement ID>");
-
+	RegAdminCmd("rf2_load_enemies", Command_LoadEnemies, ADMFLAG_ROOT, "Loads an enemy configuration file.");
+	RegAdminCmd("rf2_load_bosses", Command_LoadBosses, ADMFLAG_ROOT, "Loads a boss configuration file.");
+	RegAdminCmd("rf2_changeteam", Command_ChangeTeam, ADMFLAG_SLAY);
+	
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
 	RegConsoleCmd("rf2_endlevel", Command_EndLevel, "Starts the vote to end the level in Tank Destruction mode.");
@@ -52,7 +55,10 @@ void LoadCommandsAndCvars()
 	RegConsoleCmd("rf2_help", Command_HelpMenu, "Shows the help menu.");
 	RegConsoleCmd("rf2_menu", Command_HelpMenu, "Shows the help menu.");
 	RegConsoleCmd("rf2", Command_HelpMenu, "Shows the help menu.");
+	RegConsoleCmd("rf2_forfeit_items", Command_ForfeitItems, "Forfeit all of your items to others in multiplayer.");
+	RegConsoleCmd("rf2_forfeit", Command_ForfeitItems, "Forfeit all of your items to others in multiplayer.");
 	
+	CreateConVar("rf2_plugin_version", PLUGIN_VERSION, "Plugin version. Don't touch this please.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	char buffer[8];
 	IntToString(MAX_SURVIVORS, buffer, sizeof(buffer));
 	g_cvMaxSurvivors = CreateConVar("rf2_max_survivors", buffer, "Max number of Survivors that can be in the game.", FCVAR_NOTIFY, true, 1.0, true, float(MAX_SURVIVORS));
@@ -87,8 +93,14 @@ void LoadCommandsAndCvars()
 	g_cvEnemyMaxSpawnWaveCount = CreateConVar("rf2_enemy_spawn_max_count", "8", "The absolute maximum amount of enemies that can spawn in a single spawn wave.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyMinSpawnWaveTime = CreateConVar("rf2_enemy_spawn_min_wave_time", "2.0", "The minimum amount of time that must pass between enemy spawn waves.", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnemyBaseSpawnWaveTime = CreateConVar("rf2_enemy_spawn_base_wave_time", "30.0", "The base amount of time that passes between spawn waves. Affected by many different factors.", FCVAR_NOTIFY, true, 0.1);
-	g_cvEnemyPowerupLevel = CreateConVar("rf2_enemy_powerup_level", "100", "The level at which enemies will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
-	g_cvBossPowerupLevel = CreateConVar("rf2_boss_powerup_level", "300", "The level at which bosses will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
+	g_cvEnemyPowerupLevel = CreateConVar("rf2_enemy_powerup_level", "10", "The level at which enemies will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
+	g_cvBossPowerupLevel = CreateConVar("rf2_boss_powerup_level", "100", "The level at which bosses will begin having a chance to gain Mannpower powerups on spawn. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
+	g_cvPowerupLevelChanceMult = CreateConVar("rf2_powerup_chance_mult", "30", "The formula for the chance of an enemy spawning with a powerup is N in (P*this) where N is enemy level and P is powerup level.");
+	g_cvPowerupRegenLevel = CreateConVar("rf2_enemy_powerup_regen_level", "0");
+	g_cvPowerupHasteLevel = CreateConVar("rf2_enemy_powerup_haste_level", "20");
+	g_cvPowerupVampireLevel = CreateConVar("rf2_enemy_powerup_vampire_level", "35");
+	g_cvPowerupResistLevel = CreateConVar("rf2_enemy_powerup_resist_level", "50");
+	g_cvPowerupStrengthLevel = CreateConVar("rf2_enemy_powerup_strength_level", "80");
 	g_cvBossStabDamageType = CreateConVar("rf2_boss_backstab_damage_type", "0", "Determines how bosses take backstab damage. 0 - raw damage. 1 - percentage.\nBoth benefit from any damage bonuses, excluding crits.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamagePercent = CreateConVar("rf2_boss_backstab_damage_percentage", "0.12", "If rf2_boss_backstab_damage_type is 1, how much health, in decimal percentage, is subtracted from the boss upon backstab.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamageAmount = CreateConVar("rf2_boss_backstab_damage_multiplier", "750.0", "If rf2_boss_backstab_damage_type is 0, the base damage that is dealt to a boss upon backstab.", FCVAR_NOTIFY, true, 0.0);
@@ -104,12 +116,13 @@ void LoadCommandsAndCvars()
 	g_cvItemShareDisableLoopCount = CreateConVar("rf2_item_share_disable_loop_count", "0", "Disable item sharing after this many loops if rf2_item_share_enabled is set to 1. 0 to disable.", FCVAR_NOTIFY, true, 0.0);
 	g_cvItemShareDisableThreshold = CreateConVar("rf2_item_share_disable_threshold", "0.6", "If rf2_item_share_enabled is set to 1, disable item sharing after all players have filled at least this much of their item cap. 0 to disable.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvItemShareMaxTime = CreateConVar("rf2_item_share_max_time", "50.0", "If a player hasn't picked up a new item after this many seconds, they will be ignored by the item share system.", FCVAR_NOTIFY, true, 0.0);
-	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "6000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
-	g_cvTankHealthScale = CreateConVar("rf2_tank_health_scale", "0.1", "How much a Tank's health will scale per enemy level, in decimal percentage.");
-	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "75.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);
+	g_cvTankBaseHealth = CreateConVar("rf2_tank_base_health", "5000", "The base health value of a Tank.", FCVAR_NOTIFY, true, 1.0);
+	g_cvTankHealthScale = CreateConVar("rf2_tank_health_scale", "0.08", "How much a Tank's health will scale per enemy level, in decimal percentage.");
+	g_cvTankBaseSpeed = CreateConVar("rf2_tank_base_speed", "65.0", "The base speed value of a Tank.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTankSpeedBoost = CreateConVar("rf2_tank_speed_boost", "1.5", "When a Tank falls below 50 percent health, speed it up by this much if the difficulty is above or equal to rf2_tank_boost_difficulty.", FCVAR_NOTIFY, true, 1.0);
 	g_cvTankBoostHealth = CreateConVar("rf2_tank_boost_health_threshold", "0.5", "If the Tank can gain a speed boost, do so when it falls below this much health.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvTankBoostDifficulty = CreateConVar("rf2_tank_boost_difficulty", "2", "For a Tank to gain a speed boost on lower health, the difficulty (not sub difficulty) level must be at least this value.", FCVAR_NOTIFY, true, 0.0, true, float(DIFFICULTY_TITANIUM));
+	g_cvTankBoostDifficulty = CreateConVar("rf2_tank_boost_difficulty", "2", "For a Tank to gain a speed boost on lower health, the difficulty (not sub difficulty) level must be at least this value.", FCVAR_NOTIFY, true, 0.0, true, float(DIFFICULTY_MAX-1));
+	g_cvTankSpawnCap = CreateConVar("rf2_tank_spawn_cap", "12", "Maximum number of tanks that can spawn in Tank Destruction mode", FCVAR_NOTIFY, true, 1.0);
 	g_cvSurvivorQuickBuild = CreateConVar("rf2_survivor_quick_build", "1", "If nonzero, Survivor team Engineer buildings will deploy instantly", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvEnemyQuickBuild = CreateConVar("rf2_enemy_quick_build", "1", "If nonzero, enemy team Engineer buildings will deploy instantly", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvMeleeCritChanceBonus = CreateConVar("rf2_melee_crit_chance_bonus", "1.0", "Critical hit chance bonus for melee weapons.", FCVAR_NOTIFY, true, 0.0);
@@ -122,15 +135,25 @@ void LoadCommandsAndCvars()
 	g_cvWaitExtendTime = CreateConVar("rf2_wait_extend_time", "600", "If the vote to extend Waiting for Players passes, extend the wait time to this in seconds. 0 to disable extending.", FCVAR_NOTIFY, true, 0.0);
 	g_cvRequiredStagesForStatue = CreateConVar("rf2_statue_required_stages", "10", "How many stages need to be completed before being able to interact with the statue in the Underworld", FCVAR_NOTIFY, true, 0.0);
 	g_cvEnableOneShotProtection = CreateConVar("rf2_enable_osp", "1", "Enables one-shot protection for Survivors. If a Survivor is at or above 90% of their health, they cannot die to a single instance of damage.", FCVAR_NOTIFY, true, 0.0);
-	CreateConVar("rf2_plugin_version", PLUGIN_VERSION, "Plugin version. Don't touch this please.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	g_cvOldGiantFootsteps = CreateConVar("rf2_use_old_giant_footsteps", "0", "Uses the old system for giant footstep sounds (unused footstep sounds instead of giant_common_step)", FCVAR_NOTIFY, true, 0.0);
+	g_cvPlayerAbsenceLimit = CreateConVar("rf2_player_absence_limit", "2", "How many times a player is allowed to be absent at the start of a map before their inventory is forfeited automatically", FCVAR_NOTIFY, true, 0.0);
+	g_cvMinStagesClearedToForfeit = CreateConVar("rf2_forfeit_min_stages_cleared", "2", "If the player was not present at the beginning of the run, number of stages that they need to clear before being allowed to forfeit", FCVAR_NOTIFY, true, 0.0);
+	g_cvScavengerLordSpawnLevel = CreateConVar("rf2_scavenger_lord_spawn_level", "120", "Minimum enemy level required before the Scavenger Lord is able to spawn. 0 prevents him from spawning at all.", FCVAR_NOTIFY, true, 0.0);
+	g_cvScavengerLordMaxItems = CreateConVar("rf2_scavenger_lord_max_items", "750", "Maximum number of items the Scavenger Lord can spawn with.", FCVAR_NOTIFY, true, 0.0);
+	g_cvScavengerLordLevelItemRatio = CreateConVar("rf2_scavenger_lord_level_item_ratio", "4", "The level ratio for how many items the Scavenger Lord will have (1 per N levels)", FCVAR_NOTIFY, true, 1.0);
+	g_cvServerStarted = CreateConVar("rf2_server_started", "0", _, FCVAR_HIDDEN|FCVAR_DONTRECORD);
+	g_cvStage1StartingMap = CreateConVar("rf2_stage1_starting_map", "1", "Ensures that the server always boots on a random Stage 1 map.", _, true, 0.0);
+	g_cvAggressiveRestarting = CreateConVar("rf2_aggressive_server_restarting", "1", "If enabled, restarts the server more frequently to avoid memory leaks");
+	g_cvGamePlayedCount = CreateConVar("rf2_games_played", "0", _, FCVAR_HIDDEN|FCVAR_DONTRECORD);
+	g_cvEnableGiantPainSounds = CreateConVar("rf2_enable_giant_pain_sounds", "", "Enables giant robot pain voices", FCVAR_NOTIFY, true, 0.0);
 	
 	// Debug
 	RegAdminCmd("rf2_hiddenslot_test", Command_TestHiddenSlot, ADMFLAG_ROOT);
 	RegAdminCmd("rf2_debug_simulate_crash", Command_SimulateCrash, ADMFLAG_ROOT, "Kicks a player and tells the plugin that they crashed. Used to test the crash protection system.");
 	RegAdminCmd("rf2_debug_entitycount", Command_EntityCount, ADMFLAG_SLAY, "Shows the total number of networked entities (edicts) in the server.");
-	RegAdminCmd("rf2_debug_thriller_test", Command_ThrillerTest, ADMFLAG_ROOT, "\"Darkness falls across the land, the dancing hour is close at hand...\"");
 	RegAdminCmd("rf2_debug_unlock_achievements", Command_UnlockAllAchievements, ADMFLAG_ROOT, "Unlocks every achievement.");
-	RegAdminCmd("rf2_transfer_cookies_to_sql", Command_CookiesToSQL, ADMFLAG_ROOT, "Transfers the achievement and item log cookie data to SQL for all players.");
+	RegAdminCmd("rf2_debug_dropped_weapon_test", Command_DroppedWeaponTest, ADMFLAG_SLAY);
+	RegAdminCmd("rf2_debug_scavenger_lord", Command_SpawnScavengerLord, ADMFLAG_SLAY);
 	g_cvDebugNoMapChange = CreateConVar("rf2_debug_skip_map_change", "0", "If nonzero, prevents the map from changing on round end.", FCVAR_NOTIFY, true, 0.0);
 	g_cvDebugShowObjectSpawns = CreateConVar("rf2_debug_show_object_spawns", "0", "If nonzero, when an object spawns, its name and location will be printed to the console.", FCVAR_NOTIFY, true, 0.0);
 	g_cvDebugDontEndGame = CreateConVar("rf2_debug_dont_end_game", "0", "If nonzero, don't end the game if all of the survivors die.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -162,7 +185,7 @@ public Action Command_FullyReloadRF2(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	ReloadPlugin(true);
+	ReloadPlugin();
 	return Plugin_Handled;
 }
 
@@ -236,7 +259,7 @@ public Action Command_GiveItem(int client, int args)
 	}
 	
 	char clientName[MAX_TARGET_LENGTH], colour[32];
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	int newAmount;
 	bool multiLanguage;
 	
@@ -260,7 +283,7 @@ public Action Command_GiveItem(int client, int args)
 			if (IsPlayerSurvivor(clients[i]))
 			{
 				// count towards item share for debugging purposes
-				g_iItemsTaken[RF2_GetSurvivorIndex(clients[i])] += amount;
+				g_iPlayerItemsTaken[RF2_GetSurvivorIndex(clients[i])] += amount;
 			}
 			
 			if (IsEquipmentItem(item))
@@ -306,7 +329,7 @@ public Action Command_GiveAllItems(int client, int args)
 	}
 	
 	char clientName[MAX_TARGET_LENGTH];
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	bool multiLanguage;
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
 	
@@ -364,7 +387,7 @@ public Action Command_GiveCash(int client, int args)
 	float amount = GetCmdArgFloat(2);
 	
 	char clientName[MAX_TARGET_LENGTH];
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	bool multiLanguage;
 	
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
@@ -377,12 +400,7 @@ public Action Command_GiveCash(int client, int args)
 	{
 		for (int i = 0; i < matches; i++)
 		{
-			if (!IsPlayerSurvivor(clients[i]))
-			{
-				RF2_ReplyToCommand(client, "%t", "NotASurvivor", clients[i]);
-				continue;
-			}
-			else if (!IsPlayerAlive(clients[i]))
+			if (!IsPlayerAlive(clients[i]))
 			{
 				RF2_ReplyToCommand(client, "%t", "IsDead", clients[i]);
 				continue;
@@ -427,7 +445,7 @@ public Action Command_GiveXP(int client, int args)
 	}
 	
 	char clientName[MAX_TARGET_LENGTH];
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	bool multiLanguage;
 	
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
@@ -613,7 +631,7 @@ public Action Command_VoteSkipWait(int client, int args)
 				vote.AddItem("Yes", "Yes");
 				vote.AddItem("No", "No");
 				vote.ExitButton = false;
-				int clients[MAXTF2PLAYERS];
+				int clients[MAXPLAYERS];
 				int clientCount;
 				for (int i = 1; i <= MaxClients; i++)
 				{
@@ -699,7 +717,7 @@ public Action Command_ExtendWait(int client, int args)
 			vote.AddItem("Yes", "Yes");
 			vote.AddItem("No", "No");
 			vote.ExitButton = false;
-			int clients[MAXTF2PLAYERS];
+			int clients[MAXPLAYERS];
 			int clientCount;
 			for (int i = 1; i <= MaxClients; i++)
 			{
@@ -850,7 +868,7 @@ void ShowItemLogbook(int client, int position=0)
 {
 	Menu logbook = new Menu(Menu_ItemLog);
 	char info[16], display[MAX_NAME_LENGTH], quality[32];
-	ArrayList items = GetSortedItemList(_, _, _, true);
+	ArrayList items = GetSortedItemList(_, _, _, true, false);
 	int item, count;
 	for (int i = 0; i < items.Length; i++)
 	{
@@ -1149,7 +1167,7 @@ public Action Command_AddPoints(int client, int args)
 	char arg1[32];
 	
 	char clientName[MAX_TARGET_LENGTH];
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	bool multiLanguage;
 	
 	GetCmdArg(1, arg1, sizeof(arg1)); // player(s)
@@ -1203,26 +1221,6 @@ public Action Command_StartTeleporterEvent(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action Command_ThrillerTest(int client, int args)
-{
-	if (!RF2_IsEnabled())
-	{
-		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
-		return Plugin_Handled;
-	}
-	
-	if (client == 0)
-	{
-		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
-		return Plugin_Handled;
-	}
-	
-	float eyePos[3];
-	GetClientEyePosition(client, eyePos);
-	StartThrillerDance(eyePos);
-	return Plugin_Handled;
-}
-
 public Action Command_ForceBoss(int client, int args)
 {
 	if (!RF2_IsEnabled())
@@ -1237,7 +1235,7 @@ public Action Command_ForceBoss(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	ShowBossSpawnMenu(client);
+	ShowBossSpawnMenu(client, asBool(GetCmdArgInt(1)));
 	return Plugin_Handled;
 }
 
@@ -1255,15 +1253,24 @@ public Action Command_ForceEnemy(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	ShowEnemySpawnMenu(client);
+	ShowEnemySpawnMenu(client, asBool(GetCmdArgInt(1)));
 	return Plugin_Handled;	
 }
 
-void ShowBossSpawnMenu(int client)
+void ShowBossSpawnMenu(int client, bool asSelf=false)
 {
 	Menu menu = new Menu(Menu_SpawnBoss);
 	char buffer[128], info[16], bossName[256];
 	menu.SetTitle("%T", "SpawnAs", client);
+	if (asSelf)
+	{
+		menu.AddItem("1", "Spawning as self", ITEMDRAW_DISABLED);
+	}
+	else
+	{
+		menu.AddItem("0", "Spawning a robot (pass 1 to the command to spawn as self)", ITEMDRAW_DISABLED);
+	}
+
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
 		if (!EnemyByIndex(i).IsBoss)
@@ -1284,10 +1291,11 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 	{
 		case MenuAction_Select:
 		{
-			char info[8];
+			char info[8], self[4];
 			menu.GetItem(param2, info, sizeof(info));
 			int type = StringToInt(info);
-			int target = GetRandomPlayer(TEAM_ENEMY, false);
+			menu.GetItem(0, self, sizeof(self));
+			int target = self[0] == '1' ? param1 : GetRandomPlayer(TEAM_ENEMY, false);
 			if (!IsValidClient(target))
 			{
 				target = GetRandomPlayer(TEAM_ENEMY, true);
@@ -1296,14 +1304,19 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 			if (IsValidClient(target))
 			{
 				RefreshClient(target);
-				float pos[3];
-				GetEntPos(param1, pos);
+				float pos[3], endPos[3], angles[3];
+				GetClientEyePosition(param1, pos);
+				GetClientEyeAngles(param1, angles);
+				TR_TraceRayFilter(pos, angles, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
+				TR_GetEndPosition(endPos);
+				endPos[2] += 50.0;
 				char bossName[256];
 				
 				if (g_bGracePeriod)
 					EndGracePeriod();
 
 				SpawnBoss(target, type, pos, false, 0.0, 3000.0);
+				TeleportEntity(target, endPos);
 				EnemyByIndex(type).GetName(bossName, sizeof(bossName));
 				RF2_PrintToChat(param1, "%t", "SpawnedBoss", bossName);
 			}
@@ -1322,11 +1335,20 @@ public int Menu_SpawnBoss(Menu menu, MenuAction action, int param1, int param2)
 	return 0;
 }
 
-void ShowEnemySpawnMenu(int client)
+void ShowEnemySpawnMenu(int client, bool asSelf=false)
 {
 	Menu menu = new Menu(Menu_SpawnEnemy);
 	char buffer[128], info[16], enemyName[256];
 	menu.SetTitle("%T", "SpawnAs", client);
+	if (asSelf)
+	{
+		menu.AddItem("1", "Spawning as self", ITEMDRAW_DISABLED);
+	}
+	else
+	{
+		menu.AddItem("0", "Spawning a robot (pass 1 to the command to spawn as self)", ITEMDRAW_DISABLED);
+	}
+	
 	for (int i = 0; i < GetEnemyCount(); i++)
 	{
 		if (EnemyByIndex(i).IsBoss)
@@ -1347,10 +1369,11 @@ public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
 	{
 		case MenuAction_Select:
 		{
-			char info[8];
+			char info[8], self[4];
 			menu.GetItem(param2, info, sizeof(info));
 			int type = StringToInt(info);
-			int target = GetRandomPlayer(TEAM_ENEMY, false);
+			menu.GetItem(0, self, sizeof(self));
+			int target = strcmp2(self, "1") ? param1 : GetRandomPlayer(TEAM_ENEMY, false);
 			if (!IsValidClient(target))
 			{
 				target = GetRandomPlayer(TEAM_ENEMY, true);
@@ -1359,14 +1382,18 @@ public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
 			if (IsValidClient(target))
 			{
 				RefreshClient(target);
-				float pos[3];
-				GetEntPos(param1, pos);
-				char enemyName[256];
-
+				float pos[3], endPos[3], angles[3];
+				GetClientEyePosition(param1, pos);
+				GetClientEyeAngles(param1, angles);
+				TR_TraceRayFilter(pos, angles, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
+				TR_GetEndPosition(endPos);
+				endPos[2] += 25.0;
 				if (g_bGracePeriod)
 					EndGracePeriod();
-
+				
 				SpawnEnemy(target, type, pos, 0.0, 3000.0);
+				TeleportEntity(target, endPos);
+				char enemyName[256];
 				EnemyByIndex(type).GetName(enemyName, sizeof(enemyName));
 				RF2_PrintToChat(param1, "%t", "SpawnedEnemy", enemyName);
 			}
@@ -1434,15 +1461,11 @@ public Action Command_AFK(int client, int args)
 	{
 		if (g_bGracePeriod)
 		{
-			if (!IsSingleplayer())
-			{
-				ReshuffleSurvivor(client, view_as<int>(TFTeam_Spectator));
-			}
-			else
+			if (IsSingleplayer())
 			{
 				return Plugin_Handled;
 			}
-			
+
 			RefreshClient(client, true);
 			CheckRedTeam(client);
 		}
@@ -1499,6 +1522,9 @@ void ShowClientSettingsMenu(int client)
 		FormatEx(buffer, sizeof(buffer), "%t", "ToggleTeleBoss", GetCookieBool(client, g_coBecomeBoss) ? on : off);
 		menu.AddItem("rf2_become_boss", buffer);
 	}
+	
+	FormatEx(buffer, sizeof(buffer), "%t", "AltItemMenuButton", GetCookieBool(client, g_coAltItemMenuButton) ? on : off);
+	menu.AddItem("rf2_alt_item_menu_button", buffer);
 	
 	FormatEx(buffer, sizeof(buffer), "%t", "SpecOnDeath", GetCookieBool(client, g_coSpecOnDeath) ? on : off);
 	menu.AddItem("rf2_spec_on_death", buffer);
@@ -1592,7 +1618,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 	if (IsItemSharingEnabled() && target != inspectTarget)
 	{
 		int index = RF2_GetSurvivorIndex(target);
-		menu.SetTitle("%t", "YourItemsShareEnabled", g_iItemsTaken[index], g_iItemLimit[index]);
+		menu.SetTitle("%t", "YourItemsShareEnabled", g_iPlayerItemsTaken[index], g_iPlayerItemLimit[index]);
 	}
 	else
 	{
@@ -1737,10 +1763,10 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 			ReplaceStringEx(itemIndex, sizeof(itemIndex), "_", ""); // Item index
 			int item = StringToInt(itemIndex);
 			
-			if (GetPlayerDroppedItemCount(param1) >= 100)
+			if (GetPlayerDroppedItemCount(param1) >= 25)
 			{
 				EmitSoundToClient(param1, SND_NOPE);
-				PrintCenterText(param1, "You've dropped too many items at once!");
+				PrintCenterText(param1, "%t", "TooManyDrops");
 			}
 			else if (StringToInt(info) == 0) // 0 means we don't care
 			{
@@ -1800,7 +1826,6 @@ public Action Command_SetDifficulty(int client, int args)
 	
 	char name[32];
 	int level = GetCmdArgInt(1);
-	
 	if (level < DIFFICULTY_SCRAP || level >= DIFFICULTY_MAX)
 	{
 		RF2_ReplyToCommand(client, "%t", "InvalidDifficulty");
@@ -1809,7 +1834,6 @@ public Action Command_SetDifficulty(int client, int args)
 	
 	SetDifficultyLevel(level);
 	GetDifficultyName(level, name, sizeof(name));
-	
 	RF2_PrintToChatAll("%t", "DifficultySetBy", client, name);
 	return Plugin_Handled;
 }
@@ -1837,7 +1861,7 @@ public Action Command_MakeSurvivor(int client, int args)
 	
 	char arg1[16], clientName[MAX_NAME_LENGTH];
 	bool multiLanguage;
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
@@ -2067,6 +2091,70 @@ public int Menu_Tutorial(Menu menu, MenuAction action, int param1, int param2)
 	return 0;
 }
 
+public Action Command_ForfeitItems(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	if (!g_bRoundActive)
+	{
+		RF2_ReplyToCommand(client, "%t", "WaitForRoundStart");
+		return Plugin_Handled;
+	}
+	
+	if (g_bDisableItemDropping || !IsPlayerSurvivor(client, false) || IsSingleplayer(false))
+	{
+		RF2_ReplyToCommand(client, "%t", "CannotBeUsed");
+		return Plugin_Handled;
+	}
+	
+	int invIndex = g_iPlayerInventoryIndex[client];
+	if (!IsInventoryAllowedToForfeit(invIndex))
+	{
+		RF2_ReplyToCommand(client, "Since you were not present at the beginning of this run, you need to clear at least {yellow}%d{default} more stages to use this command.", 
+			g_cvMinStagesClearedToForfeit.IntValue-g_iSaveDataCompletedStages[invIndex]);
+	}
+	
+	Menu confirm = new Menu(Menu_ForfeitConfirm);
+	confirm.SetTitle("!!! You are about to COMPLETELY EMPTY YOUR ENTIRE INVENTORY and give all of your items to other players !!!\nAre you absolutely sure you want to do this?");
+	confirm.AddItem("y", "Yes");
+	confirm.AddItem("n", "No");
+	confirm.Display(client, MENU_TIME_FOREVER);
+	return Plugin_Handled;
+}
+
+public int Menu_ForfeitConfirm(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_Select:
+		{
+			char info[8];
+			menu.GetItem(param2, info, sizeof(info));
+			if (info[0] == 'y')
+			{
+				ForfeitItems(param1);
+			}
+		}
+
+		case MenuAction_End:
+		{
+			delete menu;
+		}
+	}
+
+	return 0;
+}
+
 public Action Command_AltarTeleport(int client, int args)
 {
 	if (!RF2_IsEnabled())
@@ -2134,7 +2222,7 @@ public Action Command_TriggerAchievement(int client, int args)
 	
 	char arg1[16], clientName[MAX_NAME_LENGTH];
 	bool multiLanguage;
-	int clients[MAXTF2PLAYERS];
+	int clients[MAXPLAYERS];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
 	if (matches < 1)
@@ -2153,6 +2241,72 @@ public Action Command_TriggerAchievement(int client, int args)
 		}
 	}
 
+	return Plugin_Handled;
+}
+
+public Action Command_LoadEnemies(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	char file[PLATFORM_MAX_PATH], path[PLATFORM_MAX_PATH];
+	GetCmdArg(1, file, sizeof(file));
+	if (StrContains(file, ".cfg") == -1)
+	{
+		StrCat(file, sizeof(file), ".cfg");
+	}
+
+	if (StrContains(file, "enemies/") != 0)
+	{
+		Format(file, sizeof(file), "enemies/%s", file);
+	}
+	
+	BuildPath(Path_SM, path, sizeof(path), "%s/%s", ConfigPath, file);
+	if (!FileExists(path))
+	{
+		RF2_ReplyToCommand(client, "The config file '%s' does not exist.", path);
+		return Plugin_Handled;
+	}
+	
+	RF2_ReplyToCommand(client, "Loading enemies from config file: '%s'...", file);
+	ReplaceString(file, sizeof(file), ".cfg", "");
+	LoadEnemiesFromPack(file, false);
+	return Plugin_Handled;
+}
+
+public Action Command_LoadBosses(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	char file[PLATFORM_MAX_PATH], path[PLATFORM_MAX_PATH];
+	GetCmdArg(1, file, sizeof(file));
+	if (StrContains(file, ".cfg") == -1)
+	{
+		StrCat(file, sizeof(file), ".cfg");
+	}
+	
+	if (StrContains(file, "enemies/") != 0)
+	{
+		Format(file, sizeof(file), "enemies/%s", file);
+	}
+	
+	BuildPath(Path_SM, path, sizeof(path), "%s/%s", ConfigPath, file);
+	if (!FileExists(path))
+	{
+		RF2_ReplyToCommand(client, "The config file '%s' does not exist.", path);
+		return Plugin_Handled;
+	}
+	
+	RF2_ReplyToCommand(client, "Loading bosses from config file: '%s'...", file);
+	ReplaceString(file, sizeof(file), ".cfg", "");
+	LoadEnemiesFromPack(file, true);
 	return Plugin_Handled;
 }
 
@@ -2197,9 +2351,9 @@ public Action Command_ParticleTest(int client, int args)
 	GetCmdArg(1, effect, sizeof(effect));
 	switch (GetCmdArgInt(2))
 	{
-		case 0: SpawnInfoParticle(effect, pos, 15.0);
-		case 1: TE_TFParticle(effect, pos);
-		case 2: SpawnParticleViaTrigger(client, effect);
+		case 0: TE_TFParticle(effect, pos);
+		case 1: SpawnInfoParticle(effect, pos, 15.0);
+		//case 2: SpawnParticleViaTrigger(client, effect);
 	}
 	
 	return Plugin_Handled;
@@ -2227,19 +2381,6 @@ public Action Command_UnlockAllAchievements(int client, int args)
 	return Plugin_Handled;
 }
 
-static Action Command_CookiesToSQL(int client, int args)
-{
-	if (!RF2_IsEnabled())
-	{
-		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
-		return Plugin_Handled;
-	}
-
-	
-
-	return Plugin_Handled;
-}
-
 public Action Command_TestHiddenSlot(int client, int args)
 {
 	if (!RF2_IsEnabled())
@@ -2250,5 +2391,79 @@ public Action Command_TestHiddenSlot(int client, int args)
 	
 	bool state = asBool(GetCmdArgInt(1));
 	ToggleHiddenSlot(state);
+	return Plugin_Handled;
+}
+
+public Action Command_DroppedWeaponTest(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (client == 0)
+	{
+		RF2_ReplyToCommand(client, "%t", "OnlyInGame");
+		return Plugin_Handled;
+	}
+	
+	int weapon = GetActiveWeapon(client);
+	float pos[3];
+	GetClientEyePosition(client, pos);
+	GenerateDroppedWeapon(weapon, pos);
+	return Plugin_Handled;
+}
+
+public Action Command_SpawnScavengerLord(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	if (!g_bRoundActive)
+	{
+		RF2_ReplyToCommand(client, "%t", "WaitForRoundStart");
+		return Plugin_Handled;
+	}
+	
+	if (Enemy.FindByInternalName("scavenger_lord") == NULL_ENEMY)
+	{
+		LoadEnemiesFromPack("enemies/scavenger_lord", true);
+	}
+	
+	CreateTimer(0.0, Timer_SpawnScavengerLord, _, TIMER_FLAG_NO_MAPCHANGE);
+	return Plugin_Handled;
+}
+
+public Action Command_ChangeTeam(int client, int args)
+{
+	if (!RF2_IsEnabled())
+	{
+		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
+		return Plugin_Handled;
+	}
+	
+	char arg1[16], clientName[MAX_NAME_LENGTH];
+	bool multiLanguage;
+	int clients[MAXPLAYERS];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	
+	int matches = ProcessTargetString(arg1, client, clients, sizeof(clients), 0, clientName, sizeof(clientName), multiLanguage);
+	if (matches < 1)
+	{
+		ReplyToTargetError(client, matches);
+		return Plugin_Handled;
+	}
+	else if (matches >= 1)
+	{
+		for (int i = 0; i < matches; i++)
+		{
+			ChangeClientTeam(clients[i], GetCmdArgInt(2));
+		}
+	}
+	
 	return Plugin_Handled;
 }

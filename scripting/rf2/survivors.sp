@@ -1,27 +1,32 @@
-#if defined _RF2_survivors_included
- #endinput
-#endif
-#define _RF2_survivors_included
-
 #pragma semicolon 1
 #pragma newdecls required
 
 #define BASE_NEXT_LEVEL_XP 150.0
 
 int g_iSurvivorCount = 1;
+
+int g_iSaveDataItem[MAX_INVENTORIES][MAX_ITEMS];
+int g_iSaveDataLevel[MAX_INVENTORIES] = {1, ...};
+int g_iSaveDataEquipmentItem[MAX_INVENTORIES];
+int g_iSaveDataGivenItems[MAX_INVENTORIES];
+int g_iSaveDataAbsenceCount[MAX_INVENTORIES];
+int g_iSaveDataCompletedStages[MAX_INVENTORIES];
+float g_flSaveDataXP[MAX_INVENTORIES];
+float g_flSaveDataTotalXP[MAX_INVENTORIES];
+float g_flSaveDataNextLevelXP[MAX_INVENTORIES] = {BASE_NEXT_LEVEL_XP, ...};
+bool g_bSaveDataSlotClaimed[MAX_INVENTORIES];
+bool g_bSaveDataSlotPresentAtStart[MAX_INVENTORIES];
+
 int g_iSurvivorBaseHealth[TF_CLASSES];
-int g_iSavedItem[MAX_INVENTORIES][MAX_ITEMS];
-int g_iSavedLevel[MAX_INVENTORIES] = {1, ...};
-int g_iSavedEquipmentItem[MAX_INVENTORIES];
-int g_iSurvivorGivenItems[MAX_INVENTORIES];
-
 float g_flSurvivorMaxSpeed[TF_CLASSES];
-float g_flSavedXP[MAX_INVENTORIES];
-float g_flTotalXP[MAX_INVENTORIES];
-float g_flSavedNextLevelXP[MAX_INVENTORIES] = {BASE_NEXT_LEVEL_XP, ...};
-
+int g_iSurvivorMinionHealth[TF_CLASSES];
+float g_flSurvivorMinionSpeed[TF_CLASSES];
+int g_iSurvivorMinionWeaponCount[TF_CLASSES];
+int g_iSurvivorMinionWeaponIndex[TF_CLASSES][8];
+char g_szSurvivorMinionWeaponClass[TF_CLASSES][8][128];
+char g_szSurvivorMinionWeaponAttributes[TF_CLASSES][8][MAX_ATTRIBUTE_STRING_LENGTH];
+bool g_bSurvivorMinionWeaponStaticAttrs[TF_CLASSES][8];
 char g_szSurvivorAttributes[TF_CLASSES][MAX_ATTRIBUTE_STRING_LENGTH];
-bool g_bSurvivorInventoryClaimed[MAX_INVENTORIES];
 StringMap g_hPlayerSteamIDToInventoryIndex;
 StringMap g_hPlayerNameToInventoryIndex;
 
@@ -49,9 +54,84 @@ void LoadSurvivorStats()
 			{
 				g_iSurvivorBaseHealth[class] = survivorKey.GetNum("health", 450);
 				g_flSurvivorMaxSpeed[class] = survivorKey.GetFloat("speed", 300.0);
+				g_iSurvivorMinionHealth[class] = survivorKey.GetNum("minion_health", 375);
+				g_flSurvivorMinionSpeed[class] = survivorKey.GetFloat("minion_speed", 360.0);
 				survivorKey.GetString("attributes", g_szSurvivorAttributes[class], sizeof(g_szSurvivorAttributes[]));
 				firstKey = false;
+				if (survivorKey.JumpToKey("minion_weapons"))
+				{
+					g_iSurvivorMinionWeaponCount[class] = 0;
+					bool firstKey2 = true;
+					while (firstKey2 ? survivorKey.GotoFirstSubKey() : survivorKey.GotoNextKey())
+					{
+						firstKey2 = false;
+						int count = g_iSurvivorMinionWeaponCount[class];
+						g_iSurvivorMinionWeaponIndex[class][count] = survivorKey.GetNum("index");
+						g_bSurvivorMinionWeaponStaticAttrs[class][count] = !asBool(survivorKey.GetNum("strip_attributes"));
+						survivorKey.GetString("classname", g_szSurvivorMinionWeaponClass[class][count],
+							sizeof(g_szSurvivorMinionWeaponClass[][]));
+						survivorKey.GetString("attributes", g_szSurvivorMinionWeaponAttributes[class][count],
+							sizeof(g_szSurvivorMinionWeaponAttributes[][]));
+
+						if (survivorKey.JumpToKey("attributes"))
+						{
+							char key[128], val[128];
+							for (int a = 1; a > 0; a++)
+							{
+								if (a == 1 && !survivorKey.GotoFirstSubKey(false))
+								{
+									break;
+								}
+								
+								survivorKey.GetSectionName(key, sizeof(key));
+								int id = AttributeNameToDefIndex(key);
+								if (id != -1)
+								{
+									survivorKey.GetString(NULL_STRING, val, sizeof(val));
+									if (a == 1)
+									{
+										Format(g_szSurvivorMinionWeaponAttributes[class][count], 
+											sizeof(g_szSurvivorMinionWeaponAttributes[][]),
+											"%s%d = %s", g_szSurvivorMinionWeaponAttributes[class][count], id, val);
+									}
+									else
+									{
+										Format(g_szSurvivorMinionWeaponAttributes[class][count], 
+											sizeof(g_szSurvivorMinionWeaponAttributes[][]),
+											"%s ; %d = %s", g_szSurvivorMinionWeaponAttributes[class][count], id, val);
+									}
+									
+								}
+								else
+								{
+									LogError("[LoadSurvivorStats] Invalid attribute '%s' in '%s'", key, config);
+								}
+
+								if (a >= 16)
+								{
+									LogError("[WARNING] Maximum number of attributes on a weapon exceeded (%s: %s)", 
+										sectionName, sectionName);
+								}
+								
+								if (!survivorKey.GotoNextKey(false))
+								{
+									survivorKey.GoBack();
+									break;
+								}
+							}
+							
+							TrimString(g_szSurvivorMinionWeaponAttributes[class][count]);
+							survivorKey.GoBack();
+						}
+
+						g_iSurvivorMinionWeaponCount[class]++;
+					}
+
+					survivorKey.GoBack();
+				}
 			}
+
+			survivorKey.GoBack();
 		}
 	}
 	
@@ -70,7 +150,7 @@ bool CreateSurvivors()
 	ArrayList survivorList = new ArrayList();
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || IsPlayerSpectator(i) || IsSpecBot(i)
+		if (!IsClientInGame(i) || TF2_GetClientTeam(i) == TFTeam_Spectator || IsSpecBot(i)
 			|| humanCount > 1 && (AreClientCookiesCached(i) && !GetCookieBool(i, g_coBecomeSurvivor)))
 			continue;
 			
@@ -126,6 +206,11 @@ bool CreateSurvivors()
 	
 	g_iSurvivorCount = survivorCount;
 	delete survivorList;
+	if (g_bGameInitialized && g_cvPlayerAbsenceLimit.IntValue > 0 && !IsInUnderworld())
+	{
+		RunAbsenceCheck();
+	}
+	
 	return survivorCount > 0;
 }
 
@@ -167,10 +252,19 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 		TF2_RespawnPlayer(client);
 	}
 	
+	if (IsFakeClient(client))
+	{
+		TFBot(client).AddFlag(TFBOTFLAG_SCAVENGER);
+	}
+
 	if (loadInventory)
 	{
 		int invIndex = PickInventoryIndex(client);
-		g_iPlayerInventoryIndex[client] = invIndex;
+		g_iPlayerInventoryIndex[client] = invIndex;	
+		if (!g_bGameInitialized)
+		{
+			g_bSaveDataSlotPresentAtStart[invIndex] = true;
+		}
 		
 		// likely a mid-game join, so get us up to speed
 		int totalInvs = imax(1, GetTotalClaimedInventories());
@@ -178,8 +272,8 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 		itemsToGive += 3 * g_iStagesCompleted;
 		const int collectorLimit = 10;
 		int collectorItems;
-		itemsToGive -= g_iSurvivorGivenItems[invIndex];
-		if (g_bGameInitialized && itemsToGive > 0 && !g_bSurvivorInventoryClaimed[invIndex])
+		itemsToGive -= g_iSaveDataGivenItems[invIndex];
+		if (g_bGameInitialized && itemsToGive > 0 && !g_bSaveDataSlotClaimed[invIndex])
 		{
 			// if we join in a game and our inventory is empty, get us up to speed
 			float highestXp = GetHighestSurvivorXP();
@@ -200,17 +294,17 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 				}
 			}
 			
-			if (g_iSavedEquipmentItem[invIndex] == Item_Null)
+			if (g_iSaveDataEquipmentItem[invIndex] == Item_Null)
 			{
 				GiveItem(client, GetRandomItemEx(Quality_Strange));
 			}
 			
 			// save now so it actually keeps our items
 			SaveSurvivorInventory(client, invIndex);
-			g_iSurvivorGivenItems[invIndex] += itemsToGive;
+			g_iSaveDataGivenItems[invIndex] += itemsToGive;
 		}
 		
-		g_bSurvivorInventoryClaimed[invIndex] = true;
+		g_bSaveDataSlotClaimed[invIndex] = true;
 		LoadSurvivorInventory(client, invIndex);
 	}
 	else // we should still update our items in case this is a respawn
@@ -224,6 +318,26 @@ void MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInvento
 	if (!IsFakeClient(client) && !GetCookieBool(client, g_coTutorialSurvivor))
 	{
 		CreateTimer(1.0, Timer_SurvivorTutorial, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	}
+	
+	CreateTimer(0.5, Timer_CheckCollectorItems, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public void Timer_CheckCollectorItems(Handle timer, int client)
+{
+	if (!(client = GetClientOfUserId(client)) || TF2_GetPlayerClass(client) == TFClass_Unknown)
+	{
+		return;
+	}
+	
+	for (int i = 1; i < GetTotalItems(); i++)
+	{
+		if (GetItemQuality(i) == Quality_Collectors && PlayerHasItem(client, i, true, true) 
+			&& GetCollectorItemClass(i) != TF2_GetPlayerClass(client))
+		{
+			PrintCenterText(client, "%t", "BadCollectorItems");
+			break;
+		}
 	}
 }
 
@@ -265,7 +379,7 @@ void SetClassAttributes(int client)
 		if (totalAttribs > MAX_ATTRIBUTES)
 		{
 			char tfClassName[16];
-			GetClassString(class, tfClassName, sizeof(tfClassName));
+			TF2_GetClassString(class, tfClassName, sizeof(tfClassName));
 			LogError("[SetClassAttributes] Survivor class %i (%s) exceeded attribute limit of %i", view_as<int>(class), tfClassName, MAX_ATTRIBUTES);
 		}
 	}
@@ -277,13 +391,8 @@ public int SortSurvivorListByPoints(int index1, int index2, ArrayList array, Han
 	int client2 = array.Get(index2);
 	
 	// move bots, AFK people and those who don't want to be survivors to the end of the list
-	bool survivor1 = GetCookieBool(client1, g_coBecomeSurvivor);
-	bool survivor2 = GetCookieBool(client2, g_coBecomeSurvivor);
-	if (!AreClientCookiesCached(client1))
-		survivor1 = true;
-	if (!AreClientCookiesCached(client2))
-		survivor2 = true;
-	
+	bool survivor1 = !AreClientCookiesCached(client1) || GetCookieBool(client1, g_coBecomeSurvivor);
+	bool survivor2 = !AreClientCookiesCached(client2) || GetCookieBool(client2, g_coBecomeSurvivor);
 	if (!survivor1 && !survivor2)
 	{
 		return 0;
@@ -313,7 +422,9 @@ public int SortSurvivorListByPoints(int index1, int index2, ArrayList array, Han
 	int points1 = RF2_GetSurvivorPoints(client1);
 	int points2 = RF2_GetSurvivorPoints(client2);
 	if (points1 == points2)
+	{
 		return 0;
+	}
 	
 	return points1 > points2 ? -1 : 1;
 }
@@ -346,7 +457,7 @@ public void Timer_SurvivorTutorial3(Handle timer, int client)
 
 void LoadSurvivorInventory(int client, int index)
 {
-	g_iPlayerEquipmentItem[client] = g_iSavedEquipmentItem[index];
+	g_iPlayerEquipmentItem[client] = g_iSaveDataEquipmentItem[index];
 	g_iPlayerEquipmentItemCharges[client] = 1;
 	if (GetPlayerEquipmentItem(client) != Item_Null && PlayerHasItem(client, Item_BatteryCanteens))
 	{
@@ -357,20 +468,20 @@ void LoadSurvivorInventory(int client, int index)
 	for (int i = 1; i < GetTotalItems(); i++)
 	{
 		if (!IsEquipmentItem(i))
-			g_iPlayerItem[client][i] = g_iSavedItem[index][i];
+			g_iPlayerItem[client][i] = g_iSaveDataItem[index][i];
 			
 		UpdatePlayerItem(client, i);
 	}
 	
 	float cashBonus = 1.0 + (2.0 * float(g_iLoopCount));
 	SetPlayerCash(client, 100.0 * RF2_Object_Base.GetCostMultiplier() * cashBonus * g_flStartMoneyMultiplier);
-	g_iPlayerLevel[client] = g_iSavedLevel[index];
-	g_flPlayerXP[client] = g_flSavedXP[index];
-	g_iItemsTaken[RF2_GetSurvivorIndex(client)] = 0;
+	g_iPlayerLevel[client] = g_iSaveDataLevel[index];
+	g_flPlayerXP[client] = g_flSaveDataXP[index];
+	g_iPlayerItemsTaken[RF2_GetSurvivorIndex(client)] = 0;
 	
 	if (g_iPlayerLevel[client] > 1)
 	{
-		g_flPlayerNextLevelXP[client] = g_flSavedNextLevelXP[index];
+		g_flPlayerNextLevelXP[client] = g_flSaveDataNextLevelXP[index];
 	}
 	else
 	{
@@ -403,13 +514,13 @@ void SaveSurvivorInventory(int client, int index, bool saveSteamId=true)
 		if (IsEquipmentItem(i))
 			continue;
 		
-		g_iSavedItem[index][i] = GetPlayerItemCount(client, i, true, true);
+		g_iSaveDataItem[index][i] = GetPlayerItemCount(client, i, true, true);
 	}
 	
-	g_iSavedLevel[index] = g_iPlayerLevel[client];
-	g_flSavedXP[index] = g_flPlayerXP[client];
-	g_flSavedNextLevelXP[index] = g_flPlayerNextLevelXP[client];
-	g_iSavedEquipmentItem[index] = GetPlayerEquipmentItem(client);
+	g_iSaveDataLevel[index] = g_iPlayerLevel[client];
+	g_flSaveDataXP[index] = g_flPlayerXP[client];
+	g_flSaveDataNextLevelXP[index] = g_flPlayerNextLevelXP[client];
+	g_iSaveDataEquipmentItem[index] = GetPlayerEquipmentItem(client);
 	
 	char steamId[MAX_AUTHID_LENGTH], name[MAX_NAME_LENGTH];
 	if (saveSteamId)
@@ -430,11 +541,11 @@ float GetHighestSurvivorXP()
 	float highest;
 	for (int i = 0; i < g_cvMaxSurvivors.IntValue; i++)
 	{
-		if (g_flTotalXP[i] <= 0.0)
+		if (g_flSaveDataTotalXP[i] <= 0.0)
 			continue;
 	
-		if (highest <= 1 || g_flTotalXP[i] > highest)
-			highest = g_flTotalXP[i];
+		if (highest <= 1 || g_flSaveDataTotalXP[i] > highest)
+			highest = g_flSaveDataTotalXP[i];
 	}
 	
 	return highest;
@@ -447,7 +558,7 @@ int GetTotalSurvivorItems(int index=-1)
 	{
 		for (int i = 0; i < MAX_ITEMS; i++)
 		{
-			total += g_iSavedItem[index][i];
+			total += g_iSaveDataItem[index][i];
 		}
 		
 		return total;
@@ -457,7 +568,7 @@ int GetTotalSurvivorItems(int index=-1)
 	{
 		for (int j = 0; j < MAX_ITEMS; j++)
 		{
-			total += g_iSavedItem[i][j];
+			total += g_iSaveDataItem[i][j];
 		}
 	}
 	
@@ -469,7 +580,7 @@ int GetTotalClaimedInventories()
 	int total;
 	for (int i = 0; i < MAX_INVENTORIES; i++)
 	{
-		if (g_bSurvivorInventoryClaimed[i])
+		if (g_bSaveDataSlotClaimed[i])
 			total++;
 	}
 	
@@ -480,7 +591,8 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 {
 	int survivorCount;
 	
-	// We want to remember how many objects were spawned at the beginning of the round. If recalculate is true, don't touch our object count.
+	// We want to remember how many objects were spawned at the beginning of the round. 
+	// If recalculate is true, don't touch our object count.
 	static int objectCount;
 	if (!recalculate)
 	{
@@ -515,12 +627,12 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	{
 		if (survivorCount == 1)
 		{
-			g_iItemLimit[i] = 99999;
+			g_iPlayerItemLimit[i] = 99999;
 			break;
 		}
 		else
 		{
-			g_iItemLimit[i] = itemShare;
+			g_iPlayerItemLimit[i] = itemShare;
 		}	
 	}
 	
@@ -528,7 +640,7 @@ void CalculateSurvivorItemShare(bool recalculate=true)
 	{
 		if (IsClientInGame(i) && IsPlayerSurvivor(i, false))
 		{
-			g_iItemLimit[RF2_GetSurvivorIndex(i)] += GetPlayerCrateBonus(i);
+			g_iPlayerItemLimit[RF2_GetSurvivorIndex(i)] += GetPlayerCrateBonus(i);
 		}
 	}
 }
@@ -590,14 +702,13 @@ void UpdatePlayerXP(int client, float xpAmount=0.0)
 		}
 	}
 	
-	g_flTotalXP[RF2_GetSurvivorIndex(client)] += xpAmount;
+	g_flSaveDataTotalXP[RF2_GetSurvivorIndex(client)] += xpAmount;
 }
 
 void PlayerLevelUp(int client)
 {
 	int oldLevel = g_iPlayerLevel[client];
 	g_iPlayerLevel[client]++;
-	
 	CalculatePlayerMaxHealth(client);
 	CalculatePlayerMiscStats(client);
 	RF2_PrintToChat(client, "%t", "YouLevelUp", oldLevel, g_iPlayerLevel[client]);
@@ -674,110 +785,56 @@ void SpawnMinion(int client)
 	g_iPlayerVoiceType[client] = VoiceType_Robot;
 	g_iPlayerVoicePitch[client] = SNDPITCH_HIGH;
 	g_iPlayerFootstepType[client] = FootstepType_Robot;
+	g_iPlayerBaseHealth[client] = g_iSurvivorMinionHealth[class];
+	g_flPlayerMaxSpeed[client] = g_flSurvivorMinionSpeed[class];
 	TeleportEntity(client, pos);
+	for (int i = 0; i < g_iSurvivorMinionWeaponCount[class]; i++)
+	{
+		if (StrContains(g_szSurvivorMinionWeaponClass[class][i], "tf_wearable") == 0)
+		{
+			CreateWearable(client, g_szSurvivorMinionWeaponClass[class][i], 
+				g_iSurvivorMinionWeaponIndex[class][i],
+				g_szSurvivorMinionWeaponAttributes[class][i],
+				g_bSurvivorMinionWeaponStaticAttrs[class][i]);
+		}
+		else
+		{
+			CreateWeapon(client, g_szSurvivorMinionWeaponClass[class][i], 
+				g_iSurvivorMinionWeaponIndex[class][i],
+				g_szSurvivorMinionWeaponAttributes[class][i],
+				g_bSurvivorMinionWeaponStaticAttrs[class][i]);
+		}
+	}
+
 	switch (class)
 	{
-		case TFClass_Scout:
-		{
-			SetVariantString(MODEL_BOT_SCOUT);
-			CreateWeapon(client, "tf_weapon_lunchbox_drink", 1145, _, true);
-			CreateWeapon(client, "tf_weapon_bat_wood", 44, "218 = 1", true);
-			g_iPlayerBaseHealth[client] = 315;
-			g_flPlayerMaxSpeed[client] = 420.0;
-		}
-		
-		case TFClass_Soldier:
-		{
-			SetVariantString(MODEL_BOT_SOLDIER);
-			CreateWeapon(client, "tf_weapon_shotgun_soldier", 10, "3 = 0.7");
-			CreateWeapon(client, "tf_weapon_shovel", 447, _, true);
-			g_iPlayerBaseHealth[client] = 500;
-			g_flPlayerMaxSpeed[client] = 280.0;
-		}
-		
-		case TFClass_Pyro:
-		{
-			SetVariantString(MODEL_BOT_PYRO);
-			CreateWeapon(client, "tf_weapon_rocketpack", 1179, _, true);
-			CreateWeapon(client, "tf_weapon_fireaxe", 348, _, true);
-			g_iPlayerBaseHealth[client] = 450;
-			g_flPlayerMaxSpeed[client] = 320.0;
-		}
-		
-		case TFClass_DemoMan:
-		{
-			SetVariantString(MODEL_BOT_DEMO);
-			CreateWeapon(client, "tf_weapon_sword", 404, _, true);
-			CreateWearable(client, "tf_wearable_demoshield", 1099, _, true);
-			g_iPlayerBaseHealth[client] = 450;
-			g_flPlayerMaxSpeed[client] = 300.0;
-		}
-		
-		case TFClass_Heavy:
-		{
-			SetVariantString(MODEL_BOT_HEAVY);
-			CreateWeapon(client, "tf_weapon_fists", 5, "2 = 1.2");
-			CreateWeapon(client, "tf_weapon_lunchbox", 863, _, true);
-			g_iPlayerBaseHealth[client] = 800;
-			g_flPlayerMaxSpeed[client] = 260.0;
-		}
-		
-		case TFClass_Engineer:
-		{
-			SetVariantString(MODEL_BOT_ENGINEER);
-			CreateWeapon(client, "tf_weapon_wrench", 7, "276 = 1 ; 345 = 3.0");
-			CreateWeapon(client, "tf_weapon_pda_engineer_build", 25);
-			CreateWeapon(client, "tf_weapon_pda_engineer_destroy", 26);
-			CreateWeapon(client, "tf_weapon_builder", 28);
-			g_iPlayerBaseHealth[client] = 300;
-			g_flPlayerMaxSpeed[client] = 320.0;
-		}
-		
-		case TFClass_Medic:
-		{
-			SetVariantString(MODEL_BOT_MEDIC);
-			CreateWeapon(client, "tf_weapon_crossbow", 1079, "1 = 0.5", true);
-			CreateWeapon(client, "tf_weapon_medigun", 411, "314 = -3 ; 7 = 0.6", true);
-			CreateWeapon(client, "tf_weapon_bonesaw", 1143, "1 = 0.8");
-			g_iPlayerBaseHealth[client] = 375;
-			g_flPlayerMaxSpeed[client] = 360.0;
-		}
-		
-		case TFClass_Sniper:
-		{
-			SetVariantString(MODEL_BOT_SNIPER);
-			CreateWeapon(client, "tf_weapon_jar", 1105, "278 = 2.0");
-			CreateWeapon(client, "tf_weapon_club", 3);
-			g_iPlayerBaseHealth[client] = 300;
-			g_flPlayerMaxSpeed[client] = 320.0;
-		}
-		
-		case TFClass_Spy:
-		{
-			SetVariantString(MODEL_BOT_SPY);
-			CreateWeapon(client, "tf_weapon_knife", 892);
-			CreateWeapon(client, "tf_weapon_pda_spy", 27);
-			CreateWeapon(client, "tf_weapon_invis", 30);
-			CreateWeapon(client, "tf_weapon_sapper", 810, _, true);
-			g_iPlayerBaseHealth[client] = 300;
-			g_flPlayerMaxSpeed[client] = 360.0;
-		}
+		case TFClass_Scout: SetVariantString(MODEL_BOT_SCOUT);
+		case TFClass_Soldier: SetVariantString(MODEL_BOT_SOLDIER);
+		case TFClass_Pyro: SetVariantString(MODEL_BOT_PYRO);
+		case TFClass_DemoMan: SetVariantString(MODEL_BOT_DEMO);
+		case TFClass_Heavy: SetVariantString(MODEL_BOT_HEAVY);
+		case TFClass_Engineer: SetVariantString(MODEL_BOT_ENGINEER);
+		case TFClass_Medic: SetVariantString(MODEL_BOT_MEDIC);
+		case TFClass_Sniper: SetVariantString(MODEL_BOT_SNIPER);
+		case TFClass_Spy: SetVariantString(MODEL_BOT_SPY);
 	}
 	
 	AcceptEntityInput(client, "SetCustomModel");
 	SetEntProp(client, Prop_Send, "m_bUseClassAnimations", true);
 	SetEntPropFloat(client, Prop_Send, "m_flModelScale", 0.5);
 	TF2_AddCondition(client, TFCond_UberchargedCanteen, 2.5);
-	TF2Attrib_SetByDefIndex(client, 62, 0.25); // "dmg taken from crit reduced"
-	TF2Attrib_SetByDefIndex(client, 252, 0.25); // "damage force reduction"
+	TF2Attrib_SetByName(client, "dmg taken from crit reduced", 0.25);
+	TF2Attrib_SetByName(client, "damage force reduction", 0.25);
 	CBaseEntity(client).AddFlag(FL_NOTARGET);
 	if (g_iLoopCount >= 1)
 	{
 		TF2_AddCondition(client, TFCond_DefenseBuffed);
-		TF2_AddCondition(client, TFCond_RuneStrength);
+		TF2_AddCondition(client, TFCond_Buffed);
+		TF2_AddCondition(client, TFCond_RuneHaste);
 		TF2_AddCondition(client, TFCond_SpeedBuffAlly);
-		TF2Attrib_SetByDefIndex(client, 326, 2.0);
-		TF2Attrib_SetByDefIndex(client, 610, 2.0);
+		TF2Attrib_SetByName(client, "increased jump height", 2.0);
+		TF2Attrib_SetByName(client, "increased air control", 2.0);
+		TF2Attrib_SetByName(client, "dmg from melee increased", 0.5);
 	}
 }
 
@@ -802,7 +859,7 @@ int PickInventoryIndex(int client)
 	{
 		for (int i = 0; i < MAX_INVENTORIES; i++)
 		{
-			if (!g_bSurvivorInventoryClaimed[i])
+			if (!g_bSaveDataSlotClaimed[i])
 				return i;
 		}
 	}
@@ -912,7 +969,7 @@ bool DoesPlayerHaveEnoughItems(int client)
 		}
 	}
 	
-	if (g_cvItemShareDisableThreshold.FloatValue <= 0.0 || g_iItemsTaken[RF2_GetSurvivorIndex(client)] >= GetPlayerRequiredItems(client))
+	if (g_cvItemShareDisableThreshold.FloatValue <= 0.0 || g_iPlayerItemsTaken[RF2_GetSurvivorIndex(client)] >= GetPlayerRequiredItems(client))
 		return true;
 	
 	// don't bother with AFK players
@@ -933,7 +990,7 @@ bool DoesPlayerHaveEnoughItems(int client)
 
 int GetPlayerRequiredItems(int client)
 {
-	return RoundFloat(float(g_iItemLimit[RF2_GetSurvivorIndex(client)]) * g_cvItemShareDisableThreshold.FloatValue);
+	return RoundFloat(float(g_iPlayerItemLimit[RF2_GetSurvivorIndex(client)]) * g_cvItemShareDisableThreshold.FloatValue);
 }
 
 bool AreAnyPlayersLackingItems()
@@ -952,10 +1009,326 @@ bool AreAnyPlayersLackingItems()
 	return false;
 }
 
+// Returns all alive survivors who are not minions
+int GetAliveSurvivors()
+{
+	int count;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i))
+			continue;
+		
+		if (IsPlayerSurvivor(i) && !IsPlayerMinion(i))
+		{
+			count++;
+		}
+	}
+	
+	return count;
+}
+
 void GiveCommunityItems(int client)
 {
 	if (!PlayerHasItem(client, ItemCommunity_MercMedal) && (GetCookieBool(client, g_coEarnedAllAchievements) || PlayerHasAllAchievements(client)))
 	{
 		GiveItem(client, ItemCommunity_MercMedal);
 	}
+}
+
+void RunAbsenceCheck()
+{
+	StringMapSnapshot snapshot = g_hPlayerSteamIDToInventoryIndex.Snapshot();
+	char steamId[128];
+	for (int i = 0; i < snapshot.Length; i++)
+	{
+		int invIndex;
+		snapshot.GetKey(i, steamId, sizeof(steamId));
+		if (g_hPlayerSteamIDToInventoryIndex.GetValue(steamId, invIndex)
+			&& FindPlayerBySteamID(steamId, AuthId_Steam2) == INVALID_ENT
+			&& IsInventoryAllowedToForfeit(invIndex))
+		{
+			// Penalize this player for their absence.
+			// If they're absent enough times, or if we are in the final area, forfeit their inventory
+			// so that their items do not go to waste.
+			if (g_iSaveDataAbsenceCount[invIndex] == g_cvPlayerAbsenceLimit.IntValue || IsInFinalMap())
+			{
+				ForfeitItemsByInvIndex(invIndex);
+			}
+			
+			g_iSaveDataAbsenceCount[invIndex]++;
+		}
+		else
+		{
+			g_iSaveDataAbsenceCount[invIndex] = 0;
+		}
+	}
+
+	delete snapshot;
+}
+
+void ForfeitItems(int client)
+{
+	int itemCounts[MAXPLAYERS][Quality_MaxValid];
+	ArrayList players = new ArrayList();
+	for (int i = 1; i < Quality_MaxValid; i++)
+	{
+		if (i == Quality_Community)
+			continue;
+
+		// Compile all items into a big list
+		ArrayList itemPool = new ArrayList();
+		for (int item = 1; item < GetTotalItems(); item++)
+		{
+			int count = GetPlayerItemCount(client, item, true, true);
+			if (GetItemQuality(item) == i && count > 0)
+			{
+				while (count > 0)
+				{
+					itemPool.Push(item);
+					itemPool.SwapAt(GetRandomInt(0, itemPool.Length-1), GetRandomInt(0, itemPool.Length-1));
+					count--;
+				}
+
+				if (i == Quality_Strange || i == Quality_HauntedStrange)
+				{
+					break; // we can stop at this point since we can only have one of these anyways
+				}
+			}
+		}
+		
+		// Distribute items starting with the player who has the least total of this quality
+		while (itemPool.Length > 0)
+		{
+			int poorestPlayer = INVALID_ENT;
+			int lowestCount = -1;
+			for (int c = 1; c <= MaxClients; c++)
+			{
+				if (client == c || !IsClientInGame(c) || !IsPlayerSurvivor(c, false))
+					continue;
+				
+				players.Push(c);
+				players.SwapAt(GetRandomInt(0, players.Length-1), GetRandomInt(0, players.Length-1));
+				int count = GetPlayerItemsOfQuality(c, i);
+				if (poorestPlayer == INVALID_ENT || count < lowestCount)
+				{
+					poorestPlayer = c;
+					lowestCount = count;
+				}
+			}
+
+			if (poorestPlayer != INVALID_ENT)
+			{
+				int chosenItem;
+				if (i == Quality_Collectors)
+				{
+					chosenItem = GetRandomCollectorItem(TF2_GetPlayerClass(poorestPlayer));
+				}
+				else if (i == Quality_Haunted || i == Quality_HauntedStrange)
+				{
+					// haunted items get converted back into keys
+					chosenItem = Item_HauntedKey;
+				}
+				else
+				{
+					chosenItem = itemPool.Get(0);
+				}
+				
+				itemPool.Erase(0);
+				GiveItem(poorestPlayer, chosenItem);
+				itemCounts[poorestPlayer][i]++;
+			}
+		}
+		
+		delete itemPool;
+	}
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (client == i || !IsClientInGame(i) || !IsPlayerSurvivor(i, false))
+			continue;
+
+		for (int q = 1; q < Quality_MaxValid; q++)
+		{
+			if (itemCounts[i][q] > 0)
+			{
+				char colorTag[32], qualityName[32];
+				GetQualityColorTag(q, colorTag, sizeof(colorTag));
+				GetQualityName(q, qualityName, sizeof(qualityName));
+				RF2_PrintToChat(i, "You received {yellow}%i{default} %s%s {default}items from {yellow}%N's{default} forfeit", 
+					itemCounts[i][q], colorTag, qualityName, client);
+			}
+		}
+	}
+	
+	// If we have a strange item, give it to a random player who does not have one
+	int equipment = GetPlayerEquipmentItem(client);
+	if (equipment != Item_Null)
+	{
+		while (players.Length > 0)
+		{
+			int randomPlayer = players.Get(GetRandomInt(0, players.Length-1));
+			players.Erase(players.FindValue(randomPlayer));
+			if (GetPlayerEquipmentItem(randomPlayer) == Item_Null)
+			{
+				GiveItem(randomPlayer, equipment, 1);
+				break;
+			}
+		}
+	}
+	
+	delete players;
+	g_iPlayerEquipmentItem[client] = Item_Null;
+	SetAllInArray(g_iPlayerItem[client], sizeof(g_iPlayerItem[]), 0);
+	UpdateItemsForPlayer(client);
+	PrintCenterTextAll("%t", "PlayerForfeited", client);
+}
+
+void ForfeitItemsByInvIndex(int index)
+{
+	int itemCounts[MAXPLAYERS][Quality_MaxValid];
+	ArrayList players = new ArrayList();
+	for (int i = 1; i < Quality_MaxValid; i++)
+	{
+		if (i == Quality_Community)
+			continue;
+
+		// Compile all items into a big list
+		ArrayList itemPool = new ArrayList();
+		for (int item = 1; item < GetTotalItems(); item++)
+		{
+			int count = g_iSaveDataItem[index][item];
+			if (GetItemQuality(item) == i && count > 0)
+			{
+				while (count > 0)
+				{
+					itemPool.Push(item);
+					itemPool.SwapAt(GetRandomInt(0, itemPool.Length-1), GetRandomInt(0, itemPool.Length-1));
+					count--;
+				}
+
+				if (i == Quality_Strange || i == Quality_HauntedStrange)
+				{
+					break; // we can stop at this point since we can only have one of these anyways
+				}
+			}
+		}
+		
+		// Distribute items starting with the player who has the least total of this quality
+		while (itemPool.Length > 0)
+		{
+			int poorestPlayer = INVALID_ENT;
+			int lowestCount = -1;
+			for (int c = 1; c <= MaxClients; c++)
+			{
+				if (!IsClientInGame(c) || !IsPlayerSurvivor(c, false))
+					continue;
+				
+				players.Push(c);
+				players.SwapAt(GetRandomInt(0, players.Length-1), GetRandomInt(0, players.Length-1));
+				int count = GetPlayerItemsOfQuality(c, i);
+				if (poorestPlayer == INVALID_ENT || count < lowestCount)
+				{
+					poorestPlayer = c;
+					lowestCount = count;
+				}
+			}
+
+			if (poorestPlayer != INVALID_ENT)
+			{
+				int chosenItem;
+				if (i == Quality_Collectors)
+				{
+					chosenItem = GetRandomCollectorItem(TF2_GetPlayerClass(poorestPlayer));
+				}
+				else if (i == Quality_Haunted || i == Quality_HauntedStrange)
+				{
+					// haunted items get converted back into keys
+					chosenItem = Item_HauntedKey;
+				}
+				else
+				{
+					chosenItem = itemPool.Get(0);
+				}
+
+				itemPool.Erase(0);
+				GiveItem(poorestPlayer, chosenItem);
+				itemCounts[poorestPlayer][i]++;
+			}
+		}
+		
+		delete itemPool;
+	}
+	
+	StringMapSnapshot snapshot = g_hPlayerNameToInventoryIndex.Snapshot();
+	char name[64];
+	name = "[unknown player]";
+	int nameIndex;
+	for (int i = 0; i < snapshot.Length; i++)
+	{
+		snapshot.GetKey(i, name, sizeof(name));
+		if (g_hPlayerNameToInventoryIndex.GetValue(name, nameIndex) && index == nameIndex)
+		{
+			break;
+		}
+	}
+	
+	delete snapshot;
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerSurvivor(i, false))
+			continue;
+		
+		for (int q = 1; q < Quality_MaxValid; q++)
+		{
+			if (itemCounts[i][q] > 0)
+			{
+				char colorTag[32], qualityName[32];
+				GetQualityColorTag(q, colorTag, sizeof(colorTag));
+				GetQualityName(q, qualityName, sizeof(qualityName));
+				RF2_PrintToChat(i, "You received {yellow}%i{default} %s%s {default}items from %s's forfeit", 
+					itemCounts[i][q], colorTag, qualityName, name);
+			}
+		}
+	}
+	
+	// If we have a strange item, give it to a random player who does not have one
+	int equipment = g_iSaveDataEquipmentItem[index];
+	if (equipment != Item_Null)
+	{
+		while (players.Length > 0)
+		{
+			int randomPlayer = players.Get(GetRandomInt(0, players.Length-1));
+			players.Erase(players.FindValue(randomPlayer));
+			if (GetPlayerEquipmentItem(randomPlayer) == Item_Null)
+			{
+				GiveItem(randomPlayer, equipment, 1);
+				break;
+			}
+		}
+	}
+	
+	delete players;
+	g_iSaveDataEquipmentItem[index] = Item_Null;
+	SetAllInArray(g_iSaveDataItem[index], sizeof(g_iSaveDataItem[]), 0);
+	RF2_PrintToChatAll("%t", "PlayerForfeited2", name);
+	PrintCenterTextAll("%t", "PlayerForfeited2", name);
+}
+
+bool IsInventoryAllowedToForfeit(int invIndex)
+{
+	if (g_bSaveDataSlotPresentAtStart[invIndex])
+		return true;
+	
+	return g_iSaveDataCompletedStages[invIndex] >= g_cvMinStagesClearedToForfeit.IntValue;
+}
+
+bool IsAtItemShareLimit(int client)
+{
+	int survivorIndex = g_iPlayerSurvivorIndex[client];
+	if (survivorIndex == -1)
+		return false;
+		
+	return g_iPlayerItemLimit[survivorIndex] > 0
+		&& g_iPlayerItemsTaken[survivorIndex] >= g_iPlayerItemLimit[survivorIndex]
+		&& IsItemSharingEnabled();
 }

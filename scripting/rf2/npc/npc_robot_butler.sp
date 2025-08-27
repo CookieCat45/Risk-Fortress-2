@@ -3,6 +3,7 @@
 
 #define MODEL_BOTLER "models/rf2/bots/botler.mdl"
 #define MODEL_MEDKIT "models/items/medkit_small.mdl"
+#define MODEL_MEDKIT_BLUE "models/bots/bot_worker/bot_worker_powercore.mdl"
 #define SND_BOMB_FUSE "ambient/gas/cannister_loop.wav"
 static CEntityFactory g_Factory;
 
@@ -66,7 +67,7 @@ methodmap RF2_RobotButler < RF2_NPC_Base
 			.DefineFloatField("m_flBombDamage")
 			.DefineFloatField("m_flBombRadius")
 			.DefineFloatField("m_flHealCooldown")
-			.DefineFloatField("m_flLastHealedPlayerAt", MAXTF2PLAYERS)
+			.DefineFloatField("m_flLastHealedPlayerAt", MAXPLAYERS)
 			.DefineFloatField("m_flNextIdleVoiceAt")
 			.DefineFloatField("m_flNextHurtVoiceAt")
 			.DefineEntityField("m_hHeldItem")
@@ -239,9 +240,12 @@ methodmap RF2_RobotButler < RF2_NPC_Base
 		float pos[3];
 		this.WorldSpaceCenter(pos);
 		EmitAmbientGameSound("Weapon_TackyGrendadier.Explode", pos);
-		DoExplosionEffect(pos);
-		DoRadiusDamage(IsValidClient(this.Master) ? this.Master : this.index, this.index, pos, ItemStrange_Botler, this.BombDamage, DMG_BLAST, this.BombRadius);
-		RemoveEntity2(this.index);
+		DoExplosionEffect(pos, true, 0.1);
+		DoRadiusDamage(IsValidClient(this.Master) ? this.Master : this.index, this.index, 
+			pos, ItemStrange_Botler, this.BombDamage, DMG_BLAST, this.BombRadius, _, _, _, _, _, _, 
+			this.Team == TEAM_ENEMY);
+			
+		RemoveEntity(this.index);
 	}
 	
 	public void UpdateTimerText()
@@ -256,9 +260,9 @@ methodmap RF2_RobotButler < RF2_NPC_Base
 	}
 }
 
-#include "rf2/npc/actions/robot_butler/main.sp"
-#include "rf2/npc/actions/robot_butler/heal.sp"
-#include "rf2/npc/actions/robot_butler/suicide_bomb.sp"
+#include "actions/robot_butler/main.sp"
+#include "actions/robot_butler/heal.sp"
+#include "actions/robot_butler/suicide_bomb.sp"
 
 void RobotButler_OnMapStart()
 {
@@ -290,12 +294,10 @@ static void OnCreate(RF2_RobotButler bot)
 {
 	bot.SetModel(MODEL_BOTLER);
 	PrecacheModel2(MODEL_MEDKIT, true);
+	PrecacheModel2(MODEL_MEDKIT_BLUE, true);
 	SDKHook(bot.index, SDKHook_SpawnPost, OnSpawnPost);
-	
-	// TODO: add friendly fire blocking to npc_base instead
-	SDKHook(bot.index, SDKHook_OnTakeDamage, OnTakeDamage); // hooking this instead to actually block friendly fire damage so items don't proc
+	SDKHook(bot.index, SDKHook_OnTakeDamage, OnTakeDamage);
 	SDKHook(bot.index, SDKHook_OnTakeDamageAlivePost, OnTakeDamageAlivePost);
-	
 	bot.SuicideBombAt = GetGameTime()+90.0;
 	bot.HealCooldown = 25.0;
 	bot.BombDamage = 650.0;
@@ -325,11 +327,11 @@ static void OnSpawnPost(int entity)
 {
 	RF2_RobotButler bot = RF2_RobotButler(entity);
 	ToggleGlow(bot.index, true, {0, 255, 0, 255});
-	CreateHealthText(bot.index, 75.0, 15.0, "BOTLER");
+	bot.HealthText = CreateHealthText(bot.index, 75.0, 15.0, "BOTLER");
 	bot.TimerText = CreateEntityByName("point_worldtext");
 	CBaseEntity text = CBaseEntity(bot.TimerText);
 	text.KeyValueFloat("textsize", 18.0);
-	text.KeyValue("orientation", "1");
+	text.KeyValueInt("orientation", 1);
 	SetVariantColor({255, 255, 255, 255});
 	text.AcceptInput("SetColor");
 	float pos[3];
@@ -338,6 +340,19 @@ static void OnSpawnPost(int entity)
 	text.Teleport(pos);
 	text.Spawn();
 	ParentEntity(text.index, bot.index, _, true);
+	RequestFrame(RF_BotlerTeam, EntIndexToEntRef(bot.index));
+}
+
+static void RF_BotlerTeam(int entity)
+{
+	RF2_RobotButler bot = RF2_RobotButler(EntRefToEntIndex(entity));
+	if (bot.IsValid() && bot.Team == TEAM_ENEMY)
+	{
+		bot.SetRenderMode(RENDER_TRANSCOLOR);
+		bot.SetRenderColor(50, 50, 255);
+		bot.HealthText.SetHealthColor(HEALTHCOLOR_HIGH, {100, 100, 255, 255});
+		ToggleGlow(bot.index, false);
+	}
 }
 
 static Action Timer_BotRegenHealth(Handle timer, int entity)
@@ -348,7 +363,6 @@ static Action Timer_BotRegenHealth(Handle timer, int entity)
 	
 	// might as well do this here
 	bot.UpdateTimerText();
-
 	if (bot.Health >= bot.MaxHealth)
 		return Plugin_Continue;
 	
@@ -360,13 +374,6 @@ static Action Timer_BotRegenHealth(Handle timer, int entity)
 static Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
 		float damageForce[3], float damagePosition[3], int damagecustom)
 {
-	RF2_RobotButler bot = RF2_RobotButler(victim);
-	if (GetEntTeam(attacker) == bot.Team || GetEntTeam(inflictor) == bot.Team)
-	{
-		// no friendly fire
-		return Plugin_Stop;
-	}
-	
 	if (damagetype & DMG_CRIT)
 	{
 		damagetype &= ~DMG_CRIT; // crit damage immunity

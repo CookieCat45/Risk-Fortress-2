@@ -1,28 +1,28 @@
 #pragma newdecls required
 #pragma semicolon 1
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_RobotButlerHealAction < RF2_BaseNPCAttackAction
 {
 	public RF2_RobotButlerHealAction()
 	{
-		if (!g_Factory)
+		if (!g_ActionFactory)
 		{
-			g_Factory = new NextBotActionFactory("RF2_RobotButlerHealAction");
-			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_Factory.SetCallback(NextBotActionCallbackType_OnEnd, OnEnd);
-			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_Factory.BeginDataMapDesc()
+			g_ActionFactory = new NextBotActionFactory("RF2_RobotButlerHealAction");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnEnd, OnEnd);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_ActionFactory.BeginDataMapDesc()
 				.DefineFloatField("m_flStartTime")
 				.DefineFloatField("m_flAttackTime")
 				.DefineFloatField("m_flRecoveryTime")
 				.DefineIntField("m_nHitCounter")
 			.EndDataMapDesc();
-			//g_Factory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
+			//g_ActionFactory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
 		}
 
-		return view_as<RF2_RobotButlerHealAction>(g_Factory.Create());
+		return view_as<RF2_RobotButlerHealAction>(g_ActionFactory.Create());
 	}
 }
 
@@ -31,11 +31,17 @@ static int OnStart(RF2_RobotButlerHealAction action, RF2_RobotButler bot, NextBo
 	action.StartTime = GetGameTime();
 	if (IsValidEntity2(bot.HeldItem))
 	{
-		RemoveEntity2(bot.HeldItem);
+		RemoveEntity(bot.HeldItem);
 	}
 	
 	bot.HeldItem = CreateEntityByName("prop_dynamic_override");
-	SetEntityModel2(bot.HeldItem, MODEL_MEDKIT);
+	SetEntityModel2(bot.HeldItem, bot.Team == TEAM_SURVIVOR ? MODEL_MEDKIT : MODEL_MEDKIT_BLUE);
+	if (bot.Team == TEAM_ENEMY)
+	{
+		SetEntityRenderMode(bot.HeldItem, RENDER_TRANSCOLOR);
+		SetEntityRenderColor(bot.HeldItem, 0, 255, 255);
+	}
+	
 	DispatchKeyValue(bot.HeldItem, "sequence", "idle");
 	DispatchSpawn(bot.HeldItem);
 	AcceptEntityInput(bot.HeldItem, "DisableCollision");
@@ -50,7 +56,7 @@ static void OnEnd(NextBotAction action, RF2_RobotButler bot, NextBotAction nextA
 {
 	if (IsValidEntity2(bot.HeldItem))
 	{
-		RemoveEntity2(bot.HeldItem);
+		RemoveEntity(bot.HeldItem);
 	}
 	
 	bot.Target = INVALID_ENT;
