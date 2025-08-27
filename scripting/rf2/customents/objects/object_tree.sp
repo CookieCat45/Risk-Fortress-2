@@ -52,7 +52,7 @@ static void OnCreate(RF2_Object_Tree tree)
 	tree.SetModel(MODEL_TREE);
 	tree.SetObjectName("Tree of Fate");
 	tree.TextZOffset = 100.0;
-	ArrayList mapList = g_bEnteringFinalArea ? null : GetMapsForStage(DetermineNextStage());	
+	ArrayList mapList = g_bEnteringFinalArea ? null : GetMapsForStage(DetermineNextStage());
 	if (g_bEnteringFinalArea || mapList && mapList.Length <= 1)
 	{
 		// If there's only 1 map for the next stage, there's no point in using this object
@@ -94,17 +94,6 @@ static Action Tree_OnInteract(int client, RF2_Object_Tree tree)
 	g_iVoteClient = GetClientUserId(client);
 	g_iVoteTree = EntIndexToEntRef(tree.index);
 	ArrayList mapList = GetMapsForStage(DetermineNextStage());
-	
-	// randomize
-	for (int i = 0; i < mapList.Length; i++)
-	{
-		mapList.SwapAt(i, GetRandomInt(0, mapList.Length-1));
-	}
-	
-	// only allow up to 2 options
-	if (mapList.Length > 2)
-		mapList.Resize(2);
-	
 	for (int i = 0; i < mapList.Length; i++)
 	{
 		mapList.GetString(i, mapName, sizeof(mapName));
@@ -112,7 +101,7 @@ static Action Tree_OnInteract(int client, RF2_Object_Tree tree)
 	}
 	
 	delete mapList;
-	int clients[MAXPLAYERS];
+	int clients[MAXTF2PLAYERS];
 	int clientCount;
 	for (int i = 1; i <= MaxClients; i++)
 	{

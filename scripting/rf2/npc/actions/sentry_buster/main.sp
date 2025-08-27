@@ -1,24 +1,24 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_ActionFactory;
+static NextBotActionFactory g_Factory;
 
 methodmap RF2_SentryBusterMainAction < NextBotAction
 {
 	public static NextBotActionFactory GetFactory()
 	{
-		if (!g_ActionFactory)
+		if (!g_Factory)
 		{
-			g_ActionFactory = new NextBotActionFactory("RF2_SentryBusterMain");
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_ActionFactory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
-			g_ActionFactory.BeginDataMapDesc()
+			g_Factory = new NextBotActionFactory("RF2_SentryBusterMain");
+			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_Factory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
+			g_Factory.BeginDataMapDesc()
 				.DefineFloatField("m_Talker")
 				.EndDataMapDesc();
 		}
 
-		return g_ActionFactory;
+		return g_Factory;
 	}
 
 	property float TalkerTime
@@ -46,37 +46,7 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	actor.GetAbsOrigin(pos);
 	actor.WorldSpaceCenter(worldSpace);
 	int target = actor.Target;
-	if (actor.Team == TEAM_SURVIVOR)
-	{
-		if (!IsValidEntity2(target) || IsValidClient(target) && !IsPlayerAlive(target) || GetEntTeam(target) == TEAM_SURVIVOR)
-		{
-			int newTarget = GetNearestEntity(worldSpace, "player", 0.0, 1200.0, TEAM_ENEMY);
-			if (IsValidEntity2(newTarget))
-			{
-				actor.Target = newTarget;
-			}
-			else
-			{
-				newTarget = GetNearestEntity(worldSpace, "rf2_npc*", 0.0, 1200.0, TEAM_ENEMY);
-				if (IsValidEntity2(newTarget))
-				{
-					actor.Target = newTarget;
-				}
-			}
-		}
-		
-		if (!IsValidEntity2(actor.Target) || IsValidClient(actor.Target) && !IsPlayerAlive(actor.Target))
-		{
-			int owner = GetEntPropEnt(actor, Prop_Data, "m_hOwnerEntity");
-			if (IsValidEntity2(owner))
-			{
-				actor.Target = owner;
-			}
-		}
-		
-		target = actor.Target;
-	}
-	else if (!IsValidEntity2(target))
+	if (!IsValidEntity2(target))
 	{
 		// target the Engineer's dispenser instead, if available
 		if (IsValidEntity2(actor.Dispenser))
@@ -107,15 +77,11 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 		}
 	}
 	
-	if (!IsValidEntity2(target))
-	{
-		return action.Continue();
-	}
-	
 	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(actor.index);
 	NextBotGroundLocomotion loco = npc.GetLocomotion();
+	
 	float targetPos[3];
-	if (IsBuilding(target) && GetEntProp(target, Prop_Send, "m_bCarried"))
+	if (GetEntProp(target, Prop_Send, "m_bCarried"))
 	{
 		int owner = GetEntPropEnt(target, Prop_Send, "m_hBuilder");
 		if (IsValidEntity2(owner))
@@ -125,14 +91,11 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	}
 	
 	GetEntPos(target, targetPos);
-	if (actor.Team != TEAM_SURVIVOR || GetEntTeam(target) != TEAM_SURVIVOR)
+	IVision vision = actor.MyNextBotPointer().GetVisionInterface();
+	if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) 
+		&& vision.IsLineOfSightClearToEntity(target) && actor.LastUnstuckTime+1.0 < GetGameTime())
 	{
-		IVision vision = actor.MyNextBotPointer().GetVisionInterface();
-		if (GetVectorDistance(pos, targetPos, true) <= Pow(g_cvSuicideBombRange.FloatValue / 3.0, 2.0) 
-			&& vision.IsLineOfSightClearToEntity(target) && actor.LastUnstuckTime+1.0 < GetGameTime())
-		{
-			return action.SuspendFor(RF2_SentryBusterDetonateAction(), "KABOOM");
-		}
+		return action.ChangeTo(RF2_SentryBusterDetonateAction(), "KABOOM");
 	}
 	
 	INextBot bot = actor.MyNextBotPointer();
@@ -146,33 +109,30 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 		actor.BaseNpc.flGravity = 800.0;
 	}
 	
-	if (actor.Team != TEAM_SURVIVOR)
+	if (loco.GetGroundSpeed() <= 85.0 && DistBetween(actor.index, target) <= g_cvSuicideBombRange.FloatValue || loco.IsStuck())
 	{
-		if (loco.GetGroundSpeed() <= 85.0 && DistBetween(actor.index, target) <= g_cvSuicideBombRange.FloatValue || loco.IsStuck())
+		int attempts = actor.RepathAttempts;
+		if (attempts >= 60)
 		{
-			int attempts = actor.RepathAttempts;
-			if (attempts >= 60)
-			{
-				return action.ChangeTo(RF2_SentryBusterDetonateAction(), "Fuck we're stuck!");
-			}
-			else if (attempts >= 20 && !jumping)
-			{
-				loco.Jump();
-				actor.BaseNpc.flGravity = 400.0;
-				actor.RepathAttempts += 30;
-			}
-			else if (attempts < 20)
-			{
-				actor.RepathAttempts++;
-			}
+			return action.ChangeTo(RF2_SentryBusterDetonateAction(), "Fuck we're stuck!");
 		}
-		else
+		else if (attempts >= 20 && !jumping)
 		{
-			actor.RepathAttempts = 0;
+			loco.Jump();
+			actor.BaseNpc.flGravity = 400.0;
+			actor.RepathAttempts += 30;
+		}
+		else if (attempts < 20)
+		{
+			actor.RepathAttempts++;
 		}
 	}
+	else
+	{
+		actor.RepathAttempts = 0;
+	}
 	
-	if (action.TalkerTime < GetGameTime() && actor.Team != TEAM_SURVIVOR)
+	if (action.TalkerTime < GetGameTime())
 	{
 		action.TalkerTime = GetGameTime() + 4.0;
 		EmitGameSoundToAll("MVM.SentryBusterIntro", actor.index);

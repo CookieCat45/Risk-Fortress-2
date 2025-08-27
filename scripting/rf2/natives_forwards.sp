@@ -14,7 +14,7 @@ void LoadNatives()
 	CreateNative("RF2_GetPlayerItemAmount", Native_GetPlayerItemAmount);
 	CreateNative("RF2_CalcItemMod", Native_CalcItemMod);
 	CreateNative("RF2_CalcItemMod_Hyperbolic", Native_CalcItemMod_Hyperbolic);
-	CreateNative("RF2_CalcItemMod_Reciprocal", Native_CalcItemMod_Reciprocal);
+	CreateNative("RF2_CalcItemMod_HyperbolicInverted", Native_CalcItemMod_HyperbolicInverted);
 	CreateNative("RF2_GetItemMod", Native_GetItemMod);
 	CreateNative("RF2_RandChanceInt", Native_RandChanceInt);
 	CreateNative("RF2_RandChanceFloat", Native_RandChanceFloat);
@@ -50,8 +50,6 @@ void LoadNatives()
 	CreateNative("RF2_GetLoopCount", Native_GetLoopCount);
 	CreateNative("RF2_GetTeleporterEntity", Native_GetTeleporterEntity);
 	CreateNative("RF2_IsTankDestructionMode", Native_IsTankDestructionMode);
-	CreateNative("RF2_AddObjectToSpawnList", Native_AddObjectToSpawnList);
-	CreateNative("RF2_RemoveObjectFromSpawnList", Native_RemoveObjectFromSpawnList);
 }
 
 void LoadForwards()
@@ -61,11 +59,10 @@ void LoadForwards()
 	g_fwGracePeriodStart = new GlobalForward("RF2_OnGracePeriodStart", ET_Ignore);
 	g_fwGracePeriodEnded = new GlobalForward("RF2_OnGracePeriodEnd", ET_Ignore);
 	g_fwOnTakeDamage = new GlobalForward("RF2_OnTakeDamage", ET_Hook, Param_Cell, Param_CellByRef, Param_CellByRef, Param_FloatByRef, Param_CellByRef, 
-		Param_CellByRef, Param_Array, Param_Array, Param_Cell, Param_Cell, Param_Cell, Param_CellByRef, Param_FloatByRef);
+		Param_CellByRef, Param_Array, Param_Array, Param_Cell, Param_Cell, Param_Cell, Param_FloatByRef);
 
-	g_fwOnCustomItemLoaded = new GlobalForward("RF2_OnCustomItemLoaded", ET_Ignore, Param_String, Param_String, Param_Cell, Param_Cell);
+	g_fwOnCustomItemLoaded = new GlobalForward("RF2_OnCustomItemLoaded", ET_Ignore, Param_String, Param_String, Param_Cell);
 	g_fwOnPlayerItemUpdate = new GlobalForward("RF2_OnPlayerItemUpdate", ET_Ignore, Param_Cell, Param_Cell);
-	g_fwOnActivateStrange = new GlobalForward("RF2_OnActivateStrangeItem", ET_Hook, Param_Cell, Param_Cell);
 }
 
 public any Native_IsEnabled(Handle plugin, int numParams)
@@ -98,9 +95,9 @@ public any Native_CalcItemMod_Hyperbolic(Handle plugin, int numParams)
 	return CalcItemMod_Hyperbolic(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4), GetNativeCell(5));
 }
 
-public any Native_CalcItemMod_Reciprocal(Handle plugin, int numParams)
+public any Native_CalcItemMod_HyperbolicInverted(Handle plugin, int numParams)
 {
-	return CalcItemMod_Reciprocal(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4), GetNativeCell(5));
+	return CalcItemMod_HyperbolicInverted(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4), GetNativeCell(5));
 }
 
 public any Native_GetItemMod(Handle plugin, int numParams)
@@ -314,19 +311,4 @@ public any Native_GetTeleporterEntity(Handle plugin, int numParams)
 public any Native_IsTankDestructionMode(Handle plugin, int numParams)
 {
 	return g_bTankBossMode;
-}
-
-public any Native_AddObjectToSpawnList(Handle plugin, int numParams)
-{
-	char classname[128];
-	GetNativeString(1, classname, sizeof(classname));
-	RF2_GameRules.SetObjectWeight(classname, GetNativeCell(2));
-	return 0;
-}
-
-public any Native_RemoveObjectFromSpawnList(Handle plugin, int numParams)
-{
-	char classname[128];
-	GetNativeString(1, classname, sizeof(classname));
-	return RF2_GameRules.RemoveObjectFromSpawnList(classname);
 }

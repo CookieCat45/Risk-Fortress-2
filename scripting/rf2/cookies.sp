@@ -28,7 +28,6 @@ void BakeCookies()
 	g_coPingObjectsHint = RegClientCookie("rf2_ping_objects_hint", "Ping objects hint", CookieAccess_Public);
 	g_coAlwaysShowItemCounts = RegClientCookie("rf2_always_show_item_counts", "Always show player item counts", CookieAccess_Protected);
 	g_coItemShareKarma = RegClientCookie("rf2_item_share_karma", "Item Share Karma", CookieAccess_Protected);
-	g_coAltItemMenuButton = RegClientCookie("rf2_alt_item_menu_button", "Alt Item Menu Button", CookieAccess_Protected);
 	
 	char name[64];
 	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
@@ -77,13 +76,6 @@ public void OnClientCookiesCached(int client)
 	if (!buffer[0])
 	{
 		SetCookieBool(client, g_coBecomeSurvivor, true);
-	}
-	
-	// Item Menu Button Preference
-	GetClientCookie(client, g_coAltItemMenuButton, buffer, sizeof(buffer));
-	if (!buffer[0])
-	{
-		SetCookieBool(client, g_coAltItemMenuButton, false);
 	}
 	
 	// Boss Preference

@@ -20,7 +20,6 @@ void InstallEnts()
 	RF2_Object_Statue.Init();
 	RF2_Object_Tree.Init();
 	RF2_Object_Barrel.Init();
-	RF2_Object_Pedestal.Init();
 	RF2_Trigger_Exit.Init();
 	RF2_Projectile_Base.Init();
 	RF2_Projectile_Shuriken.Init();
@@ -29,6 +28,7 @@ void InstallEnts()
 	RF2_Projectile_Fireball.Init();
 	RF2_Projectile_Kunai.Init();
 	RF2_Projectile_Skull.Init();
+	RF2_Projectile_Rocket.Init();
 	RF2_Projectile_HomingRocket.Init();
 	RF2_Projectile_Shrapnel.Init();
 	RF2_DispenserShield.Init();
@@ -41,7 +41,7 @@ void InstallEnts()
 	RF2_Providence.Init();
 	RF2_RaidBossSpawner.Init();
 	RF2_ProvidenceShieldCrystal.Init();
-	RF2_Filter_Minion.Init();
+	RF2_MajorShocks.Init();
 
 	#if defined DEVONLY
 	RF2_RaidBoss_Galleom.Init();

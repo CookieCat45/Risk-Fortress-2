@@ -36,31 +36,31 @@ methodmap RF2_Object_Barrel < RF2_Object_Base
 
 void Barrel_OnMapStart()
 {
-    PrecacheModel2(MODEL_BARREL, true);
+	PrecacheModel2(MODEL_BARREL, true);
 }
 
 static void OnCreate(RF2_Object_Barrel barrel)
 {
-    barrel.SetModel(MODEL_BARREL);
-    barrel.SetPropFloat(Prop_Send, "m_flModelScale", 0.65);
-    barrel.SetWorldText("Money Barrel (Whack to Open)");
+	barrel.SetModel(MODEL_BARREL);
+	barrel.SetPropFloat(Prop_Send, "m_flModelScale", 0.65);
+	barrel.SetWorldText("Money Barrel (Whack to Open)");
 	barrel.SetGlowColor(255, 255, 0, 255);
 	barrel.SetObjectName("Money Barrel");
 	barrel.TextZOffset = 30.0;
-    SDKHook(barrel.index, SDKHook_OnTakeDamage, Hook_OnBarrelHit);
-    SDKHook(barrel.index, SDKHook_Spawn, OnSpawn);
+	SDKHook(barrel.index, SDKHook_OnTakeDamage, Hook_OnBarrelHit);
+	SDKHook(barrel.index, SDKHook_Spawn, OnSpawn);
 	SDKHook(barrel.index, SDKHook_SpawnPost, OnSpawnPost);
 }
 
 static void OnSpawn(int entity)
 {
-    RF2_Object_Barrel barrel = RF2_Object_Barrel(entity);
-    barrel.SetProp(Prop_Data, "m_iTeamNum", TEAM_SURVIVOR); // This is so caber hits don't detonate
+	RF2_Object_Barrel barrel = RF2_Object_Barrel(entity);
+	barrel.SetProp(Prop_Data, "m_iTeamNum", TEAM_SURVIVOR); // This is so caber hits don't detonate
 }
 
 static void OnSpawnPost(int entity)
 {
-    RF2_Object_Barrel(entity).ScaleHitbox(2.0);
+	RF2_Object_Barrel(entity).ScaleHitbox(2.0);
 }
 
 static Action Hook_OnBarrelHit(int entity, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, float damageForce[3], float damagePosition[3], int damageCustom)
@@ -69,20 +69,15 @@ static Action Hook_OnBarrelHit(int entity, int &attacker, int &inflictor, float 
 		return Plugin_Continue;
 	
 	SetEntProp(attacker, Prop_Send, "m_iKillCountSinceLastDeploy", 1); // Remove honorbound
-	g_bPlayerMeleeMiss[attacker] = false;
-	if (!RF2_Object_Barrel(entity).Active)
-	{
-		return Plugin_Continue;
-	}
-
-    float pos[3];
-    GetEntPos(entity, pos, true);
-    pos[2] += 10.0;
-    float money = 35.0 * RF2_Object_Base.GetCostMultiplier() * (1.0 + CalcItemMod(attacker, Item_BanditsBoots, 0));
-    SpawnCashDrop(money, pos, 2);
-    SpawnInfoParticle("mvm_loot_explosion", pos, 3.0);
-    EmitSoundToAll(SND_DROP_DEFAULT, entity);
-    EmitSoundToAll(SND_CASH, entity);
-    RemoveEntity(entity);
-    return Plugin_Continue;
+	g_bMeleeMiss[attacker] = false;
+	float pos[3];
+	GetEntPos(entity, pos, true);
+	pos[2] += 10.0;
+	float money = 35.0 * RF2_Object_Base.GetCostMultiplier() * (1.0 + CalcItemMod(attacker, Item_BanditsBoots, 0));
+	SpawnCashDrop(money, pos, 2);
+	SpawnInfoParticle("mvm_loot_explosion", pos, 3.0);
+	EmitSoundToAll(SND_DROP_DEFAULT, entity);
+	EmitSoundToAll(SND_CASH, entity);
+	RemoveEntity2(entity);
+	return Plugin_Continue;
 }

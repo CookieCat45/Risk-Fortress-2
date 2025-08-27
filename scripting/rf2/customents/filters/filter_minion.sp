@@ -35,12 +35,12 @@ static void OnCreate(RF2_Filter_Minion filter)
 static MRESReturn DHook_PassesFilterImpl(int filter, DHookReturn returnVal, DHookParam params)
 {
     int client = params.Get(2);
-    if (!IsValidClient(client) || !IsPlayerMinion(client))
+    if (!IsValidClient(client) || !IsPlayerMinion(client));
     {
         returnVal.Value = false;
         return MRES_Supercede;
     }
-    
+
     returnVal.Value = true;
     return MRES_Supercede;
 }

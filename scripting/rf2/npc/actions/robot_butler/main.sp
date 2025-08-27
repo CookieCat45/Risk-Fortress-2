@@ -1,26 +1,26 @@
 #pragma newdecls required
 #pragma semicolon 1
 
-static NextBotActionFactory g_ActionFactory;
+static NextBotActionFactory g_Factory;
 
 methodmap RF2_RobotButlerMainAction < NextBotAction
 {
 	public RF2_RobotButlerMainAction()
 	{
-		return view_as<RF2_RobotButlerMainAction>(g_ActionFactory.Create());
+		return view_as<RF2_RobotButlerMainAction>(g_Factory.Create());
 	}
 	
 	public static NextBotActionFactory GetFactory()
 	{
-		if (!g_ActionFactory)
+		if (!g_Factory)
 		{
-			g_ActionFactory = new NextBotActionFactory("RF2_RobotButlerMainAction");
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_ActionFactory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
+			g_Factory = new NextBotActionFactory("RF2_RobotButlerMainAction");
+			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_Factory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
 		}
 		
-		return g_ActionFactory;
+		return g_Factory;
 	}
 }
 

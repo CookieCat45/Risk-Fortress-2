@@ -1,18 +1,18 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_ActionFactory;
+static NextBotActionFactory g_Factory;
 
 methodmap RF2_CompanionMeleeAttack < RF2_BaseNPCAttackAction
 {
 	public RF2_CompanionMeleeAttack()
 	{
-		if (!g_ActionFactory)
+		if (!g_Factory)
 		{
-			g_ActionFactory = new NextBotActionFactory("RF2_CompanionMeleeAttack");
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_ActionFactory.BeginDataMapDesc()
+			g_Factory = new NextBotActionFactory("RF2_CompanionMeleeAttack");
+			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_Factory.BeginDataMapDesc()
 				.DefineFloatField("m_flStartTime")
 				.DefineFloatField("m_flAttackTime")
 				.DefineFloatField("m_flRecoveryTime")
@@ -20,7 +20,7 @@ methodmap RF2_CompanionMeleeAttack < RF2_BaseNPCAttackAction
 				.EndDataMapDesc();
 		}
 		
-		return view_as<RF2_CompanionMeleeAttack>(g_ActionFactory.Create());
+		return view_as<RF2_CompanionMeleeAttack>(g_Factory.Create());
 	}
 }
 

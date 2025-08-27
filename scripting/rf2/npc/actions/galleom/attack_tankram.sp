@@ -1,18 +1,18 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_ActionFactory;
+static NextBotActionFactory g_Factory;
 
 methodmap RF2_GalleomTankRamAttack < RF2_BaseNPCAttackAction
 {
 	public RF2_GalleomTankRamAttack()
 	{
-		if (!g_ActionFactory)
+		if (!g_Factory)
 		{
-			g_ActionFactory = new NextBotActionFactory("RF2_GalleomTankRamAttack");
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_ActionFactory.BeginDataMapDesc()
+			g_Factory = new NextBotActionFactory("RF2_GalleomTankRamAttack");
+			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_Factory.BeginDataMapDesc()
 				.DefineFloatField("m_flStartTime")
 				.DefineFloatField("m_flAttackTime")
 				.DefineFloatField("m_flRecoveryTime")
@@ -23,7 +23,7 @@ methodmap RF2_GalleomTankRamAttack < RF2_BaseNPCAttackAction
 				.EndDataMapDesc();
 		}
 		
-		return view_as<RF2_GalleomTankRamAttack>(g_ActionFactory.Create());
+		return view_as<RF2_GalleomTankRamAttack>(g_Factory.Create());
 	}
 
 	property CBaseEntity RocketTrailL
@@ -89,8 +89,8 @@ static int Update(RF2_GalleomTankRamAttack action, RF2_RaidBoss_Galleom boss, fl
 		{
 			boss.BaseNpc.flAcceleration = 2000.0;
 			boss.SetHitboxSize({-150.0, -150.0, 0.0}, {150.0, 150.0, 300.0});
-			RemoveEntity(action.RocketTrailL.index);
-			RemoveEntity(action.RocketTrailR.index);
+			RemoveEntity2(action.RocketTrailL.index);
+			RemoveEntity2(action.RocketTrailR.index);
 			return action.Done("I'm done running people over.");
 		}
 	}

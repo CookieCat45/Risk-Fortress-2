@@ -1,37 +1,37 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_ActionFactory;
+static NextBotActionFactory g_Factory;
 
 methodmap RF2_ProvidenceDeathAction < NextBotAction
 {
 	public RF2_ProvidenceDeathAction()
 	{
-		if (!g_ActionFactory)
+		if (!g_Factory)
 		{
-			g_ActionFactory = new NextBotActionFactory("RF2_ProvidenceDeathAction");
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_Factory = new NextBotActionFactory("RF2_ProvidenceDeathAction");
+			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
 		}
 		
-		return view_as<RF2_ProvidenceDeathAction>(g_ActionFactory.Create());
+		return view_as<RF2_ProvidenceDeathAction>(g_Factory.Create());
 	}
 }
 
 static int OnStart(RF2_ProvidenceDeathAction action, RF2_Providence boss, NextBotAction prevAction)
 {
-    boss.Locomotion.Stop();
-    boss.Path.Invalidate();
-    for (int i = 0; i < boss.Crystals.Length; i++)
-    {
-        RF2_ProvidenceShieldCrystal crystal = RF2_ProvidenceShieldCrystal(boss.Crystals.Get(i));
-        if (crystal.IsValid())
-        {
-            SDKHooks_TakeDamage(crystal.index, 0, 0, 99999999.0, DMG_PREVENT_PHYSICS_FORCE);
-            RemoveEntity(crystal.index);
-        }
-    }
+	boss.Locomotion.Stop();
+	boss.Path.Invalidate();
+	for (int i = 0; i < boss.Crystals.Length; i++)
+	{
+		RF2_ProvidenceShieldCrystal crystal = RF2_ProvidenceShieldCrystal(boss.Crystals.Get(i));
+		if (crystal.IsValid())
+		{
+			SDKHooks_TakeDamage(crystal.index, 0, 0, 99999999.0, DMG_PREVENT_PHYSICS_FORCE);
+			RemoveEntity2(crystal.index);
+		}
+	}
 
-    boss.Crystals.Clear();
+	boss.Crystals.Clear();
 	float pos[3];
 	boss.GetAbsOrigin(pos);
 	pos[2] += 80.0;
@@ -51,7 +51,7 @@ static int OnStart(RF2_ProvidenceDeathAction action, RF2_Providence boss, NextBo
 	}
 	
 	timescale.FloatValue = 0.05;
-    float time = boss.AddGesture("primary_death_backstab") * 0.95;
+	float time = boss.AddGesture("primary_death_backstab") * 0.95;
 	CreateTimer(0.4, Timer_HostTimescaleReset, _, TIMER_FLAG_NO_MAPCHANGE);
 	CreateTimer(time, Timer_ProvidenceDeathExplosion, EntIndexToEntRef(boss.index), TIMER_FLAG_NO_MAPCHANGE);
 	return action.Continue();
@@ -92,5 +92,5 @@ static void Timer_ProvidenceDeathExplosion(Handle timer, int entity)
 		UTIL_ScreenFade(i, {255, 255, 255, 255}, 0.3, 0.1, FFADE_PURGE);
 	}
 	
-	RemoveEntity(entity);
+	RemoveEntity2(entity);
 }

@@ -1,22 +1,22 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_ActionFactory;
+static NextBotActionFactory g_Factory;
 
 methodmap RF2_SentryBusterDetonateAction < NextBotAction
 {
 	public RF2_SentryBusterDetonateAction()
 	{
-		if (!g_ActionFactory)
+		if (!g_Factory)
 		{
-			g_ActionFactory = new NextBotActionFactory("RF2_SentryBusterDetonate");
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_ActionFactory.BeginDataMapDesc()
+			g_Factory = new NextBotActionFactory("RF2_SentryBusterDetonate");
+			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_Factory.BeginDataMapDesc()
 				.DefineFloatField("m_DetonateTime")
 				.EndDataMapDesc();
 		}
-		return view_as<RF2_SentryBusterDetonateAction>(g_ActionFactory.Create());
+		return view_as<RF2_SentryBusterDetonateAction>(g_Factory.Create());
 	}
 	
 	property float DetonateTime
@@ -35,22 +35,6 @@ methodmap RF2_SentryBusterDetonateAction < NextBotAction
 
 static int OnStart(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor, NextBotAction prevAction)
 {
-	if (actor.Team == TEAM_SURVIVOR)
-	{
-		// don't detonate if another one of my buddies nearby already is
-		int entity = MaxClients+1;
-		while ((entity = FindEntityByClassname(entity, "rf2_npc_sentry_buster")) != INVALID_ENT)
-		{
-			RF2_SentryBuster buster = RF2_SentryBuster(entity);
-			if (buster.Team == actor.Team && buster.Detonating 
-				&& DistBetween(actor.index, buster.index, true) <= Pow(g_cvSuicideBombRange.FloatValue, 2.0))
-			{
-				return action.Done("A nearby ally is detonating, wait for them to finish.");
-			}
-		}
-	}
-	
-	actor.Detonating = true;
 	actor.DoUnstuckChecks = false;
 	int sequence = actor.LookupSequence("taunt04");
 	actor.SetProp(Prop_Data, "m_takedamage", DAMAGE_NO);
@@ -63,17 +47,16 @@ static int OnStart(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor
 	actor.ResetSequence(sequence);
 	actor.SetPropFloat(Prop_Data, "m_flCycle", 0.0);
 	actor.SetProp(Prop_Data, "m_takedamage", 0);
-	EmitSoundToAll(")mvm/sentrybuster/mvm_sentrybuster_spin.wav", actor.index);
+	EmitGameSoundToAll("MVM.SentryBusterSpin", actor.index);
+	
 	float duration = actor.SequenceDuration(sequence);
-	if (actor.Team == TEAM_SURVIVOR)
-	{
-		duration *= 0.25;
-	}
 	
 	action.DetonateTime = GetGameTime() + duration;
+
 	CBaseNPC npc = TheNPCs.FindNPCByEntIndex(actor.index);
 	npc.flWalkSpeed = 0.0;
 	npc.flRunSpeed = 0.0;
+
 	return action.Continue();
 }
 
@@ -81,9 +64,7 @@ static int Update(RF2_SentryBusterDetonateAction action, RF2_SentryBuster actor,
 {
 	if (GetGameTime() > action.DetonateTime)
 	{
-		StopSound(actor, SNDCHAN_AUTO, ")mvm/sentrybuster/mvm_sentrybuster_spin.wav");
 		actor.Detonate();
 	}
-	
 	return action.Continue();
 }

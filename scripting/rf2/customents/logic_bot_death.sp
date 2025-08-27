@@ -23,10 +23,10 @@ methodmap RF2_Logic_BotDeath < CBaseEntity
 	{
 		g_Factory = new CEntityFactory("rf2_logic_bot_death");
 		g_Factory.DeriveFromBaseEntity(true);
-        g_Factory.BeginDataMapDesc()
-            .DefineStringField("m_szBotName", _, "bot_name")
-            .DefineOutput("OnBotDeath")
-        .EndDataMapDesc();
+		g_Factory.BeginDataMapDesc()
+			.DefineStringField("m_szBotName", _, "bot_name")
+			.DefineOutput("OnBotDeath")
+		.EndDataMapDesc();
 		g_Factory.Install();
 	}
 

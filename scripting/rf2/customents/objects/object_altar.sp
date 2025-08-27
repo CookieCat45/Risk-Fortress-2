@@ -55,28 +55,25 @@ static void OnCreate(RF2_Object_Altar altar)
 	altar.DisallowNonSurvivorMinions = true;
 	altar.TextSize = 3.0;
 	altar.TextDist = 100.0;
-	altar.ShouldBlink = false;
+	altar.Effects = 0; // no flashing
 	altar.SetModel(MODEL_ALTAR);
-	char text[256];
-	FormatEx(text, sizeof(text), "(%d Gargoyle Keys) Call for Medic to activate", g_iGargoyleKeyCost);
-	altar.SetWorldText(text);
+	altar.SetWorldText("(1 Gargoyle Key) Call for Medic to activate");
 	altar.SetObjectName("Gargoyle Altar");
 	altar.HookInteract(OnInteract);
 }
 
 static Action OnInteract(int client, RF2_Object_Altar altar)
 {
-	if (GetPlayerItemCount(client, Item_HauntedKey, true) >= g_iGargoyleKeyCost)
+	if (PlayerHasItem(client, Item_HauntedKey, true))
 	{
-		GiveItem(client, Item_HauntedKey, -g_iGargoyleKeyCost);
-		g_iGargoyleKeyCost = 4;
+		GiveItem(client, Item_HauntedKey, -1);
 		float pos[3];
 		altar.WorldSpaceCenter(pos);
 		TE_TFParticle("ghost_appearation", pos);
 		UTIL_ScreenShake(pos, 15.0, 10.0, 5.0, 9000000.0, SHAKE_START, true);
 		PrintCenterTextAll("%t", "AltarActivated");
 		EmitSoundToAll(SND_ALTAR);
-		RemoveEntity(altar.index);
+		RemoveEntity2(altar.index);
 		g_bEnteringUnderworld = true;
 		TriggerAchievement(client, ACHIEVEMENT_GARGOYLE);
 		int entity = MaxClients+1;
@@ -84,13 +81,13 @@ static Action OnInteract(int client, RF2_Object_Altar altar)
 		{
 			GetEntPos(entity, pos, true);
 			TE_TFParticle("pumpkin_explode", pos);
-			RemoveEntity(entity);
+			RemoveEntity2(entity);
 		}
 	}
 	else
 	{
 		EmitSoundToClient(client, SND_NOPE);
-		PrintCenterText(client, "%t", "AltarNoKeys", g_iGargoyleKeyCost);
+		PrintCenterText(client, "%t", "AltarNoKeys");
 	}
 	
 	return Plugin_Handled;

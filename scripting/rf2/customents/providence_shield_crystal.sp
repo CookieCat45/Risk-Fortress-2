@@ -27,42 +27,13 @@ methodmap RF2_ProvidenceShieldCrystal < RF2_NPC_Base
 		g_Factory = new CEntityFactory("rf2_npc_shield_crystal", OnCreate);
 		g_Factory.DeriveFromFactory(GetBaseNPCFactory());
 		g_Factory.BeginDataMapDesc()
-            .DefineBoolField("m_bDestroyed")
-            .DefineFloatField("m_flRegenerateAt")
-            .DefineEntityField("m_hBoss")
-            .DefineVectorField("m_vecSpawnLocation")
-            .DefineIntField("m_iTimesDestroyed")
-            .DefineIntField("m_iMaxHealthReduction")
+			.DefineBoolField("m_bDestroyed")
+			.DefineFloatField("m_flRegenerateAt")
+			.DefineEntityField("m_hBoss")
 		.EndDataMapDesc();
 		g_Factory.Install();
-        HookMapStart(Crystal_OnMapStart);
+		HookMapStart(Crystal_OnMapStart);
 	}
-
-    property int TimesDestroyed
-    {
-        public get()
-        {
-            return this.GetProp(Prop_Data, "m_iTimesDestroyed");
-        }
-
-        public set(int value)
-        {
-            this.SetProp(Prop_Data, "m_iTimesDestroyed", value);
-        }
-    }
-
-    property int MaxHealthReduction
-    {
-        public get()
-        {
-            return this.GetProp(Prop_Data, "m_iMaxHealthReduction");
-        }
-
-        public set(int value)
-        {
-            this.SetProp(Prop_Data, "m_iMaxHealthReduction", value);
-        }
-    }
 
     property float RegenerateAt
     {
@@ -158,22 +129,10 @@ static void SpawnPost(int entity)
     float maxs[3] = {35.0, 35.0, 60.0};
     crystal.SetHitboxSize(mins, maxs);
     crystal.SetMoveType(MOVETYPE_NONE);
-    float playerMult = 1.0 + (0.25 * float(GetAliveSurvivors()-1));
+    float playerMult = 1.0 + (0.25 * float(RF2_GetSurvivorCount()-1));
     const float baseHealth = 2350.0;
     crystal.MaxHealth = RoundToFloor(baseHealth * playerMult * GetEnemyHealthMult());
-    crystal.MaxHealthReduction = RoundToFloor(float(crystal.MaxHealth) * 0.15);
     crystal.Regenerate();
-    RequestFrame(RF_SetSpawnLocation, crystal);
-}
-
-static void RF_SetSpawnLocation(RF2_ProvidenceShieldCrystal crystal)
-{
-    if (crystal.IsValid())
-    {
-        float pos[3];
-        crystal.GetAbsOrigin(pos);
-        crystal.SetPropVector(Prop_Data, "m_vecSpawnLocation", pos);
-    }
 }
 
 static Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
@@ -218,13 +177,6 @@ static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
     {
         crystal.Health = 1; // Never actually die, just disappear for a while
         crystal.Destroyed = true;
-        if (crystal.TimesDestroyed < 2)
-        {
-            crystal.MaxHealth -= crystal.MaxHealthReduction;
-        }
-        
-        float time = 50.0 + (float(crystal.TimesDestroyed) * 12.0);
-        crystal.TimesDestroyed++;
         crystal.SetRenderColor(1, 1, 1, 80);
         crystal.AddFlag(FL_NOTARGET);
         crystal.SetProp(Prop_Send, "m_fEffects", crystal.GetProp(Prop_Send, "m_fEffects") & ~EF_ITEM_BLINK);
@@ -233,6 +185,7 @@ static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
         crystal.WorldSpaceCenter(pos);
         DoExplosionEffect(pos);
         EmitGameSoundToAll(GSND_SECONDLIFE_EXPLODE, crystal.index);
+        const float time = 50.0;
         crystal.RegenerateAt = GetGameTime()+time;
         if (crystal.Boss.IsValid())
         {
@@ -260,11 +213,8 @@ static void ThinkPost(int entity)
         crystal.SetLocalAngles(angles);
     }
 
-    // never move
+    // zero out velocity so we never move
     crystal.Locomotion.SetVelocity({0.0, 0.0, 0.0});
-    float pos[3];
-    crystal.GetPropVector(Prop_Data, "m_vecSpawnLocation", pos);
-    crystal.SetAbsOrigin(pos);
 }
 
 static void Timer_ResetRenderColor(Handle timer, int entity)

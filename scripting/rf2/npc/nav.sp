@@ -7,7 +7,7 @@
  * @param resultPos				Result spawn position, if a spawn point is successfully found.
  * @param minDist				Minimum distance from search position.
  * @param maxDist				Maximum distance from search position.
- * @param filterTeam			Don't choose a spawn point too close to players on this team. 
+ * @param filterTeam				Don't choose a spawn point too close to players on this team. 
  *								If this is above 3 (TFTeam_Blue), all players will be filtered. -1 to skip filtering.
  *
  * @param doSpawnTrace		Do a trace to ensure that players and NPCs will not get stuck.
@@ -15,13 +15,12 @@
  * @param maxs					Hull maxs for the trace hull spawn check.
  * @param traceFlags			Trace flags.
  * @param zOffset				Offset the Z position of the result spawn position by this much.
- * @param spawnTarget			Specific target that we don't want to spawn too close to. If set, filterTeam is ignored.
+ * @param onlyFilterSentries	Only filter sentries, not players (Sentry Busters)
  * @return			CNavArea associated with the spawn point if found. NULL_AREA otherwise.
  */
 CNavArea GetSpawnPoint(const float pos[3], float resultPos[3], 
 float minDist=650.0, float maxDist=1650.0, int filterTeam=-1, 
-bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLAYER_MAXS, 
-int traceFlags=MASK_PLAYERSOLID, float zOffset=30.0, int spawnTarget=INVALID_ENT)
+bool doSpawnTrace=true, const float mins[3]=PLAYER_MINS, const float maxs[3]=PLAYER_MAXS, int traceFlags=MASK_PLAYERSOLID, float zOffset=30.0, bool onlyFilterSentries=false)
 {
 	float navPos[3];
 	CopyVectors(pos, navPos);
@@ -87,11 +86,6 @@ int traceFlags=MASK_PLAYERSOLID, float zOffset=30.0, int spawnTarget=INVALID_ENT
 		TFClassType class;
 		team = filterTeam == view_as<int>(TFTeam_Red) ? view_as<int>(TFTeam_Blue) : view_as<int>(TFTeam_Red);
 		float sqMinDist = sq(minDist);
-		float spawnTargetPos[3];
-		if (spawnTarget != INVALID_ENT)
-		{
-			GetEntPos(spawnTarget, spawnTargetPos, true);
-		}
 		
 		while (validAreaCount > 0)
 		{
@@ -100,8 +94,9 @@ int traceFlags=MASK_PLAYERSOLID, float zOffset=30.0, int spawnTarget=INVALID_ENT
 			area = collector.Get(randomArea);
 			area.GetCenter(spawnPos);
 			spawnPos[2] += zOffset;
+			
 			TR_TraceHullFilter(spawnPos, spawnPos, mins, maxs, traceFlags, TraceFilter_SpawnCheck, team);
-			if (TR_DidHit() || spawnTarget != INVALID_ENT && GetVectorDistance(spawnPos, spawnTargetPos, true) <= sqMinDist)
+			if (TR_DidHit())
 			{
 				area = NULL_AREA;
 				validAreaCount--;
@@ -112,7 +107,7 @@ int traceFlags=MASK_PLAYERSOLID, float zOffset=30.0, int spawnTarget=INVALID_ENT
 			}
 			else
 			{
-				if (filterTeam > -1 && spawnTarget == INVALID_ENT)
+				if (filterTeam > -1)
 				{
 					canSpawn = true;
 					for (int i = 1; i <= MaxClients; i++)
@@ -150,7 +145,7 @@ int traceFlags=MASK_PLAYERSOLID, float zOffset=30.0, int spawnTarget=INVALID_ENT
 							}
 						}
 						
-						if (canSpawn)
+						if (canSpawn && !onlyFilterSentries)
 						{
 							GetEntPos(i, playerPos);
 							if (GetVectorDistance(spawnPos, playerPos, true) <= sqMinDist)
@@ -167,7 +162,7 @@ int traceFlags=MASK_PLAYERSOLID, float zOffset=30.0, int spawnTarget=INVALID_ENT
 						}
 					}
 				}
-
+				
 				if (canSpawn) // We can spawn here.
 				{
 					CopyVectors(spawnPos, resultPos);
@@ -200,7 +195,7 @@ public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 }
 
 public bool FilterIgnoreActors(int entity, int contentsMask, int desiredcollisiongroup)
-{
+{	
 	if ((entity > 0 && entity <= MaxClients) || !IsCombatChar(entity))
 	{
 		return false;

@@ -1,16 +1,16 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_ActionFactory;
+static NextBotActionFactory g_Factory;
 
 methodmap RF2_BaseNPCAttackAction < NextBotAction
 {
 	public RF2_BaseNPCAttackAction()
 	{
-		if (!g_ActionFactory)
+		if (!g_Factory)
 		{
-			g_ActionFactory = new NextBotActionFactory("RF2_BaseNPCAttackAction");
-			g_ActionFactory.BeginDataMapDesc()
+			g_Factory = new NextBotActionFactory("RF2_BaseNPCAttackAction");
+			g_Factory.BeginDataMapDesc()
 				.DefineFloatField("m_flStartTime")
 				.DefineFloatField("m_flAttackTime")
 				.DefineFloatField("m_flRecoveryTime")
@@ -18,14 +18,13 @@ methodmap RF2_BaseNPCAttackAction < NextBotAction
 				.EndDataMapDesc();
 		}
 		
-		return view_as<RF2_BaseNPCAttackAction>(g_ActionFactory.Create());
+		return view_as<RF2_BaseNPCAttackAction>(g_Factory.Create());
 	}
 	
 	// Does a trace hull hitbox attack, offset is relative to entity's origin and angles. resultPos is filled with the origin position of the attack.
 	// returnArray=true returns an ArrayList of entities hit, otherwise returns null
 	public ArrayList DoAttackHitbox(const float offset[3]=NULL_VECTOR, float resultPos[3]=NULL_VECTOR, const float mins[3], const float maxs[3], 
-		float damage, int damageType=DMG_GENERIC, const float forceVector[3]={0.0, 0.0, 0.0}, bool returnArray=false, 
-		float buildingDamageMult=1.0, float friendlyFireMult=0.0)
+		float damage, int damageType=DMG_GENERIC, const float forceVector[3]={0.0, 0.0, 0.0}, bool returnArray=false, float buildingDamageMult=1.0)
 	{
 		this.HitCounter++;
 		float pos[3], end[3], ang[3];
@@ -55,7 +54,6 @@ methodmap RF2_BaseNPCAttackAction < NextBotAction
 		hitbox.SetDamageForce(forceVector);
 		hitbox.ReturnHitEnts = returnArray;
 		hitbox.BuildingDamageMult = buildingDamageMult;
-		hitbox.FriendlyFireMult = friendlyFireMult;
 		hitbox.Teleport(end, ang);
 		hitbox.Spawn();
 		return hitbox.DoDamage();

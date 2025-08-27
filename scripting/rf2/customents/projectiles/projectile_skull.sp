@@ -12,9 +12,9 @@ public const char g_szSkullFireSounds[][] =
 	"rf2/sfx/wisp5.mp3"
 };
 
-static float g_flDeathSecsLeft[MAXPLAYERS];
-static int g_iDeathWorldText[MAXPLAYERS] = {INVALID_ENT, ...};
-static int g_iDeathInflictor[MAXPLAYERS] = {INVALID_ENT, ...};
+static float g_flDeathSecsLeft[MAXTF2PLAYERS];
+static int g_iDeathWorldText[MAXTF2PLAYERS] = {INVALID_ENT, ...};
+static int g_iDeathInflictor[MAXTF2PLAYERS] = {INVALID_ENT, ...};
 
 methodmap RF2_Projectile_Skull < RF2_Projectile_Base
 {

@@ -1,5 +1,7 @@
 #pragma semicolon 1
 #pragma newdecls required
+
+#define MAXTF2PLAYERS 36
 #define MAX_EDICTS 2048
 #define PLAYER_MINS {-24.0, -24.0, 0.0}
 #define PLAYER_MAXS {24.0, 24.0, 82.0}
@@ -26,7 +28,6 @@
 #define	DifficultyFactor_Steel 1.5
 #define DifficultyFactor_Titanium 2.0
 
-
 enum
 {
 	TF2Quality_Normal,
@@ -46,10 +47,6 @@ enum
 	TF2Quality_Collectors,
 	TF2Quality_Decorated,
 };
-
-#define TF_CUSTOM_KRAMPUS_MELEE 84
-#define TF_CUSTOM_KRAMPUS_RANGED 85
-#define TF_CUSTOM_TAUNT_ENGINEER_TRICKSHOT 86
 
 enum
 {
@@ -87,13 +84,13 @@ enum
 	COLLISION_GROUP_NPC_SCRIPTED,	// USed for NPCs in scripts that should not collide with each other
 	
 	// TF2-specific collision groups
-	TFCOLLISION_GROUP_GRENADES,
+	TFCOLLISION_GROUP_SHIELD,
 	TFCOLLISION_GROUP_OBJECT,
 	TFCOLLISION_GROUP_OBJECT_SOLIDTOPLAYERMOVEMENT,
 	TFCOLLISION_GROUP_COMBATOBJECT,
 	TFCOLLISION_GROUP_ROCKETS,		// Solid to players, but not player movement. ensures touch calls are originating from rocket
 	TFCOLLISION_GROUP_RESPAWNROOMS, // CookieCat note: Only collides with players
-	TFCOLLISION_GROUP_TANK, 		// CookieCat note: Solid to everything except for players. Despite the name, it's only used by spell pumpkin bombs, not tanks.
+	TFCOLLISION_GROUP_TANK, 		// CookieCat note: Solid to everything except for players. Despite the name, it's only used by pumpkin bombs, not tanks.
 	TFCOLLISION_GROUP_ROCKET_BUT_NOT_WITH_OTHER_ROCKETS, // CookieCat note: Used by most projectiles, same as TFCOLLISION_GROUP_ROCKETS but doesn't collide with itself or that group
 };
 
@@ -203,6 +200,7 @@ enum // Move collide types
 #define ItemConfig "items.cfg"
 #define SurvivorConfig "survivors.cfg"
 #define WeaponConfig "weapons.cfg"
+#define MapConfig "maps.cfg"
 
 
 // Models/Sprites -------------------------------------------------------------------------------------------------------------------------------------
@@ -211,8 +209,6 @@ enum // Move collide types
 #define MODEL_CASH_BOMB "models/props_c17/cashregister01a.mdl"
 #define MODEL_MERASMUS "models/bots/merasmus/merasmus.mdl"
 #define MODEL_MEDISHIELD "models/props_mvm/mvm_player_shield2.mdl"
-#define MODEL_ROLLERMINE "models/roller.mdl"
-#define MODEL_ROLLERMINE_SPIKES "models/roller_spikes.mdl"
 
 #define MAT_DEBUGEMPTY "debug/debugempty.vmt"
 #define MAT_BEAM "materials/sprites/laser.vmt"
@@ -237,7 +233,6 @@ enum // Move collide types
 #define SND_GAME_OVER "music/mvm_lost_wave.wav"
 #define SND_EVIL_LAUGH "rf2/sfx/evil_laugh.wav"
 #define SND_LASTMAN "mvm/mvm_warning.wav"
-#define SND_SCAVENGER_LORD_WARNING "mvm/mvm_bomb_warning.wav"
 #define SND_MONEY_PICKUP "mvm/mvm_money_pickup.wav"
 #define SND_USE_WORKBENCH "ui/item_metal_scrap_pickup.wav"
 #define SND_USE_SCRAPPER "ui/item_metal_scrap_drop.wav"
@@ -254,7 +249,6 @@ enum // Move collide types
 #define SND_MERASMUS_DANCE3 "vo/halloween_merasmus/sf12_wheel_dance05.mp3"
 #define SND_BOSS_SPAWN "mvm/mvm_tank_start.wav"
 #define SND_BOSS_DEATH "rf2/sfx/boss_death.wav"
-#define SND_MEDSHIELD_DEPLOY "weapons/medi_shield_deploy.wav"
 #define SND_SENTRYBUSTER_BOOM "mvm/sentrybuster/mvm_sentrybuster_explode.wav"
 #define SND_ENEMY_STUN "mvm/mvm_robo_stun.wav"
 #define SND_TELEPORTER_CHARGED "mvm/mvm_bought_in.wav"
@@ -288,7 +282,6 @@ enum // Move collide types
 #define SND_RUNE_VAMPIRE "items/powerup_pickup_vampire.wav"
 #define SND_RUNE_KING "items/powerup_pickup_king.wav"
 #define SND_THROW "weapons/cleaver_throw.wav"
-#define SND_TELEPORTER_BLU_START "mvm/mvm_tele_activate.wav"
 #define SND_TELEPORTER_BLU "mvm/mvm_tele_deliver.wav"
 #define SND_ARTIFACT_ROLL "ui/buttonclick.wav"
 #define SND_ARTIFACT_SELECT "items/spawn_item.wav"
@@ -304,8 +297,6 @@ enum // Move collide types
 #define SND_HINT "ui/hint.wav"
 #define SND_LONGWAVE_USE "ui/cyoa_node_activate.wav"
 #define SND_REVIVE "misc/halloween/spell_skeleton_horde_rise.wav"
-#define SND_MULTICRATE_CYCLE "ui/buttonrollover.wav"
-#define SND_SHIELD_BREAK "physics/glass/glass_sheet_break3.wav"
 #define NULL "misc/null.wav"
 
 // Game sounds
@@ -317,10 +308,8 @@ enum // Move collide types
 #define GSND_SYDNEY "Weapon_SydneySleeper.Single"
 #define GSND_BAZAAR "Weapon_Bazaar_Bargain.Single"
 #define GSND_MACHINA "Weapon_SniperRailgun.Single"
-#define GSND_MACHINA_FULL "Weapon_SniperRailgun_Large.Single"
 #define GSND_SHOOTINGSTAR "Weapon_ShootingStar.Single"
 #define GSND_AWP "Weapon_AWP.Single"
-#define GSND_MVM_POWERUP "MVM.PlayerUsedPowerup"
 
 // TFBots -------------------------------------------------------------------------------------------------------------------------------------
 enum
@@ -335,15 +324,29 @@ enum
 #define TFBOTFLAG_ROCKETJUMP (1 << 1) // Bot should rocket jump
 #define TFBOTFLAG_STRAFING (1 << 2) // Bot is currently strafing
 #define TFBOTFLAG_HOLDFIRE (1 << 3) // Hold fire until fully reloaded
-#define TFBOTFLAG_SPAMJUMP (1 << 4) // constantly jump
+#define TFBOTFLAG_SPAMJUMP (1 << 4) // Constantly jump around
 #define TFBOTFLAG_ALWAYSATTACK (1 << 5) // Always hold IN_ATTACK
-#define TFBOTFLAG_SUICIDEBOMBER (1 << 6) // Behave like a Sentry Buster, but go after players instead of sentries
-#define TFBOTFLAG_SCAVENGER (1 << 7) // Scavenge the map for items
-#define TFBOTFLAG_DONESCAVENGING (1 << 8) // we're done scavenging for items
+
+// Enemies/Bosses -------------------------------------------------------------------------------------------------------------------------------------
+enum
+{
+	VoiceType_Robot,
+	VoiceType_Human,
+	VoiceType_Silent,
+};
+
+enum
+{
+	FootstepType_Robot,
+	FootstepType_GiantRobot,
+	FootstepType_Normal,
+	FootstepType_Silent,
+};
 
 
 // Weapons -------------------------------------------------------------------------------------------------------------------------------------
 #define MAX_STRING_ATTRIBUTES 8
+#define MAX_WEAPONS 256
 #define TF_WEAPON_SLOTS 10
 #define MAX_ATTRIBUTES 20
 #define MAX_STATIC_ATTRIBUTES 16
@@ -370,24 +373,7 @@ enum
 	TFAmmoType_Primary = 1,
 	TFAmmoType_Secondary,
 	TFAmmoType_Metal,
-	TFAmmoType_Jarate, // aka Grenades1, also used for Sandman/Wrap Assassin and lunchbox items
-	TFAmmoType_MadMilk, // aka Grenades2, also used for Cleaver
-	TFAmmoType_Grenades3,
-};
-
-
-// Other
-enum
-{
-	VoiceType_Robot,
-	VoiceType_Human,
-	VoiceType_Silent,
-};
-
-enum
-{
-	FootstepType_Robot,
-	FootstepType_GiantRobot,
-	FootstepType_Normal,
-	FootstepType_Silent,
+	TFAmmoType_Jarate,
+	TFAmmoType_MadMilk,
+	//TFAmmoType_Grenades3,	- Unused
 };

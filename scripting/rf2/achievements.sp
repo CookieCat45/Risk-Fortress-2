@@ -41,7 +41,7 @@ enum
 	MAX_ACHIEVEMENTS,
 }
 
-static int g_Achievement[MAXPLAYERS][MAX_ACHIEVEMENTS];
+static int g_Achievement[MAXTF2PLAYERS][MAX_ACHIEVEMENTS];
 
 void TriggerAchievement(int client, int achievement)
 {
@@ -76,7 +76,7 @@ void SetAchievementProgress(int client, int achievement, int progress, bool upda
 	{
 		return;
 	}
-
+	
 	if (updateDB)
 	{
 		UpdateSQLAchievement(client, achievement, progress);
@@ -98,7 +98,7 @@ int GetAchievementGoal(int achievement)
 	{
 		case ACHIEVEMENT_FULLITEMLOG:
 		{
-			ArrayList list = GetSortedItemList(_, _, _, _, false);
+			ArrayList list = GetSortedItemList();
 			int total = list.Length;
 			delete list;
 			return total;
@@ -170,15 +170,13 @@ bool IsAchievementHidden(int achievement)
 	{
 		return !DoesUnderworldExist();
 	}
-	
+
 	if (achievement == ACHIEVEMENT_BEATGAME || achievement == ACHIEVEMENT_BEATGAMESTEEL || achievement == ACHIEVEMENT_BEATGAMETITANIUM)
 	{
 		return !DoesFinalMapExist();
 	}
 	
-	// deprecated achievements, always hidden
-	return achievement == ACHIEVEMENT_DANCE || achievement == ACHIEVEMENT_BADMAGIC 
-		|| achievement == ACHIEVEMENT_AIRJUMPS || achievement == ACHIEVEMENT_DAMAGECAP;
+	return achievement == ACHIEVEMENT_DANCE || achievement == ACHIEVEMENT_BADMAGIC || achievement == ACHIEVEMENT_AIRJUMPS;
 }
 
 void OnAchievementUnlocked(int client, int achievement)
@@ -199,7 +197,7 @@ void OnAchievementUnlocked(int client, int achievement)
 	if (PlayerHasAllAchievements(client))
 	{
 		SetCookieBool(client, g_coEarnedAllAchievements, true);
-		PrintCenterText(client, "%t", "AllAchievements");
+		PrintCenterText(client, "CONGRATULATIONS!!! You've earned all of the achievements!\nYou've been rewarded with a commemorative Merc Medal!");
 	}
 	
 	PrintHintText(client, "To view your achievements, use the /rf2_achievements command.");
