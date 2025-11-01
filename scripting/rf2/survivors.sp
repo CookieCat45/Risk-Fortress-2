@@ -1154,7 +1154,7 @@ void ForfeitItems(int client)
 				char colorTag[32], qualityName[32];
 				GetQualityColorTag(q, colorTag, sizeof(colorTag));
 				GetQualityName(q, qualityName, sizeof(qualityName));
-				RF2_PrintToChat(i, "You received {yellow}%i{default} %s%s {default}items from {yellow}%N's{default} forfeit", 
+				RF2_PrintToChat(i, "%t", "ForfeitReceive", 
 					itemCounts[i][q], colorTag, qualityName, client);
 			}
 		}
@@ -1285,7 +1285,7 @@ void ForfeitItemsByInvIndex(int index)
 				char colorTag[32], qualityName[32];
 				GetQualityColorTag(q, colorTag, sizeof(colorTag));
 				GetQualityName(q, qualityName, sizeof(qualityName));
-				RF2_PrintToChat(i, "You received {yellow}%i{default} %s%s {default}items from %s's forfeit", 
+				RF2_PrintToChat(i, "%t", "ForfeitReceive2", 
 					itemCounts[i][q], colorTag, qualityName, name);
 			}
 		}

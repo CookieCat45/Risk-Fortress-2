@@ -1975,7 +1975,7 @@ public int Menu_HelpMenu(Menu menu, MenuAction action, int param1, int param2)
 			}
 			else if (strcmp2(info, "discord"))
 			{
-				RF2_PrintToChat(param1, "Risk Fortress 2 Discord: {yellow}https://discord.gg/jXje8aKMQK");
+				RF2_PrintToChat(param1, "%t", "TipDiscord");
 				ShowHelpMenu(param1);
 			}
 		}

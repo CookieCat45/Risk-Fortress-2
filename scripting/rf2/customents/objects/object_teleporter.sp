@@ -627,6 +627,7 @@ static Action Timer_TeleporterThink(Handle timer, int entity)
 		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsPlayerSurvivor(i) || IsPlayerMinion(i))
 			continue;
 		
+		SetGlobalTransTarget(i);
 		if (IsPlayerSurvivor(i))
 		{
 			GetEntPos(i, pos);
@@ -638,16 +639,16 @@ static Action Timer_TeleporterThink(Handle timer, int entity)
 					chargeToSet += chargeAdd;
 				}
 				
-				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "\nTeleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
+				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", "TeleporterHud", oldCharge, aliveBosses);
 			}
 			else
 			{
-				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "\nGet inside the Teleporter radius! (%.0f)\nBosses Left: %i", oldCharge, aliveBosses);
+				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", "OutsideTeleporter", oldCharge, aliveBosses);
 			}
 		}
 		else
 		{
-			FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "\nTeleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
+			FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", "TeleporterHud", oldCharge, aliveBosses);
 		}
 	}
 	
@@ -834,7 +835,7 @@ public void OnNextStageVoteFinishFinal(Menu menu, int numVotes, int numClients, 
 		{
 			// It's a tie, try again
 			RF2_Object_Teleporter.StartVote(INVALID_ENT, true);
-			RF2_PrintToChatAll("The voting result was a tie. Casting the vote again.");
+			RF2_PrintToChatAll("%t", "VoteTie");
 			if (g_bWasTie)
 			{
 				// Another tie! Decide randomly at this point.

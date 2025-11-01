@@ -57,6 +57,24 @@
 		"en"		"{red}*** {yellow}You are an admin who is currently holding a reserved slot. You are not allowed to play as a Survivor. ({1}/{2}) {red}***"
 	}
 	
+	"PlayerAchievement"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{yellow}{1}{default} has earned the achievement {lightgreen}{2}"
+	}
+	
+	"PlayerCrash"
+	{
+		"#format"	"{1:N}"
+		"en"		"{yellow}{1} {red}crashed or lost connection on RED and has 5 minutes to reconnect!"
+	}
+	
+	"ReturnedToRed"
+	{
+		"#format"	"{1:N}"
+		"en"		"{yellow}{1} {default}has returned, moving them back to RED team."
+	}
+	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// AFK PHRASES
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -410,6 +428,60 @@
 		"en"		"OFF"
 	}
 	
+	"TeleporterHud"
+	{
+		"#format"	"{1:.0f},{2:d}"
+		"en"		"\nTeleporter Charge: {1} percent...\nBosses Left: {2}"
+	}
+	
+	"OutsideTeleporter"
+	{
+		"#format"	"{1:.0f},{2:d}"
+		"en"		"\nGet inside the Teleporter radius! ({1})\nBosses Left: {2}"
+	}
+	
+	"PingObject"
+	{
+		"#format"	"{1:N},{2:t}"
+		"en"		"{1} has found: {2}"
+	}
+	
+	"PingObjectWorkbench"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{1} has found: {2}"
+	}
+	
+	"WantsToHelpPlayer"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{1} wants to help: {2}"
+	}
+	
+	"WantsToAttackPlayer"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{1} wants to attack: {2}"
+	}
+	
+	"WantsToHelp"
+	{
+		"#format"	"{1:N},{2:t}"
+		"en"		"{1} wants to help: {2}"
+	}
+	
+	"WantsToAttack"
+	{
+		"#format"	"{1:N},{2:t}"
+		"en"		"{1} wants to attack: {2}"
+	}
+	
+	"PingPlayer"
+	{
+		"#format"	"{1:N},{2:t},{3:N}"
+		"en"		"{1} {2}{3}"
+	}
+	
 	"SurvivorDisabledWarning"
 	{
 		"en"		"WARNING!\nYou have the option \"Toggle becoming a Survivor\" disabled.\nThis means that you will not join RED once the round begins.\nType /rf2_settings to re-enable it."
@@ -508,6 +580,18 @@
 	"HelpMenu"
 	{
 		"en"		"To bring up the help menu, use the /rf2_helpmenu command."
+	}
+	
+	"AhoyRed"
+	{
+		"#format"	"{1:N}"
+		"en"		"{red}{1}{default} :  Ahoy!"
+	}
+	
+	"AhoyBlue"
+	{
+		"#format"	"{1:N}"
+		"en"		"{blue}{1}{default} :  Ahoy!"
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -782,6 +866,18 @@
 		"en"		"You cannot use this as a Survivor after the grace period."
 	}
 	
+	"ForfeitReceive"
+	{
+		"#format"	"{1:d},{2:s},{3:s},{4:N}"
+		"en"		"You received {yellow}{1}{default} {2}{3} {default}items from {yellow}{4}'s{default} forfeit"
+	}
+	
+	"ForfeitReceive2"
+	{
+		"#format"	"{1:d},{2:s},{3:s},{4:s}"
+		"en"		"You received {yellow}{1}{default} {2}{3} {default}items from {yellow}{4}'s{default} forfeit"
+	}
+	
 	"SpawnAs"
 	{
 		"en"		"Spawn a..."
@@ -1021,6 +1117,33 @@
 	{
 		"#format"	"{1:s}"
 		"en"		"{1} has had their inventory forfeited automatically due to their absence."
+	}
+	
+	"PleaseWaitSeconds"
+	{
+		"#format"	"{1:d}"
+		"en"		"Please wait {1} seconds."
+	}
+	
+	"VoteTie"
+	{
+		"en"		"The voting result was a tie. Casting the vote again."
+	}
+	
+	"TreeVoteCancelledLeft"
+	{
+		"en"		"{red}The player who started the vote has left. The vote was automatically cancelled."
+	}
+	
+	"TreeVoteFail"
+	{
+		"en"		"The vote failed. None of your {haunted}Gargoyle Keys {default}were consumed."
+	}
+	
+	"TreeVoteSuccess"
+	{
+		"#format"	"{1:s},{2:N}"
+		"en"		"The next map has been set to {yellow}{1}{default}. {yellow}{2} {default}has paid {haunted}1 Gargoyle Key."
 	}
 	
 	"WaitForNextMap"

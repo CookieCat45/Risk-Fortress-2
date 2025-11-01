@@ -1952,11 +1952,11 @@ bool ActivateStrangeItem(int client)
 		{
 			if (GetClientTeam(client) == TEAM_SURVIVOR)
 			{
-				CPrintToChatAll("{red}%N{default} :  Ahoy!", client);
+				CPrintToChatAll("%t", "AhoyRed", client);
 			}
 			else
 			{
-				CPrintToChatAll("{blue}%N{default} :  Ahoy!", client);
+				CPrintToChatAll("%t", "AhoyBlue", client);
 			}
 		}
 

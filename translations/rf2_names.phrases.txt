@@ -1,0 +1,156 @@
+"Phrases"
+{
+    "rf2_npc_sentry_buster"
+    {
+        "en"    "Sentry Buster"
+    }
+    "rf2_npc_robot_butler"
+    {
+        "en"    "Botler 2000"
+    }
+    "rf2_npc_false_providence"
+    {
+        "en"    "FALSE PROVIDENCE"
+    }
+    "rf2_npc_shield_crystal"
+    {
+        "en"    "Shield Crystal"
+    }
+    "rf2_npc_major_shocks"
+    {
+        "en"    "Major Shocks"
+    }
+    "Tank"
+    {
+        "en"        "Tank"
+    }
+    "BadassTank"
+    {
+        "en"        "Badass Tank"
+    }
+    "SuperBadassTank"
+    {
+        "en"        "Super Badass Tank"
+    }
+    "headless_hatman"
+    {
+        "en"        "The Horseless Headless Horsemann"
+    }
+    "eyeball_boss"
+    {
+        "en"        "MONOCULUS!"
+    }
+    "tf_zombie"
+    {
+        "en"        "Skeleton"
+    }
+    "SkeletonKing"
+    {
+        "en"        "Skeleton King"
+    }
+    "obj_sentrygun"
+    {
+        "en"        "Sentry Gun"
+    }
+    "obj_dispenser"
+    {
+        "en"        "Dispenser"
+    }
+    "obj_teleporter"
+    {
+        "en"        "Teleporter"
+    }
+    "Crate"
+    {
+        "en"        "Crate"
+    }
+    "Large Crate"
+    {
+        "en"        "Large Crate"
+    }
+    "Strange Barrel"
+    {
+        "en"        "Strange Barrel"
+    }
+    "Collector's Crate"
+    {
+        "en"        "Collector's Crate"
+    }
+    "Haunted Case"
+    {
+        "en"        "Haunted Case"
+    }
+    "Unusual Crate"
+    {
+        "en"        "Unusual Crate"
+    }
+    "Munitions Crate"
+    {
+        "en"        "Munitions Crate"
+    }
+    "Multicrate (Normal)"
+    {
+        "en"        "Multicrate (Normal)"
+    }
+    "Multicrate (Genuine)"
+    {
+        "en"        "Multicrate (Genuine)"
+    }
+    "Multicrate (Unusual)"
+    {
+        "en"        "Multicrate (Unusual)"
+    }
+    "Multicrate (Strange)"
+    {
+        "en"        "Multicrate (Strange)"
+    }
+    "Multicrate (Collectors)"
+    {
+        "en"        "Multicrate (Collectors)"
+    }
+    "Multicrate (Haunted)"
+    {
+        "en"        "Multicrate (Haunted)"
+    }
+    "Gravestone"
+    {
+        "en"        "Gravestone"
+    }
+    "Roulette Pedestal"
+    {
+        "en"        "Roulette Pedestal"
+    }
+    "Magical Pumpkin"
+    {
+        "en"        "Magical Pumpkin"
+    }
+    "Scrapper"
+    {
+        "en"        "Scrapper"
+    }
+    "Mysterious Gravestone"
+    {
+        "en"        "Mysterious Gravestone"
+    }
+    "The Teleporter"
+    {
+        "en"        "The Teleporter"
+    }
+    "Tree of Fate"
+    {
+        "en"        "Tree of Fate"
+    }
+    "Workbench"
+    {
+        "#format"   "{1:s}"
+        "en"        "Workbench ({1})"
+    }
+    "Money Barrel"
+    {
+        "en"        "Money Barrel"
+    }
+    "Gargoyle Altar"
+    {
+        "en"        "Gargoyle Altar"
+    }
+}

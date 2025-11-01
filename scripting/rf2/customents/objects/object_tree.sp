@@ -78,7 +78,7 @@ static Action Tree_OnInteract(int client, RF2_Object_Tree tree)
 	if (GetPlayerItemCount(client, Item_HauntedKey, true) < 1)
 	{
 		EmitSoundToClient(client, SND_NOPE);
-		PrintCenterText(client, "%t", "AltarNoKeys");
+		PrintCenterText(client, "%t", "AltarNoKeys", 1);
 		return Plugin_Handled;
 	}
 	
@@ -138,7 +138,7 @@ public int Vote_SetNextMap(Menu menu, MenuAction action, int param1, int param2)
 			int voteClient = GetClientOfUserId(g_iVoteClient);
 			if (!IsValidClient(voteClient))
 			{
-				RF2_PrintToChatAll("{red}The player who started the vote has left. The vote was automatically cancelled.");
+				RF2_PrintToChatAll("%t", "TreeVoteCancelledLeft");
 				return 0;
 			}
 			
@@ -146,12 +146,12 @@ public int Vote_SetNextMap(Menu menu, MenuAction action, int param1, int param2)
 			menu.GetItem(param1, info, sizeof(info));
 			if (!info[0] || strcmp2(info, "cancel"))
 			{
-				RF2_PrintToChat(voteClient, "The vote failed. None of your {haunted}Gargoyle Keys {default}were consumed.");
+				RF2_PrintToChat(voteClient, "%t", "TreeVoteFail");
 				return 0;
 			}
 			
 			g_szForcedMap = info;
-			RF2_PrintToChatAll("The next map has been set to {yellow}%s{default}. {yellow}%N {default}has paid {haunted}1 Gargoyle Key.", info, voteClient);
+			RF2_PrintToChatAll("%t", "TreeVoteSuccess", info, voteClient);
 			GiveItem(voteClient, Item_HauntedKey, -1);
 			RF2_Object_Tree tree = RF2_Object_Tree(EntRefToEntIndex(g_iVoteTree));
 			if (tree.IsValid())

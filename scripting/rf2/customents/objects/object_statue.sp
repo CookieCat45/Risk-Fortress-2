@@ -172,7 +172,7 @@ static Action Statue_OnInteract(int client, RF2_Object_Statue statue)
 	
 	if (GetGameTime() < statue.NextVoteTime)
 	{
-		RF2_PrintToChat(client, "Please wait %.0f seconds.", statue.NextVoteTime-GetGameTime());
+		RF2_PrintToChat(client, "%t", "PleaseWaitSeconds", RoundToCeil(statue.NextVoteTime-GetGameTime()));
 		return Plugin_Handled;
 	}
 	

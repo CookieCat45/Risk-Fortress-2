@@ -35,7 +35,7 @@ public Plugin myinfo =
 	author		=	"CookieCat",
 	description	=	"TF2 endless roguelike adventure game mode inspired by and based on Risk of Rain 2.",
 	version		=	PLUGIN_VERSION,
-	url			=	"",
+	url			=	"https://github.com/CookieCat45/Risk-Fortress-2",
 };
 
 // General
@@ -132,10 +132,10 @@ char g_szObjectiveHud[MAXPLAYERS][128];
 
 // g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i],
 // g_flPlayerNextLevelXP[i], cashString, g_szHudDifficulty, strangeItemInfo, miscText
-char g_szSurvivorHudText[2048] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i | Your Level: %i\n%.0f/%.0f XP | Cash: %s\n%s\n%s";
+char g_szSurvivorHudText[2048] = "SurvivorHudText";
 
 // g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo
-char g_szEnemyHudText[1024] = "\n\nStage %i (%s) | %02d:%02d\nEnemy Level: %i\n%s\n%s";
+char g_szEnemyHudText[1024] = "EnemyHudText";
 
 // Players
 bool g_bPlayerViewingItemMenu[MAXPLAYERS];
@@ -236,6 +236,11 @@ int g_iPlayerShieldHealth[MAXPLAYERS];
 int g_iPlayerCollectorSwapCount[MAXPLAYERS];
 int g_iPlayerPowerupBottle[MAXPLAYERS] = {INVALID_ENT, ...};
 int g_iPlayerRollerMine[MAXPLAYERS] = {INVALID_ENT, ...};
+int g_iPlayerEyeProp[MAXPLAYERS + 1] = {INVALID_ENT, ...};
+int g_iPlayerSniperDot[MAXPLAYERS + 1] = {INVALID_ENT, ...};
+int g_iPlayerDotController[MAXPLAYERS + 1] = {INVALID_ENT, ...};
+int g_iPlayerLaserColorEnt[MAXPLAYERS + 1] = {INVALID_ENT, ...};
+bool g_bPlayerDotOnHead[MAXPLAYERS+1];
 
 char g_szPlayerOriginalName[MAXPLAYERS][MAX_NAME_LENGTH];
 ArrayList g_hPlayerExtraSentryList[MAXPLAYERS];
@@ -555,6 +560,8 @@ public void OnPluginStart()
 	LoadTranslations("common.phrases");
 	LoadTranslations("rf2.phrases");
 	LoadTranslations("rf2_achievements.phrases");
+	LoadTranslations("rf2_hud.phrases");
+	LoadTranslations("rf2_names.phrases");
 	g_hCrashedPlayerSteamIDs = new StringMap();
 	g_hEnemyTypeCooldowns = new StringMap();
 	g_hEnemyTypeNumSpawned = new StringMap();
@@ -938,7 +945,7 @@ void LoadGameData()
 	g_hHookForceRespawn = new DynamicHook(gamedata.GetOffset("ForceRespawn"), HookType_Entity, ReturnType_Void, ThisPointer_CBaseEntity);
 	if (!g_hHookForceRespawn)
 	{
-		LogError("[DHooks] Failed to create virtual hook for ForceRespawn");
+		LogError("[DHooks] Failed to create virtual hook for ForceRespawn from SourceMod gamedata");
 	}
 	
 	delete gamedata;
@@ -1654,7 +1661,7 @@ public void OnClientPostAdminCheck(int client)
 			if (g_hCrashedPlayerSteamIDs.GetValue(auth, survivorIndex))
 			{
 				// This is a client rejoining who crashed/lost connection when they were a Survivor.
-				RF2_PrintToChatAll("{yellow}%N {default}has returned, moving them back to RED team.", client);
+				RF2_PrintToChatAll("%t", "ReturnedToRed", client);
 				char class[128];
 				FormatEx(class, sizeof(class), "%s_CLASS", auth);
 				TFClassType myClass;
@@ -1699,7 +1706,7 @@ public void OnClientDisconnect(int client)
 	StopMusicTrack(client);
 	if (g_bPlayerTimingOut[client] && IsPlayerSurvivor(client, false) && !IsPlayerMinion(client))
 	{
-		RF2_PrintToChatAll("{yellow}%N {red}crashed or lost connection on RED and has 5 minutes to reconnect!", client);
+		RF2_PrintToChatAll("%t", "PlayerCrash", client);
 		PrintToServer("%N crashed or lost connection on RED and has 5 minutes to reconnect!", client);
 		char authId[MAX_AUTHID_LENGTH], class[128];
 		if (GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId)))
@@ -2272,6 +2279,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 		{
 			// Medic spawns with full ubercharge so that he can go scout for boxes without having to build his uber
 			SetEntPropFloat(medigun, Prop_Send, "m_flChargeLevel", 1.0);
+			ForceWeaponSwitch(client, WeaponSlot_Secondary, true);
 		}
 	}
 	
@@ -3895,6 +3903,7 @@ public Action Timer_PlayerHud(Handle timer)
 		if (!IsClientInGame(i) || IsFakeClient(i))
 			continue;
 		
+		SetGlobalTransTarget(i);
 		if (g_bGameOver || g_bGameWon)
 		{ 
 			static bool scoreCalculated;
@@ -3934,7 +3943,7 @@ public Action Timer_PlayerHud(Handle timer)
 			static float victoryMessageTime;
 			if (g_bGameOver)
 			{
-				text = "GAME OVER";
+				text = "GameOver";
 				color[0] = 255;
 				color[1] = 100;
 				color[2] = 100;
@@ -3942,7 +3951,7 @@ public Action Timer_PlayerHud(Handle timer)
 			}
 			else if (IsInUnderworld())
 			{
-				text = "Fate Unknown...";
+				text = "FateUnknown";
 				color[0] = 100;
 				color[1] = 100;
 				color[2] = 255;
@@ -3953,7 +3962,7 @@ public Action Timer_PlayerHud(Handle timer)
 				victoryMessageTime += 0.1;
 				if (victoryMessageTime < 14.0)
 				{
-					text = "\n\n\n\n\n...and so they left, still with a thirst for bolts and blood.";
+					text = "VictoryPre";
 				}
 				else
 				{
@@ -3979,6 +3988,8 @@ public Action Timer_PlayerHud(Handle timer)
 				color[3] = 255;
 			}
 			
+			Format(text, sizeof(text), "%t", text);
+			Format(rank, sizeof(rank), "%t", rank);
 			SetHudTextParams(-1.0, -1.3, 0.15, color[0], color[1], color[2], color[3]);
 			if (!g_bGameOver && victoryMessageTime > 0.0 && victoryMessageTime < 7.0)
 			{
@@ -3987,8 +3998,9 @@ public Action Timer_PlayerHud(Handle timer)
 			else
 			{
 				ShowSyncHudText(i, g_hMainHudSync,
-					"\n\n\n\n%s\n\nEnemies slain: %i\nBosses slain: %i\nStages completed: %i\nItems found: %i\nTanks destroyed: %i\nTOTAL SCORE: %i points\nRANK: %s",
-					text, g_iTotalEnemiesKilled, g_iTotalBossesKilled, g_iStagesCompleted, g_iTotalItemsFound, g_iTotalTanksKilled, score, rank);
+					"%t", "EndScreen",
+					text, g_iTotalEnemiesKilled, g_iTotalBossesKilled, g_iStagesCompleted, 
+					g_iTotalItemsFound, g_iTotalTanksKilled, score, rank);
 			}
 			
 			continue;
@@ -3999,27 +4011,27 @@ public Action Timer_PlayerHud(Handle timer)
 		if (strangeItem > Item_Null && !IsPlayerMinion(i))
 		{
 			GetItemName(strangeItem, strangeItemInfo, sizeof(strangeItemInfo));
-			
 			if (g_iPlayerEquipmentItemCharges[i] > 0)
 			{
 				static char buttonText[32];
 				if (HoldingReloadUseWeapon(i))
 				{
-					buttonText = "TAB+RELOAD (TAB+R)";
+					buttonText = "TabReload";
 				}
 				else
 				{
-					buttonText = "RELOAD (R)";
+					buttonText = "Reload";
 				}
 				
+				Format(buttonText, sizeof(buttonText), "%t", buttonText);
 				if (g_flPlayerEquipmentItemCooldown[i] > 0.0) // multi-stack recharge?
 				{
-					Format(strangeItemInfo, sizeof(strangeItemInfo), "%s[%i] READY! %s [%.1f]",
+					Format(strangeItemInfo, sizeof(strangeItemInfo), "%t", "StrangeReady",
 						strangeItemInfo, g_iPlayerEquipmentItemCharges[i], buttonText, g_flPlayerEquipmentItemCooldown[i]);
 				}
 				else
 				{
-					Format(strangeItemInfo, sizeof(strangeItemInfo), "%s[%i] READY! %s",
+					Format(strangeItemInfo, sizeof(strangeItemInfo), "%t", "StrangeReadyFull",
 						strangeItemInfo, g_iPlayerEquipmentItemCharges[i], buttonText);
 				}
 			}
@@ -4052,10 +4064,18 @@ public Action Timer_PlayerHud(Handle timer)
 					if (tank.IsValid())
 					{
 						static char name[32];
-						name = tank.Type != TankType_Normal ? tank.Type != TankType_Badass ? "Super Badass Tank" : "Badass Tank" : "Tank";
-						FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), 
-							g_bTankBossMode && tanksLeft ? "Tanks Destroyed: %i/%i\n%s Health: %i/%i" : "%s Health: %i/%i",
-							g_iTanksKilledObjective, g_iTankKillRequirement, name, tank.Health, tank.MaxHealth);
+						name = tank.Type != TankType_Normal ? tank.Type != TankType_Badass ? "SuperBadassTank" : "BadassTank" : "Tank";
+						Format(name, sizeof(name), "%t", name);
+						if (g_bTankBossMode && tanksLeft)
+						{
+							FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", 
+								"TankHud1", g_iTanksKilledObjective, g_iTankKillRequirement, name, tank.Health, tank.MaxHealth);
+						}
+						else
+						{
+							FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", 
+								"TankHud2", name, tank.Health, tank.MaxHealth);
+						}
 					}
 				}
 				else if (g_bTankBossMode)
@@ -4067,7 +4087,7 @@ public Action Timer_PlayerHud(Handle timer)
 					}
 					else
 					{
-						FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "Tanks Destroyed: %i/%i",
+						FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", "TankHud3",
 							g_iTanksKilledObjective, g_iTankKillRequirement);
 					}
 				}
@@ -4075,7 +4095,7 @@ public Action Timer_PlayerHud(Handle timer)
 			
 			if (HasJetpack(i))
 			{
-				Format(miscText, sizeof(miscText), "%sJetpack Time: %.1f\n", miscText, FloatAbs(g_flPlayerJetpackEndTime[i]-GetTickedTime()));
+				Format(miscText, sizeof(miscText), "%t", "JetpackTime", miscText, FloatAbs(g_flPlayerJetpackEndTime[i]-GetTickedTime()));
 			}
 			
 			if (PlayerHasItem(i, Item_MetalHelmet))
@@ -4083,18 +4103,19 @@ public Action Timer_PlayerHud(Handle timer)
 				int maxShieldHealth = CalcItemModInt(i, Item_MetalHelmet, 2);
 				if (g_iPlayerShieldHealth[i] > 0)
 				{
-					Format(miscText, sizeof(miscText), "%sShield Health: %i/%i\n", miscText, g_iPlayerShieldHealth[i], maxShieldHealth);
+					Format(miscText, sizeof(miscText), "%t", 
+						"ShieldHealth", miscText, g_iPlayerShieldHealth[i], maxShieldHealth);
 				}
 				else
 				{
-					Format(miscText, sizeof(miscText), "%s***SHIELD DOWN*** %.1f\n", miscText,
+					Format(miscText, sizeof(miscText), "%t", "ShieldDown", miscText,
 						FloatAbs(g_flPlayerShieldRegenTime[i]-GetGameTime()));
 				}
 			}
 
 			if (PlayerHasItem(i, Item_PointAndShoot) && g_iPlayerFireRateStacks[i] > 0)
 			{
-				Format(miscText, sizeof(miscText), "%sAttack Buff Stacks: %i/%i\n", miscText,
+				Format(miscText, sizeof(miscText), "%t", "AttackBuffStacks", miscText,
 					g_iPlayerFireRateStacks[i], CalcItemModInt(i, Item_PointAndShoot, 0));
 			}
 
@@ -4107,13 +4128,19 @@ public Action Timer_PlayerHud(Handle timer)
 					float time = fmax(0.0, g_flPlayerLastBlockTime[i]+GetItemMod(Item_Horace, 0)-GetTickedTime());
 					if (time > 0.0)
 					{
-						Format(miscText, sizeof(miscText),
-							hardHat ? "%s***DAMAGE BLOCK DOWN*** %.1f ||| " : "%s***DAMAGE BLOCK DOWN*** %.1f\n", miscText, time);
+						Format(miscText, sizeof(miscText), "%t", "DamageBlockDown", miscText, time);
+						if (hardHat)
+						{
+							StrCat(miscText, sizeof(miscText), " ||| ");
+						}
 					}
 					else
 					{
-						Format(miscText, sizeof(miscText),
-							hardHat ? "%sDamage Block Active ||| " : "%sDamage Block Active\n", miscText);
+						Format(miscText, sizeof(miscText), "%t", "DamageBlockActive", miscText);
+						if (hardHat)
+						{
+							StrCat(miscText, sizeof(miscText), " ||| ");
+						}
 					}
 				}
 
@@ -4122,30 +4149,22 @@ public Action Timer_PlayerHud(Handle timer)
 					float time = fmax(0.0, g_flPlayerHardHatLastResistTime[i]+GetItemMod(Item_ApertureHat, 1)-GetTickedTime());
 					if (time > 0.0)
 					{
-						Format(miscText, sizeof(miscText), "%s***RESISTANCE DOWN*** %.1f\n", miscText, time);
+						Format(miscText, sizeof(miscText), "%t", "ResistDown", miscText, time);
 					}
 					else
 					{
-						Format(miscText, sizeof(miscText), "%sHard Hat Resist: %.0f%s\n", miscText,
+						Format(miscText, sizeof(miscText), "%t", "HardHatResist", miscText,
 							(1.0-CalcItemMod_Reciprocal(i, Item_ApertureHat, 0))*100.0, "%%");
 					}
 				}
 			}
-			
-			/*
-			if (PlayerHasItem(i, Item_Hachimaki) && g_flPlayerDelayedHealTime[i] > 0.0)
-			{
-				Format(miscText, sizeof(miscText), "%sDelayed Heal: %.1f\n", 
-					miscText, fmax(0.0, g_flPlayerDelayedHealTime[i]-GetTickedTime()));
-			}
-			*/
 			
 			if (PlayerHasItem(i, Item_LilBitey))
 			{
 				float time = fmax(0.0, g_flPlayerLifestealTime[i]-GetTickedTime());
 				if (time > 0.0)
 				{
-					Format(miscText, sizeof(miscText), "%sLifesteal Pulse: %.1f\n", miscText, time);
+					Format(miscText, sizeof(miscText), "%t", "Lifesteal", miscText, time);
 				}
 			}
 
@@ -4153,18 +4172,18 @@ public Action Timer_PlayerHud(Handle timer)
 				&& TF2_IsPlayerInCondition(i, TFCond_BlastJumping))
 			{
 				float time = FloatAbs(g_flPlayerRocketJumpTime[i]-GetTickedTime());
-				Format(miscText, sizeof(miscText), "%sRocket Jump Time: %.1f/%.1f\n", miscText, time,
+				Format(miscText, sizeof(miscText), "%t", "RocketJumpTime", miscText, time,
 					GetItemMod(ItemSoldier_HawkWarrior, 0));
 			}
 
 			TFClassType class = TF2_GetPlayerClass(i);
 			if (class == TFClass_Spy && g_flPlayerVampireSapperCooldown[i] > 0.0)
 			{
-				Format(miscText, sizeof(miscText), "%sSapper Cooldown: %.1f\n", miscText, g_flPlayerVampireSapperCooldown[i]);
+				Format(miscText, sizeof(miscText), "%t", "SapperCooldown", miscText, g_flPlayerVampireSapperCooldown[i]);
 			}
 			else if (class == TFClass_DemoMan && g_flPlayerCaberRechargeAt[i] > 0.0)
 			{
-				Format(miscText, sizeof(miscText), "%sCaber: %.1f\n", miscText, FloatAbs(g_flPlayerCaberRechargeAt[i]-GetGameTime()));
+				Format(miscText, sizeof(miscText), "%t", "CaberCooldown", miscText, FloatAbs(g_flPlayerCaberRechargeAt[i]-GetGameTime()));
 			}
 			else if (class == TFClass_Sniper)
 			{
@@ -4179,19 +4198,23 @@ public Action Timer_PlayerHud(Handle timer)
 						bool slowed = TF2_IsPlayerInCondition(i, TFCond_Slowed);
 						if (g_bPlayerRifleAutoFire[i] || !slowed)
 						{
+							char on[8], off[8];
+							FormatEx(off, sizeof(off), "%t", "Off");
+							FormatEx(on, sizeof(on), "%t", "On");
 							if (!g_bPlayerToggledAutoFire[i])
 							{
-								Format(miscText, sizeof(miscText), "%sAuto-Fire: %s (ATTACK3/Middle Mouse to toggle)\n", miscText, g_bPlayerRifleAutoFire[i] ? "ON" : "OFF");
+								Format(miscText, sizeof(miscText), "%t", "AutoFireHelp", 
+									miscText, g_bPlayerRifleAutoFire[i] ? on : off);
 							}
 							else
 							{
-								Format(miscText, sizeof(miscText), "%sAuto-Fire: %s\n", miscText, g_bPlayerRifleAutoFire[i] ? "ON" : "OFF");
+								Format(miscText, sizeof(miscText), "%t", "AutoFire", miscText, g_bPlayerRifleAutoFire[i] ? on : off);
 							}
 							
 						}
 						else if (slowed)
 						{
-							Format(miscText, sizeof(miscText), "%sCharge: %.0f%s\n", miscText, charge, "%%");
+							Format(miscText, sizeof(miscText), "%t", "RifleCharge", miscText, charge, "%%");
 						}
 					}
 				}
@@ -4200,7 +4223,7 @@ public Action Timer_PlayerHud(Handle timer)
 			{
 				if (TF2_IsPlayerInCondition(i, TFCond_Slowed))
 				{
-					Format(miscText, sizeof(miscText), "%sHEAVY ARMOR: %.0f (%.0f%s RESIST)\n", miscText, g_flPlayerHeavyArmorPoints[i],
+					Format(miscText, sizeof(miscText), "%t", "HeavyArmor", miscText, g_flPlayerHeavyArmorPoints[i],
 						GetItemMod(ItemHeavy_Pugilist, 0) * g_flPlayerHeavyArmorPoints[i], "%%");
 
 					b = 255;
@@ -4209,7 +4232,7 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 				else
 				{
-					Format(miscText, sizeof(miscText), "%s[ARMOR INACTIVE]: %.0f (%.0f%s RESIST)\n", miscText, g_flPlayerHeavyArmorPoints[i],
+					Format(miscText, sizeof(miscText), "%t", "HeavyArmorInactive", miscText, g_flPlayerHeavyArmorPoints[i],
 						GetItemMod(ItemHeavy_Pugilist, 0) * g_flPlayerHeavyArmorPoints[i], "%%");
 					
 					r = 255;
@@ -4224,7 +4247,7 @@ public Action Timer_PlayerHud(Handle timer)
 					float rage = GetEntPropFloat(i, Prop_Send, "m_flRageMeter");
 					if (rage > 0.0)
 					{
-						Format(miscText, sizeof(miscText), "%sSHIELD ENERGY: %.1f\n", miscText, rage);
+						Format(miscText, sizeof(miscText), "%t", "MedShieldEnergy", miscText, rage);
 						r = 255;
 						g = 255;
 						b = 100;
@@ -4236,7 +4259,7 @@ public Action Timer_PlayerHud(Handle timer)
 						b = 100;
 					}
 
-					Format(miscText, sizeof(miscText), "%s***SHIELD COOLDOWN*** %.1f\n", miscText,
+					Format(miscText, sizeof(miscText), "%t", "MedShieldCooldown", miscText,
 						FloatAbs(GetGameTime()-g_flPlayerMedicShieldNextUseTime[i]));
 				}
 				else
@@ -4244,11 +4267,11 @@ public Action Timer_PlayerHud(Handle timer)
 					int medigun = GetPlayerWeaponSlot(i, WeaponSlot_Secondary);
 					if (medigun == INVALID_ENT || medigun != GetActiveWeapon(i))
 					{
-						Format(miscText, sizeof(miscText), "%sSHIELD READY - SWITCH TO YOUR MEDIGUN TO USE\n", miscText);
+						Format(miscText, sizeof(miscText), "%t", "MedShieldReady1", miscText);
 					}
 					else
 					{
-						Format(miscText, sizeof(miscText), "%sSHIELD READY - ATTACK3/MIDDLE MOUSE TO USE\n", miscText);
+						Format(miscText, sizeof(miscText), "%t", "MedShieldReady2", miscText);
 					}
 					
 					b = 255;
@@ -4283,11 +4306,11 @@ public Action Timer_PlayerHud(Handle timer)
 					
 					if (shield.UserDisabled)
 					{
-						Format(miscText, sizeof(miscText), "%s***SHIELD DISABLED***\nSHIELD BATTERY: %i\n", miscText, shield.Battery);
+						Format(miscText, sizeof(miscText), "%t", "DispShieldOff", miscText, shield.Battery);
 					}
 					else
 					{
-						Format(miscText, sizeof(miscText), "%sSHIELD BATTERY: %i\n", miscText, shield.Battery);
+						Format(miscText, sizeof(miscText), "%t", "DispShieldBattery", miscText, shield.Battery);
 					}
 				}
 				
@@ -4306,12 +4329,12 @@ public Action Timer_PlayerHud(Handle timer)
 							
 							if (!g_bPlayerPressedCanteenButton[i])
 							{
-								Format(miscText, sizeof(miscText), "%s\nBUILD CANTEENS: %i [MVM CANTEEN BUTTON TO USE]\n", 
+								Format(miscText, sizeof(miscText), "%t", "BuildCans1", 
 									miscText, charges);
 							}
 							else
 							{
-								Format(miscText, sizeof(miscText), "%s\nBUILD CANTEENS: %i\n", 
+								Format(miscText, sizeof(miscText), "%t", "BuildCans2",
 									miscText, charges);
 							}
 						}
@@ -4320,7 +4343,7 @@ public Action Timer_PlayerHud(Handle timer)
 				
 				if (PlayerHasItem(i, ItemEngi_HeadOfDefense))
 				{
-					Format(miscText, sizeof(miscText), "%sDISPOSABLE SENTRIES: %i/%i\n", miscText,
+					Format(miscText, sizeof(miscText), "%t", "DispSentries", miscText,
 						g_hPlayerExtraSentryList[i].Length, CalcItemModInt(i, ItemEngi_HeadOfDefense, 0));
 				}
 			}
@@ -4336,16 +4359,18 @@ public Action Timer_PlayerHud(Handle timer)
 			FormatEx(cashString, sizeof(cashString), "$%.0f", g_flPlayerCash[i]);
 			if (g_bRingCashBonus)
 			{
-				Format(cashString, sizeof(cashString), "%s (%.1fx BONUS)", cashString, 1.0+GetItemMod(ItemStrange_SpecialRing, 0));
+				Format(cashString, sizeof(cashString), "%t", "CashBonus", cashString, 1.0+GetItemMod(ItemStrange_SpecialRing, 0));
 			}
 			
-			ShowSyncHudText(i, g_hMainHudSync, g_szSurvivorHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed,
+			ShowSyncHudText(i, g_hMainHudSync, "%t", 
+				g_szSurvivorHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed,
 				hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i], g_flPlayerNextLevelXP[i],
 				cashString, g_szHudDifficulty, strangeItemInfo);
 		}
 		else
 		{
-			ShowSyncHudText(i, g_hMainHudSync, g_szEnemyHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed, hudSeconds,
+			ShowSyncHudText(i, g_hMainHudSync, "%t",
+				g_szEnemyHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed, hudSeconds,
 				g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo);
 		}
 		
@@ -5335,7 +5360,7 @@ public void Hook_PreThink(int client)
 		}
 	}
 	
-	if (!g_bServerRestarting && g_bWaitingForPlayers && !IsFakeClient(client) 
+	if (!g_bServerRestarting && g_bWaitingForPlayers && !bot
 		&& AreClientCookiesCached(client) && !GetCookieBool(client, g_coBecomeSurvivor))
 	{
 		PrintCenterText(client, "%t", "SurvivorDisabledWarning");
@@ -5481,38 +5506,96 @@ public void Hook_PreThink(int client)
 		{
 			static char classname[64];
 			GetEntityClassname(activeWep, classname, sizeof(classname));
-			if (strcmp2(classname, "tf_weapon_flamethrower") || strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
+			if ((strcmp2(classname, "tf_weapon_flamethrower") || strcmp2(classname, "tf_weapon_rocketlauncher_fireball"))
+				&& TF2Attrib_HookValueInt(0, "airblast_disabled", activeWep) == 0)
 			{
-				bool airblastDisabled = TF2Attrib_HookValueInt(0, "airblast_disabled", activeWep) != 0;
-				if (!airblastDisabled)
+				static bool airblasted[MAXPLAYERS] = {true, ...};
+				float nextAirblast = GetEntPropFloat(activeWep, Prop_Send, "m_flNextSecondaryAttack");
+				if (nextAirblast <= 0.0)
 				{
-					static bool airblasted[MAXPLAYERS] = {true, ...};
-					float nextAirblast = GetEntPropFloat(activeWep, Prop_Send, "m_flNextSecondaryAttack");
-					if (nextAirblast <= 0.0)
+					airblasted[client] = true;
+				}
+				else if (nextAirblast <= GetGameTime())
+				{
+					airblasted[client] = false;
+				}
+				
+				if (!airblasted[client] && nextAirblast > GetGameTime())
+				{
+					// Airblasting support for custom projectiles
+					float deflectRadius = 128.0 * TF2Attrib_HookValueFloat(1.0, "deflection_size_multiplier", activeWep);
+					float angles[3], pos[3], vec[3];
+					GetClientEyePosition(client, pos);
+					GetClientEyeAngles(client, angles);
+					GetAngleVectors(angles, vec, NULL_VECTOR, NULL_VECTOR);
+					NormalizeVector(vec, vec);
+					pos[0] += vec[0] * deflectRadius;
+					pos[1] += vec[1] * deflectRadius;
+					pos[2] += vec[2] * deflectRadius;
+					TR_EnumerateEntitiesSphere(pos, deflectRadius, PARTITION_SOLID_EDICTS, TraceEnumerator_CustomReflect, client);
+					airblasted[client] = true;
+				}
+			}
+		}
+	}
+	else if (class == TFClass_Sniper)
+	{
+		int sniperdot = EntRefToEntIndex(g_iPlayerSniperDot[client]);
+		int dotController = EntRefToEntIndex(g_iPlayerDotController[client]);
+		if (sniperdot > 0 && dotController > 0)
+		{
+			float dotPos[3];
+			GetEntPropVector(sniperdot, Prop_Send, "m_vecOrigin", dotPos);
+			CBaseEntity(dotController).SetLocalOrigin(dotPos);
+			/*
+			// if we're touching a head hitbox, change color
+			// (sadly this only changes the color of the dot)
+			int color = EntRefToEntIndex(g_iPlayerLaserColorEnt[client]);
+			if (color > 0)
+			{
+				float rgb[3], eyePos[3], angles[3];
+				GetClientEyePosition(client, eyePos);
+				GetClientEyeAngles(client, angles);
+				TR_TraceRayFilter(eyePos, angles, MASK_SHOT, RayType_Infinite, TraceFilter_EnemyTeamAll, client);
+				bool oldState = g_bPlayerDotOnHead[client];
+				int hitEnt = TR_GetEntityIndex();
+				if (IsValidEntity(hitEnt) && TR_GetHitGroup() == 1)
+				{
+					// player is aiming at a head hitbox, change color
+					rgb = {0.0, 200.0, 0.0};
+					g_bPlayerDotOnHead[client] = true;
+				}
+				else
+				{
+					switch (TF2_GetClientTeam(client))
 					{
-						airblasted[client] = true;
-					}
-					else if (nextAirblast <= GetGameTime())
-					{
-						airblasted[client] = false;
+						case TFTeam_Red:  CopyVectors({150.0, 0.0, 0.0}, rgb);
+						case TFTeam_Blue: CopyVectors({0.0, 0.0, 150.0}, rgb);
 					}
 					
-					if (!airblasted[client] && nextAirblast > GetGameTime())
-					{
-						// Airblasting support for custom projectiles
-						float deflectRadius = 128.0 * TF2Attrib_HookValueFloat(1.0, "deflection_size_multiplier", activeWep);
-						float angles[3], pos[3], vec[3];
-						GetClientEyePosition(client, pos);
-						GetClientEyeAngles(client, angles);
-						GetAngleVectors(angles, vec, NULL_VECTOR, NULL_VECTOR);
-						NormalizeVector(vec, vec);
-						pos[0] += vec[0] * deflectRadius;
-						pos[1] += vec[1] * deflectRadius;
-						pos[2] += vec[2] * deflectRadius;
-						TR_EnumerateEntitiesSphere(pos, deflectRadius, PARTITION_SOLID_EDICTS, TraceEnumerator_CustomReflect, client);
-						airblasted[client] = true;
-					}
+					g_bPlayerDotOnHead[client] = false;
 				}
+				
+				if (oldState != g_bPlayerDotOnHead[client])
+				{
+					KillSniperLaser(client);
+					if (!oldState)
+					{
+						g_bPlayerDotOnHead[client] = true;
+					}
+					
+					CreateSniperLaser(sniperdot, rgb);
+				}
+			}
+			*/
+		}
+		else if (sniperdot <= 0 && dotController > 0)
+		{
+			// Also kill the beam.
+			int eyeBeam = EntRefToEntIndex(g_iPlayerEyeProp[client]);
+			if (eyeBeam != INVALID_ENT) 
+			{
+				KillSniperLaser(client);
 			}
 		}
 	}
@@ -5727,6 +5810,15 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 		{
 			SetEntProp(activeWep, Prop_Send, "m_fEffects", 
 				GetEntProp(activeWep, Prop_Send, "m_fEffects") & ~EF_NODRAW);
+		}
+	}
+	else if (condition == TFCond_Zoomed && TF2_GetPlayerClass(client) == TFClass_Sniper)
+	{
+		int eyeProp = EntRefToEntIndex(g_iPlayerEyeProp[client]);
+		if (eyeProp != INVALID_ENT_REFERENCE && !(GetClientButtons(client) & IN_ATTACK))
+		{
+			// don't delete if holding IN_ATTACK in case this is an actual zoomout
+			KillSniperLaser(client);
 		}
 	}
 	else if (condition == TFCond_RuneVampire || condition == TFCond_RuneWarlock
@@ -5992,7 +6084,7 @@ public void TF2_OnWaitingForPlayersStart()
 	if (!RF2_IsEnabled())
 		return;
 	
-	// Disable TF2 achievements and stat tracking
+	// Disable TF2 achievements and stat tracking (VERIFY: Does this actually work?)
 	// We need to enable it here because this cvar otherwise prevents waiting for players from starting at all.
 	FindConVar("tf_bot_offline_practice").SetBool(true);
 	GameRules_SetPropFloat("m_flNextRespawnWave", GetGameTime()+999999.0, 2);
@@ -6223,6 +6315,129 @@ public void OnEntityCreated(int entity, const char[] classname)
 	{
 		RequestFrame(RF_WeaponDropped, EntIndexToEntRef(entity));
 	}
+	else if (g_bRoundActive && strcmp2(classname, "env_sniperdot"))
+	{
+		SDKHook(entity, SDKHook_SpawnPost, Hook_SniperDotSpawnPost);
+	}
+}
+
+public void Hook_SniperDotSpawnPost(int entity)
+{
+	RequestFrame(RF_SniperDot, EntIndexToEntRef(entity));
+}
+
+public void RF_SniperDot(int entity)
+{
+	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
+		return;
+	
+	CreateSniperLaser(entity);
+}
+
+void CreateSniperLaser(int entity, float rgb[3]=NULL_VECTOR)
+{
+	// Source: https://github.com/Pelipoika/TF2-Sniperlaser/blob/master/sniperlaser.sp
+	// Slightly modified
+	int client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+	if (!IsValidClient(client))
+		return;
+	
+	int attachment = LookupEntityAttachment(client, "eyeglow_R");
+	if (attachment == 0)
+		return;
+		
+	if (IsNullVector(rgb))
+	{
+		switch (TF2_GetClientTeam(client))
+		{
+			case TFTeam_Red:  CopyVectors({150.0, 0.0, 0.0}, rgb);
+			case TFTeam_Blue: CopyVectors({0.0, 0.0, 150.0}, rgb);
+		}
+	}
+	
+	char name[PLATFORM_MAX_PATH];
+	FormatEx(name, PLATFORM_MAX_PATH, "laser_%i", entity);
+	int color = CreateEntityByName("info_particle_system");
+	DispatchKeyValue(color, "targetname", name);
+	DispatchKeyValueVector(color, "origin", rgb);
+	DispatchSpawn(color);
+	int laser = CreateEntityByName("info_particle_system");
+	DispatchKeyValue(laser, "effect_name", "laser_sight_beam");
+	DispatchKeyValue(laser, "cpoint2", name);
+	DispatchSpawn(laser);
+	float pos[3], angles[3], vec[3];
+	GetClientEyeAngles(client, angles);
+	int vm = GetEntPropEnt(client, Prop_Data, "m_hViewModel");
+	GetEntPos(vm, pos);
+	GetAngleVectors(angles, NULL_VECTOR, vec, NULL_VECTOR);
+	NormalizeVector(vec, vec);
+	const float dist = 5.0;
+	pos[0] += vec[0] * dist;
+	pos[1] += vec[1] * dist;
+	pos[2] += vec[2] * dist;
+	pos[2] -= 4.0;
+	TeleportEntity(laser, pos, angles);
+	SetVariantString("!activator");
+	AcceptEntityInput(laser, "SetParent", vm);
+	//SetVariantString("eyeglow_R");
+	//AcceptEntityInput(laser, "SetParentAttachment", client);
+	
+	//Dot controller, set as controlpointent on beam
+	int dotController = CreateEntityByName("info_particle_system");
+	float dotPos[3]; 
+	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", dotPos);
+	DispatchKeyValueVector(dotController, "origin", dotPos);
+	DispatchSpawn(dotController);
+	
+	//Start of beam -> control point ent set to env_sniperdot
+	SetEntPropEnt(laser, Prop_Data, "m_hControlPointEnts", dotController);
+	SetEntPropEnt(laser, Prop_Send, "m_hControlPointEnts", dotController);
+	ActivateEntity(laser);
+	AcceptEntityInput(laser, "Start");
+	g_iPlayerSniperDot[client] = EntIndexToEntRef(entity);
+	g_iPlayerEyeProp[client] = EntIndexToEntRef(laser);
+	g_iPlayerDotController[client] = EntIndexToEntRef(dotController);
+	g_iPlayerLaserColorEnt[client] = EntIndexToEntRef(color);
+	
+	//Hide original dot.
+	SDKHook(entity, SDKHook_SetTransmit, OnDotTransmit);
+}
+
+public Action OnDotTransmit(int entity, int client)
+{
+	return Plugin_Handled;
+}
+
+void KillSniperLaser(int client)
+{
+	int entity = EntRefToEntIndex(g_iPlayerEyeProp[client]);
+	int controller = EntRefToEntIndex(g_iPlayerDotController[client]);
+	int color = EntRefToEntIndex(g_iPlayerLaserColorEnt[client]);
+	// The sniper laser is one of those stupid particle effects that doesn't disappear when you kill it,
+	// so we have to do this absolute nonsense
+	if (controller > 0)
+	{
+		DispatchKeyValueVector(controller, "origin", OFF_THE_MAP);
+		CreateTimer(0.2, Timer_DeleteEntity, EntIndexToEntRef(controller), TIMER_FLAG_NO_MAPCHANGE);
+	}
+	
+	if (color > 0)
+	{
+		RemoveEntity(color);
+	}
+	
+	DispatchKeyValueVector(entity, "origin", OFF_THE_MAP);
+	AcceptEntityInput(entity, "ClearParent");
+	AcceptEntityInput(entity, "Stop");
+	TeleportEntity(entity, OFF_THE_MAP);
+	SetVariantString("ParticleEffectStop");
+	AcceptEntityInput(entity, "DispatchEffect");
+	g_iPlayerSniperDot[client] = INVALID_ENT;
+	g_iPlayerEyeProp[client] = INVALID_ENT;
+	g_iPlayerDotController[client] = INVALID_ENT;
+	g_iPlayerLaserColorEnt[client] = INVALID_ENT;
+	g_bPlayerDotOnHead[client] = false;
+	CreateTimer(0.2, Timer_DeleteEntity, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public void RF_WeaponDropped(int entity)
@@ -7323,7 +7538,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			}
 		}
 		
-		if (PlayerHasItem(victim, Item_UFO))
+		if (PlayerHasItem(victim, Item_UFO) && !(GetEntityFlags(victim) & FL_ONGROUND))
 		{
 			damage *= 1.0 + CalcItemMod(victim, Item_UFO, 1);
 		}

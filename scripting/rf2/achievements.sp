@@ -193,7 +193,7 @@ void OnAchievementUnlocked(int client, int achievement)
 			continue;
 		
 		GetAchievementName(achievement, name, sizeof(name), i);
-		RF2_PrintToChat(i, "{yellow}%N{default} has earned the achievement {lightgreen}%s", client, name);
+		RF2_PrintToChat(i, "%t", "PlayerAchievement", client, name);
 	}
 	
 	if (PlayerHasAllAchievements(client))
