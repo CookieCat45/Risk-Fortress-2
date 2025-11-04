@@ -89,8 +89,8 @@ static Action Tree_OnInteract(int client, RF2_Object_Tree tree)
 	}
 	
 	char mapName[128];
-	Menu vote = new Menu(Vote_SetNextMap);
-	vote.SetTitle("Decide your Fate? (%N)", client);
+	Menu vote = new Menu(Vote_SetNextMap, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
+	vote.SetTitle("DecideYourFate");
 	g_iVoteClient = GetClientUserId(client);
 	g_iVoteTree = EntIndexToEntRef(tree.index);
 	ArrayList mapList = GetMapsForStage(DetermineNextStage());
@@ -123,7 +123,7 @@ static Action Tree_OnInteract(int client, RF2_Object_Tree tree)
 		}
 	}
 	
-	vote.AddItem("cancel", "Cancel Vote");
+	vote.AddItem("cancel", "Cancel vote");
 	vote.ExitButton = false;
 	vote.DisplayVote(clients, clientCount, 12);
 	return Plugin_Handled;
@@ -133,6 +133,22 @@ public int Vote_SetNextMap(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action)
 	{
+		case MenuAction_Display:
+		{
+			char phrase[128];
+			menu.GetTitle(phrase, sizeof(phrase));
+			view_as<Panel>(param2).SetTitle(FormatR("%T", phrase, param1));
+		}
+		
+		case MenuAction_DisplayItem:
+		{
+			char display[64];
+			menu.GetItem(param2, "", 0, _, display, sizeof(display));
+			char buffer[256];
+			FormatEx(buffer, sizeof(buffer), "%T", display, param1);
+			return RedrawMenuItem(buffer);
+		}
+		
 		case MenuAction_VoteEnd:
 		{
 			int voteClient = GetClientOfUserId(g_iVoteClient);

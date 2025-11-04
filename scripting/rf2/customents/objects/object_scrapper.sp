@@ -37,9 +37,9 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 	public static void ShowScrapMenu(int client, bool message=true)
 	{
 		Menu menu = new Menu(Menu_ItemScrapper);
-		menu.SetTitle("What would you like to scrap?");
+		menu.SetTitle("%T", "ScrapTitle", client);
 		int count, item;
-		char info[8], display[128];
+		char info[8], display[128], itemName[64];
 		bool collector;
 		TFClassType class = TF2_GetPlayerClass(client);
 		ArrayList itemList = GetSortedItemList(true, false);
@@ -58,13 +58,14 @@ methodmap RF2_Object_Scrapper < RF2_Object_Base
 			}
 			
 			IntToString(item, info, sizeof(info));
+			GetItemName(item, itemName, sizeof(itemName), false, client);
 			if (IsEquipmentItem(item))
 			{
-				display = g_szItemName[item];
+				display = itemName;
 			}
 			else
 			{
-				FormatEx(display, sizeof(display), "%s[%i]", g_szItemName[item], GetPlayerItemCount(client, item, true));
+				FormatEx(display, sizeof(display), "%s[%i]", itemName, GetPlayerItemCount(client, item, true));
 			}
 			
 			menu.AddItem(info, display);
@@ -187,21 +188,28 @@ public int Menu_ItemScrapper(Menu menu, MenuAction action, int param1, int param
 					case Quality_Unusual: scrap = Item_RefinedMetal;
 				}
 				
+				char itemName[64];
+				GetItemName(item, itemName, sizeof(itemName), false, param1);
 				if (quality == Quality_Collectors)
 				{
+					char scrapName[64], recName[64];
 					GiveItem(param1, Item_ScrapMetal, 1, true);
 					GiveItem(param1, Item_ReclaimedMetal, 1, true);
-					PrintCenterText(param1, "%t", "UsedScrapperCollectors", g_szItemName[item], g_szItemName[Item_ScrapMetal], g_szItemName[Item_ReclaimedMetal]);
+					GetItemName(Item_ScrapMetal, scrapName, sizeof(scrapName), false, param1);
+					GetItemName(Item_ReclaimedMetal, recName, sizeof(recName), false, param1);
+					PrintCenterText(param1, "%t", "UsedScrapperCollectors", itemName, scrapName, recName);
 				}
 				else if (scrap > Item_Null)
 				{
+					char scrapName[64];
 					GiveItem(param1, scrap, 1, true);
-					PrintCenterText(param1, "%t", "UsedScrapper", g_szItemName[item], g_szItemName[scrap]);
+					GetItemName(scrap, scrapName, sizeof(scrapName), false, param1);
+					PrintCenterText(param1, "%t", "UsedScrapper", itemName, scrapName);
 				}
 				else if (IsHauntedItem(item)) // haunted item, give haunted key
 				{
 					GiveItem(param1, Item_HauntedKey, 1, true);
-					PrintCenterText(param1, "%t", "UsedScrapperHaunted", g_szItemName[item]);
+					PrintCenterText(param1, "%t", "UsedScrapperHaunted", itemName);
 				}
 				
 				EmitSoundToClient(param1, SND_USE_SCRAPPER);

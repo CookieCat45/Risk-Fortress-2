@@ -1752,7 +1752,7 @@ void ForceTaunt(int client, int tauntId)
 	cmd.Append("self.StopTaunt(true);");
 	cmd.Append("self.RemoveCond(7);");
 	cmd.Append("weapon.DispatchSpawn();");
-	cmd.Append(Format2("NetProps.SetPropInt(weapon, `m_AttributeManager.m_Item.m_iItemDefinitionIndex`, %d);", tauntId));
+	cmd.Append(FormatR("NetProps.SetPropInt(weapon, `m_AttributeManager.m_Item.m_iItemDefinitionIndex`, %d);", tauntId));
 	cmd.Append("NetProps.SetPropBool(weapon, `m_AttributeManager.m_Item.m_bInitialized`, true);");
 	cmd.Append("NetProps.SetPropBool(weapon, `m_bForcePurgeFixedupStrings`, true);");
 	cmd.Append("NetProps.SetPropEntity(self, `m_hActiveWeapon`, weapon);");

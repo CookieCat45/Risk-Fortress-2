@@ -1,8 +1,3 @@
-#if defined _RF2_overrides_included
- #endinput
-#endif
-#define _RF2_overrides_included
-
 #pragma semicolon 1
 #pragma newdecls required
 

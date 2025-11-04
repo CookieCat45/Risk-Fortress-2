@@ -626,8 +626,7 @@ public Action Command_VoteSkipWait(int client, int args)
 		{
 			if (!ArePlayersConnecting())
 			{
-				Menu vote = new Menu(Menu_SkipWaitVote);
-				vote.SetTitle("Skip waiting for players? (%N)", client);
+				Menu vote = new Menu(Menu_SkipWaitVote, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
 				vote.AddItem("Yes", "Yes");
 				vote.AddItem("No", "No");
 				vote.ExitButton = false;
@@ -662,6 +661,18 @@ public int Menu_SkipWaitVote(Menu menu, MenuAction action, int param1, int param
 {
 	switch (action)
 	{
+		case MenuAction_Display:
+		{
+			view_as<Panel>(param2).SetTitle(FormatR("%T", "SkipWaitTitle", param1));
+		}
+		case MenuAction_DisplayItem:
+		{
+			char display[64];
+			menu.GetItem(param2, "", 0, _, display, sizeof(display));
+			char buffer[256];
+			FormatEx(buffer, sizeof(buffer), "%T", display, param1);
+			return RedrawMenuItem(buffer);
+		}
 		case MenuAction_VoteEnd:
 		{
 			if (param1 == 0 && g_bWaitingForPlayers)
@@ -712,8 +723,7 @@ public Action Command_ExtendWait(int client, int args)
 		}
 		else
 		{
-			Menu vote = new Menu(Menu_ExtendWaitVote);
-			vote.SetTitle("Extend waiting for players? (%N)", client);
+			Menu vote = new Menu(Menu_ExtendWaitVote, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
 			vote.AddItem("Yes", "Yes");
 			vote.AddItem("No", "No");
 			vote.ExitButton = false;
@@ -743,6 +753,18 @@ public int Menu_ExtendWaitVote(Menu menu, MenuAction action, int param1, int par
 {
 	switch (action)
 	{
+		case MenuAction_Display:
+		{
+			view_as<Panel>(param2).SetTitle(FormatR("%T", "ExtendWaitTitle", param1));
+		}
+		case MenuAction_DisplayItem:
+		{
+			char display[64];
+			menu.GetItem(param2, "", 0, _, display, sizeof(display));
+			char buffer[256];
+			FormatEx(buffer, sizeof(buffer), "%T", display, param1);
+			return RedrawMenuItem(buffer);
+		}
 		case MenuAction_VoteEnd:
 		{
 			if (param1 == 0 && g_bWaitingForPlayers)
@@ -796,8 +818,7 @@ public Action Command_SurvivorQueue(int client, int args)
 	players.SortCustom(SortSurvivorListByPoints2);
 	int player;
 	char info[16], display[256];
-	Menu menu = new Menu(Menu_SurvivorQueue);
-	menu.SetTitle("Survivor Queue List");
+	Menu menu = new Menu(Menu_SurvivorQueue, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
 	for (int i = 0; i < players.Length; i++)
 	{
 		player = players.Get(i);
@@ -837,6 +858,18 @@ public int Menu_SurvivorQueue(Menu menu, MenuAction action, int param1, int para
 {
 	switch (action)
 	{
+		case MenuAction_Display:
+		{
+			view_as<Panel>(param2).SetTitle(FormatR("%T", "SurvivorQueueTitle", param1));
+		}
+		case MenuAction_DisplayItem:
+		{
+			char display[64];
+			menu.GetItem(param2, "", 0, _, display, sizeof(display));
+			char buffer[256];
+			FormatEx(buffer, sizeof(buffer), "%T", display, param1);
+			return RedrawMenuItem(buffer);
+		}
 		case MenuAction_End:
 		{
 			delete menu;
@@ -870,14 +903,16 @@ void ShowItemLogbook(int client, int position=0)
 	char info[16], display[MAX_NAME_LENGTH], quality[32];
 	ArrayList items = GetSortedItemList(_, _, _, true, false);
 	int item, count;
+	char itemName[128];
 	for (int i = 0; i < items.Length; i++)
 	{
 		item = items.Get(i);
 		if (IsItemInLogbook(client, item))
 		{
 			IntToString(item, info, sizeof(info));
-			GetQualityName(GetItemQuality(item), quality, sizeof(quality));
-			FormatEx(display, sizeof(display), "%s (%s)", g_szItemName[item], quality);
+			GetQualityName(GetItemQuality(item), quality, sizeof(quality), client);
+			GetItemName(item, itemName, sizeof(itemName), _, client);
+			FormatEx(display, sizeof(display), "%s (%s)", itemName, quality);
 			logbook.AddItem(info, display);
 			count++;
 		}
@@ -885,7 +920,7 @@ void ShowItemLogbook(int client, int position=0)
 	
 	// in case someone has somehow 100% cleared the logbook before the achievement...
 	SetAchievementProgress(client, ACHIEVEMENT_FULLITEMLOG, count);
-	logbook.SetTitle("Item Logbook (%i/%i items collected)", count, items.Length);
+	logbook.SetTitle("%T", "ItemLogTitle", client, count, items.Length);
 	delete items;
 	logbook.DisplayAt(client, position, MENU_TIME_FOREVER);
 }
@@ -915,24 +950,26 @@ void ShowItemInfo(int client, int item)
 {
 	Menu menu = new Menu(Menu_ItemInfo);
 	menu.ExitBackButton = true;
-	char quality[32];
-	GetQualityName(GetItemQuality(item), quality, sizeof(quality));
-	menu.SetTitle("%s (%s)", g_szItemName[item], quality);
-	
+	char quality[32], itemName[64];
+	GetQualityName(GetItemQuality(item), quality, sizeof(quality), client);
+	GetItemName(item, itemName, sizeof(itemName), false, client);
+	menu.SetTitle("%s (%s)", itemName, quality);
 	if (IsEquipmentItem(item))
 	{
 		char cooldown[32];
-		FormatEx(cooldown, sizeof(cooldown), "Cooldown: %.1f seconds", g_flEquipmentItemCooldown[item]);
+		FormatEx(cooldown, sizeof(cooldown), "%T", "ItemLogStrangeCd", client, g_flEquipmentItemCooldown[item]);
 		menu.AddItem("cooldown", cooldown, ITEMDRAW_DISABLED);
 		
 		if (g_flEquipmentItemMinCooldown[item] > 0.0)
 		{
-			FormatEx(cooldown, sizeof(cooldown), "Minimum Cooldown: %.1f seconds", g_flEquipmentItemMinCooldown[item]);
+			FormatEx(cooldown, sizeof(cooldown), "%T", "ItemLogStrangeCdMin", client, g_flEquipmentItemMinCooldown[item]);
 			menu.AddItem("min_cooldown", cooldown, ITEMDRAW_DISABLED);
 		}
 	}
 	
-	menu.AddItem("desc", g_szItemDesc[item], ITEMDRAW_DISABLED);
+	char itemDesc[512];
+	GetItemDesc(item, itemDesc, sizeof(itemDesc), client);
+	menu.AddItem("desc", itemDesc, ITEMDRAW_DISABLED);
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
@@ -1046,10 +1083,9 @@ public Action Command_Achievements(int client, int args)
 
 void ShowAchievementsMenu(int client)
 {
-	Menu menu = new Menu(Menu_Achievements);
-	menu.SetTitle("Achievements");
-	menu.AddItem("unlocked", "Unlocked Achievements");
-	menu.AddItem("locked", "Locked Achievements");
+	Menu menu = new Menu(Menu_Achievements, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
+	menu.AddItem("unlocked", "UnlockedAchievements");
+	menu.AddItem("locked", "LockedAchievements");
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
@@ -1057,6 +1093,18 @@ public int Menu_Achievements(Menu menu, MenuAction action, int param1, int param
 {
 	switch (action)
 	{
+		case MenuAction_Display:
+		{
+			view_as<Panel>(param2).SetTitle(FormatR("%T", "AchievementsTitle", param1));
+		}
+		case MenuAction_DisplayItem:
+		{
+			char display[64];
+			menu.GetItem(param2, "", 0, _, display, sizeof(display));
+			char buffer[256];
+			FormatEx(buffer, sizeof(buffer), "%T", display, param1);
+			return RedrawMenuItem(buffer);
+		}
 		case MenuAction_Select:
 		{
 			char info[16], name[64];
@@ -1064,7 +1112,7 @@ public int Menu_Achievements(Menu menu, MenuAction action, int param1, int param
 			bool unlocked = strcmp2(info, "unlocked");
 			Menu list = new Menu(Menu_AchievementsDesc);
 			list.ExitBackButton = true;
-			list.SetTitle(unlocked ? "Unlocked Achievements" : "Locked Achievements");
+			list.SetTitle("%T", (unlocked ? "UnlockedAchievements" : "LockedAchievements"), param1);
 			for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
 			{
 				if (unlocked ? IsAchievementUnlocked(param1, i) : !IsAchievementUnlocked(param1, i) && !IsAchievementHidden(i))
@@ -1264,11 +1312,11 @@ void ShowBossSpawnMenu(int client, bool asSelf=false)
 	menu.SetTitle("%T", "SpawnAs", client);
 	if (asSelf)
 	{
-		menu.AddItem("1", "Spawning as self", ITEMDRAW_DISABLED);
+		menu.AddItem("1", FormatR("%T", "SpawnAsSelf", client), ITEMDRAW_DISABLED);
 	}
 	else
 	{
-		menu.AddItem("0", "Spawning a robot (pass 1 to the command to spawn as self)", ITEMDRAW_DISABLED);
+		menu.AddItem("0", FormatR("%T", "SpawnBot", client), ITEMDRAW_DISABLED);
 	}
 
 	for (int i = 0; i < GetEnemyCount(); i++)
@@ -1342,11 +1390,11 @@ void ShowEnemySpawnMenu(int client, bool asSelf=false)
 	menu.SetTitle("%T", "SpawnAs", client);
 	if (asSelf)
 	{
-		menu.AddItem("1", "Spawning as self", ITEMDRAW_DISABLED);
+		menu.AddItem("1", FormatR("%T", "SpawnAsSelf", client), ITEMDRAW_DISABLED);
 	}
 	else
 	{
-		menu.AddItem("0", "Spawning a robot (pass 1 to the command to spawn as self)", ITEMDRAW_DISABLED);
+		menu.AddItem("0", FormatR("%T", "SpawnBot", client), ITEMDRAW_DISABLED);
 	}
 	
 	for (int i = 0; i < GetEnemyCount(); i++)
@@ -1509,7 +1557,7 @@ void ShowClientSettingsMenu(int client)
 	char buffer[128], off[8], on[8];
 	Menu menu = new Menu(Menu_ClientSettings);
 	SetGlobalTransTarget(client);
-	menu.SetTitle("Risk Fortress 2 Settings");
+	menu.SetTitle("%t", "SettingsTitle");
 	FormatEx(off, sizeof(off), "%t", "Off");
 	FormatEx(on, sizeof(on), "%t", "On");
 	FormatEx(buffer, sizeof(buffer), "%t", "ToggleSurvivor", GetCookieBool(client, g_coBecomeSurvivor) ? on : off);
@@ -1611,7 +1659,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 		return;
 	
 	int target = IsValidClient(inspectTarget) ? inspectTarget : client;
-	Menu menu = new Menu(Menu_Items);
+	Menu menu = new Menu(Menu_Items, MENU_ACTIONS_DEFAULT|MenuAction_Display);
 	char buffer[128], info[16], itemName[MAX_NAME_LENGTH];
 	int itemCount;
 	SetGlobalTransTarget(client);
@@ -1634,7 +1682,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 	
 	int flags = target == inspectTarget ? ITEMDRAW_DISABLED : ITEMDRAW_DEFAULT;
 	char qualityName[32];
-	GetQualityName(Quality_Strange, qualityName, sizeof(qualityName));
+	GetQualityName(Quality_Strange, qualityName, sizeof(qualityName), client);
 	ArrayList items = GetSortedItemList(_, _, true, true);
 	int item;
 	for (int i = 0; i < items.Length; i++)
@@ -1643,7 +1691,7 @@ void ShowItemMenu(int client, int inspectTarget=INVALID_ENT)
 		if (GetPlayerItemCount(target, item, true) > 0 || IsEquipmentItem(item) && GetPlayerEquipmentItem(target) == item)
 		{
 			itemCount++;
-			GetItemName(item, itemName, sizeof(itemName), false);
+			GetItemName(item, itemName, sizeof(itemName), false, client);
 			IntToString(item, info, sizeof(info));
 			
 			if (IsEquipmentItem(item))
@@ -1722,7 +1770,7 @@ void ShowItemDropMenu(int client, int item)
 	Menu menu = new Menu(Menu_ItemDrop);
 	char info[64], itemName[MAX_NAME_LENGTH], clientName[MAX_NAME_LENGTH];
 	GetItemName(item, itemName, sizeof(itemName));
-	menu.SetTitle("Drop for who? (%s [%i])", itemName, GetPlayerItemCount(client, item, true));
+	menu.SetTitle("%T", "DropForTitle", client, itemName, GetPlayerItemCount(client, item, true));
 	FormatEx(info, sizeof(info), "%i_0", item);
 	menu.AddItem(info, "Don't care"); // + didn't ask + L + ratio + cope + seethe + mald + cancelled + blocked + reported + stay mad
 	
@@ -1833,8 +1881,15 @@ public Action Command_SetDifficulty(int client, int args)
 	}
 	
 	SetDifficultyLevel(level);
-	GetDifficultyName(level, name, sizeof(name));
-	RF2_PrintToChatAll("%t", "DifficultySetBy", client, name);
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || IsFakeClient(i))
+			continue;
+		
+		GetDifficultyName(g_iDifficultyLevel, name, sizeof(name), true, true, i);
+		RF2_PrintToChat(i, "%t", "DifficultySetBy", client, name);
+	}
+
 	return Plugin_Handled;
 }
 
@@ -1948,10 +2003,11 @@ public Action Command_HelpMenu(int client, int args)
 void ShowHelpMenu(int client)
 {
 	Menu menu = new Menu(Menu_HelpMenu);
-	menu.SetTitle("Risk Fortress 2 - Help Menu (/rf2_helpmenu)");
-	menu.AddItem("tutorial", "What is this gamemode? What's going on?");
-	menu.AddItem("commands", "Show list of commands");
-	menu.AddItem("discord", "Show Discord link in the chat");
+	SetGlobalTransTarget(client);
+	menu.SetTitle("%t", "HelpTitle");
+	menu.AddItem("tutorial", FormatR("%t", "HelpTutorial"));
+	menu.AddItem("commands", FormatR("%t", "HelpCommands"));
+	menu.AddItem("discord", FormatR("%t", "HelpDiscord"));
 	menu.Display(client, MENU_TIME_FOREVER);
 	g_bPlayerOpenedHelpMenu[client] = true;
 	SetCookieBool(client, g_coNewPlayer, true);
@@ -1993,20 +2049,21 @@ void ShowCommandsList(int client)
 {
 	Menu menu = new Menu(Menu_CommandsList);
 	menu.ExitBackButton = true;
-	menu.SetTitle("Risk Fortress 2 Commands List - Select to use");
-	menu.AddItem("rf2_settings", "rf2_settings - Configure your settings");
-	menu.AddItem("rf2_achievements", "rf2_achievements - Shows list of achievements");
-	menu.AddItem("rf2_skipwait", "rf2_skipwait - Skips Waiting for Players");
-	menu.AddItem("rf2_extend_wait", "rf2_extend_wait - Extends Waiting for Players time");
-	menu.AddItem("rf2_discord", "rf2_discord - Shows link to Risk Fortress 2 Discord in the chat");
-	menu.AddItem("rf2_helpmenu", "rf2_helpmenu - Shows the help menu");
-	menu.AddItem("rf2_itemlog", "rf2_itemlog - Shows list of items that you've collected");
-	menu.AddItem("rf2_endlevel", "rf2_endlevel - Used to end the round in Tank Destruction or other modes");
-	menu.AddItem("rf2_reset_tutorial", "rf2_reset_tutorial - Resets tutorial messages");
-	menu.AddItem("rf2_items", "rf2_items - Meant to be binded to a key, opens inventory menu. Default is [TAB/SCOREBOARD] + Call for Medic.", ITEMDRAW_DISABLED);
-	menu.AddItem("rf2_use_strange", "rf2_use_strange - Meant to be binded to a key, activates Strange item. Default is R/RELOAD key", ITEMDRAW_DISABLED);
-	menu.AddItem("rf2_interact", "rf2_interact - Meant to be binded to a key, functions like Call for Medic to interact with objects.", ITEMDRAW_DISABLED);
-	menu.AddItem("rf2_ping", "rf2_ping - Meant to be binded to a key, pings an object you are looking at. Default is Middle Mouse/ATTACK3.", ITEMDRAW_DISABLED);
+	SetGlobalTransTarget(client);
+	menu.SetTitle("%t", "CmdListTitle");
+	menu.AddItem("rf2_settings", FormatRSafe("%t", "CmdSettings"));
+	menu.AddItem("rf2_achievements", FormatRSafe("%t", "CmdAchievements"));
+	menu.AddItem("rf2_skipwait", FormatRSafe("%t", "CmdSkipWait"));
+	menu.AddItem("rf2_extend_wait", FormatRSafe("%t", "CmdExtendWait"));
+	menu.AddItem("rf2_discord", FormatRSafe("%t", "CmdDiscord"));
+	menu.AddItem("rf2_helpmenu", FormatRSafe("%t", "CmdHelp"));
+	menu.AddItem("rf2_itemlog", FormatRSafe("%t", "CmdItemLog"));
+	menu.AddItem("rf2_endlevel", FormatRSafe("%t", "CmdEndLevel"));
+	menu.AddItem("rf2_reset_tutorial", FormatRSafe("%t", "CmdResetTutorial"));
+	menu.AddItem("rf2_items", FormatRSafe("%t", "CmdItems"), ITEMDRAW_DISABLED);
+	menu.AddItem("rf2_use_strange", FormatRSafe("%t", "CmdStrange"), ITEMDRAW_DISABLED);
+	menu.AddItem("rf2_interact", FormatRSafe("%t", "CmdInteract"), ITEMDRAW_DISABLED);
+	menu.AddItem("rf2_ping", FormatRSafe("%t", "CmdPing"), ITEMDRAW_DISABLED);
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
@@ -2043,9 +2100,9 @@ void ShowTutorialMenu(int client)
 	Menu menu = new Menu(Menu_Tutorial);
 	char text[512];
 	FormatEx(text, sizeof(text), "%T", "Help1", client);
-	menu.AddItem("msg", text, ITEMDRAW_DISABLED);
-	menu.AddItem("0", "Back");
-	menu.AddItem("2", "Next");
+	menu.AddItem("msg", FormatR("%T", "Help1", client), ITEMDRAW_DISABLED);
+	menu.AddItem("0", FormatR("%T", "Back", client));
+	menu.AddItem("2", FormatR("%T", "Next", client));
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
@@ -2066,11 +2123,11 @@ public int Menu_Tutorial(Menu menu, MenuAction action, int param1, int param2)
 				Format(msg, sizeof(msg), "%T", msg, param1);
 				newMenu.AddItem("msg", msg, ITEMDRAW_DISABLED);
 				FormatEx(info, sizeof(info), "%i", page-1);
-				newMenu.AddItem(info, "Back");
+				newMenu.AddItem(info, FormatR("%T", "Back", param1));
 				if (page < 5)
 				{
 					FormatEx(nextPage, sizeof(nextPage), "%i", page+1);
-					newMenu.AddItem(nextPage, "Next");
+					newMenu.AddItem(nextPage, FormatR("%T", "Next", param1));
 				}
 
 				newMenu.Display(param1, MENU_TIME_FOREVER);
@@ -2120,14 +2177,14 @@ public Action Command_ForfeitItems(int client, int args)
 	int invIndex = g_iPlayerInventoryIndex[client];
 	if (!IsInventoryAllowedToForfeit(invIndex))
 	{
-		RF2_ReplyToCommand(client, "Since you were not present at the beginning of this run, you need to clear at least {yellow}%d{default} more stages to use this command.", 
+		RF2_ReplyToCommand(client, "%t", "ForfeitDisallowed", 
 			g_cvMinStagesClearedToForfeit.IntValue-g_iSaveDataCompletedStages[invIndex]);
 	}
 	
 	Menu confirm = new Menu(Menu_ForfeitConfirm);
-	confirm.SetTitle("!!! You are about to COMPLETELY EMPTY YOUR ENTIRE INVENTORY and give all of your items to other players !!!\nAre you absolutely sure you want to do this?");
-	confirm.AddItem("y", "Yes");
-	confirm.AddItem("n", "No");
+	confirm.SetTitle("%T", "ForfeitWarnTitle", client);
+	confirm.AddItem("y", FormatR("%T", "Yes", client));
+	confirm.AddItem("n", FormatR("%T", "No", client));
 	confirm.Display(client, MENU_TIME_FOREVER);
 	return Plugin_Handled;
 }

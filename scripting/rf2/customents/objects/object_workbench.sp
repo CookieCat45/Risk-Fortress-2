@@ -216,7 +216,7 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 		
 		delete itemArray;
 		char qualityName[32];
-		GetQualityName(this.TradeQuality, qualityName, sizeof(qualityName));
+		GetQualityName(this.TradeQuality, qualityName, sizeof(qualityName), client);
 		if (itemsToTrade.Length >= this.Cost)
 		{
 			int item, lastItem;
@@ -236,13 +236,16 @@ methodmap RF2_Object_Workbench < RF2_Object_Base
 			GiveItem(client, benchItem, this.Reward, true);
 			EmitSoundToAll(SND_USE_WORKBENCH, client);
 			ShowItemDesc(client, benchItem);
+			char itemName[64], benchItemName[64];
+			GetItemName(item, itemName, sizeof(itemName), false, client);
+			GetItemName(benchItem, benchItemName, sizeof(benchItemName), false, client);
 			if (oneItem)
 			{
-				PrintCenterText(client, "%t", "UsedWorkbench", this.Cost, g_szItemName[item], g_szItemName[benchItem], GetPlayerItemCount(client, item, true), g_szItemName[item], this.Reward);
+				PrintCenterText(client, "%t", "UsedWorkbench", this.Cost, itemName, benchItemName, GetPlayerItemCount(client, item, true), itemName, this.Reward);
 			}
 			else
 			{
-				PrintCenterText(client, "%t", "UsedWorkbenchMulti", this.Cost, qualityName, g_szItemName[benchItem], this.Reward);
+				PrintCenterText(client, "%t", "UsedWorkbenchMulti", this.Cost, qualityName, benchItemName, this.Reward);
 			}
 		}
 		else
@@ -386,11 +389,11 @@ static void OnSpawnPost(int entity)
 		delete validItems;
 	}
 	
-	char text[256], qualityName[32];
+	char text[256], qualityName[32], itemName[64];
+	GetItemName(bench.Item, itemName, sizeof(itemName));
 	GetQualityName(bench.TradeQuality, qualityName, sizeof(qualityName));
 	bench.Cost = bench.CustomItemCost > 1 ? bench.CustomItemCost : bench.IsComposter ? 2 : 1;
 	bench.Reward = bench.CustomItemReward > 1 ? bench.CustomItemReward : 1;
-	
 	if (bench.IsComposter)
 	{
 		FormatEx(text, sizeof(text), "Call for Medic\nTo trade for %i Collector's quality item!\n(Requires %i %s %s)", bench.Reward,
@@ -399,13 +402,13 @@ static void OnSpawnPost(int entity)
 	else
 	{
 		FormatEx(text, sizeof(text), "Call for Medic\nTo trade for %i %s!\n(Requires %i %s %s)", bench.Reward,
-			g_szItemName[bench.Item], bench.Cost, qualityName, bench.Cost > 1 ? "items" : "item");
+			itemName, bench.Cost, qualityName, bench.Cost > 1 ? "items" : "item");
 	}
 	
 	bench.SetWorldText(text);
 	bench.TextZOffset = bench.IsComposter ? 115.0 : 100.0;
 	char name[256];
-	FormatEx(name, sizeof(name), "Workbench (%s)", g_szItemName[bench.Item]);
+	FormatEx(name, sizeof(name), "Workbench (%s)", itemName);
 	bench.SetObjectName(name);
 	CBaseEntity sprite = CBaseEntity(CreateEntityByName("env_sprite"));
 	bench.Sprite = sprite;

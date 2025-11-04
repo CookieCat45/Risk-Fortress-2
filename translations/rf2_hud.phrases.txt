@@ -2,13 +2,13 @@
 {
     "SurvivorHudText"
     {
-        "#format"   "{1:d},{2:s},{3:02d},{4:02d},{5:d},{6:d},{7:.0f},{8:.0f},{9:s},{10:s},{11:s}"
+        "#format"   "{1:d},{2:s},{3:02d},{4:02d},{5:d},{6:d},{7:.0f},{8:.0f},{9:s},{10:t},{11:s}"
         "en"        "\n\nStage {1} ({2}) | {3}:{4}\nEnemy Level: {5} | Your Level: {6}\n{7}/{8} XP | Cash: {9}\n{10}\n{11}"
     }
     
     "EnemyHudText"
     {
-        "#format"   "{1:d},{2:s},{3:02d},{4:02d},{5:d},{6:s},{7:s}"
+        "#format"   "{1:d},{2:s},{3:02d},{4:02d},{5:d},{6:t},{7:s}"
         "en"        "\n\nStage {1} ({2}) | {3}:{4}\nEnemy Level: {5}\n{6}\n{7}"
     }
     
@@ -275,5 +275,48 @@
         "en"    "F"
     }
     
+    "Easy"
+    {
+        "en"    "Difficulty: Easy"
+    }
     
+    "Normal"
+    {
+        "en"    "Difficulty: Normal"
+    }
+    
+    "Hard"
+    {
+        "en"    "Difficulty: Hard"
+    }
+    
+    "Very Hard"
+    {
+        "en"    "Difficulty: Very Hard"
+    }
+    
+    "Insane"
+    {
+        "en"    "Difficulty: Insane"
+    }
+    
+    "Impossible"
+    {
+        "en"    "Difficulty: Impossible"
+    }
+    
+    "ISeeYou"
+    {
+        "en"    "I SEE YOU"
+    }
+    
+    "ComingForYou"
+    {
+        "en"    "I'M COMING FOR YOU"
+    }
+    
+    "HaHaHa"
+    {
+        "en"    "HAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHA"
+    }
 }

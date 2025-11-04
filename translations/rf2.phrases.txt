@@ -332,6 +332,66 @@
 		"en"		"You don't have any items to exchange! You need {1} {2} quality items."
 	}
 	
+	"ScrapTitle"
+	{
+		"en"		"What would you like to scrap?"
+	}
+	
+	"StatueTitle1"
+	{
+		"en"		"Offer your power to the mysterious gravestone? (This will end the game.)"
+	}
+	
+	"StatueTitle2"
+	{
+		"en"		"Are you sure you want to do this?"
+	}
+	
+	"AreYouSure"
+	{
+		"en"		"Are you sure?"
+	}
+	
+	"AreYouSure2"
+	{
+		"en"		"Are you sure you want to leave? There are still players who are lacking items!"
+	}
+	
+	"DecideYourFate"
+	{
+		"en"		"Decide your Fate?"
+	}
+	
+	"FinalAreaVoteTitle"
+	{
+		"en"		"A fork appears in the path ahead. Where do you wish to go?"
+	}
+	
+	"FinalAreaOption"
+	{
+		"en"		"Travel towards the large industrial building in the distance"
+	}
+	
+	"LoopOption"
+	{
+		"en"		"Continue on the normal path"
+	}
+	
+	"NowhereOption"
+	{
+		"en"		"I'm not going anywhere yet"
+	}
+	
+	"DepartNow"
+	{
+		"en"		"Depart now?"
+	}
+	
+	"StartTeleporter"
+	{
+		"en"		"Start the Teleporter event?"
+	}
+	
 	// Scrapper
 	"ScrapCollectors" 
 	{
@@ -416,16 +476,6 @@
 	"AllHumansDisconnected"
 	{
 		"en"		"All human players have disconnected from the server. Restarting..."
-	}
-
-	"On"
-	{
-		"en"		"ON"
-	}
-	
-	"Off"
-	{
-		"en"		"OFF"
 	}
 	
 	"TeleporterHud"
@@ -592,6 +642,17 @@
 	{
 		"#format"	"{1:N}"
 		"en"		"{blue}{1}{default} :  Ahoy!"
+	}
+	
+	"ForfeitWarnTitle"
+	{
+		"en"		"!!! You are about to COMPLETELY EMPTY YOUR ENTIRE INVENTORY and give all of your items to other players !!!\nAre you absolutely sure you want to do this?"
+	}
+	
+	"ForfeitDisallowed"
+	{
+		"#format"	"{1:d}"
+		"en"		"Since you were not present at the beginning of this run, you need to clear at least {yellow}%d{default} more stages to use this command."
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -878,9 +939,191 @@
 		"en"		"You received {yellow}{1}{default} {2}{3} {default}items from {yellow}{4}'s{default} forfeit"
 	}
 	
+	"ItemLogTitle"
+    {
+        "#format"   "{1:d},{2:d}"
+        "en"        "Item Logbook ({1}/{2} items collected)"
+    }
+    
+    "ItemLogStrangeCd"
+    {
+        "#format"   "{1:.0f}"
+        "en"        "Cooldown: {1} seconds"
+    }
+    
+    "ItemLogStrangeCdMin"
+    {
+        "#format"   "{1:.0f}"
+        "en"        "Minimum Cooldown: {1} seconds"
+    }
+    
+    "DifficultyVoteTitle"
+    {
+        "en"        "Vote for the game's difficulty level!"
+    }
+    
+    "StillConnectingTitle"
+    {
+        "#format"   "{1:d}"
+        "en"        "It looks like {1} player(s) are still connecting. Extend waiting for players?"
+    }
+    
+    "SkipWaitTitle"
+    {
+        "#format"   "{1:N}"
+        "en"        "Skip waiting for players? ({1})"
+    }
+    
+    "ExtendWaitTitle"
+    {
+        "#format"   "{1:N}"
+        "en"        "Extend waiting for players? ({1})"
+    }
+    
+    "SurvivorQueueTitle"
+    {
+        "en"        "Survivor Queue List"
+    }
+    
+    "AchievementsTitle"
+    {
+        "en"        "Achievements"
+    }
+    
+    "UnlockedAchievements"
+    {
+        "en"        "Unlocked Achievements"
+    }
+    
+    "LockedAchievements"
+    {
+        "en"        "Locked Achievements"
+    }
+	
+	"SettingsTitle"
+	{
+		"en"		"Risk Fortress 2 Settings"
+	}
+	
+	"DropForTitle"
+	{
+		"#format"	"{1:s},{2:d}"
+		"en"		"Drop for who? ({1} [{2}])"
+	}
+	
+	"HelpTitle"
+	{
+		"en"		"Risk Fortress 2 - Help Menu (/rf2_helpmenu)"
+	}
+	
+	"HelpTutorial"
+	{
+		"en"		"What is this gamemode? What's going on?"
+	}
+	
+	"HelpCommands"
+	{
+		"en"		"Show list of commands"
+	}
+	
+	"HelpDiscord"
+	{
+		"en"		"Show Discord link in the chat"
+	}
+	
+	"CmdListTitle"
+	{
+		"en"		"Risk Fortress 2 Commands List - Select to use"
+	}
+	
+	"CmdSettings"
+	{
+		"en"		"rf2_settings - Configure your settings"
+	}
+	
+	"CmdAchievements"
+	{
+		"en"		"rf2_achievements - Shows list of achievements"
+	}
+	
+	"CmdSkipWait"
+	{
+		"en"		"rf2_skipwait - Skips Waiting for Players"
+	}
+	
+	"CmdExtendWait"
+	{
+		"en"		"rf2_extend_wait - Extends Waiting for Players time"
+	}
+	
+	"CmdDiscord"
+	{
+		"en"		"rf2_discord - Shows link to Risk Fortress 2 Discord in the chat"
+	}
+	
+	"CmdHelp"
+	{
+		"en"		"rf2_helpmenu - Shows the help menu"
+	}
+	
+	"CmdItemLog"
+	{
+		"en"		"rf2_itemlog - Shows list of items that you've collected"
+	}
+	
+	"CmdEndLevel"
+	{
+		"en"		"rf2_endlevel - Used to end the round in Tank Destruction or other modes"
+	}
+	
+	"CmdResetTutorial"
+	{
+		"en"		"rf2_reset_tutorial - Resets tutorial messages"
+	}
+	
+	"CmdItems"
+	{
+		"en"		"rf2_items - Meant to be binded to a key, opens inventory menu. Default is [TAB/SCOREBOARD] + Call for Medic."
+	}
+	
+	"CmdStrange"
+	{
+		"en"		"rf2_use_strange - Meant to be binded to a key, activates Strange item. Default is R/RELOAD key"
+	}
+	
+	"CmdInteract"
+	{
+		"en"		"rf2_interact - Meant to be binded to a key, functions like Call for Medic to interact with objects."
+	}
+	
+	"CmdPing"
+	{
+		"en"		"rf2_ping - Meant to be binded to a key, pings an object you are looking at. Default is Middle Mouse/ATTACK3."
+	}
+	
+	"Back"
+	{
+		"en"		"Back"
+	}
+	
+	"Next"
+	{
+		"en"		"Next"
+	}
+	
 	"SpawnAs"
 	{
 		"en"		"Spawn a..."
+	}
+	
+	"SpawnAsSelf"
+	{
+		"en"		"Spawning as self"
+	}
+	
+	"SpawnBot"
+	{
+		"en"		"Spawning a robot (pass 1 to the command to spawn as self)"
 	}
 	
 	"SpawnedEnemy"
@@ -1191,5 +1434,235 @@
 	"ScavengerLordWarning"
 	{
 		"en"		"BEWARE!\nLord Scaventron is coming for you!"
+	}
+	
+	"Scrap"
+	{
+		"en"		"Scrap"
+	}
+	
+	"Iron"
+	{
+		"en"		"Iron"
+	}
+	
+	"Steel"
+	{
+		"en"		"Steel"
+	}
+	
+	"Titanium"
+	{
+		"en"		"Titanium"
+	}
+	
+	"Australium"
+	{
+		"en"		"AUSTRALIUM"
+	}
+	
+	"ScrapHint"
+	{
+		"en"		"Scrap (Easy)"
+	}
+	
+	"IronHint"
+	{
+		"en"		"Iron (Normal)"
+	}
+	
+	"SteelHint"
+	{
+		"en"		"Steel (Hard)"
+	}
+	
+	"TitaniumHint"
+	{
+		"en"		"Titanium (Expert)"
+	}
+	
+	"AustraliumHint"
+	{
+		"en"		"AUSTRALIUM (MASTER)"
+	}
+	
+	"NormalQuality"
+	{
+		"en"		"Normal"
+	}
+	
+	"GenuineQuality"
+	{
+		"en"		"Genuine"
+	}
+	
+	"UnusualQuality"
+	{
+		"en"		"Unusual"
+	}
+	
+	"CollectorsQuality"
+	{
+		"en"		"Collectors"
+	}
+	
+	"StrangeQuality"
+	{
+		"en"		"Strange"
+	}
+	
+	"HauntedQuality"
+	{
+		"en"		"Haunted"
+	}
+	
+	"CommunityQuality"
+	{
+		"en"		"Community"
+	}
+	
+	"Burning Flames"
+	{
+		"en"		"Burning Flames"
+	}
+	
+	"Scorching Flames"
+	{
+		"en"		"Scorching Flames"
+	}
+	
+	"Massed Flies"
+	{
+		"en"		"Massed Flies"
+	}
+	
+	"Haunted Ghosts"
+	{
+		"en"		"Haunted Ghosts"
+	}
+	
+	"Sunbeams"
+	{
+		"en"		"Sunbeams"
+	}
+	
+	"Stormy Storm"
+	{
+		"en"		"Stormy Storm"
+	}
+	
+	"Blizzardy Storm"
+	{
+		"en"		"Blizzardy Storm"
+	}
+	
+	"Smoking"
+	{
+		"en"		"Smoking"
+	}
+	
+	"Dead Presidents"
+	{
+		"en"		"Dead Presidents"
+	}
+	
+	"Cloud 9"
+	{
+		"en"		"Cloud 9"
+	}
+	
+	"Disco Beat Down"
+	{
+		"en"		"Disco Beat Down"
+	}
+	
+	"Miami Nights"
+	{
+		"en"		"Miami Nights"
+	}
+	
+	"Time Warp"
+	{
+		"en"		"Time Warp"
+	}
+	
+	"Anti-Freeze"
+	{
+		"en"		"Anti-Freeze"
+	}
+	
+	"Roboactive"
+	{
+		"en"		"Roboactive"
+	}
+	
+	"Knifestorm"
+	{
+		"en"		"Knifestorm"
+	}
+	
+	"Stormy 13th Hour"
+	{
+		"en"		"Stormy 13th Hour"
+	}
+	
+	"Spellbound"
+	{
+		"en"		"Spellbound"
+	}
+	
+	"Starstorm Insomnia"
+	{
+		"en"		"Starstorm Insomnia"
+	}
+	
+	"Starstorm Slumber"
+	{
+		"en"		"Starstorm Slumber"
+	}
+	
+	"Steaming"
+	{
+		"en"		"Steaming"
+	}
+	
+	"Kill-a-Watt"
+	{
+		"en"		"Kill-a-Watt"
+	}
+	
+	"Terror-Watt"
+	{
+		"en"		"Terror-Watt"
+	}
+	
+	"Green Energy"
+	{
+		"en"		"Green Energy"
+	}
+	
+	"Purple Energy"
+	{
+		"en"		"Purple Energy"
+	}
+	
+	"Searing Plasma"
+	{
+		"en"		"Searing Plasma"
+	}
+	
+	"Vivid Plasma"
+	{
+		"en"		"Vivid Plasma"
+	}
+	
+	"Nebula"
+	{
+		"en"		"Nebula"
+	}
+	
+	"Tesla Coil"
+	{
+		"en"		"Tesla Coil"
 	}
 }

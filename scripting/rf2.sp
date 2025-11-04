@@ -80,6 +80,7 @@ char g_szCurrentEnemyGroup[64];
 Address g_aEngineServer;
 Address g_aGameEventManager;
 ConVar g_cvSvCheats;
+ArrayList g_hAvailableLanguages;
 
 // Map settings
 bool g_bDisableEurekaTeleport;
@@ -127,15 +128,8 @@ Handle g_hMiscHudSync;
 int g_iMainHudR = 100;
 int g_iMainHudG = 255;
 int g_iMainHudB = 100;
-char g_szHudDifficulty[128] = "Difficulty: Easy";
+char g_szHudDifficulty[128] = "Easy";
 char g_szObjectiveHud[MAXPLAYERS][128];
-
-// g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i],
-// g_flPlayerNextLevelXP[i], cashString, g_szHudDifficulty, strangeItemInfo, miscText
-char g_szSurvivorHudText[2048] = "SurvivorHudText";
-
-// g_iStagesCompleted+1, g_iMinutesPassed, hudSeconds, g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo
-char g_szEnemyHudText[1024] = "EnemyHudText";
 
 // Players
 bool g_bPlayerViewingItemMenu[MAXPLAYERS];
@@ -558,6 +552,7 @@ public void OnPluginStart()
 	BakeCookies();
 	CreateSQL();
 	LoadTranslations("common.phrases");
+	LoadTranslations("core.phrases");
 	LoadTranslations("rf2.phrases");
 	LoadTranslations("rf2_achievements.phrases");
 	LoadTranslations("rf2_hud.phrases");
@@ -574,6 +569,14 @@ public void OnPluginStart()
 	if (g_cvHiddenServerStartTime.FloatValue == 0.0)
 	{
 		g_cvHiddenServerStartTime.FloatValue = GetEngineTime();
+	}
+	
+	char code[8];
+	g_hAvailableLanguages = new ArrayList(8);
+	for (int i = 0; i < GetLanguageCount(); i++)
+	{
+		GetLanguageInfo(i, code, sizeof(code));
+		g_hAvailableLanguages.PushString(code);
 	}
 	
 	if (g_hDetourFindMap)
@@ -2019,12 +2022,10 @@ public void Timer_DifficultyVote(Handle timer)
 
 void StartDifficultyVote()
 {
-	Menu menu = new Menu(Menu_DifficultyVote);
-	menu.SetTitle("Vote for the game's difficulty level!");
-	menu.AddItem("0", "Scrap (Easy)");
-	menu.AddItem("1", "Iron (Normal)");
-	menu.AddItem("2", "Steel (Hard)");
-	
+	Menu menu = new Menu(Menu_DifficultyVote, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
+	menu.AddItem("0", "ScrapHint");
+	menu.AddItem("1", "IronHint");
+	menu.AddItem("2", "SteelHint");
 	bool achievement = true;
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -2042,7 +2043,7 @@ void StartDifficultyVote()
 	
 	if (achievement || GetRandomInt(1, 20) == 1 || g_cvAlwaysAllowTitaniumVoting.BoolValue || DoesSteelVictoryFlagExist())
 	{
-		menu.AddItem("3", "Titanium (Expert)");
+		menu.AddItem("3", "TitaniumHint");
 	}
 	
 	int clients[MAXPLAYERS] = {-1, ...};
@@ -2063,22 +2064,47 @@ public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int par
 {
 	switch (action)
 	{
+		case MenuAction_Display:
+		{
+			view_as<Panel>(param2).SetTitle(FormatR("%T", "DifficultyVoteTitle", param1));
+		}
+		case MenuAction_DisplayItem:
+		{
+			char display[64];
+			menu.GetItem(param2, "", 0, _, display, sizeof(display));
+			char buffer[256];
+			FormatEx(buffer, sizeof(buffer), "%T", display, param1);
+			return RedrawMenuItem(buffer);
+		}
 		case MenuAction_VoteEnd:
 		{
 			char info[8];
 			menu.GetItem(param1, info, sizeof(info));
 			SetDifficultyLevel(StringToInt(info));
 			char difficultyName[64];
-			GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName), _, true);
 			if (g_iDifficultyLevel < DIFFICULTY_TITANIUM)
 			{
-				RF2_PrintToChatAll("%t", "DifficultySet", difficultyName);
+				for (int i = 1; i <= MaxClients; i++)
+				{
+					if (!IsClientInGame(i) || IsFakeClient(i))
+						continue;
+					
+					GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName), true, true, i);
+					RF2_PrintToChat(i, "%t", "DifficultySet", difficultyName);
+				}
 			}
 			else
 			{
 				EmitSoundToAll(SND_EVIL_LAUGH);
 				EmitSoundToAll(SND_EVIL_LAUGH);
-				RF2_PrintToChatAll("%t", "DifficultySetDeadly", difficultyName);
+				for (int i = 1; i <= MaxClients; i++)
+				{
+					if (!IsClientInGame(i) || IsFakeClient(i))
+						continue;
+					
+					GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName), true, true, i);
+					RF2_PrintToChat(i, "%t", "DifficultySetDeadly", difficultyName);
+				}
 				RemoveSteelVictoryFlag();
 			}
 		}
@@ -2088,8 +2114,14 @@ public int Menu_DifficultyVote(Menu menu, MenuAction action, int param1, int par
 			{
 				SetDifficultyLevel(GetRandomInt(DIFFICULTY_SCRAP, DIFFICULTY_IRON));
 				char difficultyName[64];
-				GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName));
-				RF2_PrintToChatAll("%t", "DifficultySet", difficultyName);
+				for (int i = 1; i <= MaxClients; i++)
+				{
+					if (!IsClientInGame(i) || IsFakeClient(i))
+						continue;
+					
+					GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName), true, true, i);
+					RF2_PrintToChat(i, "%t", "DifficultySet", difficultyName);
+				}
 			}
 		}
 		case MenuAction_End:
@@ -4051,8 +4083,8 @@ public Action Timer_PlayerHud(Handle timer)
 		r = 255;
 		g = 255;
 		b = 255;
-		static char difficultyName[32];
-		GetDifficultyName(RF2_GetDifficulty(), difficultyName, sizeof(difficultyName), false);
+		static char difficultyName[64];
+		GetDifficultyName(g_iDifficultyLevel, difficultyName, sizeof(difficultyName), false, false, i);
 		if (IsPlayerSurvivor(i))
 		{
 			if (!g_bGracePeriod)
@@ -4363,14 +4395,14 @@ public Action Timer_PlayerHud(Handle timer)
 			}
 			
 			ShowSyncHudText(i, g_hMainHudSync, "%t", 
-				g_szSurvivorHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed,
+				"SurvivorHudText", g_iStagesCompleted+1, difficultyName, g_iMinutesPassed,
 				hudSeconds, g_iEnemyLevel, g_iPlayerLevel[i], g_flPlayerXP[i], g_flPlayerNextLevelXP[i],
 				cashString, g_szHudDifficulty, strangeItemInfo);
 		}
 		else
 		{
 			ShowSyncHudText(i, g_hMainHudSync, "%t",
-				g_szEnemyHudText, g_iStagesCompleted+1, difficultyName, g_iMinutesPassed, hudSeconds,
+				"EnemyHudText", g_iStagesCompleted+1, difficultyName, g_iMinutesPassed, hudSeconds,
 				g_iEnemyLevel, g_szHudDifficulty, strangeItemInfo);
 		}
 		
@@ -4650,7 +4682,7 @@ public Action Timer_PlayerTimer(Handle timer)
 			
 			// Regen rune does nothing outside of Mannpower, make it triple health regen and decrease health regen freeze time
 			bool regenRune = TF2_IsPlayerInCondition(i, TFCond_RuneRegen);
-			g_flPlayerHealthRegenTime[i] -= regenRune ? 0.3 : 0.1;
+			g_flPlayerHealthRegenTime[i] -= regenRune && !IsBoss(i) ? 0.3 : 0.1;
 			if (g_flPlayerHealthRegenTime[i] <= 0.0)
 			{
 				g_flPlayerHealthRegenTime[i] = 0.0;
@@ -6092,32 +6124,6 @@ public void TF2_OnWaitingForPlayersStart()
 	g_bWaitingForPlayers = true;
 	CreateTimer(0.1, Timer_GameRulesOutputDelay, _, TIMER_FLAG_NO_MAPCHANGE); // Delay to ensure map logic runs properly
 	PrintToServer("%T", "WaitingStart", LANG_SERVER);
-	//float waitTime = FindConVar("mp_waitingforplayers_time").FloatValue;
-	//CreateTimer(waitTime*0.8, Timer_ExtendWaitCheck, _, TIMER_FLAG_NO_MAPCHANGE);
-}
-
-public void Timer_ExtendWaitCheck(Handle timer)
-{
-	if (!g_bWaitingForPlayers || !ArePlayersConnecting() || IsVoteInProgress())
-		return;
-
-	Menu vote = new Menu(Menu_ExtendWaitVote);
-	vote.SetTitle("It looks like %d player(s) are still connecting. Extend waiting for players?", GetTotalHumans(false)-GetTotalHumans(true));
-	vote.AddItem("Yes", "Yes");
-	vote.AddItem("No", "No");
-	vote.ExitButton = false;
-	int clients[MAXPLAYERS];
-	int clientCount;
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!IsClientInGame(i) || GetClientTeam(i) <= 1 || IsFakeClient(i))
-			continue;
-		
-		clients[clientCount] = i;
-		clientCount++;
-	}
-	
-	vote.DisplayVote(clients, clientCount, 10);
 }
 
 public void Timer_GameRulesOutputDelay(Handle timer)

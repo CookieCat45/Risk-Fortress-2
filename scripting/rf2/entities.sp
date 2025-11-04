@@ -1022,14 +1022,14 @@ bool IsSkeleton(int entity)
 void ApplyAbsVelocityImpulse(int entity, const float vel[3])
 {
 	VScriptCmd cmd;
-    cmd.Append(Format2("self.ApplyAbsVelocityImpulse(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]));
+    cmd.Append(FormatR("self.ApplyAbsVelocityImpulse(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]));
 	cmd.Run(entity);
 }
 
 void SetPhysVelocity(int entity, const float vel[3])
 {
     VScriptCmd cmd;
-    cmd.Append(Format2("self.SetPhysVelocity(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]));
+    cmd.Append(FormatR("self.SetPhysVelocity(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]));
 	cmd.Run(entity);
 }
 
