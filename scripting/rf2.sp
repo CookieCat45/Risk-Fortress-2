@@ -4724,7 +4724,7 @@ public Action Timer_PlayerTimer(Handle timer)
 
 					if (regenRune)
 					{
-						healAmount *= 3;
+						healAmount *= IsBoss(i) ? 2 : 3;
 					}
 					
 					healAmount = imax(healAmount, 1);
