@@ -1,19 +1,19 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_MajorShocksVortexAction < RF2_BaseNPCAttackAction
 {
 	public RF2_MajorShocksVortexAction()
 	{
-		if (g_Factory == null)
+		if (!g_ActionFactory)
 		{
-			g_Factory = new NextBotActionFactory("RF2_MajorShocksVortex");
-			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_Factory.SetCallback(NextBotActionCallbackType_OnEnd, OnEnd);
-			g_Factory.BeginDataMapDesc()
+			g_ActionFactory = new NextBotActionFactory("RF2_MajorShocksVortex");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnEnd, OnEnd);
+			g_ActionFactory.BeginDataMapDesc()
 				.DefineFloatField("m_flStartTime")
 				.DefineFloatField("m_flAttackTime")
 				.DefineFloatField("m_flRecoveryTime")
@@ -22,7 +22,7 @@ methodmap RF2_MajorShocksVortexAction < RF2_BaseNPCAttackAction
 				.DefineEntityField("m_PushField")
 			.EndDataMapDesc();
 		}
-		return view_as<RF2_MajorShocksVortexAction>(g_Factory.Create());
+		return view_as<RF2_MajorShocksVortexAction>(g_ActionFactory.Create());
 	}
 
 	property CBaseEntity Particle
@@ -34,10 +34,10 @@ methodmap RF2_MajorShocksVortexAction < RF2_BaseNPCAttackAction
 
 		public set(CBaseEntity value)
 		{
-			this.SetDataEnt("m_Particle", EnsureEntRef(value.index));
+			this.SetDataEnt("m_Particle", value.index);
 		}
 	}
-
+	
 	property CBaseEntity PushField
 	{
 		public get()
@@ -47,7 +47,7 @@ methodmap RF2_MajorShocksVortexAction < RF2_BaseNPCAttackAction
 
 		public set(CBaseEntity value)
 		{
-			this.SetDataEnt("m_PushField", EnsureEntRef(value.index));
+			this.SetDataEnt("m_PushField", value.index);
 		}
 	}
 }
@@ -60,9 +60,10 @@ static int OnStart(RF2_MajorShocksVortexAction action, RF2_MajorShocks actor)
 	action.AttackTime = 7.3 + gameTime;
 	actor.EmitSpecialAttackQuote();
 	actor.Path.Invalidate();
-	actor.ResetSequence(actor.LookupSequence("taunt_unleashed_rage_soldier"));
-	actor.SetPropFloat(Prop_Data, "m_flCycle", 0.0);
-	actor.SetPropFloat(Prop_Send, "m_flPlaybackRate", 0.2);
+	//actor.ResetSequence(actor.LookupSequence("taunt_unleashed_rage_soldier"));
+	//actor.SetPropFloat(Prop_Data, "m_flCycle", 0.0);
+	//actor.SetPropFloat(Prop_Send, "m_flPlaybackRate", 0.2);
+	actor.AddGesture("taunt_unleashed_rage_soldier", _, _, 0.2);
 	EmitSoundToAll(SND_MAJORSHOCKS_VORTEXSTART, actor.index, _, 110);
 	action.PushField = CBaseEntity(CreateEntityByName("point_push"));
 	float pos[3];
@@ -76,7 +77,7 @@ static int OnStart(RF2_MajorShocksVortexAction action, RF2_MajorShocks actor)
 	action.PushField.KeyValueFloat("innerradius", 400.0);
 	action.PushField.KeyValue("spawnflags", "8");
 	action.PushField.AcceptInput("Enable");
-
+	
 	action.Particle = CBaseEntity(CreateEntityByName("info_particle_system"));
 	action.Particle.KeyValue("effect_name", "eb_death_vortex01");
 	SetEntityOwner(action.Particle.index, actor.index);
@@ -100,7 +101,7 @@ static int Update(RF2_MajorShocksVortexAction action, RF2_MajorShocks actor, flo
 	{
 		float pos[3];
 		action.DoAttackHitbox({0.0, 0.0, 0.0}, pos, {-350.0, -350.0, 0.0}, {350.0, 350.0, 8000.0},
-			300.0, 1024, {0.0, 0.0, 0.0}, false, 0.0);
+			300.0, DMG_ENERGYBEAM|DMG_SHOCK, {0.0, 0.0, 0.0}, false, 0.0);
 		EmitSoundToAll(SND_MAJORSHOCKS_VORTEXEND, actor.index, _, 110);
 		RemoveEntity(action.PushField.index);
 		actor.DoShake();
@@ -124,11 +125,13 @@ static int Update(RF2_MajorShocksVortexAction action, RF2_MajorShocks actor, flo
 static void OnEnd(RF2_MajorShocksVortexAction action, RF2_MajorShocks actor, NextBotAction prevAction)
 {
 	actor.LockAnimations = false;
+	actor.RemoveAllGestures();
 	if (action.Particle.IsValid())
 	{
 		action.Particle.AcceptInput("stop");
 		RemoveEntity(action.Particle.index);
 	}
+	
 	if (action.PushField.IsValid())
 	{
 		RemoveEntity(action.PushField.index);

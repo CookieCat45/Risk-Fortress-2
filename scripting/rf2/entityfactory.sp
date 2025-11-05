@@ -31,6 +31,7 @@ void InstallEnts()
 	RF2_Projectile_Skull.Init();
 	RF2_Projectile_HomingRocket.Init();
 	RF2_Projectile_Shrapnel.Init();
+	RF2_Projectile_EnergyShot.Init();
 	RF2_DispenserShield.Init();
 	RF2_NPC_Base.Init();
 	RF2_CustomHitbox.Init();
@@ -38,11 +39,14 @@ void InstallEnts()
 	RF2_TankBoss.Init();
 	RF2_RobotButler.Init();
 	RF2_Logic_BotDeath.Init();
+	RF2_BotSpawner.Init();
 	RF2_Providence.Init();
 	RF2_RaidBossSpawner.Init();
 	RF2_ProvidenceShieldCrystal.Init();
+	RF2_MajorShocks.Init();
+	RF2_MajorShocksUberGenerator.Init();
 	RF2_Filter_Minion.Init();
-
+	
 	#if defined DEVONLY
 	RF2_RaidBoss_Galleom.Init();
 	RF2_Companion_Base.Init();

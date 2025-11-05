@@ -1,35 +1,35 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_MajorShocksMainAction < NextBotAction
 {
 	public RF2_MajorShocksMainAction()
 	{
-		return view_as<RF2_MajorShocksMainAction>(g_Factory.Create());
+		return view_as<RF2_MajorShocksMainAction>(g_ActionFactory.Create());
 	}
 
 	public static NextBotActionFactory GetFactory()
 	{
-		if (g_Factory == null)
+		if (g_ActionFactory == null)
 		{
-			g_Factory = new NextBotActionFactory("RF2_MajorShocksMain");
-			g_Factory.SetCallback(NextBotActionCallbackType_InitialContainedAction, InitialContainedAction);
-			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_Factory.SetEventCallback(EventResponderType_OnAnimationEvent, OnAnimationEvent);
-			g_Factory.SetEventCallback(EventResponderType_OnLandOnGround, OnLandGround);
-			g_Factory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
-			g_Factory.SetQueryCallback(ContextualQueryType_SelectTargetPoint, SelectTargetPoint);
-			g_Factory.BeginDataMapDesc()
+			g_ActionFactory = new NextBotActionFactory("RF2_MajorShocksMain");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_InitialContainedAction, InitialContainedAction);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_ActionFactory.SetEventCallback(EventResponderType_OnAnimationEvent, OnAnimationEvent);
+			g_ActionFactory.SetEventCallback(EventResponderType_OnLandOnGround, OnLandGround);
+			g_ActionFactory.SetEventCallback(EventResponderType_OnKilled, OnKilled);
+			g_ActionFactory.SetQueryCallback(ContextualQueryType_SelectTargetPoint, SelectTargetPoint);
+			g_ActionFactory.BeginDataMapDesc()
 				.DefineFloatField("m_LastStuckTime")
 				.DefineVectorField("m_LastPos")
 				.DefineVectorField("m_UnstuckPos")
 				.EndDataMapDesc();
 		}
 
-		return g_Factory;
+		return g_ActionFactory;
 	}
 
 	property float LastStuckTime
@@ -85,31 +85,35 @@ static int Update(RF2_MajorShocksMainAction action, RF2_MajorShocks actor, float
 	actor.UpdateAnimation();
 	float gameTime = GetGameTime();
 	PathFollower path = actor.Path;
-
 	if (!actor.IsTargetValid() || gameTime >= actor.SwitchTargetTime)
 	{
 		actor.GetNewTarget(TargetMethod_ClosestNew, TargetType_NoMinions);
 		actor.SwitchTargetTime = gameTime + 12.0;
 	}
-
+	
 	CBaseNPC npc = actor.BaseNpc;
-	float speed = npc.flRunSpeed, maxSpeed = 250.0;
-
-	switch (actor.WeaponState)
+	float speed = npc.flRunSpeed, maxSpeed = 150.0;
+	if (actor.WeaponState == MajorShocks_WeaponState_Melee)
 	{
-		case MajorShocks_WeaponState_Melee:
+		speed = 300.0;
+		maxSpeed = 300.0;
+	}
+	
+	if (RF2_GetLoopCount() > 0 || g_cvDebugUseAltMapSettings.BoolValue)
+	{
+		if (speed < 250.0)
 		{
-			speed = 600.0;
-			maxSpeed = 600.0;
+			speed = 250.0;
+			maxSpeed = 250.0;
 		}
 	}
-
+	
 	if (actor.Phase == MajorShocks_Phase_Uber)
 	{
-		speed = 150.0;
-		maxSpeed = 150.0;
+		speed = 60.0;
+		maxSpeed = 60.0;
 	}
-
+	
 	if (actor.ShouldSlowDown != actor.WasSlowedDown)
 	{
 		actor.UpdatedAnimation = false;
@@ -136,12 +140,10 @@ static int Update(RF2_MajorShocksMainAction action, RF2_MajorShocks actor, float
 			actor.UpdatedAnimation = true;
 		}
 	}
-
+	
 	npc.flRunSpeed = speed;
 	npc.flWalkSpeed = speed * 0.9;
-
-	UnstuckCheck(action, actor);
-
+	//UnstuckCheck(action, actor);
 	return action.Continue();
 }
 
@@ -258,6 +260,7 @@ static void SelectTargetPoint(RF2_MajorShocksMainAction action, INextBot bot, in
 	}
 }
 
+/*
 static bool NPCFindUnstuckPosition(RF2_MajorShocks boss, float lastPos[3], float destination[3])
 {
 	PathFollower path = boss.Path;
@@ -380,20 +383,20 @@ static bool NPCFindUnstuckPosition(RF2_MajorShocks boss, float lastPos[3], float
 	return true;
 }
 
+
 static void UnstuckCheck(RF2_MajorShocksMainAction action, RF2_MajorShocks actor)
 {
 	INextBot bot = actor.MyNextBotPointer();
 	ILocomotion loco = bot.GetLocomotionInterface();
 	PathFollower path = actor.Path;
 	float gameTime = GetGameTime();
-
 	float goalPos[3], myPos[3];
 	if (path.IsValid())
 	{
 		path.GetEndPosition(goalPos);
 	}
+	
 	actor.GetAbsOrigin(myPos);
-
 	if (!path.IsValid() || !actor.Locomotion.IsAttemptingToMove() || loco.GetDesiredSpeed() <= 0.0 || (path.IsValid() && GetVectorDistance(myPos, goalPos, true) <= Pow(16.0, 2.0)))
 	{
 		action.LastStuckTime = gameTime;
@@ -402,13 +405,13 @@ static void UnstuckCheck(RF2_MajorShocksMainAction action, RF2_MajorShocks actor
 
 	float lastPos[3];
 	action.GetLastPos(lastPos);
-
 	if (bot.IsRangeLessThanEx(lastPos, 0.13) || loco.GetGroundSpeed() <= 0.1)
 	{
 		if (action.LastStuckTime > gameTime - 0.75)
 		{
 			return;
 		}
+		
 		float destination[3];
 		NPCFindUnstuckPosition(actor, lastPos, destination);
 		action.LastStuckTime = gameTime + 0.75;
@@ -425,3 +428,4 @@ static void UnstuckCheck(RF2_MajorShocksMainAction action, RF2_MajorShocks actor
 		}
 	}
 }
+*/

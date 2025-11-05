@@ -22,27 +22,13 @@ methodmap RF2_MajorShocksUberGenerator < RF2_NPC_Base
 
 	public static void Init()
 	{
-		g_Factory = new CEntityFactory("rf2_npc_uber_generator", OnCreate);
+		g_Factory = new CEntityFactory("rf2_npc_uber_generator", OnCreate, OnRemove);
 		g_Factory.DeriveFromFactory(GetBaseNPCFactory());
 		g_Factory.BeginDataMapDesc()
-			.DefineFloatField("m_RegenerateAt")
 			.DefineEntityField("m_Boss")
 		.EndDataMapDesc();
 		g_Factory.Install();
 		HookMapStart(Generator_OnMapStart);
-	}
-
-	property float RegenerateAt
-	{
-		public get()
-		{
-			return this.GetPropFloat(Prop_Data, "m_RegenerateAt");
-		}
-
-		public set(float value)
-		{
-			this.SetPropFloat(Prop_Data, "m_RegenerateAt", value);
-		}
 	}
 
 	property RF2_MajorShocks Boss
@@ -76,13 +62,35 @@ static void OnCreate(RF2_MajorShocksUberGenerator generator)
 	generator.BaseNpc.flAcceleration = 0.0;
 	generator.BaseNpc.flFrictionForward = 0.0;
 	generator.BaseNpc.flFrictionSideways = 0.0;
+	generator.SetProp(Prop_Send, "m_nSkin", 1);
 	generator.SetGlow(true);
+	generator.SetGlowColor(50, 255, 200);
 	generator.SetRenderMode(RENDER_TRANSCOLOR);
-	generator.RegenerateAt = GetGameTime();
 	SDKHook(generator.index, SDKHook_SpawnPost, SpawnPost);
 	SDKHook(generator.index, SDKHook_ThinkPost, ThinkPost);
 	SDKHook(generator.index, SDKHook_OnTakeDamage, OnTakeDamage);
 	SDKHook(generator.index, SDKHook_OnTakeDamageAlive, OnTakeDamageAlive);
+	SDKHook(generator.index, SDKHook_OnTakeDamageAlivePost, OnTakeDamageAlivePost);
+}
+
+static void OnRemove(RF2_MajorShocksUberGenerator generator)
+{
+	bool remaining;
+	int entity = INVALID_ENT;
+	while ((entity = FindEntityByClassname(entity, "rf2_npc_uber_generator")) != INVALID_ENT)
+	{
+		RF2_MajorShocksUberGenerator other = RF2_MajorShocksUberGenerator(entity);
+		if (generator.index == other.index || generator.Boss.index != other.Boss.index)
+			continue;
+			
+		remaining = true;
+		break;
+	}
+	
+	if (!remaining)
+	{
+		generator.Boss.DoFinalPhase();
+	}
 }
 
 static void SpawnPost(int entity)
@@ -95,6 +103,7 @@ static void SpawnPost(int entity)
 	float playerMult = 1.0 + (0.25 * float(RF2_GetSurvivorCount() - 1));
 	const float baseHealth = 2350.0;
 	generator.MaxHealth = RoundToFloor(baseHealth * playerMult * GetEnemyHealthMult());
+	generator.Health = generator.MaxHealth;
 }
 
 static void ThinkPost(int entity)
@@ -119,7 +128,7 @@ static Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 static Action OnTakeDamageAlive(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
 		float damageForce[3], float damagePosition[3], int damagecustom)
 {
-	RF2_MajorShocksUberGenerator generator = RF2_MajorShocksUberGenerator(victim);
+	//RF2_MajorShocksUberGenerator generator = RF2_MajorShocksUberGenerator(victim);
 	Action action = Plugin_Continue;
 	if (damagetype & DMG_CRIT)
 	{
@@ -130,12 +139,19 @@ static Action OnTakeDamageAlive(int victim, int &attacker, int &inflictor, float
 		action = Plugin_Changed;
 	}
 
-	// If we regenerated recently, we resist all damage by 80%
-	if (GetGameTime() - generator.RegenerateAt <= 5.0)
-	{
-		damage *= 0.2;
-		action = Plugin_Changed;
-	}
-
 	return action;
+}
+
+static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon,
+		const float damageForce[3], const float damagePosition[3], int damagecustom)
+{
+	RF2_MajorShocksUberGenerator generator = RF2_MajorShocksUberGenerator(victim);
+	if (generator.Health <= 0)
+	{
+		float pos[3];
+		generator.WorldSpaceCenter(pos);
+		DoExplosionEffect(pos);
+		EmitAmbientGameSound("Weapon_TackyGrendadier.Explode", pos);
+		RemoveEntity(generator.index);
+	}
 }

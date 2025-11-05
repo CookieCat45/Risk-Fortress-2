@@ -1,26 +1,26 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_MajorShocksGroundSlamAction < RF2_BaseNPCAttackAction
 {
 	public RF2_MajorShocksGroundSlamAction()
 	{
-		if (g_Factory == null)
+		if (g_ActionFactory == null)
 		{
-			g_Factory = new NextBotActionFactory("RF2_MajorShocksGroundSlam");
-			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_Factory.SetCallback(NextBotActionCallbackType_OnEnd, OnEnd);
-			g_Factory.BeginDataMapDesc()
+			g_ActionFactory = new NextBotActionFactory("RF2_MajorShocksGroundSlam");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnEnd, OnEnd);
+			g_ActionFactory.BeginDataMapDesc()
 				.DefineFloatField("m_flStartTime")
 				.DefineFloatField("m_flAttackTime")
 				.DefineFloatField("m_flRecoveryTime")
 				.DefineIntField("m_nHitCounter")
 			.EndDataMapDesc();
 		}
-		return view_as<RF2_MajorShocksGroundSlamAction>(g_Factory.Create());
+		return view_as<RF2_MajorShocksGroundSlamAction>(g_ActionFactory.Create());
 	}
 }
 
@@ -58,7 +58,7 @@ static int Update(RF2_MajorShocksGroundSlamAction action, RF2_MajorShocks actor,
 		DispatchSpawn(particle);
 		ActivateEntity(particle);
 		AcceptEntityInput(particle, "start");
-		CreateTimer(2.0, Timer_StopSlamParticle, EnsureEntRef(particle));
+		CreateTimer(2.0, Timer_StopSlamParticle, EntIndexToEntRef(particle));
 		actor.DoShake();
 		action.StartTime = -1.0;
 	}
@@ -81,6 +81,5 @@ static Action Timer_StopSlamParticle(Handle timer, any entref)
 
 	AcceptEntityInput(particle, "stop");
 	RemoveEntity(particle);
-
 	return Plugin_Stop;
 }

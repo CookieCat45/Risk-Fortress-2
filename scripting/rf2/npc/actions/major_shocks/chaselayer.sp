@@ -1,19 +1,19 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_MajorShocksChaseLayerAction < NextBotAction
 {
 	public RF2_MajorShocksChaseLayerAction()
 	{
-		if (g_Factory == null)
+		if (g_ActionFactory == null)
 		{
-			g_Factory = new NextBotActionFactory("RF2_MajorShocksChaseLayer");
-			g_Factory.SetCallback(NextBotActionCallbackType_InitialContainedAction, InitialContainedAction);
-			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_ActionFactory = new NextBotActionFactory("RF2_MajorShocksChaseLayer");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_InitialContainedAction, InitialContainedAction);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
 		}
-		return view_as<RF2_MajorShocksChaseLayerAction>(g_Factory.Create());
+		return view_as<RF2_MajorShocksChaseLayerAction>(g_ActionFactory.Create());
 	}
 }
 
@@ -27,7 +27,6 @@ static int Update(RF2_MajorShocksChaseLayerAction action, RF2_MajorShocks actor,
 	PathFollower path = actor.Path;
 	INextBot bot = actor.MyNextBotPointer();
 	ILocomotion loco = bot.GetLocomotionInterface();
-
 	if (actor.WeaponType == MajorShocks_WeaponType_GroundSlam || actor.WeaponType == MajorShocks_WeaponType_GigaGroundSlam)
 	{
 		return action.SuspendFor(RF2_MajorShocksGroundSlamAction());

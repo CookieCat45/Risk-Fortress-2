@@ -1,19 +1,19 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static NextBotActionFactory g_Factory;
+static NextBotActionFactory g_ActionFactory;
 
 methodmap RF2_MajorShocksDeathAction < NextBotAction
 {
 	public RF2_MajorShocksDeathAction()
 	{
-		if (g_Factory == null)
+		if (g_ActionFactory == null)
 		{
-			g_Factory = new NextBotActionFactory("RF2_MajorShocksDeath");
-			g_Factory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
-			g_Factory.SetCallback(NextBotActionCallbackType_Update, Update);
-			g_Factory.SetCallback(NextBotActionCallbackType_OnEnd, OnEnd);
-			g_Factory.BeginDataMapDesc()
+			g_ActionFactory = new NextBotActionFactory("RF2_MajorShocksDeath");
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnStart, OnStart);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_Update, Update);
+			g_ActionFactory.SetCallback(NextBotActionCallbackType_OnEnd, OnEnd);
+			g_ActionFactory.BeginDataMapDesc()
 				.DefineFloatField("m_Time")
 				.DefineFloatField("m_NextAnimTime")
 				.DefineIntField("m_AnimationIndex")
@@ -22,7 +22,7 @@ methodmap RF2_MajorShocksDeathAction < NextBotAction
 				.DefineEntityField("m_ChargeParticle")
 				.EndDataMapDesc();
 		}
-		return view_as<RF2_MajorShocksDeathAction>(g_Factory.Create());
+		return view_as<RF2_MajorShocksDeathAction>(g_ActionFactory.Create());
 	}
 
 	property float Time
@@ -99,7 +99,7 @@ methodmap RF2_MajorShocksDeathAction < NextBotAction
 
 		public set(int entity)
 		{
-			this.SetDataEnt("m_ChargeParticle", EnsureEntRef(entity));
+			this.SetDataEnt("m_ChargeParticle", entity);
 		}
 	}
 
@@ -132,7 +132,7 @@ static int OnStart(RF2_MajorShocksDeathAction action, RF2_MajorShocks actor, Nex
 	EmitSoundToAll(SND_SENTRYBUSTER_BOOM);
 	TE_TFParticle("fireSmokeExplosion", pos);
 	StopMusicTrackAll();
-
+	
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || IsFakeClient(i))
@@ -145,26 +145,17 @@ static int OnStart(RF2_MajorShocksDeathAction action, RF2_MajorShocks actor, Nex
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i))
-		{
+		if (!IsClientInGame(i) || GetClientTeam(i) != TEAM_ENEMY)
 			continue;
-		}
-
-		if (GetClientTeam(i) != TEAM_ENEMY)
-		{
-			continue;
-		}
 
 		SDKHooks_TakeDamage(i, i, i, GetEntProp(i, Prop_Data, "m_iHealth") * 20.0);
 	}
-
+	
 	int entity = -1;
 	while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 	{
 		if (GetEntProp(entity, Prop_Send, "m_iTeamNum") != TEAM_ENEMY)
-		{
 			continue;
-		}
 
 		SDKHooks_TakeDamage(entity, entity, entity, GetEntProp(entity, Prop_Data, "m_iHealth") * 20.0);
 	}
@@ -179,7 +170,6 @@ static int OnStart(RF2_MajorShocksDeathAction action, RF2_MajorShocks actor, Nex
 	actor.SetGlow(false);
 	RF2_Object_Teleporter.ToggleObjectsStatic(true);
 	RF2_Object_Teleporter.EventCompletion();
-
 	return action.Continue();
 }
 
@@ -193,7 +183,6 @@ static int Update(RF2_MajorShocksDeathAction action, RF2_MajorShocks actor, floa
 
 	float pos[3];
 	actor.GetAbsOrigin(pos);
-
 	if (action.NextSoundTime <= gameTime)
 	{
 		switch (action.SoundIndex)
@@ -268,7 +257,6 @@ static void OnEnd(RF2_MajorShocksDeathAction action, RF2_MajorShocks actor)
 	actor.GetAbsOrigin(pos);
 	TE_TFParticle("rd_robot_explosion", pos);
 	TE_TFParticle("mvm_tank_destroy", pos);
-
 	UTIL_ScreenShake(pos, 16.0, 9.0, 3.0, 999999999999.9, SHAKE_START, true);
 	EmitSoundToAll(SND_SENTRYBUSTER_BOOM);
 	EmitSoundToAll(SND_MAJORSHOCKS_DEATHEXPLOSION_2);

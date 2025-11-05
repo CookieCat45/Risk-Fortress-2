@@ -1056,6 +1056,14 @@ int GetEntityDisplayName(int entity, char[] buffer, int size)
 	{
 		return strcopy(buffer, size, "FALSE PROVIDENCE");
 	}
+	else if (strcmp2(classname, "rf2_npc_major_shocks"))
+	{
+		return strcopy(buffer, size, "MAJOR SHOCKS");
+	}
+	else if (strcmp2(classname, "rf2_npc_uber_generator"))
+	{
+		return strcopy(buffer, size, "Uber Generator");
+	}
 	else if (strcmp2(classname, "rf2_npc_shield_crystal"))
 	{
 		return strcopy(buffer, size, "Shield Crystal");
@@ -1101,6 +1109,25 @@ int GetEntityDisplayName(int entity, char[] buffer, int size)
 	}
 	
 	return strcopy(buffer, size, "");
+}
+
+int FindEntityByName(const char[] name)
+{
+	int entity = INVALID_ENT;
+	char entName[128];
+	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
+	{
+		if (!IsValidEntity2(entity))
+			continue;
+			
+		GetEntPropString(entity, Prop_Data, "m_iName", entName, sizeof(entName));
+		if (strcmp2(name, entName))
+		{
+			return entity;
+		}
+	}
+	
+	return INVALID_ENT;
 }
 
 void CleanPathFollowers()

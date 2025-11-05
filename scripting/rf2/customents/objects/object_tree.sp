@@ -78,7 +78,7 @@ static Action Tree_OnInteract(int client, RF2_Object_Tree tree)
 	if (GetPlayerItemCount(client, Item_HauntedKey, true) < 1)
 	{
 		EmitSoundToClient(client, SND_NOPE);
-		PrintCenterText(client, "%t", "AltarNoKeys");
+		PrintCenterText(client, "%t", "AltarNoKeys", 1);
 		return Plugin_Handled;
 	}
 	

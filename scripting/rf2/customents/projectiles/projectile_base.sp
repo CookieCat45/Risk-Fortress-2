@@ -55,7 +55,8 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			.DefineBoolField("m_bFlying")
 			.DefineBoolField("m_bHoming")
 			.DefineBoolField("m_bDeactivateOnHit")
-			.DefineBoolField("m_bAltParticleSpawn")
+			.DefineBoolField("m_bUseInfoParticle")
+			.DefineBoolField("m_bUsesColorTargets")
 			.DefineEntityField("m_hHomingTarget")
 			.DefineFloatField("m_flHomingSpeed")
 			.DefineFloatField("m_flLastHomingTime")
@@ -68,6 +69,9 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			.DefineEntityField("m_hImpactTarget")
 			.DefineEntityField("m_hProjectileOwner")
 			.DefineEntityField("m_hThruster")
+			.DefineEntityField("m_hInfoParticle")
+			.DefineEntityField("m_hColorTargetEnt", 2)
+			.DefineVectorField("m_vecColorTarget", 2)
 			.DefineIntField("m_OnCollide")
 			.DefineIntField("m_hIgnoredEnts")
 		.EndDataMapDesc();
@@ -228,16 +232,29 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 	}
 	
 	// Spawns trail particle via TE instead of trigger_particle
-	property bool AltParticleSpawn
+	property bool UseInfoParticle
 	{
 		public get()
 		{
-			return asBool(this.GetProp(Prop_Data, "m_bAltParticleSpawn"));
+			return asBool(this.GetProp(Prop_Data, "m_bUseInfoParticle"));
 		}
 		
 		public set(bool value)
 		{
-			this.SetProp(Prop_Data, "m_bAltParticleSpawn", value);
+			this.SetProp(Prop_Data, "m_bUseInfoParticle", value);
+		}
+	}
+	
+	property bool UsesColorTargets
+	{
+		public get()
+		{
+			return asBool(this.GetProp(Prop_Data, "m_bUsesColorTargets"));
+		}
+		
+		public set(bool value)
+		{
+			this.SetProp(Prop_Data, "m_bUsesColorTargets", value);
 		}
 	}
 	
@@ -292,7 +309,79 @@ methodmap RF2_Projectile_Base < CBaseAnimating
 			this.SetPropEnt(Prop_Data, "m_hThruster", value);
 		}
 	}
-
+	
+	property int InfoParticle
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hInfoParticle");
+		}
+		
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hInfoParticle", value);
+		}
+	}
+	
+	property int ColorTarget1
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hColorTargetEnt", 0);
+		}
+		
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hColorTargetEnt", value, 0);
+		}
+	}
+	
+	property int ColorTarget2
+	{
+		public get()
+		{
+			return this.GetPropEnt(Prop_Data, "m_hColorTargetEnt", 1);
+		}
+		
+		public set(int value)
+		{
+			this.SetPropEnt(Prop_Data, "m_hColorTargetEnt", value, 1);
+		}
+	}
+	
+	public void CreateColorTargets()
+	{
+		this.ColorTarget1 = CreateEntityByName("info_particle_system");
+		this.ColorTarget2 = CreateEntityByName("info_particle_system");
+		float color1[3], color2[3];
+		this.GetColorTarget(0, color1);
+		this.GetColorTarget(1, color2);
+		TeleportEntity(this.ColorTarget1, color1);
+		TeleportEntity(this.ColorTarget2, color2);
+		DispatchSpawn(this.ColorTarget1);
+		DispatchSpawn(this.ColorTarget2);
+		char name1[32], name2[32];
+		FormatEx(name1, sizeof(name1), "%dcolor1", this.InfoParticle);
+		FormatEx(name2, sizeof(name2), "%dcolor2", this.InfoParticle);
+		DispatchKeyValue(this.ColorTarget1, "targetname", name1);
+		DispatchKeyValue(this.ColorTarget2, "targetname", name2);
+		DispatchKeyValue(this.InfoParticle, "cpoint9", name1);
+		DispatchKeyValue(this.InfoParticle, "cpoint10", name2);
+		// restart the particle system to get it to read the control points
+		AcceptEntityInput(this.InfoParticle, "Stop");
+		AcceptEntityInput(this.InfoParticle, "Start");
+	}
+	
+	public void GetColorTarget(int index, float buffer[3])
+	{
+		this.GetPropVector(Prop_Data, "m_vecColorTarget", buffer, index);
+	}
+	
+	public void SetColorTarget(int index, const float color[3])
+	{
+		this.SetPropVector(Prop_Data, "m_vecColorTarget", color, index);
+	}
+	
 	// for explosions
 	property float DirectDamage
 	{
@@ -664,6 +753,16 @@ static void OnRemove(RF2_Projectile_Base proj)
 	{
 		RemoveEntity(proj.Thruster);
 	}
+	
+	if (IsValidEntity2(proj.ColorTarget1))
+	{
+		RemoveEntity(proj.ColorTarget1);
+	}
+	
+	if (IsValidEntity2(proj.ColorTarget2))
+	{
+		RemoveEntity(proj.ColorTarget2);
+	}
 }
 
 static void RF_DeleteForward(PrivateForward fwd)
@@ -680,13 +779,17 @@ static void OnSpawnPost(int entity)
 	{
 		float pos[3];
 		proj.GetAbsOrigin(pos);
-		if (!proj.AltParticleSpawn)
+		if (!proj.UseInfoParticle)
 		{
 			TE_TFParticle(trail, pos, proj.index, PATTACH_ABSORIGIN_FOLLOW);
 		}
 		else
 		{
-			SpawnInfoParticle(trail, pos, _, proj.index);
+			proj.InfoParticle = SpawnInfoParticle(trail, pos, _, proj.index);
+			if (proj.UsesColorTargets)
+			{
+				proj.CreateColorTargets();
+			}
 		}
 	}
 	
