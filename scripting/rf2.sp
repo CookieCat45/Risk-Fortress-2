@@ -2287,7 +2287,7 @@ public Action OnPostInventoryApplication(Event event, const char[] eventName, bo
 			if (GetEntPropEnt(entity, Prop_Send, "m_hBuilder") == client)
 			{
 				SetEntityHealth(entity, 1);
-				RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
+				RF_TakeDamage(entity, 0, 0, 30000.0, DMG_PREVENT_PHYSICS_FORCE);
 			}
 		}
 	}
@@ -2501,7 +2501,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 				continue;
 			
 			SetEntityHealth(entity, 1);
-			RF_TakeDamage(entity, attacker, attacker, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
+			RF_TakeDamage(entity, attacker, attacker, 30000.0, DMG_PREVENT_PHYSICS_FORCE);
 		}
 	}
 	

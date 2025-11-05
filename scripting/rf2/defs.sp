@@ -11,7 +11,6 @@
 #define MAX_PATH_FOLLOWERS 60
 #define MAX_INVENTORIES 64
 #define MAX_MAP_SIZE 32768.0
-#define MAX_DAMAGE 32767.0 // Maximum possible single-instance damage in TF2
 #define WAIT_TIME_DEFAULT 150 // Default Waiting For Players time
 #define PING_COOLDOWN 1.2
 #define OFF_THE_MAP 		{-16384.0, -16384.0, -16384.0}
@@ -25,7 +24,6 @@
 #define	DifficultyFactor_Iron 1.0
 #define	DifficultyFactor_Steel 1.5
 #define DifficultyFactor_Titanium 2.0
-
 
 enum
 {
@@ -50,17 +48,6 @@ enum
 #define TF_CUSTOM_KRAMPUS_MELEE 84
 #define TF_CUSTOM_KRAMPUS_RANGED 85
 #define TF_CUSTOM_TAUNT_ENGINEER_TRICKSHOT 86
-
-enum
-{
-	SOLID_NONE,
-	SOLID_BSP,
-	SOLID_BBOX,
-	SOLID_OBB,
-	SOLID_OBB_YAW,
-	SOLID_TEST,
-	SOLID_VPHYSICS,
-};
 
 enum
 {

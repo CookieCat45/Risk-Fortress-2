@@ -435,7 +435,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			if (GetEntTeam(entity) == TEAM_ENEMY)
 			{
 				SetEntityHealth(entity, 1);
-				RF_TakeDamage(entity, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
+				RF_TakeDamage(entity, 0, 0, 30000.0, DMG_PREVENT_PHYSICS_FORCE);
 			}
 		}
 		
@@ -471,7 +471,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			// HHH team number is 0, set to something else so he actually takes damage and dies
 			SetEntTeam(boss, 1);
 			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
-			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
+			RF_TakeDamage(boss, 0, 0, 30000.0, DMG_PREVENT_PHYSICS_FORCE);
 		}
 		
 		boss = MaxClients+1;
@@ -481,7 +481,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 				continue;
 			
 			SetEntProp(boss, Prop_Data, "m_iHealth", 1);
-			RF_TakeDamage(boss, 0, 0, MAX_DAMAGE, DMG_PREVENT_PHYSICS_FORCE);
+			RF_TakeDamage(boss, 0, 0, 30000.0, DMG_PREVENT_PHYSICS_FORCE);
 		}
 		
 		Call_StartForward(g_fwTeleEventEnd);
