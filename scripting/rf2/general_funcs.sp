@@ -407,63 +407,63 @@ void SetHudDifficulty(int difficulty)
 			g_iMainHudR = 100;
 			g_iMainHudG = 255;
 			g_iMainHudB = 100;
-			g_szHudDifficulty = "Difficulty: Easy";
+			g_szHudDifficulty = "Easy";
 		}
 		case SubDifficulty_Normal:
 		{
 			g_iMainHudR = 255;
 			g_iMainHudG = 215;
 			g_iMainHudB = 0;
-			g_szHudDifficulty = "Difficulty: Normal";
+			g_szHudDifficulty = "Normal";
 		}
 		case SubDifficulty_Hard:
 		{
 			g_iMainHudR = 255;
 			g_iMainHudG = 125;
 			g_iMainHudB = 0;
-			g_szHudDifficulty = "Difficulty: Hard";
+			g_szHudDifficulty = "Hard";
 		}
 		case SubDifficulty_VeryHard:
 		{
 			g_iMainHudR = 255;
 			g_iMainHudG = 0;
 			g_iMainHudB = 0;
-			g_szHudDifficulty = "Difficulty: Very Hard";
+			g_szHudDifficulty = "Very Hard";
 		}
 		case SubDifficulty_Insane:
 		{
 			g_iMainHudR = 150;
 			g_iMainHudG = 0;
 			g_iMainHudB = 0;
-			g_szHudDifficulty = "Difficulty: Insane";
+			g_szHudDifficulty = "Insane";
 		}
 		case SubDifficulty_Impossible:
 		{
 			g_iMainHudR = 130;
 			g_iMainHudG = 100;
 			g_iMainHudB = 255;
-			g_szHudDifficulty = "Difficulty: Impossible";
+			g_szHudDifficulty = "Impossible";
 		}
 		case SubDifficulty_ISeeYou:
 		{
 			g_iMainHudR = 75;
 			g_iMainHudG = 45;
 			g_iMainHudB = 75;
-			g_szHudDifficulty = "I SEE YOU";
+			g_szHudDifficulty = "ISeeYou";
 		}
 		case SubDifficulty_ComingForYou:
 		{
 			g_iMainHudR = 115;
 			g_iMainHudG = 0;
 			g_iMainHudB = 0;
-			g_szHudDifficulty = "I'M COMING FOR YOU";
+			g_szHudDifficulty = "ComingForYou";
 		}
 		case SubDifficulty_Hahaha:
 		{
 			g_iMainHudR = 90;
 			g_iMainHudG = 0;
 			g_iMainHudB = 0;
-			g_szHudDifficulty = "HAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHA";
+			g_szHudDifficulty = "HaHaHa";
 		}
 	}
 }
@@ -508,36 +508,21 @@ void OnDifficultyChanged(int newLevel)
 			}
 		}
 	}
-
+	
 	UpdateGameDescription();
 }
 
-int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=true, bool hints=false)
+int GetDifficultyName(int difficulty, char[] buffer, int size, bool colorTags=true, bool hints=false, int client=LANG_SERVER)
 {
 	int cells;
-	if (hints)
+	SetGlobalTransTarget(client);
+	switch (difficulty)
 	{
-		switch (difficulty)
-		{
-			case DIFFICULTY_SCRAP: cells = strcopy(buffer, size, "{saddlebrown}Scrap (Easy){default}");
-			case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron (Normal){default}");
-			case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel (Hard){default}");
-			case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium (Expert){default}");
-			case DIFFICULTY_AUSTRALIUM: cells = strcopy(buffer, size, "{gold}AUSTRALIUM (MASTER){default}");
-			default:  cells = strcopy(buffer, size, "unknown");
-		}
-	}
-	else
-	{
-		switch (difficulty)
-		{
-			case DIFFICULTY_SCRAP: cells = strcopy(buffer, size, "{saddlebrown}Scrap{default}");
-			case DIFFICULTY_IRON: cells = strcopy(buffer, size, "{gray}Iron{default}");
-			case DIFFICULTY_STEEL: cells = strcopy(buffer, size, "{darkgray}Steel{default}");
-			case DIFFICULTY_TITANIUM: cells = strcopy(buffer, size, "{whitesmoke}Titanium{default}");
-			case DIFFICULTY_AUSTRALIUM: cells = strcopy(buffer, size, "{gold}AUSTRALIUM{default}");
-			default:  cells = strcopy(buffer, size, "unknown");
-		}
+		case DIFFICULTY_SCRAP: cells = FormatEx(buffer, size, "{saddlebrown}%t{default}", hints ? "ScrapHint" : "Scrap");
+		case DIFFICULTY_IRON: cells = FormatEx(buffer, size, "{gray}%t{default}", hints ? "IronHint" : "Iron");
+		case DIFFICULTY_STEEL: cells = FormatEx(buffer, size, "{darkgray}%t{default}", hints ? "SteelHint" : "Steel");
+		case DIFFICULTY_TITANIUM: cells = FormatEx(buffer, size, "{whitesmoke}%t{default}", hints ? "TitaniumHint" : "Titanium");
+		case DIFFICULTY_AUSTRALIUM: cells = FormatEx(buffer, size, "{gold}%t{default}", hints ? "AustraliumHint" : "Australium");
 	}
 	
 	if (!colorTags)
@@ -1009,9 +994,17 @@ float GetTimeSinceServerStart()
 	return GetEngineTime() - g_cvHiddenServerStartTime.FloatValue;
 }
 
-char[] Format2(const char[] fmt, any ...)
+char[] FormatR(const char[] fmt, any ...)
 {
 	static char str[8192];
+	VFormat(str, sizeof(str), fmt, 2);
+	return str;
+}
+
+// uses a smaller buffer size than FormatR to prevent heap space errors
+char[] FormatRSafe(const char[] fmt, any ...)
+{
+	static char str[512];
 	VFormat(str, sizeof(str), fmt, 2);
 	return str;
 }

@@ -311,7 +311,7 @@ int ShootProjectile(int owner=INVALID_ENT, const char[] classname, const float p
 }
 
 /* Does damage to entities in the specified radius.
-* @param attacker 			Entity responsible for the daamge.
+* @param attacker 			Entity responsible for the damage.
 * @param inflictor 			Entity dealing the damage.
 * @param pos 				Position to deal damage from.
 * @param item 				Item index associated with the damage, if any. Only works if attacker is a client.
@@ -1022,14 +1022,14 @@ bool IsSkeleton(int entity)
 void ApplyAbsVelocityImpulse(int entity, const float vel[3])
 {
 	VScriptCmd cmd;
-    cmd.Append(Format2("self.ApplyAbsVelocityImpulse(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]));
+    cmd.Append(FormatR("self.ApplyAbsVelocityImpulse(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]));
 	cmd.Run(entity);
 }
 
 void SetPhysVelocity(int entity, const float vel[3])
 {
     VScriptCmd cmd;
-    cmd.Append(Format2("self.SetPhysVelocity(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]));
+    cmd.Append(FormatR("self.SetPhysVelocity(Vector(%f, %f, %f))", vel[0], vel[1], vel[2]));
 	cmd.Run(entity);
 }
 
@@ -1040,75 +1040,50 @@ void GetPhysVelocity(int entity, float buffer[3])
     cmd.Run_ReturnVector(entity, buffer);
 }
 
-int GetEntityDisplayName(int entity, char[] buffer, int size)
+int GetEntityDisplayName(int entity, char[] buffer, int size, int client=LANG_SERVER, bool returnPhrase=false)
 {
-	static char classname[128];
+	char classname[128], namePhrase[128];
 	GetEntityClassname(entity, classname, sizeof(classname));
-	if (strcmp2(classname, "rf2_npc_sentry_buster"))
+	if (strcmp2(classname, "tank_boss"))
 	{
-		return strcopy(buffer, size, "Sentry Buster");
-	}
-	else if (strcmp2(classname, "rf2_npc_robot_butler"))
-	{
-		return strcopy(buffer, size, "Botler 2000");
-	}
-	else if (strcmp2(classname, "rf2_npc_false_providence"))
-	{
-		return strcopy(buffer, size, "FALSE PROVIDENCE");
-	}
-	else if (strcmp2(classname, "rf2_npc_major_shocks"))
-	{
-		return strcopy(buffer, size, "MAJOR SHOCKS");
-	}
-	else if (strcmp2(classname, "rf2_npc_uber_generator"))
-	{
-		return strcopy(buffer, size, "Uber Generator");
-	}
-	else if (strcmp2(classname, "rf2_npc_shield_crystal"))
-	{
-		return strcopy(buffer, size, "Shield Crystal");
-	}
-	else if (strcmp2(classname, "tank_boss"))
-	{
-		return strcopy(buffer, size, "Tank");
+		namePhrase = "Tank";
 	}
 	else if (strcmp2(classname, "rf2_tank_boss_badass"))
 	{
 		switch (RF2_TankBoss(entity).Type)
 		{
-			case TankType_Normal: return strcopy(buffer, size, "Tank");
-			case TankType_Badass: return strcopy(buffer, size, "Badass Tank");
-			case TankType_SuperBadass: return strcopy(buffer, size, "Super Badass Tank");
+			case TankType_Normal: namePhrase = "Tank";
+			case TankType_Badass: namePhrase = "Badass Tank";
+			case TankType_SuperBadass: namePhrase = "Super Badass Tank";
 		}
-	}
-	else if (strcmp2(classname, "headless_hatman"))
-	{
-		return strcopy(buffer, size, "The Horseless Headless Horsemann");
-	}
-	else if (strcmp2(classname, "eyeball_boss"))
-	{
-		return strcopy(buffer, size, "MONOCULUS!");
 	}
 	else if (strcmp2(classname, "tf_zombie"))
 	{
 		if (GetEntPropFloat(entity, Prop_Send, "m_flModelScale") > 1.0)
 		{
-			return strcopy(buffer, size, "Skeleton King");
+			namePhrase = "SkeletonKing";
 		}
-		
-		return strcopy(buffer, size, "Skeleton");
-	}
-	else if (IsBuilding(entity))
-	{
-		switch (TF2_GetObjectType2(entity))
+		else
 		{
-			case TFObject_Sentry: return strcopy(buffer, size, "Sentry Gun");
-			case TFObject_Dispenser: return strcopy(buffer, size, "Dispenser");
-			case TFObject_Teleporter: return strcopy(buffer, size, "Teleporter");
+			namePhrase = classname;
 		}
+	}
+	else
+	{
+		namePhrase = classname;
 	}
 	
-	return strcopy(buffer, size, "");
+	char result[128];
+	if (returnPhrase)
+	{
+		result = namePhrase;
+	}
+	else
+	{
+		FormatEx(result, sizeof(result), "%T", namePhrase, client);
+	}
+
+	return strcopy(buffer, size, result);
 }
 
 int FindEntityByName(const char[] name)

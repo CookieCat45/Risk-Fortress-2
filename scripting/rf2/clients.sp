@@ -26,6 +26,7 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerPressedCanteenButton[client] = false;
 	g_bPlayerYetiSmash[client] = false;
 	g_bPlayerHeadshotBleeding[client] = false;
+	g_bPlayerDotOnHead[client] = false;
 	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
 	g_iPlayerPowerupBottle[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;
@@ -44,6 +45,10 @@ void RefreshClient(int client, bool force=false)
 	g_flPlayerMedicShieldNextUseTime[client] = 0.0;
 	g_flPlayerWealthRingRadius[client] = 0.0;
 	g_iPlayerRollerMine[client] = INVALID_ENT;
+	g_iPlayerEyeProp[client] = INVALID_ENT;
+	g_iPlayerSniperDot[client] = INVALID_ENT;
+	g_iPlayerDotController[client] = INVALID_ENT;
+	g_iPlayerLaserColorEnt[client] = INVALID_ENT;
 	g_iPlayerFootstepType[client] = FootstepType_Normal;
 	g_bPlayerExtraSentryHint[client] = false;
 	g_bPlayerInSpawnQueue[client] = false;
@@ -1026,23 +1031,25 @@ bool PingObjects(int client)
 {
 	int entity = GetClientAimTarget(client, false);
 	RF2_Object_Base obj = RF2_Object_Base(entity);
-	char text[256];
 	if (IsValidEntity2(entity) && IsCombatChar(entity) && IsLOSClear(client, entity))
 	{
 		// ping enemies
 		char phrase[64];
 		if (InSameTeam(client, entity))
 		{
-			phrase = "wants to help: ";
+			phrase = "WantsToHelp";
 		}
 		else
 		{
-			phrase = "wants to attack: ";
+			phrase = "WantsToAttack";
 		}
 		
+		char name[128];
+		bool isClient;
 		if (IsValidClient(entity))
 		{
-			FormatEx(text, sizeof(text), "%N %s%N", client, phrase, entity);
+			isClient = true;
+			GetClientName(entity, name, sizeof(name));
 		}
 		else
 		{
@@ -1052,9 +1059,7 @@ bool PingObjects(int client)
 				return false;
 			}
 			
-			char name[128];
-			GetEntityDisplayName(entity, name, sizeof(name));
-			FormatEx(text, sizeof(text), "%N %s%s", client, phrase, name);
+			GetEntityDisplayName(entity, name, sizeof(name), _, true);
 		}
 		
 		if (IsGlowing(entity, true) || !IsGlowing(entity, true) && !IsGlowing(entity))
@@ -1071,15 +1076,18 @@ bool PingObjects(int client)
 		
 		float pos[3];
 		GetEntPos(entity, pos, true);
-		ShowAnnotationToAll(pos, text, 8.0, entity, entity);
+		if (isClient)
+		{
+			StrCat(phrase, sizeof(phrase), "Player");
+		}
+
+		ShowAnnotationToAll(pos, "%t", 8.0, entity, entity, phrase, client, name);
 	}
 	else if (obj.IsValid() && IsLOSClear(client, entity))
 	{
 		// ping objects
-		char objName[64];
+		char objName[128];
 		obj.GetObjectName(objName, sizeof(objName));
-		FormatEx(text, sizeof(text), "%N has found: %s", client, objName);
-		obj.PingMe(text);
 		if (RF2_Object_Workbench(entity).IsValid())
 		{
 			int item = RF2_Object_Workbench(entity).Item;
@@ -1087,6 +1095,13 @@ bool PingObjects(int client)
 			{
 				ShowItemDesc(client, item);
 			}
+			
+			// TODO: add proper translation support here once there is translation support for item names
+			obj.PingMe("%t", _, "PingObjectWorkbench", client, objName);
+		}
+		else
+		{
+			obj.PingMe("%t", _, "PingObject", client, objName);
 		}
 	}
 	else
@@ -1096,11 +1111,12 @@ bool PingObjects(int client)
 		entity = item.index;
 		if (item.IsValid())
 		{
-			FormatEx(text, sizeof(text), "%N has found: %s", client, g_szItemName[item.Type]);
 			float pos[3];
 			item.GetAbsOrigin(pos);
 			pos[2] += 50.0;
-			ShowAnnotationToAll(pos, text, 8.0, INVALID_ENT, item.index);
+			char name[128];
+			GetItemName(item.Type, name, sizeof(name));
+			ShowAnnotationToAll(pos, "%t", 8.0, INVALID_ENT, item.index, client, name);
 		}
 	}
 	
@@ -1121,13 +1137,14 @@ bool PingObjects(int client)
 	return false;
 }
 
-void ShowAnnotation(int client, float pos[3]=NULL_VECTOR, const char[] text, float duration=8.0, int parent=INVALID_ENT, int id=-1, const char[] sound=SND_HINT)
+void ShowAnnotation(int client, float pos[3]=NULL_VECTOR, const char[] msg, float duration=8.0, 
+	int parent=INVALID_ENT, int id=-1, any...)
 {
 	if (id >= 0)
 	{
 		KillAnnotation(id);
 	}
-
+	
 	Event event = CreateEvent("show_annotation", true);
 	event.SetFloat("worldPosX", pos[0]);
 	event.SetFloat("worldPosY", pos[1]);
@@ -1135,45 +1152,28 @@ void ShowAnnotation(int client, float pos[3]=NULL_VECTOR, const char[] text, flo
 	event.SetFloat("lifetime", duration);
 	event.SetInt("id", id);
 	event.SetInt("follow_entindex", parent);
+	SetGlobalTransTarget(client);
+	char text[512];
+	VFormat(text, sizeof(text), msg, 7);
 	event.SetString("text", text);
 	event.FireToClient(client);
-	if (sound[0])
-	{
-		EmitSoundToClient(client, sound);
-	}
-	
+	EmitSoundToClient(client, SND_HINT);
 	delete event;
 }
 
-void ShowAnnotationToAll(float pos[3]=NULL_VECTOR, const char[] text, float duration=8.0, int parent=INVALID_ENT, int id=-1, const char[] sound=SND_HINT)
+void ShowAnnotationToAll(float pos[3]=NULL_VECTOR, const char[] msg, float duration=8.0, 
+	int parent=INVALID_ENT, int id=-1, any...)
 {
-	if (id >= 0)
-	{
-		KillAnnotation(id);
-	}
-	
-	Event event = CreateEvent("show_annotation", true);
-	event.SetFloat("worldPosX", pos[0]);
-	event.SetFloat("worldPosY", pos[1]);
-	event.SetFloat("worldPosZ", pos[2]);
-	event.SetFloat("lifetime", duration);
-	event.SetInt("id", id);
-	event.SetInt("follow_entindex", parent);
-	event.SetString("text", text);
-	
+	char text[512];
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (IsClientInGame(i) && !IsFakeClient(i))
-		{	
-			event.FireToClient(i);
-			if (sound[0])
-			{
-				EmitSoundToClient(i, sound);
-			}
+		{
+			SetGlobalTransTarget(i);
+			VFormat(text, sizeof(text), msg, 6);
+			ShowAnnotation(i, pos, text, duration, parent, id);
 		}
 	}
-	
-	delete event;
 }
 
 void KillAnnotation(int entity)
@@ -1507,7 +1507,7 @@ TFCond GetRandomMannpowerRune_Enemies(int client, char soundBuffer[PLATFORM_MAX_
 	{
 		runes.Push(TFCond_RuneStrength);
 	}
-
+	
 	if (runes.Length <= 0)
 	{
 		delete runes;
@@ -1752,7 +1752,7 @@ void ForceTaunt(int client, int tauntId)
 	cmd.Append("self.StopTaunt(true);");
 	cmd.Append("self.RemoveCond(7);");
 	cmd.Append("weapon.DispatchSpawn();");
-	cmd.Append(Format2("NetProps.SetPropInt(weapon, `m_AttributeManager.m_Item.m_iItemDefinitionIndex`, %d);", tauntId));
+	cmd.Append(FormatR("NetProps.SetPropInt(weapon, `m_AttributeManager.m_Item.m_iItemDefinitionIndex`, %d);", tauntId));
 	cmd.Append("NetProps.SetPropBool(weapon, `m_AttributeManager.m_Item.m_bInitialized`, true);");
 	cmd.Append("NetProps.SetPropBool(weapon, `m_bForcePurgeFixedupStrings`, true);");
 	cmd.Append("NetProps.SetPropEntity(self, `m_hActiveWeapon`, weapon);");
@@ -2037,6 +2037,14 @@ public bool TraceFilter_PlayerTeam(int entity, int mask, int client)
 public bool TraceFilter_EnemyTeam(int entity, int mask, int client)
 {
 	if (entity > 0 && entity <= MaxClients && entity != client && GetClientTeam(entity) != GetClientTeam(client))
+		return true;
+	
+	return false;
+}
+
+public bool TraceFilter_EnemyTeamAll(int entity, int mask, int client)
+{
+	if (entity != client && IsCombatChar(entity) && GetEntTeam(entity) != GetEntTeam(client))
 		return true;
 	
 	return false;

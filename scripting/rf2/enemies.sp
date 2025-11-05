@@ -1602,7 +1602,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 		}
 		
 		VScriptCmd cmd;
-		cmd.Append(Format2("self.SetMaxVisionRangeOverride(%.0f)", enemy.BotMaxVisionRange));
+		cmd.Append(FormatR("self.SetMaxVisionRangeOverride(%.0f)", enemy.BotMaxVisionRange));
 		cmd.Run(client);
 		if (enemy.BotTags)
 		{
@@ -1611,7 +1611,7 @@ bool SpawnEnemy(int client, int type, const float pos[3]=OFF_THE_MAP, float minD
 			{
 				VScriptCmd tagCmd;
 				enemy.BotTags.GetString(i, tag, sizeof(tag));
-				tagCmd.Append(Format2("self.AddBotTag(`%s`)", tag));
+				tagCmd.Append(FormatR("self.AddBotTag(`%s`)", tag));
 				tagCmd.Run(client);
 			}
 		}

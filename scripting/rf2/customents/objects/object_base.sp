@@ -369,13 +369,22 @@ methodmap RF2_Object_Base < CBaseAnimating
 		this.SetPropString(Prop_Data, "m_szObjectName", name);
 	}
 	
-	public void PingMe(const char[] text="", float duration=8.0)
+	public void PingMe(const char[] msg="", float duration=8.0, any...)
 	{
-		if (text[0])
+		if (msg[0])
 		{
 			float pos[3];
 			this.WorldSpaceCenter(pos);
-			ShowAnnotationToAll(pos, text, duration, this.index, this.index);
+			char text[512];
+			for (int i = 1; i <= MaxClients; i++)
+			{
+				if (IsClientInGame(i) && !IsFakeClient(i))
+				{
+					SetGlobalTransTarget(i);
+					VFormat(text, sizeof(text), msg, 4);
+					ShowAnnotation(i, pos, text, duration, this.index, this.index);
+				}
+			}
 		}
 
 		if (IsGlowing(this.index, true) || !IsGlowing(this.index, true) && !IsGlowing(this.index))

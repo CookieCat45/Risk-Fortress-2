@@ -110,7 +110,7 @@ methodmap TFBot < CBaseCombatCharacter
 		{
 			VScriptCmd cmd;
 			cmd.Append("self.ClearAllBotAttributes();");
-			cmd.Append(Format2("self.AddBotAttribute(%d);", value));
+			cmd.Append(FormatR("self.AddBotAttribute(%d);", value));
 			cmd.Run(this.Client);
 			g_iTFBotBehaviorAttributes[this.Client] = value;
 		}

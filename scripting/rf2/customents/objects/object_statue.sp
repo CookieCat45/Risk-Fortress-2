@@ -50,11 +50,11 @@ methodmap RF2_Object_Statue < RF2_Object_Base
 		}
 	}
 
-	public static void StartVote(const char[] title)
+	public static void StartVote(const char[] titlePhrase)
 	{
-		Menu vote = new Menu(VoteMenu_EndGame);
+		Menu vote = new Menu(VoteMenu_EndGame, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
 		vote.VoteResultCallback = OnEndGameVoteFinish;
-		vote.SetTitle(title);
+		vote.SetTitle(titlePhrase);
 		vote.ExitButton = false;
 		vote.AddItem("yes", "Yes");
 		vote.AddItem("no", "No");
@@ -172,7 +172,7 @@ static Action Statue_OnInteract(int client, RF2_Object_Statue statue)
 	
 	if (GetGameTime() < statue.NextVoteTime)
 	{
-		RF2_PrintToChat(client, "Please wait %.0f seconds.", statue.NextVoteTime-GetGameTime());
+		RF2_PrintToChat(client, "%t", "PleaseWaitSeconds", RoundToCeil(statue.NextVoteTime-GetGameTime()));
 		return Plugin_Handled;
 	}
 	
@@ -181,7 +181,7 @@ static Action Statue_OnInteract(int client, RF2_Object_Statue statue)
 		statue.NextVoteTime = GetGameTime()+35.0;
 	}
 	
-	RF2_Object_Statue.StartVote("Offer your power to the mysterious gravestone? (This will end the game.)");
+	RF2_Object_Statue.StartVote("StatueTitle1");
 	return Plugin_Handled;
 }
 
@@ -213,7 +213,7 @@ public void OnEndGameVoteFinish(Menu menu, int numVotes, int numClients, const i
 		{
 			if (!g_bIsConfirmation)
 			{
-				RF2_Object_Statue.StartVote("Are you sure you want to do this?");
+				RF2_Object_Statue.StartVote("StatueTitle2");
 				g_bIsConfirmation = true;
 			}
 			else
@@ -233,6 +233,21 @@ public int VoteMenu_EndGame(Menu menu, MenuAction action, int param1, int param2
 {
 	switch (action)
 	{
+		case MenuAction_Display:
+		{
+			char phrase[128];
+			menu.GetTitle(phrase, sizeof(phrase));
+			view_as<Panel>(param2).SetTitle(FormatR("%T", phrase, param1));
+		}
+		case MenuAction_DisplayItem:
+		{
+			char display[64];
+			menu.GetItem(param2, "", 0, _, display, sizeof(display));
+			char buffer[256];
+			FormatEx(buffer, sizeof(buffer), "%T", display, param1);
+			return RedrawMenuItem(buffer);
+		}
+		
 		case MenuAction_End: delete menu;
 	}
 	

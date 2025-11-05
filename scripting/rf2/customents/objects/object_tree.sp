@@ -89,8 +89,8 @@ static Action Tree_OnInteract(int client, RF2_Object_Tree tree)
 	}
 	
 	char mapName[128];
-	Menu vote = new Menu(Vote_SetNextMap);
-	vote.SetTitle("Decide your Fate? (%N)", client);
+	Menu vote = new Menu(Vote_SetNextMap, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
+	vote.SetTitle("DecideYourFate");
 	g_iVoteClient = GetClientUserId(client);
 	g_iVoteTree = EntIndexToEntRef(tree.index);
 	ArrayList mapList = GetMapsForStage(DetermineNextStage());
@@ -123,7 +123,7 @@ static Action Tree_OnInteract(int client, RF2_Object_Tree tree)
 		}
 	}
 	
-	vote.AddItem("cancel", "Cancel Vote");
+	vote.AddItem("cancel", "Cancel vote");
 	vote.ExitButton = false;
 	vote.DisplayVote(clients, clientCount, 12);
 	return Plugin_Handled;
@@ -133,12 +133,28 @@ public int Vote_SetNextMap(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action)
 	{
+		case MenuAction_Display:
+		{
+			char phrase[128];
+			menu.GetTitle(phrase, sizeof(phrase));
+			view_as<Panel>(param2).SetTitle(FormatR("%T", phrase, param1));
+		}
+		
+		case MenuAction_DisplayItem:
+		{
+			char display[64];
+			menu.GetItem(param2, "", 0, _, display, sizeof(display));
+			char buffer[256];
+			FormatEx(buffer, sizeof(buffer), "%T", display, param1);
+			return RedrawMenuItem(buffer);
+		}
+		
 		case MenuAction_VoteEnd:
 		{
 			int voteClient = GetClientOfUserId(g_iVoteClient);
 			if (!IsValidClient(voteClient))
 			{
-				RF2_PrintToChatAll("{red}The player who started the vote has left. The vote was automatically cancelled.");
+				RF2_PrintToChatAll("%t", "TreeVoteCancelledLeft");
 				return 0;
 			}
 			
@@ -146,12 +162,12 @@ public int Vote_SetNextMap(Menu menu, MenuAction action, int param1, int param2)
 			menu.GetItem(param1, info, sizeof(info));
 			if (!info[0] || strcmp2(info, "cancel"))
 			{
-				RF2_PrintToChat(voteClient, "The vote failed. None of your {haunted}Gargoyle Keys {default}were consumed.");
+				RF2_PrintToChat(voteClient, "%t", "TreeVoteFail");
 				return 0;
 			}
 			
 			g_szForcedMap = info;
-			RF2_PrintToChatAll("The next map has been set to {yellow}%s{default}. {yellow}%N {default}has paid {haunted}1 Gargoyle Key.", info, voteClient);
+			RF2_PrintToChatAll("%t", "TreeVoteSuccess", info, voteClient);
 			GiveItem(voteClient, Item_HauntedKey, -1);
 			RF2_Object_Tree tree = RF2_Object_Tree(EntRefToEntIndex(g_iVoteTree));
 			if (tree.IsValid())

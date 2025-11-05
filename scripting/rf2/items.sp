@@ -20,9 +20,9 @@ float g_flItemProcCoeff[MAX_ITEMS] = {1.0, ...};
 
 char g_szItemSectionName[MAX_ITEMS][64];
 char g_szCustomItemFileName[MAX_ITEMS][PLATFORM_MAX_PATH];
-char g_szItemName[MAX_ITEMS][64];
-char g_szItemDesc[MAX_ITEMS][512];
-char g_szItemUnusualEffectName[MAX_ITEMS][64];
+char g_szItemUnusualEffectPhrase[MAX_ITEMS][64];
+StringMap g_hItemNames[MAX_ITEMS];
+StringMap g_hItemDescs[MAX_ITEMS];
 
 bool g_bItemInDropPool[MAX_ITEMS];
 bool g_bItemCanBeDropped[MAX_ITEMS] = {true, ...};
@@ -38,15 +38,14 @@ int g_iUnusualEffectCount;
 int g_iItemUnusualEffect[MAX_ITEMS] = {-1, ...};
 int g_iItemSpriteUnusualEffect[MAX_ITEMS] = {-1, ...};
 int g_iUnusualEffectType[MAX_UNUSUAL_EFFECTS]; // Unusual effects have IDs for use with the attribute
-
 char g_szUnusualEffectName[MAX_UNUSUAL_EFFECTS][64];
-char g_szUnusualEffectDisplayName[MAX_UNUSUAL_EFFECTS][64];
+char g_szUnusualEffectPhrase[MAX_UNUSUAL_EFFECTS][64];
 char g_szItemEquipRegion[MAX_ITEMS][64];
 char g_szItemSprite[MAX_ITEMS][PLATFORM_MAX_PATH];
 
 int LoadItems(const char[] customPath="")
 {
-	char config[PLATFORM_MAX_PATH], buffer[64], file[PLATFORM_MAX_PATH];
+	char config[PLATFORM_MAX_PATH], buffer[64], file[PLATFORM_MAX_PATH], code[8], key[16], name[64], desc[512];
 	bool custom = asBool(customPath[0]);
 	int count;
 	if (custom)
@@ -88,7 +87,7 @@ int LoadItems(const char[] customPath="")
 		{
 			if (i == 0 && effectKey.GotoFirstSubKey(false) || effectKey.GotoNextKey(false))
 			{
-				effectKey.GetSectionName(g_szUnusualEffectDisplayName[i], sizeof(g_szUnusualEffectDisplayName[]));
+				effectKey.GetSectionName(g_szUnusualEffectPhrase[i], sizeof(g_szUnusualEffectPhrase[]));
 				effectKey.GetString(NULL_STRING, buffer, sizeof(buffer));
 				ReplaceString(buffer, sizeof(buffer), " ", ""); // remove whitespace
 				SplitString(buffer, ";", split, sizeof(split));
@@ -148,12 +147,30 @@ int LoadItems(const char[] customPath="")
 			}
 			
 			itemKey.GetSectionName(g_szItemSectionName[item], sizeof(g_szItemSectionName[]));
-			itemKey.GetString("name", g_szItemName[item], sizeof(g_szItemName[]), "Unnamed Item");
-			itemKey.GetString("desc", g_szItemDesc[item], sizeof(g_szItemDesc[]), "(No description found...)");
-			CRemoveTags(g_szItemDesc[item], sizeof(g_szItemDesc[]));
-			char dummy[1];
-			dummy[0] = 10;
-			ReplaceString(g_szItemDesc[item], sizeof(g_szItemDesc[]), "\\n", dummy, false);
+			g_hItemNames[item] = new StringMap();
+			g_hItemDescs[item] = new StringMap();
+			for (int p = 0; p < g_hAvailableLanguages.Length; p++)
+			{
+				g_hAvailableLanguages.GetString(p, code, sizeof(code));
+				FormatEx(key, sizeof(key), "name_%s", code);
+				itemKey.GetString(key, name, sizeof(name));
+				if (name[0])
+				{
+					g_hItemNames[item].SetString(code, name);
+				}
+				
+				FormatEx(key, sizeof(key), "desc_%s", code);
+				itemKey.GetString(key, desc, sizeof(desc));
+				if (desc[0])
+				{
+					CRemoveTags(desc, sizeof(desc));
+					char dummy[1];
+					dummy[0] = 10;
+					ReplaceString(desc, sizeof(desc), "\\n", dummy, false);
+					g_hItemDescs[item].SetString(code, desc);
+				}
+			}
+			
 			itemKey.GetString("equip_regions", g_szItemEquipRegion[item], sizeof(g_szItemEquipRegion[]), "none");
 			itemKey.GetString("sprite", g_szItemSprite[item], sizeof(g_szItemSprite[]), MAT_DEBUGEMPTY);
 			g_bItemInDropPool[item] = asBool(itemKey.GetNum("in_item_pool", true));
@@ -197,7 +214,7 @@ int LoadItems(const char[] customPath="")
 						int random = GetRandomInt(0, g_iUnusualEffectCount-1);
 						g_iItemUnusualEffect[item] = g_iUnusualEffectType[random];
 						g_iItemSpriteUnusualEffect[item] = random;
-						strcopy(g_szItemUnusualEffectName[item], sizeof(g_szItemUnusualEffectName[]), g_szUnusualEffectDisplayName[random]);
+						strcopy(g_szItemUnusualEffectPhrase[item], sizeof(g_szItemUnusualEffectPhrase[]), g_szUnusualEffectPhrase[random]);
 					}
 				}
 				
@@ -1952,11 +1969,11 @@ bool ActivateStrangeItem(int client)
 		{
 			if (GetClientTeam(client) == TEAM_SURVIVOR)
 			{
-				CPrintToChatAll("{red}%N{default} :  Ahoy!", client);
+				CPrintToChatAll("%t", "AhoyRed", client);
 			}
 			else
 			{
-				CPrintToChatAll("{blue}%N{default} :  Ahoy!", client);
+				CPrintToChatAll("%t", "AhoyBlue", client);
 			}
 		}
 
@@ -2663,7 +2680,9 @@ void FireLaser(int attacker, int item=Item_Null, const float pos[3], const float
 	TE_SendToAll();
 
 	if (playSound)
+	{
 		EmitSoundToAll(SND_LASER, attacker);
+	}
 	
 	if (particle)
 	{
@@ -2723,18 +2742,19 @@ int GetQualityColorTag(int quality, char[] buffer, int size)
 	return cells;
 }
 
-int GetQualityName(int quality, char[] buffer, int size)
+int GetQualityName(int quality, char[] buffer, int size, int client=LANG_SERVER)
 {
 	int cells;
+	SetGlobalTransTarget(client);
 	switch (quality)
 	{
-		case Quality_Normal: cells = strcopy(buffer, size, "Normal");
-		case Quality_Genuine: cells = strcopy(buffer, size, "Genuine");
-		case Quality_Unusual: cells = strcopy(buffer, size, "Unusual");
-		case Quality_Collectors: cells = strcopy(buffer, size, "Collectors");
-		case Quality_Strange: cells = strcopy(buffer, size, "Strange");
-		case Quality_Haunted, Quality_HauntedStrange: cells = strcopy(buffer, size, "Haunted");
-		case Quality_Community: cells = strcopy(buffer, size, "Community");
+		case Quality_Normal: cells = FormatEx(buffer, size, "%t", "NormalQuality");
+		case Quality_Genuine: cells = FormatEx(buffer, size, "%t", "GenuineQuality");
+		case Quality_Unusual: cells = FormatEx(buffer, size, "%t", "UnusualQuality");
+		case Quality_Collectors: cells = FormatEx(buffer, size, "%t", "CollectorsQuality");
+		case Quality_Strange: cells = FormatEx(buffer, size, "%t", "StrangeQuality");
+		case Quality_Haunted, Quality_HauntedStrange: cells = FormatEx(buffer, size, "%t", "HauntedQuality");
+		case Quality_Community: cells = FormatEx(buffer, size, "%t", "CommunityQuality");
 	}
 	
 	return cells;
@@ -2756,16 +2776,60 @@ int GetActualItemQuality(int quality)
 	return TF2Quality_Normal;
 }
 
-int GetItemName(int item, char[] buffer, int size, bool includeEffect=true)
+int GetItemName(int item, char[] buffer, int size, bool includeEffect=true, int client=LANG_SERVER)
 {
 	int cells;
-	if (includeEffect && GetItemQuality(item) == Quality_Unusual)
+	char code[8], name[64];
+	SetGlobalTransTarget(client);
+	int lang = client == LANG_SERVER ? GetServerLanguage() : GetClientLanguage(client);
+	GetLanguageInfo(lang, code, sizeof(code));
+	if (!g_hItemNames[item].GetString(code, name, sizeof(name)))
 	{
-		cells = FormatEx(buffer, size, "%s %s", g_szItemUnusualEffectName[item], g_szItemName[item]);
+		// if no translation exists for this client - use server's language
+		if (client != LANG_SERVER)
+		{
+			GetLanguageInfo(GetServerLanguage(), code, sizeof(code));
+		}
+		
+		if (client == LANG_SERVER || !g_hItemNames[item].GetString(code, name, sizeof(name)))
+		{
+			// Fall back to English if we still can't find anything
+			g_hItemNames[item].GetString("en", name, sizeof(name));
+		}
+	}
+	
+	if (includeEffect && GetItemQuality(item) == Quality_Unusual && g_szItemUnusualEffectPhrase[item][0])
+	{
+		cells = FormatEx(buffer, size, "%t %s", g_szItemUnusualEffectPhrase[item], name);
 	}
 	else
 	{
-		cells = strcopy(buffer, size, g_szItemName[item]);
+		cells = strcopy(buffer, size, name);
+	}
+	
+	return cells;
+}
+
+int GetItemDesc(int item, char[] buffer, int size, int client=LANG_SERVER)
+{
+	int cells;
+	char code[8];
+	SetGlobalTransTarget(client);
+	int lang = client == LANG_SERVER ? GetServerLanguage() : GetClientLanguage(client);
+	GetLanguageInfo(lang, code, sizeof(code));
+	if (!g_hItemDescs[item].GetString(code, buffer, size, cells))
+	{
+		// if no translation exists for this client - use server's language
+		if (client != LANG_SERVER)
+		{
+			GetLanguageInfo(GetServerLanguage(), code, sizeof(code));
+		}
+		
+		if (client == LANG_SERVER || !g_hItemDescs[item].GetString(code, buffer, size, cells))
+		{
+			// Fall back to English if we still can't find anything
+			g_hItemDescs[item].GetString("en", buffer, size, cells);
+		}
 	}
 	
 	return cells;
@@ -3221,12 +3285,13 @@ void ShowItemDesc(int client, int item)
 		return;
 	
 	int quality = GetItemQuality(item);
-	char qualityTag[32], itemName[128], qualityName[32];
-	GetItemName(item, itemName, sizeof(itemName));
+	char qualityTag[32], itemName[64], qualityName[32], itemDesc[512];
+	GetItemName(item, itemName, sizeof(itemName), false, client);
+	GetItemDesc(item, itemDesc, sizeof(itemDesc), client);
 	GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
-	GetQualityName(quality, qualityName, sizeof(qualityName));
+	GetQualityName(quality, qualityName, sizeof(qualityName), client);
 	char fullString[512], partialString[200];
-	int chars = FormatEx(fullString, sizeof(fullString), "%s (%s)\n%s", g_szItemName[item], qualityName, g_szItemDesc[item]);
+	int chars = FormatEx(fullString, sizeof(fullString), "%s (%s)\n%s", itemName, qualityName, itemDesc);
 	bool split;
 	if (chars >= 248)
 	{

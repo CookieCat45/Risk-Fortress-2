@@ -1,0 +1,322 @@
+"Phrases"
+{
+    "SurvivorHudText"
+    {
+        "#format"   "{1:d},{2:s},{3:02d},{4:02d},{5:d},{6:d},{7:.0f},{8:.0f},{9:s},{10:t},{11:s}"
+        "en"        "\n\nStage {1} ({2}) | {3}:{4}\nEnemy Level: {5} | Your Level: {6}\n{7}/{8} XP | Cash: {9}\n{10}\n{11}"
+    }
+    
+    "EnemyHudText"
+    {
+        "#format"   "{1:d},{2:s},{3:02d},{4:02d},{5:d},{6:t},{7:s}"
+        "en"        "\n\nStage {1} ({2}) | {3}:{4}\nEnemy Level: {5}\n{6}\n{7}"
+    }
+    
+    "GameOver"
+    {
+        "en"    "GAME OVER"
+    }
+    
+    "Victory"
+    {
+        "en"    "Victory"
+    }
+    
+    "FateUnknown"
+    {
+        "en"    "Fate Unknown..."
+    }
+    
+    "VictoryPre"
+    {
+        "en"    "\n\n\n\n\n...and so they left, still with a thirst for bolts and blood."
+    }
+    
+    "EndScreen"
+    {
+        "#format"   "{1:s},{2:d},{3:d},{4:d},{5:d},{6:d},{7:d},{8:s}"
+        "en"        "\n\n\n\n%s\n\nEnemies slain: %i\nBosses slain: %i\nStages completed: %i\nItems found: %i\nTanks destroyed: %i\nTOTAL SCORE: %i points\nRANK: %s"
+    }
+    
+    "TabReload"
+    {
+        "en"        "TAB+RELOAD (TAB+R)"
+    }
+    
+    "Reload"
+    {
+        "en"        "RELOAD (R)"
+    }
+    
+    "JetpackTime"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}Jetpack Time: {2}\n"
+    }
+    
+    "ShieldHealth"
+    {
+        "#format"   "{1:s},{2:d},{3:d}"
+        "en"        "{1}Shield Health: {2}/{3}\n"
+    }
+    
+    "ShieldDown"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}***SHIELD DOWN*** {2}\n"
+    }
+    
+    "AttackBuffStacks"
+    {
+        "#format"   "{1:s},{2:d},{3:d}"
+        "en"        "{1}Attack Buff Stacks: {2}/{3}\n"
+    }
+    
+    "DamageBlockDown"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}***DAMAGE BLOCK DOWN*** {2}\n"
+    }
+    
+    "DamageBlockActive"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1}Damage Block Active\n"
+    }
+    
+    "ResistDown"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}***RESISTANCE DOWN*** {2}\n"
+    }
+    
+    "HardHatResist"
+    {
+        "#format"   "{1:s},{2:.0f},{3:s}"
+        "en"        "{1}Hard Hat Resist: {2}{3}\n"
+    }
+    
+    "Lifesteal"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}Lifesteal Pulse: {2}\n"
+    }
+    
+    "RocketJumpTime"
+    {
+        "#format"   "{1:s},{2:.1f},{3:.1f}"
+        "en"        "{1}Rocket Jump Time: {2}/{3}\n"
+    }
+    
+    "SapperCooldown"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}Sapper Cooldown: {2}\n"
+    }
+    
+    "CaberCooldown"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}Caber: {2}\n"
+    }
+    
+    "AutoFireHelp"
+    {
+        "#format"   "{1:s},{2:s}"
+        "en"        "{1}Auto-Fire: {2} (ATTACK3/Middle Mouse to toggle)\n"
+    }
+    
+    "AutoFire"
+    {
+        "#format"   "{1:s},{2:s}"
+        "en"        "{1}Auto-Fire: {2}\n"
+    }
+    
+    "RifleCharge"
+    {
+        "#format"   "{1:s},{2:.0f},{3:s}"
+        "en"        "{1}Charge: {2}{3}\n"
+    }
+    
+    "HeavyArmor"
+    {
+        "#format"   "{1:s},{2:.0f},{3:.0f},{4:s}"
+        "en"        "{1}HEAVY ARMOR: {2} ({3}{4} RESIST)\n"
+    }
+    
+    "HeavyArmorInactive"
+    {
+        "#format"   "{1:s},{2:.0f},{3:.0f},{4:s}"
+        "en"        "{1}[ARMOR INACTIVE]: {2} ({3}{4} RESIST)\n"
+    }
+    
+    "MedShieldEnergy"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}SHIELD ENERGY: {2}\n"
+    }
+    
+    "MedShieldCooldown"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}***SHIELD COOLDOWN*** {2}\n"
+    }
+    
+    "MedShieldReady1"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1}SHIELD READY - SWITCH TO YOUR MEDIGUN TO USE\n"
+    }
+    
+    "MedShieldReady2"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1}SHIELD READY - ATTACK3/MIDDLE MOUSE TO USE\n"
+    }
+    
+    "DispShieldOff"
+    {
+        "#format"   "{1:s},{2:d}"
+        "en"        "{1}***SHIELD DISABLED***\nSHIELD BATTERY: {2}\n"
+    }
+    
+    "DispShieldBattery"
+    {
+        "#format"   "{1:s},{2:d}"
+        "en"        "{1}SHIELD BATTERY: {2}\n"
+    }
+    
+    "BuildCans1"
+    {
+        "#format"   "{1:s},{2:d}"
+        "en"        "{1}\nBUILD CANTEENS: {2} [MVM CANTEEN BUTTON TO USE]\n"
+    }
+    
+    "BuildCans2"
+    {
+        "#format"   "{1:s},{2:d}"
+        "en"        "{1}\nBUILD CANTEENS: {2}\n"
+    }
+    
+    "DispSentries"
+    {
+        "#format"   "{1:s},{2:d},{3:d}"
+        "en"        "{1}DISPOSABLE SENTRIES: {2}/{3}\n"
+    }
+    
+    "CashBonus"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1} ({2}x BONUS)"
+    }
+    
+    "StrangeReady"
+    {
+        "#format"   "{1:s},{2:d},{3:s},{4:.1f}"
+        "en"        "{1}[{2}] READY! {3} [{4}]"
+    }
+    
+    "StrangeReadyFull"
+    {
+        "#format"   "{1:s},{2:d},{3:s}"
+        "en"        "{1}[{2}] READY! {3}"
+    }
+    
+    "TankHud1"
+    {
+        "#format"   "{1:d},{2:d},{3:s},{4:d},{5:d}"
+        "en"        "Tanks Destroyed: {1}/{2}\n{3} Health: {4}/{5}"
+    }
+    
+    "TankHud2"
+    {
+        "#format"   "{1:s},{2:d},{3:d}"
+        "en"        "{3} Health: {4}/{5}"
+    }
+    
+    "TankHud3"
+    {
+        "#format"   "{1:d},{2:d}"
+        "en"        "Tanks Destroyed: {1}/{2}"
+    }
+    
+    "S"
+    {
+        "en"    "S"
+    }
+    
+    "A"
+    {
+        "en"    "A"
+    }
+    
+    "B"
+    {
+        "en"    "B"
+    }
+    
+    "C"
+    {
+        "en"    "C"
+    }
+    
+    "D"
+    {
+        "en"    "D"
+    }
+    
+    "E"
+    {
+        "en"    "E"
+    }
+    
+    "F"
+    {
+        "en"    "F"
+    }
+    
+    "Easy"
+    {
+        "en"    "Difficulty: Easy"
+    }
+    
+    "Normal"
+    {
+        "en"    "Difficulty: Normal"
+    }
+    
+    "Hard"
+    {
+        "en"    "Difficulty: Hard"
+    }
+    
+    "Very Hard"
+    {
+        "en"    "Difficulty: Very Hard"
+    }
+    
+    "Insane"
+    {
+        "en"    "Difficulty: Insane"
+    }
+    
+    "Impossible"
+    {
+        "en"    "Difficulty: Impossible"
+    }
+    
+    "ISeeYou"
+    {
+        "en"    "I SEE YOU"
+    }
+    
+    "ComingForYou"
+    {
+        "en"    "I'M COMING FOR YOU"
+    }
+    
+    "HaHaHa"
+    {
+        "en"    "HAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHA"
+    }
+}

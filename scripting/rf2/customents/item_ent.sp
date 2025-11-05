@@ -152,8 +152,9 @@ methodmap RF2_Item < CBaseEntity
 	{
 		this.WorldText = CreateEntityByName("point_worldtext");
 		CBaseEntity text = CBaseEntity(this.WorldText);
-		char worldText[256];
-		FormatEx(worldText, sizeof(worldText), "%s\nCall for Medic to pick up", g_szItemName[this.Type]);
+		char worldText[256], itemName[64];
+		GetItemName(this.Type, itemName, sizeof(itemName), false);
+		FormatEx(worldText, sizeof(worldText), "%s\nCall for Medic to pick up", itemName);
 		text.KeyValue("message", worldText);
 		text.KeyValueFloat("textsize", 6.0);
 		text.KeyValueInt("orientation", 1);
@@ -204,9 +205,11 @@ methodmap RF2_Item < CBaseEntity
 			}
 		}
 		
+		char itemName[64];
+		GetItemName(this.Type, itemName, sizeof(itemName), false);
 		if (this.Shuffled)
 		{
-			FormatEx(worldText, sizeof(worldText), "%s%s\nCall for Medic to pick up [Shuffled]", ownerText, g_szItemName[this.Type]);
+			FormatEx(worldText, sizeof(worldText), "%s%s\nCall for Medic to pick up [Shuffled]", ownerText, itemName);
 		}
 		else
 		{
@@ -222,11 +225,11 @@ methodmap RF2_Item < CBaseEntity
 			
 			if (client != INVALID_ENT)
 			{
-				FormatEx(worldText, sizeof(worldText), "%s%s\nCall for Medic to pick up [R to Shuffle]", ownerText, g_szItemName[this.Type]);
+				FormatEx(worldText, sizeof(worldText), "%s%s\nCall for Medic to pick up [R to Shuffle]", ownerText, itemName);
 			}
 			else
 			{
-				FormatEx(worldText, sizeof(worldText), "%s%s\nCall for Medic to pick up", ownerText, g_szItemName[this.Type]);
+				FormatEx(worldText, sizeof(worldText), "%s%s\nCall for Medic to pick up", ownerText, itemName);
 			}
 		}
 		
@@ -383,8 +386,9 @@ RF2_Item DropItem(int client, int type, float pos[3], int subject=INVALID_ENT, f
 		item.Subject = subject;
 		if (subject != client)
 		{
-			char text[256];
-			FormatEx(text, sizeof(text), "%T", "DroppedItemForYou", subject, client, g_szItemName[type]);
+			char text[256], itemName[64];
+			GetItemName(type, itemName, sizeof(itemName), false, subject);
+			FormatEx(text, sizeof(text), "%T", "DroppedItemForYou", subject, client, itemName);
 			float pos2[3];
 			CopyVectors(pos, pos2);
 			pos2[2] += 50.0;
@@ -489,10 +493,9 @@ bool PickupItem(int client, int forcedEnt=INVALID_ENT)
 	GiveItem(client, type, 1, true);
 	RemoveEntity(item.index);
 	ShowItemDesc(client, type);
-	char qualityTag[32], itemName[128], qualityName[32];
+	char qualityTag[32], itemName[128];
 	GetItemName(type, itemName, sizeof(itemName));
 	GetQualityColorTag(quality, qualityTag, sizeof(qualityTag));
-	GetQualityName(quality, qualityName, sizeof(qualityName));
 	if (survivorIndex != -1 && type == Item_HorrificHeadsplitter)
 	{
 		TriggerAchievement(client, ACHIEVEMENT_HEADSPLITTER);

@@ -159,38 +159,26 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			if (final)
 			{
 				// ask if they want to enter the final area
-				if (client > 0)
-					vote.SetTitle("A fork appears in the path ahead. Where do you wish to go? (%N)", client);
-				else
-					vote.SetTitle("A fork appears in the path ahead. Where do you wish to go?");
-
+				vote.SetTitle("FinalAreaVoteTitle");
 				vote.VoteResultCallback = OnNextStageVoteFinishFinal;
 			}
 			else
 			{
-				if (client > 0)
-					vote.SetTitle("Depart now? (%N)", client);
-				else
-					vote.SetTitle("Depart now?");
-				
+				vote.SetTitle("DepartNow");
 				vote.VoteResultCallback = OnNextStageVoteFinish;
 			}
 		}
 		else
 		{
-			if (client > 0)
-				vote.SetTitle("Start the Teleporter event? (%N)", client);
-			else
-				vote.SetTitle("Start the Teleporter event?");
-
+			vote.SetTitle("StartTeleporter");
 			vote.VoteResultCallback = OnTeleporterVoteFinish;
 		}
 		
 		if (final)
 		{
-			vote.AddItem("final_area", "Travel towards the large industrial building in the distance");
-			vote.AddItem("normal_path", "Continue on the normal path");
-			vote.AddItem("nowhere", "I'm not going anywhere yet");
+			vote.AddItem("final_area", "FinalAreaOption");
+			vote.AddItem("normal_path", "LoopOption");
+			vote.AddItem("nowhere", "NowhereOption");
 		}
 		else
 		{
@@ -567,6 +555,21 @@ public int Menu_TeleporterVote(Menu menu, MenuAction action, int param1, int par
 {
 	switch (action)
 	{
+		case MenuAction_Display:
+		{
+			char phrase[128];
+			menu.GetTitle(phrase, sizeof(phrase));
+			view_as<Panel>(param2).SetTitle(FormatR("%T", phrase, param1));
+		}
+		case MenuAction_DisplayItem:
+		{
+			char display[64];
+			menu.GetItem(param2, "", 0, _, display, sizeof(display));
+			char buffer[256];
+			FormatEx(buffer, sizeof(buffer), "%T", display, param1);
+			return RedrawMenuItem(buffer);
+		}
+		
 		case MenuAction_End: delete menu;
 	}
 	
@@ -627,6 +630,7 @@ static Action Timer_TeleporterThink(Handle timer, int entity)
 		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !IsPlayerSurvivor(i) || IsPlayerMinion(i))
 			continue;
 		
+		SetGlobalTransTarget(i);
 		if (IsPlayerSurvivor(i))
 		{
 			GetEntPos(i, pos);
@@ -638,16 +642,16 @@ static Action Timer_TeleporterThink(Handle timer, int entity)
 					chargeToSet += chargeAdd;
 				}
 				
-				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "\nTeleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
+				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", "TeleporterHud", oldCharge, aliveBosses);
 			}
 			else
 			{
-				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "\nGet inside the Teleporter radius! (%.0f)\nBosses Left: %i", oldCharge, aliveBosses);
+				FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", "OutsideTeleporter", oldCharge, aliveBosses);
 			}
 		}
 		else
 		{
-			FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "\nTeleporter Charge: %.0f percent...\nBosses Left: %i", oldCharge, aliveBosses);
+			FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", "TeleporterHud", oldCharge, aliveBosses);
 		}
 	}
 	
@@ -746,14 +750,14 @@ public void OnNextStageVoteFinish(Menu menu, int numVotes, int numClients, const
 		{
 			if (!g_bIsConfirmation && (IsInUnderworld() || AreAnyPlayersLackingItems()))
 			{
-				Menu vote = new Menu(Menu_TeleporterVote);
+				Menu vote = new Menu(Menu_TeleporterVote, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
 				if (IsInUnderworld())
 				{
-					vote.SetTitle("Are you sure?");
+					vote.SetTitle("AreYouSure");
 				}
 				else
 				{
-					vote.SetTitle("Are you sure you want to leave? There are still players who are lacking items!");
+					vote.SetTitle("AreYouSure2");
 				}
 				
 				vote.VoteResultCallback = OnNextStageVoteFinish;
@@ -834,7 +838,7 @@ public void OnNextStageVoteFinishFinal(Menu menu, int numVotes, int numClients, 
 		{
 			// It's a tie, try again
 			RF2_Object_Teleporter.StartVote(INVALID_ENT, true);
-			RF2_PrintToChatAll("The voting result was a tie. Casting the vote again.");
+			RF2_PrintToChatAll("%t", "VoteTie");
 			if (g_bWasTie)
 			{
 				// Another tie! Decide randomly at this point.
