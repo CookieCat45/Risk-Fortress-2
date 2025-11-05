@@ -628,7 +628,11 @@ void AddSoundToDownloadsTable(const char[] file, bool precache=true)
 		if (precache)
 		{
 			// I don't know if sound/ should be omitted here but I'm doing it just in case
-			ReplaceStringEx(buffer, sizeof(buffer), "sound/", "");
+			if (StrContains(buffer, "sound/") == 0)
+			{
+				ReplaceStringEx(buffer, sizeof(buffer), "sound/", "");
+			}
+			
 			PrecacheSound2(buffer);
 		}
 	}
@@ -902,11 +906,6 @@ stock float sq(float num)
 	return Pow(num, 2.0);
 }
 
-stock float fmodf(float num, float denom)
-{
-	return num - denom * RoundToFloor(num / denom);
-}
-
 // not implemented by default -_-
 stock float operator%(float oper1, float oper2)
 {
@@ -942,6 +941,20 @@ stock float fmin(float val1, float val2)
 stock float fmax(float val1, float val2)
 {	
 	return val1 > val2 ? val1 : val2;
+}
+
+float LerpFloats(const float a, const float b, float t)
+{
+    if (t < 0.0)
+    {
+        t = 0.0;
+    }
+    if (t > 1.0)
+    {
+        t = 1.0;
+    }
+
+    return a + (b - a) * t;
 }
 
 // Checks if the goomba plugin is loaded, do not call until after OnAllPluginsLoaded()

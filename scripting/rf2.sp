@@ -8,15 +8,16 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.6.9-DEVONLY"
+#define PLUGIN_VERSION "1.7.0-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.6.9"
+#define PLUGIN_VERSION "1.7.0"
 #endif
 
 #include <rf2>
 #include "rf2/defs.sp"
 #include <cbasenpc>
 #include <cbasenpc/tf/nav>
+#include <cbasenpc/util>
 #include <tf2attributes>
 #include <tf2items>
 #include <tf_ontakedamage>
@@ -85,6 +86,7 @@ ArrayList g_hAvailableLanguages;
 // Map settings
 bool g_bDisableEurekaTeleport;
 bool g_bDisableItemDropping;
+bool g_bDisableSentryBusters;
 float g_flGracePeriodTime = 30.0;
 float g_flStartMoneyMultiplier = 1.0;
 float g_flBossSpawnChanceBonus;
@@ -466,6 +468,7 @@ public const char g_szTeddyBearSounds[][] =
 #include "rf2/customents/tank_spawner.sp"
 #include "rf2/customents/raid_boss_spawner.sp"
 #include "rf2/customents/logic_bot_death.sp"
+#include "rf2/customents/bot_spawner.sp"
 
 #include "rf2/customents/objects/object_base.sp"
 #include "rf2/customents/objects/object_teleporter.sp"
@@ -490,6 +493,7 @@ public const char g_szTeddyBearSounds[][] =
 #include "rf2/customents/projectiles/projectile_skull.sp"
 #include "rf2/customents/projectiles/projectile_homingrocket.sp"
 #include "rf2/customents/projectiles/projectile_shrapnel.sp"
+#include "rf2/customents/projectiles/projectile_energyshot.sp"
 #include "rf2/customents/customhitbox.sp"
 
 #include "rf2/customents/filters/filter_minion.sp"
@@ -514,6 +518,8 @@ public const char g_szTeddyBearSounds[][] =
 #include "rf2/npc/npc_companion_base.sp"
 #include "rf2/npc/npc_robot_butler.sp"
 #include "rf2/npc/npc_false_providence.sp"
+#include "rf2/npc/npc_major_shocks.sp"
+#include "rf2/customents/major_shocks_uber_generator.sp"
 #include "rf2/customents/providence_shield_crystal.sp"
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)

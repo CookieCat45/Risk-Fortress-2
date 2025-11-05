@@ -44,7 +44,7 @@ static void OnCreate(RF2_Projectile_Fireball fireball)
 	fireball.DeactivateTime = 0.0;
 	fireball.Radius = 200.0;
 	fireball.Flying = true;
-	fireball.AltParticleSpawn = true;
+	fireball.UseInfoParticle = true;
 	fireball.SetRedTrail("spell_fireball_small_red");
 	fireball.SetBlueTrail("spell_fireball_small_blue");
 	//fireball.SetFireSound(SND_SPELL_FIREBALL);

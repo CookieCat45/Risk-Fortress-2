@@ -34,6 +34,7 @@ static bool g_bEnemyNoCrits[MAX_ENEMIES];
 static bool g_bEnemyEyeGlow[MAX_ENEMIES];
 static bool g_bEnemyCustomEyeGlow[MAX_ENEMIES];
 static bool g_bEnemyEngineIdleSound[MAX_ENEMIES];
+static bool g_bEnemyForceHealthText[MAX_ENEMIES];
 
 // Suicide Bomber (Sentry Busters)
 static bool g_bEnemySuicideBomber[MAX_ENEMIES];
@@ -321,6 +322,12 @@ methodmap Enemy
 	{
 		public get()			{ return g_bEnemyEngineIdleSound[this.Index]; }
 		public set(bool value)	{ g_bEnemyEngineIdleSound[this.Index] = value; }
+	}
+	
+	property bool ForceHealthText
+	{
+		public get()			{ return g_bEnemyForceHealthText[this.Index]; }
+		public set(bool value)	{ g_bEnemyForceHealthText[this.Index] = value; }
 	}
 
 	property bool SuicideBomber
@@ -899,15 +906,16 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false, bool reset=fals
 		}
 		
 		enemy.EngineSound = asBool(enemyKey.GetNum("engine_idle_sound", enemy.IsBoss));
+		enemy.ForceHealthText = asBool(enemyKey.GetNum("force_health_text", false));
 		enemy.SuicideBomber = enemyKey.JumpToKey("suicide_bomber");
 		if (enemy.SuicideBomber)
 		{
 			enemy.SuicideBombDamage = enemyKey.GetFloat("damage", 600.0);
 			enemy.SuicideBombRange = enemyKey.GetFloat("range", 300.0);
 			enemy.SuicideBombDelay = enemyKey.GetFloat("delay", 2.0);
-			enemy.SuicideBombFriendlyFire = asBool(enemyKey.GetNum("friendly_fire", 1));
-			enemy.SuicideBombBusterSounds = asBool(enemyKey.GetNum("use_buster_sounds", 1));
-			enemy.SuicideBombDamageFalloff = asBool(enemyKey.GetNum("use_damage_falloff", 1));
+			enemy.SuicideBombFriendlyFire = asBool(enemyKey.GetNum("friendly_fire", true));
+			enemy.SuicideBombBusterSounds = asBool(enemyKey.GetNum("use_buster_sounds", true));
+			enemy.SuicideBombDamageFalloff = asBool(enemyKey.GetNum("use_damage_falloff", true));
 			enemyKey.GoBack();
 		}
 		
@@ -929,15 +937,6 @@ void LoadEnemiesFromPack(const char[] config, bool bosses=false, bool reset=fals
 				if (script[0])
 				{
 					FormatEx(scriptPath, sizeof(scriptPath), "scripts/vscripts/%s", script);
-					if (!FileExists(scriptPath))
-					{
-						LogError("[LoadEnemiesFromPack] The script file \"%s\" for enemy \"%s\" does not exist", 
-							script, g_szLoadedEnemies[e]);
-							
-						i++;
-						continue;
-					}
-					
 					enemy.Scripts.PushString(script);
 				}
 				else
@@ -1717,7 +1716,7 @@ bool SpawnBoss(int client, int type, const float pos[3]=OFF_THE_MAP, bool telepo
 		TF2Attrib_SetByName(client, "patient overheal penalty", 0.0);
 		TF2Attrib_SetByName(client, "aiming movespeed increased", 10.0);
 		
-		if (teleporterBoss)
+		if (teleporterBoss || boss.ForceHealthText)
 		{
 			CreateHealthText(client, 100.0*boss.ModelScale, 20.0, g_szEnemyName[type]);
 			OutlineTeleporterBosses();
@@ -1777,6 +1776,14 @@ void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 	int bossCount = 1 + ((RF2_GetSurvivorCount()-1)/2) + RoundToFloor(g_flDifficultyCoeff/(g_cvSubDifficultyIncrement.FloatValue*2.5));
 	bossCount = imin(imax(bossCount, 1), GetPlayersOnTeam(TEAM_ENEMY));
 	ArrayList players = FindBestPlayersToSpawn(bossCount, true);
+	if (players.Length <= 0)
+	{
+		// try again next frame
+		delete players;
+		RequestFrame(RF_SummonTeleporterBosses, teleporter);
+		return;
+	}
+	
 	float time;
 	for (int i = 0; i < players.Length; i++)
 	{
@@ -1797,6 +1804,11 @@ void SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
 	
 	delete players;
 	EmitSoundToAll(SND_BOSS_SPAWN);
+}
+
+static void RF_SummonTeleporterBosses(RF2_Object_Teleporter teleporter)
+{
+	SummonTeleporterBosses(teleporter);
 }
 
 ArrayList FindBestPlayersToSpawn(int count, bool bossRules=false)

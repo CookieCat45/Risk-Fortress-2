@@ -1086,6 +1086,25 @@ int GetEntityDisplayName(int entity, char[] buffer, int size, int client=LANG_SE
 	return strcopy(buffer, size, result);
 }
 
+int FindEntityByName(const char[] name)
+{
+	int entity = INVALID_ENT;
+	char entName[128];
+	while ((entity = FindEntityByClassname(entity, "*")) != INVALID_ENT)
+	{
+		if (!IsValidEntity2(entity))
+			continue;
+			
+		GetEntPropString(entity, Prop_Data, "m_iName", entName, sizeof(entName));
+		if (strcmp2(name, entName))
+		{
+			return entity;
+		}
+	}
+	
+	return INVALID_ENT;
+}
+
 void CleanPathFollowers()
 {
 	for (int i = 1; i < MAX_EDICTS; i++)

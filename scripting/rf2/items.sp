@@ -1203,7 +1203,7 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 				SetEntItemProc(kunai.index, Item_BedouinBandana);
 				kunai.SetRedTrail("flaregun_trail_red");
 				kunai.SetBlueTrail("flaregun_trail_blue");
-				kunai.AltParticleSpawn = true;
+				kunai.UseInfoParticle = true;
 				kunai.Spawn();
 				angles[1] += 60.0;
 			}

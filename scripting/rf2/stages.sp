@@ -231,6 +231,7 @@ void ReadMapKeys(KeyValues mapKey)
 	g_bTankBossMode = asBool(mapKey.GetNum("tank_destruction", false));
 	g_bDisableEurekaTeleport = asBool(mapKey.GetNum("disable_eureka_teleport", false));
 	g_bDisableItemDropping = asBool(mapKey.GetNum("disable_item_dropping", false));
+	g_bDisableSentryBusters = asBool(mapKey.GetNum("disable_sentry_busters", false));
 }
 
 int FindMaxStages()

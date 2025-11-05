@@ -7,6 +7,13 @@
 
 ]
 
+@PointClass base(Targetname) = rf2_bot_spawner :
+	"Entity that spawns a bot of the specified type at its origin."
+[
+	bot_name(string) : "Bot Name" : "" : "Name of the bot to spawn. Corresponds to the bot's section name in the configuration file, e.g. soldier_bot"
+	input SpawnBot(void) : "SpawnBot"
+]
+
 @PointClass base(Targetname) = rf2_logic_bot_death :
 	"Entity that fires an output when a bot of the specified type dies."
 [
@@ -16,7 +23,7 @@
 		1 : "Yes"
 	]
 
-	bot_name(string) : "Bot Name" : "" : "Name of the bot to fire outputs for. Corresponds to the bot's section name in the configuration file."
+	bot_name(string) : "Bot Name" : "" : "Name of the bot to fire outputs for. Corresponds to the bot's section name in the configuration file, e.g. soldier_bot"
 	output OnBotDeath(void) : "Sent when the bot specified in 'Bot Name' dies. The !activator is the entity that was responsible for killing the bot."
 	input Enable(void) : "Enable"
 	input Disable(void) : "Disable"

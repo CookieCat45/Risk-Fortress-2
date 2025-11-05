@@ -378,7 +378,7 @@ static Action Timer_UpdateCrystalBeams(Handle timer, int entity)
     RF2_Providence boss = RF2_Providence(EntRefToEntIndex(entity));
     if (!boss.IsValid() || !boss.Crystals)
         return Plugin_Stop;
-
+    
     float pos1[3], pos2[3];
     boss.WorldSpaceCenter(pos1);
     RF2_ProvidenceShieldCrystal crystal;
@@ -389,7 +389,7 @@ static Action Timer_UpdateCrystalBeams(Handle timer, int entity)
         case 2: color = {255, 255, 0, 80};
         case 3: color = {0, 255, 150, 80};
     }
-
+    
     for (int i = 0; i < boss.Crystals.Length; i++)
     {
         crystal = RF2_ProvidenceShieldCrystal(EntRefToEntIndex(boss.Crystals.Get(i)));
@@ -400,7 +400,7 @@ static Action Timer_UpdateCrystalBeams(Handle timer, int entity)
         TE_SetupBeamPoints(pos2, pos1, g_iBeamModel, 0, 0, 0, 0.12, 15.0, 15.0, 0, 0.2, color, 10);
         TE_SendToAll();
     }
-
+    
     return Plugin_Continue;
 }
 
