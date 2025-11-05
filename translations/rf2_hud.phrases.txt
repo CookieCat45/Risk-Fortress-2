@@ -35,7 +35,7 @@
     "EndScreen"
     {
         "#format"   "{1:s},{2:d},{3:d},{4:d},{5:d},{6:d},{7:d},{8:s}"
-        "en"        "\n\n\n\n%s\n\nEnemies slain: %i\nBosses slain: %i\nStages completed: %i\nItems found: %i\nTanks destroyed: %i\nTOTAL SCORE: %i points\nRANK: %s"
+        "en"        "\n\n\n\n{1}\n\nEnemies slain: {2}\nBosses slain: {3}\nStages completed: {4}\nItems found: {5}\nTanks destroyed: {6}\nTOTAL SCORE: {7} points\nRANK: {8}"
     }
     
     "TabReload"

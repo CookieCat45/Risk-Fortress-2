@@ -49,7 +49,7 @@ static int Update(RF2_MajorShocksWeaponStateAction action, RF2_MajorShocks actor
 {
 	if (action.NextWeaponType <= 0.0)
 	{
-		SwitchWeapon(action, actor, MajorShocks_WeaponType_GigaBison);
+		SwitchWeapon(action, actor);
 	}
 
 	INextBot bot = actor.MyNextBotPointer();
@@ -107,7 +107,7 @@ static int Update(RF2_MajorShocksWeaponStateAction action, RF2_MajorShocks actor
 				shootDirection[2] += GetRandomFloat(-actor.Deviation, actor.Deviation);
 				NormalizeVector(shootDirection, shootDirection);
 				GetVectorAngles(shootDirection, shootAng);
-				bool crits = RF2_GetLoopCount() >= 1 || g_cvDebugUseAltMapSettings.BoolValue;
+				bool crits = actor.IsCrits;
 				if (actor.WeaponState == MajorShocks_WeaponState_Primary)
 				{
 					int rocket = ShootProjectile(actor.index, "tf_projectile_rocket", posToShoot, shootAng, 
@@ -260,7 +260,7 @@ static int Update(RF2_MajorShocksWeaponStateAction action, RF2_MajorShocks actor
 		
 		if (action.AttackTime > 0.0 && GetGameTime() <= action.AttackTime)
 		{
-			ArrayList hitEnts = action.DoAttackHitbox({50.0, 0.0, 50.0}, _, {-20.0, -20.0, 0.0}, {20.0, 20.0, 40.0}, 
+			ArrayList hitEnts = action.DoAttackHitbox({50.0, 0.0, 50.0}, _, {-200.0, -70.0, 0.0}, {200.0, 70.0, 200.0}, 
 				actor.Damage, actor.IsCrits ? DMG_CRIT|DMG_MELEE|DMG_CLUB : DMG_MELEE|DMG_CLUB, _, true);
 				
 			for (int i = 0; i < hitEnts.Length; i++)

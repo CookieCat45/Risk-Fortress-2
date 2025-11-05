@@ -652,7 +652,7 @@
 	"ForfeitDisallowed"
 	{
 		"#format"	"{1:d}"
-		"en"		"Since you were not present at the beginning of this run, you need to clear at least {yellow}%d{default} more stages to use this command."
+		"en"		"Since you were not present at the beginning of this run, you need to clear at least {yellow}{1}{default} more stages to use this command."
 	}
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

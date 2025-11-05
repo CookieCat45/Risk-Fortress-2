@@ -537,7 +537,7 @@ methodmap RF2_MajorShocks < RF2_NPC_Base
 		if (this.IsCrits)
 		{
 			item.SetRenderMode(RENDER_GLOW);
-			item.SetRenderColor(150, 200, 255);
+			item.SetRenderColor(0, 255, 255);
 			TE_TFParticle("critgun_weaponmodel_blu", pos, item.index, PATTACH_ABSORIGIN_FOLLOW);
 		}
 
@@ -802,7 +802,7 @@ static void OnCreate(RF2_MajorShocks boss)
 	health *= (1.0 + 0.15 * float(RF2_GetSurvivorCount() - 1));
 	boss.SetProp(Prop_Data, "m_iHealth", RoundToFloor(health));
 	boss.MaxHealth = RoundToFloor(health);
-	boss.IsCrits = true;
+	boss.IsCrits = RF2_GetLoopCount() >= 1 || g_cvDebugUseAltMapSettings.BoolValue;
 	RF2_Object_Teleporter.ToggleObjectsStatic(false);
 	CBaseNPC npc = boss.BaseNpc;
 	boss.Generators = new ArrayList();
