@@ -688,7 +688,7 @@ void CalculatePlayerMiscStats(int client)
 		float kbRes = 1.0 / GetEnemyDamageMult();
 		if (IsPlayerSurvivor(client))
 		{
-			kbRes *= 0.75; // Survivors get a bit more
+			kbRes *= 0.6; // Survivors get a bit more
 		}
 		
 		TF2Attrib_SetByName(client, "damage force reduction", kbRes);
