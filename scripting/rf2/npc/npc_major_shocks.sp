@@ -748,6 +748,7 @@ methodmap RF2_MajorShocks < RF2_NPC_Base
 	public void DoFinalPhase()
 	{
 		this.Phase = MajorShocks_Phase_Final;
+		this.DoUnstuckChecks = true;
 		int relay = FindEntityByName("boss_thirdphase");
 		if (relay != INVALID_ENT)
 		{
@@ -798,7 +799,7 @@ static void OnCreate(RF2_MajorShocks boss)
 	boss.SetProp(Prop_Send, "m_nSkin", 1);
 	boss.BaseNpc.SetBodyMins({-150.0, -150.0, 0.0});
 	boss.BaseNpc.SetBodyMaxs({150.0, 150.0, 300.0});
-	float health = 16000.0 * (1.0 + (float(RF2_GetEnemyLevel() - 1) * 0.1));
+	float health = 15000.0 * (1.0 + (float(RF2_GetEnemyLevel() - 1) * 0.1));
 	health *= (1.0 + 0.15 * float(RF2_GetSurvivorCount() - 1));
 	boss.SetProp(Prop_Data, "m_iHealth", RoundToFloor(health));
 	boss.MaxHealth = RoundToFloor(health);

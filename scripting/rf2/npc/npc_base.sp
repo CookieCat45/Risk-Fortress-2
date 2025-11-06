@@ -565,10 +565,36 @@ static void OnCreate(RF2_NPC_Base npc)
 	npc.DisableFriendlyFire = true;
 	npc.BaseBackstabDamage = 750.0;
 	npc.Path = PathFollower(INVALID_FUNCTION, FilterIgnoreActors, FilterOnlyActors);
-	
-	// Stop friendly NPCs from colliding with player bullets and projectiles
-	SDKHook(npc.index, SDKHook_ShouldCollide, Hook_DispenserShieldShouldCollide);
+	SDKHook(npc.index, SDKHook_ShouldCollide, Hook_NPCShouldCollide);
 	g_hHookIsCombatItem.HookEntity(Hook_Pre, npc.index, DHook_IsCombatItem);
+}
+
+static bool Hook_NPCShouldCollide(int entity, int collisionGroup, int mask, bool originalResult)
+{
+	if ( collisionGroup == COLLISION_GROUP_PROJECTILE || 
+		 collisionGroup == TFCOLLISION_GROUP_ROCKETS || 
+		 collisionGroup == TFCOLLISION_GROUP_ROCKET_BUT_NOT_WITH_OTHER_ROCKETS )
+	{
+		// prevent NPCs from colliding with friendly projectiles at close range
+		switch(view_as<TFTeam>(GetEntTeam(entity)))
+		{
+			case TFTeam_Red:
+			{
+				if (mask & CONTENTS_TEAM1)
+					return true;
+			}
+			
+			case TFTeam_Blue:
+			{
+				if (mask & CONTENTS_TEAM2)
+					return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	return originalResult;
 }
 
 static void OnRemove(RF2_NPC_Base npc)
