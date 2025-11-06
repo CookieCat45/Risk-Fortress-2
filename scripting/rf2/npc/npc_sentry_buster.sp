@@ -387,7 +387,7 @@ static MRESReturn HandleAnimEvent(int actor, Handle params)
 				FormatEx(sample, sizeof(sample), "mvm/player/footsteps/robostep_0%i.wav", random);
 			}
 			
-			EmitSoundToAll(sample, actor, _, SNDLEVEL_HOME, _, 0.5);
+			EmitSoundToAll(sample, actor, _, _, _, 0.5);
 		}
 		else
 		{
