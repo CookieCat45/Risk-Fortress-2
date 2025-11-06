@@ -152,7 +152,7 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 			}
 		}
 		
-		Menu vote = new Menu(Menu_TeleporterVote);
+		Menu vote = new Menu(Menu_TeleporterVote, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
 		bool final = nextStageVote && g_iLoopCount >= 1 && IsAboutToLoop() && !IsInUnderworld() && RF2_IsMapValid(g_szFinalMap);
 		if (nextStageVote)
 		{
