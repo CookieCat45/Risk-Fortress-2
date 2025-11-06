@@ -364,7 +364,7 @@ static void SwitchWeapon(RF2_MajorShocksWeaponStateAction action, RF2_MajorShock
 			actor.MaxClipSize = 17;
 			actor.FireRate = 0.0016;
 			actor.ReloadRate = 0.12;
-			actor.Damage = 65.0;
+			actor.Damage = 50.0;
 			actor.ProjectileSpeed = 1540.0;
 			actor.Deviation = 120.0;
 			actor.BlastRadius = 128.0;
