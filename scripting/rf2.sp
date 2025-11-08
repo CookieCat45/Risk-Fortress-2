@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.7.0-DEVONLY"
+#define PLUGIN_VERSION "1.7.1-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.7.0"
+#define PLUGIN_VERSION "1.7.1"
 #endif
 
 #include <rf2>
