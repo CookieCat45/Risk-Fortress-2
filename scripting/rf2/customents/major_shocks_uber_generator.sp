@@ -48,6 +48,16 @@ methodmap RF2_MajorShocksUberGenerator < RF2_NPC_Base
 void Generator_OnMapStart()
 {
 	AddModelToDownloadsTable(MODEL_UBERGENERATOR);
+	AddMaterialToDownloadsTable("materials/models/buildables/amplifier_test/amplifier");
+	AddMaterialToDownloadsTable("materials/models/buildables/amplifier_test/amplifier_anim");
+	AddMaterialToDownloadsTable("materials/models/buildables/amplifier_test/amplifier_anim_blue");
+	AddMaterialToDownloadsTable("materials/models/buildables/amplifier_test/amplifier_anim2");
+	AddMaterialToDownloadsTable("materials/models/buildables/amplifier_test/amplifier_anim2_blue");
+	AddMaterialToDownloadsTable("materials/models/buildables/amplifier_test/amplifier_blue");
+	AddMaterialToDownloadsTable("materials/models/buildables/amplifier_test/amplifier_bolt");
+	AddMaterialToDownloadsTable("materials/models/buildables/amplifier_test/amplifier_holo");
+	AddMaterialToDownloadsTable("materials/models/buildables/amplifier_test/amplifier_holo_blue");
+	AddMaterialToDownloadsTable("materials/models/buildables/amplifier_test/amplifier_radar");
 }
 
 static void OnCreate(RF2_MajorShocksUberGenerator generator)
