@@ -27,6 +27,8 @@ void RefreshClient(int client, bool force=false)
 	g_bPlayerYetiSmash[client] = false;
 	g_bPlayerHeadshotBleeding[client] = false;
 	g_bPlayerDotOnHead[client] = false;
+	g_bPlayerDoUnstuckChecks[client] = false;
+	g_bPlayerHawkHaste[client] = false;
 	g_iPlayerLastPingedEntity[client] = INVALID_ENT;
 	g_iPlayerPowerupBottle[client] = INVALID_ENT;
 	g_iPlayerEnemyType[client] = -1;
@@ -1181,6 +1183,17 @@ void KillAnnotation(int entity)
 	Event annotation = CreateEvent("hide_annotation", true);
 	annotation.SetInt("id", entity);
 	annotation.Fire();
+}
+
+bool IsStuckInAnyPlayer(int client)
+{
+	float mins[3], maxs[3];
+	GetClientMins(client, mins);
+	GetClientMaxs(client, maxs);
+	float pos[3];
+	GetEntPos(client, pos);
+	TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_OtherTeamPlayers, client, TRACE_ENTITIES_ONLY);
+	return TR_DidHit();
 }
 
 public void Timer_ResetCharacterGlow(Handle timer, int entity)

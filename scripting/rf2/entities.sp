@@ -572,7 +572,12 @@ void PickupCash(int client, int entity)
 		
 		if (client > 0)
 		{
-			SpeakResponseConcept_MVM(client, "TLK_MVM_MONEY_PICKUP");
+			static float lastMoneySpeakTime[MAXPLAYERS];
+			if (GetTickedTime() >= lastMoneySpeakTime[client]+35.0)
+			{
+				SpeakResponseConcept_MVM(client, "TLK_MVM_MONEY_PICKUP");
+				lastMoneySpeakTime[client] = GetTickedTime();
+			}
 			
 			if (PlayerHasItem(client, Item_BanditsBoots))
 			{

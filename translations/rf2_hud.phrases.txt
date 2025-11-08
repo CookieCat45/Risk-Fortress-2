@@ -102,10 +102,10 @@
         "en"        "{1}Lifesteal Pulse: {2}\n"
     }
     
-    "RocketJumpTime"
+    "HawkHasteCooldown"
     {
-        "#format"   "{1:s},{2:.1f},{3:.1f}"
-        "en"        "{1}Rocket Jump Time: {2}/{3}\n"
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}Haste Cooldown: {2}\n"
     }
     
     "SapperCooldown"

@@ -1280,6 +1280,26 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 		}
 	}
 	
+	if (PlayerHasItem(attacker, ItemSoldier_HawkWarrior) && CanUseCollectorItem(attacker, ItemSoldier_HawkWarrior))
+	{
+		char inflictorClassname[64];
+		GetEntityClassname(inflictor, inflictorClassname, sizeof(inflictorClassname));
+		if (strcmp2(inflictorClassname, "tf_projectile_rocket") 
+			|| strcmp2(inflictorClassname, "tf_projectile_energy_ball") 
+			|| strcmp2(inflictorClassname, "tf_projectile_sentryrocket"))
+		{
+			g_iRocketKills[inflictor]++;
+			if (g_iRocketKills[inflictor] == GetItemMod(ItemSoldier_HawkWarrior, 2))
+			{
+				g_bPlayerHawkHaste[attacker] = true;
+				RemoveAllRunes(attacker);
+				EmitSoundToClient(attacker, SND_RUNE_HASTE);
+				TF2_AddCondition(attacker, TFCond_PowerupModeDominant, CalcItemMod(attacker, ItemSoldier_HawkWarrior, 1));
+				TF2_AddCondition(attacker, TFCond_RuneHaste, CalcItemMod(attacker, ItemSoldier_HawkWarrior, 1));
+			}
+		}
+	}
+	
 	if (PlayerHasItem(attacker, Item_DapperTopper) && !g_bPlayerHealBurstCooldown[attacker])
 	{
 		g_flPlayerRegenBuffTime[attacker] = GetItemMod(Item_DapperTopper, 1);

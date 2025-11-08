@@ -161,6 +161,8 @@ bool g_bPlayerIsDyingBoss[MAXPLAYERS];
 bool g_bPlayerPressedCanteenButton[MAXPLAYERS];
 bool g_bPlayerYetiSmash[MAXPLAYERS];
 bool g_bPlayerHeadshotBleeding[MAXPLAYERS];
+bool g_bPlayerDoUnstuckChecks[MAXPLAYERS];
+bool g_bPlayerHawkHaste[MAXPLAYERS];
 
 float g_flPlayerXP[MAXPLAYERS];
 float g_flPlayerNextLevelXP[MAXPLAYERS] = {100.0, ...};
@@ -187,7 +189,6 @@ float g_flPlayerTimeSinceLastItemPickup[MAXPLAYERS];
 float g_flPlayerCaberRechargeAt[MAXPLAYERS];
 float g_flPlayerHeavyArmorPoints[MAXPLAYERS] = {100.0, ...};
 float g_flPlayerShieldRegenTime[MAXPLAYERS];
-float g_flPlayerRocketJumpTime[MAXPLAYERS];
 float g_flPlayerLastTabPressTime[MAXPLAYERS];
 float g_flPlayerHardHatLastResistTime[MAXPLAYERS];
 float g_flPlayerLastBlockTime[MAXPLAYERS];
@@ -202,6 +203,7 @@ float g_flPlayerWealthRingRadius[MAXPLAYERS];
 float g_flPlayerJetpackEndTime[MAXPLAYERS];
 float g_flBlockMedicCall[MAXPLAYERS];
 float g_flBannerSwitchTime[MAXPLAYERS];
+float g_flPlayerHawkHasteCooldown[MAXPLAYERS];
 
 int g_iPlayerInventoryIndex[MAXPLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXPLAYERS] = {1, ...};
@@ -250,6 +252,7 @@ int g_iItemDamageProc[MAX_EDICTS];
 int g_iLastItemDamageProc[MAX_EDICTS];
 int g_iEntLastHitItemProc[MAX_EDICTS]; // Mainly for use in OnPlayerDeath
 int g_iCashBombSize[MAX_EDICTS];
+int g_iRocketKills[MAX_EDICTS];
 
 bool g_bDisposableSentry[MAX_EDICTS];
 bool g_bDontDamageOwner[MAX_EDICTS];
@@ -1636,6 +1639,8 @@ public void OnClientPutInServer(int client)
 		SDKHook(client, SDKHook_OnTakeDamageAlivePost, Hook_OnTakeDamageAlivePost);
 		SDKHook(client, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
 		SDKHook(client, SDKHook_TraceAttack, Hook_OnTraceAttack);
+		SDKHook(client, SDKHook_StartTouch, Hook_PlayerStartTouch);
+		SDKHook(client, SDKHook_EndTouch, Hook_PlayerEndTouch);
 		
 		if (g_hHookTakeHealth)
 		{
@@ -2504,7 +2509,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 			RF_TakeDamage(entity, attacker, attacker, 30000.0, DMG_PREVENT_PHYSICS_FORCE);
 		}
 	}
-	
+
 	if (victimTeam == TEAM_ENEMY)
 	{
 		SetVariantString("ParticleEffectStop");
@@ -4206,14 +4211,13 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 			}
 
-			if (PlayerHasItem(i, ItemSoldier_HawkWarrior) && CanUseCollectorItem(i, ItemSoldier_HawkWarrior)
-				&& TF2_IsPlayerInCondition(i, TFCond_BlastJumping))
+			if (GetTickedTime() < g_flPlayerHawkHasteCooldown[i]
+				&& PlayerHasItem(i, ItemSoldier_HawkWarrior) && CanUseCollectorItem(i, ItemSoldier_HawkWarrior))
 			{
-				float time = FloatAbs(g_flPlayerRocketJumpTime[i]-GetTickedTime());
-				Format(miscText, sizeof(miscText), "%t", "RocketJumpTime", miscText, time,
-					GetItemMod(ItemSoldier_HawkWarrior, 0));
+				float time = FloatAbs(GetTickedTime()-g_flPlayerHawkHasteCooldown[i]);
+				Format(miscText, sizeof(miscText), "%t", "HawkHasteCooldown", miscText, time);
 			}
-
+			
 			TFClassType class = TF2_GetPlayerClass(i);
 			if (class == TFClass_Spy && g_flPlayerVampireSapperCooldown[i] > 0.0)
 			{
@@ -5638,16 +5642,9 @@ public void Hook_PreThink(int client)
 		}
 	}
 	
-	if (IsEnemy(client))
+	if (g_bPlayerDoUnstuckChecks[client])
 	{
-		// Make sure we aren't stuck inside of any players. If we are, we should change our collision group
-		float mins[3], maxs[3];
-		GetClientMins(client, mins);
-		GetClientMaxs(client, maxs);
-		float pos[3];
-		GetEntPos(client, pos);
-		TR_TraceHullFilter(pos, pos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_OtherTeamPlayers, client, TRACE_ENTITIES_ONLY);
-		if (TR_DidHit())
+		if (IsStuckInAnyPlayer(client))
 		{
 			// Stop colliding with players until we're not intersecting with them anymore
 			SetEntityCollisionGroup(client, TFCOLLISION_GROUP_TANK);
@@ -5742,13 +5739,6 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	{
 		CalculatePlayerMaxSpeed(client);
 	}
-	else if (condition == TFCond_BlastJumping)
-	{
-		if (PlayerHasItem(client, ItemSoldier_HawkWarrior) && CanUseCollectorItem(client, ItemSoldier_HawkWarrior))
-		{
-			g_flPlayerRocketJumpTime[client] = GetTickedTime();
-		}
-	}
 	else if (condition == TFCond_Parachute)
 	{
 		if (IsPlayerSurvivor(client))
@@ -5793,19 +5783,6 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	else if (condition == TFCond_Bleeding)
 	{
 		g_bPlayerHeadshotBleeding[client] = false;
-	}
-	else if (condition == TFCond_BlastJumping)
-	{
-		if (PlayerHasItem(client, ItemSoldier_HawkWarrior) && CanUseCollectorItem(client, ItemSoldier_HawkWarrior))
-		{
-			if (GetTickedTime()-g_flPlayerRocketJumpTime[client] >= GetItemMod(ItemSoldier_HawkWarrior, 0))
-			{
-				RemoveAllRunes(client);
-				EmitSoundToClient(client, SND_RUNE_HASTE);
-				TF2_AddCondition(client, TFCond_PowerupModeDominant, CalcItemMod(client, ItemSoldier_HawkWarrior, 1));
-				TF2_AddCondition(client, TFCond_RuneHaste, CalcItemMod(client, ItemSoldier_HawkWarrior, 1));
-			}
-		}
 	}
 	else if (condition == TFCond_Bonked)
 	{
@@ -5879,6 +5856,11 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 		else if (condition == TFCond_RuneHaste)
 		{
 			UpdatePlayerFireRate(client);
+			if (g_bPlayerHawkHaste[client])
+			{
+				g_flPlayerHawkHasteCooldown[client] = GetTickedTime() + GetItemMod(ItemSoldier_HawkWarrior, 3);
+				g_bPlayerHawkHaste[client] = false;
+			}
 		}
 		else if (condition == TFCond_Slowed)
 		{
@@ -6241,6 +6223,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_iItemDamageProc[entity] = Item_Null;
 	g_iLastItemDamageProc[entity] = Item_Null;
 	g_iEntLastHitItemProc[entity] = Item_Null;
+	g_iRocketKills[entity] = 0;
 	g_bDisposableSentry[entity] = false;
 	g_bDontDamageOwner[entity] = false;
 	g_bDontRemoveWearable[entity] = false;
@@ -6766,6 +6749,30 @@ public Action Hook_OnTraceAttack(int victim, int &attacker, int &inflictor, floa
 	return Plugin_Continue;
 }
 
+public Action Hook_PlayerStartTouch(int entity, int other)
+{
+	if (IsValidClient(other) && GetClientTeam(entity) == TEAM_ENEMY && GetClientTeam(other) == TEAM_SURVIVOR)
+	{
+		g_bPlayerDoUnstuckChecks[entity] = true;
+	}
+	
+	return Plugin_Continue;
+}
+
+public Action Hook_PlayerEndTouch(int entity, int other)
+{
+	if (IsValidClient(other) && GetClientTeam(entity) == TEAM_ENEMY && GetClientTeam(other) == TEAM_SURVIVOR)
+	{
+		if (!IsStuckInAnyPlayer(entity))
+		{
+			g_bPlayerDoUnstuckChecks[entity] = false;
+			SetEntityCollisionGroup(entity, COLLISION_GROUP_PLAYER);
+		}
+	}
+	
+	return Plugin_Continue;
+}
+
 public Action Hook_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
 	float damageForce[3], float damagePosition[3], int damageCustom)
 {
@@ -6973,18 +6980,27 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				if (enemy != victim) // enemy == victim means direct damage was dealt, otherwise this is splash
 				{
 					proc *= 0.5; // reduced proc coefficient for splash damage
+					if (attacker != victim && IsValidEntity2(enemy) && IsValidClient(attacker) 
+						&& PlayerHasItem(attacker, ItemSoldier_HawkWarrior) && CanUseCollectorItem(attacker, ItemSoldier_HawkWarrior))
+					{
+						// increase splash damage
+						damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_HawkWarrior, 0);
+					}
 				}
 				else if (validWeapon)
 				{
-					if (attacker != victim && victimIsClient && !IsBoss(victim) && !IsPlayerStunned(victim)
+					if (attacker != victim
 						&& PlayerHasItem(attacker, ItemSoldier_Compatriot) 
 						&& CanUseCollectorItem(attacker, ItemSoldier_Compatriot))
 					{
 						damage *= 1.0 + CalcItemMod(attacker, ItemSoldier_Compatriot, 2);
-						float chance = CalcItemMod_Hyperbolic(attacker, ItemSoldier_Compatriot, 0);
-						if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
+						if (victimIsClient && !IsBoss(victim) && !IsPlayerStunned(victim))
 						{
-							TF2_StunPlayer(victim, GetItemMod(ItemSoldier_Compatriot, 1), _, TF_STUNFLAG_BONKSTUCK, attacker);
+							float chance = CalcItemMod_Hyperbolic(attacker, ItemSoldier_Compatriot, 0);
+							if (RandChanceFloatEx(attacker, 0.0, 1.0, chance))
+							{
+								TF2_StunPlayer(victim, GetItemMod(ItemSoldier_Compatriot, 1), _, TF_STUNFLAG_BONKSTUCK, attacker);
+							}
 						}
 					}
 				}
