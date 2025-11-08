@@ -392,9 +392,9 @@ static void SwitchWeapon(RF2_MajorShocksWeaponStateAction action, RF2_MajorShock
 			actor.MaxClipSize = 15;
 			actor.FireRate = 0.2;
 			actor.ReloadRate = 0.12;
-			actor.Damage = 20.0;
+			actor.Damage = 25.0;
 			actor.Deviation = 2.0;
-			actor.ProjectileSpeed = 1200.0;
+			actor.ProjectileSpeed = 1500.0;
 		}
 
 		case MajorShocks_WeaponType_GigaMelee:

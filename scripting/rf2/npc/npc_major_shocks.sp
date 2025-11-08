@@ -730,6 +730,7 @@ methodmap RF2_MajorShocks < RF2_NPC_Base
 				this.Generators.Push(EntIndexToEntRef(amp.index));
 				amp.Teleport(pos);
 				amp.Spawn();
+				TE_TFParticle("eyeboss_tp_player", pos);
 			}
 		}
 		
