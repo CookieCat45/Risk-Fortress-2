@@ -985,14 +985,12 @@
     
     "SkipWaitTitle"
     {
-        "#format"   "{1:N}"
-        "en"        "Skip waiting for players? ({1})"
+        "en"        "Skip waiting for players?"
     }
     
     "ExtendWaitTitle"
     {
-        "#format"   "{1:N}"
-        "en"        "Extend waiting for players? ({1})"
+        "en"        "Extend waiting for players?"
     }
     
     "SurvivorQueueTitle"
