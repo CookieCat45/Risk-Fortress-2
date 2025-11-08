@@ -34,6 +34,7 @@ void LoadCommandsAndCvars()
 	RegAdminCmd("rf2_load_enemies", Command_LoadEnemies, ADMFLAG_ROOT, "Loads an enemy configuration file.");
 	RegAdminCmd("rf2_load_bosses", Command_LoadBosses, ADMFLAG_ROOT, "Loads a boss configuration file.");
 	RegAdminCmd("rf2_changeteam", Command_ChangeTeam, ADMFLAG_SLAY);
+	RegAdminCmd("rf2_testvote", Command_TestVote, ADMFLAG_ROOT);
 	
 	RegConsoleCmd("rf2_settings", Command_ClientSettings, "Configure your personal settings.");
 	RegConsoleCmd("rf2_items", Command_Items, "Opens the Survivor item management menu. TAB+E can be used to open this menu as well.");
@@ -2522,5 +2523,14 @@ public Action Command_ChangeTeam(int client, int args)
 		}
 	}
 	
+	return Plugin_Handled;
+}
+
+public Action Command_TestVote(int client, int args)
+{
+	if (!RF2_IsEnabled())
+		return Plugin_Handled;
+		
+	StartDifficultyVote();
 	return Plugin_Handled;
 }

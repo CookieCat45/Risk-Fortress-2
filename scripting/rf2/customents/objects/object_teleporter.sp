@@ -176,9 +176,9 @@ methodmap RF2_Object_Teleporter < RF2_Object_Base
 		
 		if (final)
 		{
-			vote.AddItem("final_area", "FinalAreaOption");
-			vote.AddItem("normal_path", "LoopOption");
-			vote.AddItem("nowhere", "NowhereOption");
+			vote.AddItem("final_area", "Travel towards the large industrial building in the distance");
+			vote.AddItem("normal_path", "Continue on the normal path");
+			vote.AddItem("nowhere", "I'm not going anywhere yet");
 		}
 		else
 		{

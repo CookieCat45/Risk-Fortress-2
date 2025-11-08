@@ -2034,9 +2034,9 @@ public void Timer_DifficultyVote(Handle timer)
 void StartDifficultyVote()
 {
 	Menu menu = new Menu(Menu_DifficultyVote, MENU_ACTIONS_DEFAULT|MenuAction_Display|MenuAction_DisplayItem);
-	menu.AddItem("0", "ScrapHint");
-	menu.AddItem("1", "IronHint");
-	menu.AddItem("2", "SteelHint");
+	menu.AddItem("0", "Scrap (Easy)");
+	menu.AddItem("1", "Iron (Normal)");
+	menu.AddItem("2", "Steel (Hard)");
 	bool achievement = true;
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -2054,7 +2054,7 @@ void StartDifficultyVote()
 	
 	if (achievement || GetRandomInt(1, 20) == 1 || g_cvAlwaysAllowTitaniumVoting.BoolValue || DoesSteelVictoryFlagExist())
 	{
-		menu.AddItem("3", "TitaniumHint");
+		menu.AddItem("3", "Titanium (Expert)");
 	}
 	
 	int clients[MAXPLAYERS] = {-1, ...};

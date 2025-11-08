@@ -382,6 +382,21 @@
 		"en"		"I'm not going anywhere yet"
 	}
 	
+	"Travel towards the large industrial building in the distance"
+	{
+		"en"		"Travel towards the large industrial building in the distance"
+	}
+	
+	"Continue on the normal path"
+	{
+		"en"		"Continue on the normal path"
+	}
+	
+	"I'm not going anywhere yet"
+	{
+		"en"		"I'm not going anywhere yet"
+	}
+	
 	"DepartNow"
 	{
 		"en"		"Depart now?"
@@ -1482,6 +1497,31 @@
 	}
 	
 	"AustraliumHint"
+	{
+		"en"		"AUSTRALIUM (MASTER)"
+	}
+	
+	"Scrap (Easy)"
+	{
+		"en"		"Scrap (Easy)"
+	}
+	
+	"Iron (Normal)"
+	{
+		"en"		"Iron (Normal)"
+	}
+	
+	"Steel (Hard)"
+	{
+		"en"		"Steel (Hard)"
+	}
+	
+	"Titanium (Expert)"
+	{
+		"en"		"Titanium (Expert)"
+	}
+	
+	"AUSTRALIUM (MASTER)"
 	{
 		"en"		"AUSTRALIUM (MASTER)"
 	}
