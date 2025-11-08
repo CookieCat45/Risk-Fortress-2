@@ -4692,7 +4692,7 @@ public Action Timer_PlayerTimer(Handle timer)
 			
 			// Regen rune does nothing outside of Mannpower, make it triple health regen and decrease health regen freeze time
 			bool regenRune = TF2_IsPlayerInCondition(i, TFCond_RuneRegen);
-			g_flPlayerHealthRegenTime[i] -= regenRune && !IsBoss(i) ? 0.3 : 0.1;
+			g_flPlayerHealthRegenTime[i] -= regenRune && !IsEnemy(i) ? 0.3 : 0.1;
 			if (g_flPlayerHealthRegenTime[i] <= 0.0)
 			{
 				g_flPlayerHealthRegenTime[i] = 0.0;
