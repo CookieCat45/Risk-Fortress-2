@@ -863,6 +863,21 @@ static Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 static Action OnTakeDamageAlive(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon,
 		float damageForce[3], float damagePosition[3], int damagecustom)
 {
+	if (damagetype & DMG_CRIT)
+    {
+		bool backstab = IsValidClient(attacker) && IsValidEntity2(weapon) && TF2_GetPlayerClass(attacker) == TFClass_Spy
+            && GetPlayerWeaponSlot(attacker, WeaponSlot_Melee) == weapon;
+            
+        if (!backstab)
+        {
+            // 50% resistance to crits
+			float baseDamage = damage/3.0;
+			float critDamage = damage-baseDamage;
+			damage = baseDamage + (critDamage*0.5);
+			return Plugin_Changed;
+        }
+    }
+	
 	return Plugin_Continue;
 }
 
