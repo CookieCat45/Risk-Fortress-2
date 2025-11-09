@@ -1280,7 +1280,8 @@ void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=D
 		}
 	}
 	
-	if (PlayerHasItem(attacker, ItemSoldier_HawkWarrior) && CanUseCollectorItem(attacker, ItemSoldier_HawkWarrior))
+	if (IsValidEntity2(inflictor)
+		&& PlayerHasItem(attacker, ItemSoldier_HawkWarrior) && CanUseCollectorItem(attacker, ItemSoldier_HawkWarrior))
 	{
 		char inflictorClassname[64];
 		GetEntityClassname(inflictor, inflictorClassname, sizeof(inflictorClassname));

@@ -63,7 +63,8 @@ static int Update(RF2_MajorShocksWeaponStateAction action, RF2_MajorShocks actor
 				actor.IsReloading = true;
 			}
 			
-			if (!actor.IsReloading && actor.IsTargetValid() && IsLOSClear(actor.index, actor.Target) && actor.FireTime <= 0.0)
+			if (!actor.IsReloading && IsValidEntity2(actor.Item.index) && actor.IsTargetValid() 
+				&& IsLOSClear(actor.index, actor.Target) && actor.FireTime <= 0.0)
 			{
 				Activity activity = ACT_MP_ATTACK_STAND_PRIMARY;
 				actor.FireTime = actor.FireRate;
