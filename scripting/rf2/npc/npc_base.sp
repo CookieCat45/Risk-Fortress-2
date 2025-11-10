@@ -703,12 +703,12 @@ static void OnTakeDamageAlivePost(int victim, int attacker, int inflictor, float
 static Action Timer_UnstuckCheck(Handle timer, int entity)
 {
 	RF2_NPC_Base npc = RF2_NPC_Base(EntRefToEntIndex(entity));
-	if (!npc.IsValid() || !npc.DoUnstuckChecks)
+	if (!npc.IsValid())
 	{
 		return Plugin_Stop;
 	}
-
-	if (!npc.Locomotion.IsAttemptingToMove())
+	
+	if (!npc.DoUnstuckChecks || !npc.Locomotion.IsAttemptingToMove())
 		return Plugin_Continue;
 	
 	bool stuck;

@@ -16,6 +16,10 @@
     {
         "en"    "Shield Crystal"
     }
+    "rf2_npc_uber_generator"
+    {
+        "en"    "Uber Generator"
+    }
     "rf2_npc_major_shocks"
     {
         "en"    "Major Shocks"

@@ -1058,8 +1058,8 @@ int GetEntityDisplayName(int entity, char[] buffer, int size, int client=LANG_SE
 		switch (RF2_TankBoss(entity).Type)
 		{
 			case TankType_Normal: namePhrase = "Tank";
-			case TankType_Badass: namePhrase = "Badass Tank";
-			case TankType_SuperBadass: namePhrase = "Super Badass Tank";
+			case TankType_Badass: namePhrase = "BadassTank";
+			case TankType_SuperBadass: namePhrase = "SuperBadassTank";
 		}
 	}
 	else if (strcmp2(classname, "tf_zombie"))

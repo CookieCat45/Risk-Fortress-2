@@ -511,6 +511,12 @@
 		"en"		"{1} has found: {2}"
 	}
 	
+	"PingItem"
+	{
+		"#format"	"{1:N},{2:s}"
+		"en"		"{1} has found: {2}"
+	}
+	
 	"PingObjectWorkbench"
 	{
 		"#format"	"{1:N},{2:s}"
