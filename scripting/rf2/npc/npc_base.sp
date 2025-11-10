@@ -57,6 +57,7 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 			.DefineFloatField("m_flBaseBackstabDamage")
 			.DefineFloatField("m_flLastUnstuckTime")
 			.DefineFloatField("m_flDormantTime")
+			.DefineFloatField("m_flUnstuckDist")
 			.DefineVectorField("m_vecStuckPos")
 			.DefineIntField("m_iDefendTeam", _, "defendteam") // we won't target this team
 			.DefineInputFunc("DoAction", InputFuncValueType_String, Input_DoAction)
@@ -214,10 +215,23 @@ methodmap RF2_NPC_Base < CBaseCombatCharacter
 		{
 			return this.GetPropFloat(Prop_Data, "m_flDormantTime");
 		}
-
+		
 		public set(float value)
 		{
 			this.SetPropFloat(Prop_Data, "m_flDormantTime", value);
+		}
+	}
+	
+	property float UnstuckDist
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flUnstuckDist");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flUnstuckDist", value);
 		}
 	}
 	
@@ -562,6 +576,7 @@ static void OnCreate(RF2_NPC_Base npc)
 	npc.AddFlag(FL_NPC);
 	npc.DefendTeam = -1;
 	npc.DoUnstuckChecks = true;
+	npc.UnstuckDist = 64.0;
 	npc.DisableFriendlyFire = true;
 	npc.BaseBackstabDamage = 750.0;
 	npc.Path = PathFollower(INVALID_FUNCTION, FilterIgnoreActors, FilterOnlyActors);
@@ -718,7 +733,7 @@ static Action Timer_UnstuckCheck(Handle timer, int entity)
 	npc.SetStuckPos(pos);
 	npc.BaseNpc.GetBodyMins(mins);
 	npc.BaseNpc.GetBodyMaxs(maxs);
-	if (GetVectorDistance(oldStuckPos, pos, true) <= 64.0)
+	if (GetVectorDistance(oldStuckPos, pos, true) <= npc.UnstuckDist)
 	{
 		npc.DormantTime += 0.5;
 	}

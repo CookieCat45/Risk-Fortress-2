@@ -714,7 +714,7 @@ methodmap RF2_MajorShocks < RF2_NPC_Base
 	public void DoSecondPhase()
 	{
 		this.Phase = MajorShocks_Phase_Uber;
-		this.DoUnstuckChecks = false;
+		this.UnstuckDist = 24.0;
 		char name[32];
 		int entity = INVALID_ENT;
 		RF2_MajorShocksUberGenerator amp;
@@ -749,7 +749,7 @@ methodmap RF2_MajorShocks < RF2_NPC_Base
 	public void DoFinalPhase()
 	{
 		this.Phase = MajorShocks_Phase_Final;
-		this.DoUnstuckChecks = true;
+		this.UnstuckDist = 64.0;
 		int relay = FindEntityByName("boss_thirdphase");
 		if (relay != INVALID_ENT)
 		{
