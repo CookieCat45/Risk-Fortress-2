@@ -1126,8 +1126,6 @@ bool PingObjects(int client)
 					ShowAnnotation(i, pos, text, 8.0, INVALID_ENT, item.index);
 				}
 			}
-			
-			ShowAnnotationToAll(pos, "%t", 8.0, INVALID_ENT, item.index, "PingObject", client);
 		}
 	}
 	
