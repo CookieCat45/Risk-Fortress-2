@@ -7963,7 +7963,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (raidBossBackstab)
 	{
-		damage = fmin(damage, float(npc.MaxHealth)*0.035);
+		damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*0.035);
 	}
 	
 	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;
