@@ -8,10 +8,13 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.7.4-DEVONLY"
+#define PLUGIN_VERSION "1.7.5-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.7.4"
+#define PLUGIN_VERSION "1.7.5"
 #endif
+
+#undef MAXPLAYERS
+#define MAXPLAYERS 101+2
 
 #include <rf2>
 #include "rf2/defs.sp"
@@ -7315,7 +7318,7 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 
 		damage = fmax(1.0, damage);
 	}
-
+	
 	if (IsValidClient(attacker))
 	{
 		switch (damageCustom)
@@ -7338,19 +7341,6 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 					}
 				}
 			}
-		}
-	}
-
-	// Raid bosses never take more than 3.5% of their max HP from a backstab
-	if (damageType & DMG_MELEE && damageType & DMG_CRIT && damageType & DMG_SLASH && validWeapon && IsValidClient(attacker) && IsPlayerSurvivor(attacker) 
-		&& !IsPlayerMinion(attacker) && RF2_NPC_Base(victim).IsValid() && RF2_NPC_Base(victim).IsRaidBoss() && RF2_NPC_Base(victim).CanBeBackstabbed
-		&& TF2_GetPlayerClass(attacker) == TFClass_Spy)
-	{
-		static char weaponClass[128];
-		GetEntityClassname(weapon, weaponClass, sizeof(weaponClass));
-		if (strcmp2(weaponClass, "tf_weapon_knife"))
-		{
-			damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*0.035);
 		}
 	}
 
@@ -7429,6 +7419,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	}
 
 	// backstabs first, before any damage modifiers get applied
+	bool raidBossBackstab;
 	if (damageCustom == TF_CUSTOM_BACKSTAB)
 	{
 		if (IsPlayerSurvivor(victim) && !IsPlayerMinion(victim))
@@ -7481,6 +7472,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				if (npc.IsRaidBoss())
 				{
 					// cooldown for raid boss NPCs so spies don't shred them instantly
+					raidBossBackstab = true;
 					EmitSoundToClient(attacker, "player/spy_shield_break.wav", _, _, SNDLEVEL_TRAFFIC, SND_NOFLAGS, 0.7, 100);
 					SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", GetGameTime() + 2.0);
 					SetEntPropFloat(attacker, Prop_Send, "m_flNextAttack", GetGameTime() + 2.0);
@@ -7969,7 +7961,11 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		damage = fmin(damage, maxDmg);
 	}
 	
-	damage = fmin(damage, 2147483647.0);
+	if (raidBossBackstab)
+	{
+		damage = fmin(damage, float(npc.MaxHealth)*0.035);
+	}
+	
 	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;
 }
 
