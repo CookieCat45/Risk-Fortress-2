@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.7.5-DEVONLY"
+#define PLUGIN_VERSION "1.7.6-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.7.5"
+#define PLUGIN_VERSION "1.7.6"
 #endif
 
 #undef MAXPLAYERS

@@ -2,7 +2,7 @@
 {
     "WaitingForPlayers"
     {
-        "#format"   "{1:d},{1:d}"
+        "#format"   "{1:d},{2:d}"
         "en"        "Players Connected: {1}/{2}"
     }
     
