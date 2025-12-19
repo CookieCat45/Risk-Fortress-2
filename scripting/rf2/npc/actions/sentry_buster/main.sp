@@ -46,6 +46,8 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	actor.GetAbsOrigin(pos);
 	actor.WorldSpaceCenter(worldSpace);
 	int target = actor.Target;
+	bool followingOwner;
+	int owner = INVALID_ENT;
 	if (actor.Team == TEAM_SURVIVOR)
 	{
 		if (!IsValidEntity2(target) || IsValidClient(target) && !IsPlayerAlive(target) || GetEntTeam(target) == TEAM_SURVIVOR)
@@ -73,21 +75,24 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 			}
 		}
 		
+		owner = GetEntPropEnt(actor, Prop_Data, "m_hOwnerEntity");
 		if (!IsValidEntity2(actor.Target) || IsValidClient(actor.Target) && !IsPlayerAlive(actor.Target))
 		{
-			int owner = GetEntPropEnt(actor, Prop_Data, "m_hOwnerEntity");
 			if (IsValidEntity2(owner))
 			{
 				actor.Target = owner;
 			}
-			
+		}
+		
+		target = actor.Target;
+		if (!IsValidEntity2(target) || target == owner)
+		{
+			followingOwner = target == owner && IsValidEntity2(owner);
 			if (GetGameTime() >= actor.SelfDetonateTime)
 			{
 				return action.SuspendFor(RF2_SentryBusterDetonateAction(), "KABOOM");
 			}
 		}
-		
-		target = actor.Target;
 	}
 	else if (!IsValidEntity2(target))
 	{
@@ -130,10 +135,10 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	float targetPos[3];
 	if (IsBuilding(target) && GetEntProp(target, Prop_Send, "m_bCarried"))
 	{
-		int owner = GetEntPropEnt(target, Prop_Send, "m_hBuilder");
-		if (IsValidEntity2(owner))
+		int builder = GetEntPropEnt(target, Prop_Send, "m_hBuilder");
+		if (IsValidEntity2(builder))
 		{
-			target = owner;
+			target = builder;
 		}
 	}
 	
@@ -145,6 +150,23 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 			&& vision.IsLineOfSightClearToEntity(target) && actor.LastUnstuckTime+1.0 < GetGameTime())
 		{
 			return action.SuspendFor(RF2_SentryBusterDetonateAction(), "KABOOM");
+		}
+	}
+	
+	if (followingOwner)
+	{
+		float dist = DistBetween(actor.index, owner);
+		if (dist < 100.0)
+		{
+			int sequence = actor.GetProp(Prop_Send, "m_nSequence");
+			int idleSequence = actor.GetProp(Prop_Data, "m_idleSequence");
+			if (idleSequence != -1 && sequence != idleSequence)
+			{
+				actor.ResetSequence(idleSequence);
+			}
+			
+			loco.Stop();
+			return action.Continue();
 		}
 	}
 	
@@ -193,9 +215,7 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 	
 	bool onGround = (actor.GetFlags() & FL_ONGROUND) != 0;
 	float speed = loco.GetGroundSpeed();
-	
 	int sequence = actor.GetProp(Prop_Send, "m_nSequence");
-
 	if (speed < 0.01)
 	{
 		int idleSequence = actor.GetProp(Prop_Data, "m_idleSequence");

@@ -82,7 +82,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 				RemoveEntity(buster.HealthText);
 			}
 			
-			buster.SetPropFloat(Prop_Data, "m_flSelfDetonateTime", GetGameTime()+20.0);
+			buster.SetPropFloat(Prop_Data, "m_flSelfDetonateTime", GetGameTime()+25.0);
 			return buster;
 		}
 		
