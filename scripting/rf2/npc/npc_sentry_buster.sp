@@ -207,7 +207,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 	{
 		public get()
 		{
-			return this.SetPropFloat(Prop_Data, "m_flSelfDetonateTime");
+			return this.GetPropFloat(Prop_Data, "m_flSelfDetonateTime");
 		}
 		
 		public set(float value)
