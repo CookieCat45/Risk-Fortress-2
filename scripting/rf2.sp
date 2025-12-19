@@ -1157,6 +1157,10 @@ public void OnMapStart()
 			}
 		}
 		
+		if (g_hHudTimer)
+			delete g_hHudTimer;
+		
+		g_hHudTimer = CreateTimer(0.1, Timer_PlayerHud, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 		if (!g_bChangeDetected)
 			g_flNextAutoReloadCheckTime = GetTickedTime()+1.0;
 	}
@@ -1956,9 +1960,6 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 	if (g_hPlayerTimer)
 		delete g_hPlayerTimer;
 	
-	if (g_hHudTimer)
-		delete g_hHudTimer;
-	
 	if (g_hDifficultyTimer)
 		delete g_hDifficultyTimer;
 	
@@ -1966,7 +1967,6 @@ public Action OnRoundStart(Event event, const char[] eventName, bool dontBroadca
 		delete g_hItemTimer;
 	
 	g_hPlayerTimer = CreateTimer(0.1, Timer_PlayerTimer, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-	g_hHudTimer = CreateTimer(0.1, Timer_PlayerHud, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	g_hDifficultyTimer = CreateTimer(1.0, Timer_Difficulty, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	g_hItemTimer = CreateTimer(0.1, Timer_UpdateItems, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	StopMusicTrackAll();
@@ -3973,7 +3973,7 @@ public Action Timer_PlayerHud(Handle timer)
 				FormatEx(text, sizeof(text), "%t", "WaitingForPlayers", connectedPlayers, totalPlayers);
 			}
 			
-			SetHudTextParams(-1.0, -1.3, 0.15, color[0], color[1], color[2], color[3]);
+			SetHudTextParams(-1.0, 0.4, 0.15, color[0], color[1], color[2], color[3]);
 			ShowSyncHudText(i, g_hMainHudSync, text);
 			continue;
 		}
