@@ -353,7 +353,7 @@ static void SwitchWeapon(RF2_MajorShocksWeaponStateAction action, RF2_MajorShock
 			actor.ReloadRate = 0.0016;
 			actor.Deviation = 5.0;
 			actor.ProjectileSpeed = 440.0;
-			actor.Damage = 90.0;
+			actor.Damage = 60.0;
 			actor.BlastRadius = 128.0;
 		}
 
@@ -365,7 +365,7 @@ static void SwitchWeapon(RF2_MajorShocksWeaponStateAction action, RF2_MajorShock
 			actor.MaxClipSize = 17;
 			actor.FireRate = 0.0016;
 			actor.ReloadRate = 0.12;
-			actor.Damage = 50.0;
+			actor.Damage = 30.0;
 			actor.ProjectileSpeed = 1540.0;
 			actor.Deviation = 120.0;
 			actor.BlastRadius = 128.0;
@@ -381,7 +381,7 @@ static void SwitchWeapon(RF2_MajorShocksWeaponStateAction action, RF2_MajorShock
 			actor.ReloadRate = 0.0016;
 			actor.Deviation = 0.0;
 			actor.ProjectileSpeed = 1100.0;
-			actor.Damage = 180.0;
+			actor.Damage = 200.0;
 			actor.BlastRadius = 256.0;
 		}
 
@@ -393,7 +393,7 @@ static void SwitchWeapon(RF2_MajorShocksWeaponStateAction action, RF2_MajorShock
 			actor.MaxClipSize = 15;
 			actor.FireRate = 0.2;
 			actor.ReloadRate = 0.12;
-			actor.Damage = 25.0;
+			actor.Damage = 40.0;
 			actor.Deviation = 2.0;
 			actor.ProjectileSpeed = 1500.0;
 		}

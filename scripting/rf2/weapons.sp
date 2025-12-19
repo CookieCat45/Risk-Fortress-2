@@ -129,110 +129,111 @@ void LoadWeapons()
 		return;
 	}
 	
+	// Load custom weapons (if any)
 	char path[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, path, sizeof(path), "%s/custom_weapons", ConfigPath);
 	DirectoryListing directory = OpenDirectory(path);
-	if (directory)
+	if (!directory)
+		return;
+		
+	char file[128], classStr[32], fullPath[PLATFORM_MAX_PATH], key[32], str[128], script[PLATFORM_MAX_PATH];
+	char attrKey[256];
+	FileType type;
+	int wepCount[TF_CLASSES];
+	while (directory.GetNext(file, sizeof(file), type))
 	{
-		char file[128], classStr[32], fullPath[PLATFORM_MAX_PATH], key[32], str[128], script[PLATFORM_MAX_PATH];
-		char attrKey[256];
-		FileType type;
-		int wepCount[TF_CLASSES];
-		while (directory.GetNext(file, sizeof(file), type))
+		if (type != FileType_File)
+			continue;
+		
+		TFClassType classType;
+		for (int i = 1; i <= 9; i++)
 		{
-			if (type != FileType_File)
-				continue;
-			
-			TFClassType classType;
-			for (int i = 1; i <= 9; i++)
+			TF2_GetClassString(view_as<TFClassType>(i), classStr, sizeof(classStr), true);
+			if (StrContains(file, classStr, false) == 0)
 			{
-				TF2_GetClassString(view_as<TFClassType>(i), classStr, sizeof(classStr), true);
-				if (StrContains(file, classStr, false) == 0)
+				classType = view_as<TFClassType>(i);
+				break;
+			}
+		}
+		
+		if (classType == TFClass_Unknown)
+		{
+			LogError("Custom weapons file '%s' does not correspond to any valid class.", file);
+			continue;
+		}
+		
+		weaponKey = new KeyValues("weapon");
+		if (!weaponKey)
+			continue;
+		
+		FormatEx(fullPath, sizeof(fullPath), "%s/%s", path, file);
+		if (!weaponKey.ImportFromFile(fullPath))
+		{
+			delete weaponKey;
+			continue;
+		}
+
+		PrintToServer("[RF2] Loading custom weapon file: %s", file);
+		StringMap map = new StringMap();
+		weaponKey.GetString("classname", str, sizeof(str), "tf_weapon_bat");
+		map.SetString("classname", str);
+		weaponKey.GetString("targetname", str, sizeof(str));
+		map.SetString("targetname", str);
+		map.SetValue("index", weaponKey.GetNum("index"));
+		map.SetValue("is_rare", weaponKey.GetNum("is_rare"));
+		map.SetValue("disable", weaponKey.GetNum("disable"));
+		map.SetValue("strip_attributes", weaponKey.GetNum("strip_attributes"));
+		if (weaponKey.JumpToKey("attributes"))
+		{
+			firstKey = true;
+			while (firstKey ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
+			{
+				firstKey = false;
+				weaponKey.GetSectionName(attrKey, sizeof(attrKey));
+				if (!TF2Attrib_IsValidAttributeName(attrKey))
 				{
-					classType = view_as<TFClassType>(i);
+					LogError("%s: Invalid attribute '%s'", file, attrKey);
+					continue;
+				}
+				
+				map.SetValue(attrKey, weaponKey.GetFloat(NULL_STRING));
+			}
+			
+			weaponKey.GoBack();
+			weaponKey.GoBack();
+		}
+		
+		if (weaponKey.JumpToKey("scripts"))
+		{
+			int i = 1;
+			for ( ;; )
+			{
+				IntToString(i, key, sizeof(key));
+				weaponKey.GetString(key, script, sizeof(script));
+				if (script[0])
+				{
+					Format(key, sizeof(key), "SCRIPT_%d", i);
+					map.SetString(key, script);
+					i++;
+				}
+				else
+				{
 					break;
 				}
 			}
 			
-			if (classType == TFClass_Unknown)
-			{
-				LogError("Custom weapons file '%s' does not correspond to any valid class.", file);
-				continue;
-			}
-			
-			weaponKey = CreateKeyValues("weapon");
-			if (!weaponKey)
-				continue;
-			
-			FormatEx(fullPath, sizeof(fullPath), "%s/%s", path, file);
-			if (!weaponKey.ImportFromFile(fullPath))
-			{
-				delete weaponKey;
-				continue;
-			}
-
-			PrintToServer("[RF2] Loading custom weapon file: %s", file);
-			StringMap map = new StringMap();
-			weaponKey.GetString("classname", str, sizeof(str), "tf_weapon_bat");
-			map.SetString("classname", str);
-			weaponKey.GetString("targetname", str, sizeof(str));
-			map.SetString("targetname", str);
-			map.SetValue("index", weaponKey.GetNum("index"));
-			map.SetValue("is_rare", weaponKey.GetNum("is_rare"));
-			map.SetValue("disable", weaponKey.GetNum("disable"));
-			map.SetValue("strip_attributes", weaponKey.GetNum("strip_attributes"));
-			if (weaponKey.JumpToKey("attributes"))
-			{
-				firstKey = true;
-				while (firstKey ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
-				{
-					firstKey = false;
-					weaponKey.GetSectionName(attrKey, sizeof(attrKey));
-					if (!TF2Attrib_IsValidAttributeName(attrKey))
-					{
-						LogError("%s: Invalid attribute '%s'", file, attrKey);
-						continue;
-					}
-					
-					map.SetValue(attrKey, weaponKey.GetFloat(NULL_STRING));
-				}
-				
-				weaponKey.GoBack();
-				weaponKey.GoBack();
-			}
-			
-			if (weaponKey.JumpToKey("scripts"))
-			{
-				int i = 1;
-				for ( ;; )
-				{
-					IntToString(i, key, sizeof(key));
-					weaponKey.GetString(key, script, sizeof(script));
-					if (script[0])
-					{
-						Format(key, sizeof(key), "SCRIPT_%d", i);
-						map.SetString(key, script);
-						i++;
-					}
-					else
-					{
-						break;
-					}
-				}
-				
-				weaponKey.GoBack();
-			}
-			
-			FormatEx(key, sizeof(key), "%s%d", classStr, wepCount[classType]);
-			map.SetString("key", key); // for easier access to the key name since we'll need it
-			g_hCustomWeapons.SetValue(key, map.Clone());
-			wepCount[classType]++;
-			delete map;
-			delete weaponKey;
+			weaponKey.GoBack();
 		}
 		
-		delete directory;
+		FormatEx(key, sizeof(key), "%s%d", classStr, wepCount[classType]);
+		map.SetString("key", key); // for easier access to the key name since we'll need it
+		g_hCustomWeapons.SetValue(key, map.Clone());
+		wepCount[classType]++;
+		delete map;
+		delete weaponKey;
 	}
+	
+	delete directory;
 }
 
 static bool g_bSetStringAttributes;

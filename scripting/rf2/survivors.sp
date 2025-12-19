@@ -1249,10 +1249,14 @@ void ForfeitItemsByInvIndex(int index)
 				{
 					chosenItem = itemPool.Get(0);
 				}
-
+				
 				itemPool.Erase(0);
 				GiveItem(poorestPlayer, chosenItem);
 				itemCounts[poorestPlayer][i]++;
+			}
+			else
+			{
+				break;
 			}
 		}
 		

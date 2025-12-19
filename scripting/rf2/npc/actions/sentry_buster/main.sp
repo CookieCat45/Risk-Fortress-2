@@ -62,6 +62,14 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 				{
 					actor.Target = newTarget;
 				}
+				else
+				{
+					newTarget = GetNearestEntity(worldSpace, "tf_zombie", 0.0, 1200.0, 5);
+					if (IsValidEntity2(newTarget))
+					{
+						actor.Target = newTarget;
+					}
+				}
 			}
 		}
 		
@@ -71,6 +79,11 @@ static int Update(RF2_SentryBusterMainAction action, RF2_SentryBuster actor, flo
 			if (IsValidEntity2(owner))
 			{
 				actor.Target = owner;
+			}
+			
+			if (GetGameTime() >= actor.SelfDetonateTime)
+			{
+				return action.SuspendFor(RF2_SentryBusterDetonateAction(), "KABOOM");
 			}
 		}
 		

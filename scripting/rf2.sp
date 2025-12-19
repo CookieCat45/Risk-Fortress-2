@@ -3950,6 +3950,34 @@ public Action Timer_PlayerHud(Handle timer)
 			continue;
 		
 		SetGlobalTransTarget(i);
+		if (g_bWaitingForPlayers)
+		{
+			static char text[128];
+			static int color[4];
+			int totalPlayers = GetTotalHumans(false);
+			int connectedPlayers = GetTotalHumans(true);
+			if (connectedPlayers >= totalPlayers)
+			{
+				color[0] = 100;
+				color[1] = 255;
+				color[2] = 255;
+				color[3] = 255;
+				FormatEx(text, sizeof(text), "%t", "WaitingForPlayersReady");
+			}
+			else
+			{
+				color[0] = 255;
+				color[1] = 255;
+				color[2] = 255;
+				color[3] = 255;
+				FormatEx(text, sizeof(text), "%t", "WaitingForPlayers", connectedPlayers, totalPlayers);
+			}
+			
+			SetHudTextParams(-1.0, -1.3, 0.15, color[0], color[1], color[2], color[3]);
+			ShowSyncHudText(i, g_hMainHudSync, text);
+			continue;
+		}
+		
 		if (g_bGameOver || g_bGameWon)
 		{ 
 			static bool scoreCalculated;
@@ -6340,6 +6368,9 @@ void CreateSniperLaser(int entity, float rgb[3]=NULL_VECTOR)
 	if (!IsValidClient(client))
 		return;
 	
+	if (g_bPlayerRifleAutoFire[client])
+		return;
+	
 	int attachment = LookupEntityAttachment(client, "eyeglow_R");
 	if (attachment == 0)
 		return;
@@ -7963,7 +7994,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	if (raidBossBackstab)
 	{
-		damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*0.035);
+		damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*0.06);
 	}
 	
 	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;

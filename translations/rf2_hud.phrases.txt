@@ -1,5 +1,16 @@
 "Phrases"
 {
+    "WaitingForPlayers"
+    {
+        "#format"   "{1:d},{1:d}"
+        "en"        "Players Connected: {1}/{2}"
+    }
+    
+    "WaitingForPlayersReady"
+    {
+        "en"        "Ready to Start\nType /rf2_skipwait"
+    }
+    
     "SurvivorHudText"
     {
         "#format"   "{1:d},{2:s},{3:02d},{4:02d},{5:d},{6:d},{7:.0f},{8:.0f},{9:s},{10:t},{11:s}"

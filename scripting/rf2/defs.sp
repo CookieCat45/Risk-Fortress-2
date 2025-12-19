@@ -14,11 +14,6 @@
 #define WAIT_TIME_DEFAULT 150 // Default Waiting For Players time
 #define PING_COOLDOWN 1.2
 #define OFF_THE_MAP 		{-16384.0, -16384.0, -16384.0}
-#define FFADE_IN			0x0001		// Just here so we don't pass 0 into the function
-#define FFADE_OUT			0x0002		// Fade out (not in)
-#define FFADE_MODULATE		0x0004		// Modulate (don't blend)
-#define FFADE_STAYOUT		0x0008		// ignores the duration, stays faded out until new ScreenFade message received
-#define FFADE_PURGE			0x0010		// Purges all other fades, replacing them with this one
 #define SCREENFADE_FRACBITS	9
 #define	DifficultyFactor_Scrap 0.8
 #define	DifficultyFactor_Iron 1.0
@@ -48,6 +43,12 @@ enum
 #define TF_CUSTOM_KRAMPUS_MELEE 84
 #define TF_CUSTOM_KRAMPUS_RANGED 85
 #define TF_CUSTOM_TAUNT_ENGINEER_TRICKSHOT 86
+
+#define FFADE_IN			0x0001		// Just here so we don't pass 0 into the function
+#define FFADE_OUT			0x0002		// Fade out (not in)
+#define FFADE_MODULATE		0x0004		// Modulate (don't blend)
+#define FFADE_STAYOUT		0x0008		// ignores the duration, stays faded out until new ScreenFade message received
+#define FFADE_PURGE			0x0010		// Purges all other fades, replacing them with this one
 
 enum
 {
@@ -184,6 +185,19 @@ enum // Move collide types
 	MOVECOLLIDE_FLY_SLIDE // Entity slides along surfaces (no bounce) - applies friciton (adjusts velocity)
 };
 
+enum
+{
+	WeaponSlot_Primary,
+	WeaponSlot_Secondary,
+	WeaponSlot_Melee,
+	WeaponSlot_PDA,
+	WeaponSlot_PDA2,
+	WeaponSlot_Builder,
+	WeaponSlot_Action = 9, // Action item, e.g. Spellbook Magazine or Grappling Hook (The rest of the slots are for wearables and taunts)
+	
+	WeaponSlot_DisguiseKit = WeaponSlot_PDA,
+	WeaponSlot_InvisWatch = WeaponSlot_PDA2,
+};
 
 // Configs --------------------------------------------------------------------------------------------------------------------------------------------
 #define ConfigPath "configs/rf2"
@@ -336,20 +350,6 @@ enum
 #define MAX_STATIC_ATTRIBUTES 16
 #define MAX_ATTRIBUTE_STRING_LENGTH 512
 #define TFObjectMode_Disposable TFObjectMode_Exit
-
-enum
-{
-	WeaponSlot_Primary,
-	WeaponSlot_Secondary,
-	WeaponSlot_Melee,
-	WeaponSlot_PDA,
-	WeaponSlot_PDA2,
-	WeaponSlot_Builder,
-	WeaponSlot_Action = 9, // Action item, e.g. Spellbook Magazine or Grappling Hook (The rest of the slots are for wearables and taunts)
-	
-	WeaponSlot_DisguiseKit = WeaponSlot_PDA,
-	WeaponSlot_InvisWatch = WeaponSlot_PDA2,
-};
 
 enum
 {

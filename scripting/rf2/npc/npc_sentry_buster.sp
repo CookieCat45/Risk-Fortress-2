@@ -55,6 +55,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 			.DefineIntField("m_runSequence")
 			.DefineIntField("m_airSequence")
 			.DefineIntField("m_iRepathAttempts")
+			.DefineFloatField("m_flSelfDetonateTime")
 			.DefineBoolField("m_bDetonating")
 			.DefineEntityField("m_hDispenser")
 		.EndDataMapDesc();
@@ -81,6 +82,7 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 				RemoveEntity(buster.HealthText);
 			}
 			
+			buster.SetPropFloat(Prop_Data, "m_flSelfDetonateTime", GetGameTime()+20.0);
 			return buster;
 		}
 		
@@ -198,6 +200,19 @@ methodmap RF2_SentryBuster < RF2_NPC_Base
 		public set(bool value)
 		{
 			this.SetProp(Prop_Data, "m_bDetonating", value);
+		}
+	}
+	
+	property float SelfDetonateTime
+	{
+		public get()
+		{
+			return this.SetPropFloat(Prop_Data, "m_flSelfDetonateTime");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flSelfDetonateTime", value);
 		}
 	}
 	

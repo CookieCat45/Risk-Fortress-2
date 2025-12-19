@@ -111,7 +111,7 @@ static void SpawnPost(int entity)
 	generator.SetHitboxSize(mins, maxs);
 	generator.SetMoveType(MOVETYPE_NONE);
 	float playerMult = 1.0 + (0.25 * float(RF2_GetSurvivorCount() - 1));
-	const float baseHealth = 1500.0;
+	const float baseHealth = 1200.0;
 	generator.MaxHealth = RoundToFloor(baseHealth * playerMult * GetEnemyHealthMult());
 	generator.Health = generator.MaxHealth;
 }
