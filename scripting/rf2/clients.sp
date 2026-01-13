@@ -285,7 +285,19 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 	}
 
 	int amountHealed = amount;
-	SetEntityHealth(client, health+amount);
+	float fAmount = float(amountHealed);
+
+    Call_StartForward(g_fwOnHealingApplied);
+        Call_PushCell(client);
+        Call_PushFloatRef(fAmount);
+        Call_PushCell(allowOverheal ? 1 : 0);
+        Call_PushFloat(maxOverheal);
+    Call_Finish();
+
+
+    amountHealed = RoundFloat(fAmount);
+
+	SetEntityHealth(client, health+amountHealed);
 	
 	if (!allowOverheal && GetClientHealth(client) > maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
 	{
