@@ -286,13 +286,17 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 
 	int amountHealed = amount;
 
-    Call_StartForward(g_fwOnHealingApplied);
+	Call_StartForward(g_fwOnHealingApplied);
         Call_PushCell(client);
         Call_PushCellRef(amountHealed);
         Call_PushCell(allowOverheal ? 1 : 0);
         Call_PushFloat(maxOverheal);
-    Call_Finish();
-
+		Action healingResult;
+    Call_Finish(healingResult);
+	if (healingResult == Plugin_Handled || healingResult == Plugin_Stop)
+	{
+		return 0;
+	}
 
 	SetEntityHealth(client, health+amountHealed);
 	
