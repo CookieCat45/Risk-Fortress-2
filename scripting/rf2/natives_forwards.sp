@@ -66,7 +66,7 @@ void LoadForwards()
 	g_fwOnCustomItemLoaded = new GlobalForward("RF2_OnCustomItemLoaded", ET_Ignore, Param_String, Param_String, Param_Cell, Param_Cell);
 	g_fwOnPlayerItemUpdate = new GlobalForward("RF2_OnPlayerItemUpdate", ET_Ignore, Param_Cell, Param_Cell);
 	g_fwOnActivateStrange = new GlobalForward("RF2_OnActivateStrangeItem", ET_Hook, Param_Cell, Param_Cell);
-	g_fwOnHealingApplied = new GlobalForward("RF2_OnHealingApplied", ET_Hook, Param_Cell, Param_FloatByRef, Param_Cell, Param_Float, Param_Cell);
+	g_fwOnHealingApplied = new GlobalForward("RF2_OnHealingApplied", ET_Hook, Param_Cell, Param_CellByRef, Param_Cell, Param_Float, Param_Cell);
 }
 
 public any Native_IsEnabled(Handle plugin, int numParams)
@@ -331,4 +331,5 @@ public any Native_RemoveObjectFromSpawnList(Handle plugin, int numParams)
 	GetNativeString(1, classname, sizeof(classname));
 	return RF2_GameRules.RemoveObjectFromSpawnList(classname);
 }
+
 
