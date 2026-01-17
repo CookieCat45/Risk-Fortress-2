@@ -330,6 +330,7 @@ GlobalForward g_fwOnTakeDamage;
 GlobalForward g_fwOnCustomItemLoaded;
 GlobalForward g_fwOnPlayerItemUpdate;
 GlobalForward g_fwOnActivateStrange;
+GlobalForward g_fwOnHealingApplied;
 PrivateForward g_fwOnMapStart;
 
 // ConVars
@@ -9234,3 +9235,4 @@ public bool TraceFilter_OtherTeamPlayers(int entity, int mask, int self)
 
 	return false;
 }
+
