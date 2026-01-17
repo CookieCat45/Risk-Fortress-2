@@ -277,20 +277,15 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 	{
 		amount = RoundFloat(float(amount) * 0.7);
 	}
-	
-	// we're already overhealed or at max health, don't do anything
-	if (!allowOverheal && health >= maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
-	{
-		return 0;
-	}
 
 	int amountHealed = amount;
 
 	Call_StartForward(g_fwOnHealingApplied);
         Call_PushCell(client);
         Call_PushCellRef(amountHealed);
-        Call_PushCell(allowOverheal ? 1 : 0);
-        Call_PushFloat(maxOverheal);
+        Call_PushCellRef(allowOverheal);
+        Call_PushFloatRef(maxOverheal);
+		Call_PushCell(display);
 		Action healingResult;
     Call_Finish(healingResult);
 	if (healingResult == Plugin_Handled || healingResult == Plugin_Stop)
@@ -298,9 +293,15 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 		return 0;
 	}
 
+	// we're already overhealed or at max health, don't do anything
+	if (!allowOverheal && health >= maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
+	{
+		return 0;
+	}
+
 	SetEntityHealth(client, health+amountHealed);
 	
-	if (!allowOverheal && GetClientHealth(client) > maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
+	if (!allowOverheal && GetClientHealth(client) > maxHealth || allowOverheal && capOverheal && float(GetClientHealth(client)) >= float(maxHealth)*maxOverheal)
 	{
 		SetEntityHealth(client, allowOverheal ? RoundToFloor(float(maxHealth)*maxOverheal) : maxHealth);
 		amountHealed = allowOverheal ? RoundToFloor(float(maxHealth)*maxOverheal) - health : maxHealth - health;
