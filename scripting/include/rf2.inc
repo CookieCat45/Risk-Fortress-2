@@ -658,7 +658,7 @@ forward Action RF2_OnActivateStrangeItem(int client, int item);
  * @param display			Allow healing display.
  * @return Plugin_Handled/Plugin_Stop to prevent healing, Plugin_Changed if healing is modified, Plugin_Continue otherwise.
  */
-forward Action RF2_OnHealingApplied(int client, int &amount, bool allowOverheal, float maxOverheal, bool display);
+forward Action RF2_OnHealingApplied(int client, int &amount, bool &allowOverheal, float &maxOverheal, bool display);
 
 // Called when the Teleporter event is started.
 forward void RF2_OnTeleporterEventStart();
@@ -762,4 +762,5 @@ public void __pl_rf2_SetNTVOptional()
 	MarkNativeAsOptional("RF2_RemoveObjectFromSpawnList");
 }
 #endif
+
 
