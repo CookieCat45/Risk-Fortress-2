@@ -283,7 +283,7 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 	{
 		return 0;
 	}
-
+	
 	int amountHealed = amount;
 	SetEntityHealth(client, health+amount);
 	
@@ -1151,7 +1151,7 @@ void ShowAnnotation(int client, float pos[3]=NULL_VECTOR, const char[] msg, floa
 {
 	if (id >= 0)
 	{
-		KillAnnotation(id);
+		KillAnnotation(id, client);
 	}
 	
 	Event event = CreateEvent("show_annotation", true);
@@ -1185,11 +1185,19 @@ void ShowAnnotationToAll(float pos[3]=NULL_VECTOR, const char[] msg, float durat
 	}
 }
 
-void KillAnnotation(int entity)
+void KillAnnotation(int entity, int client=INVALID_ENT)
 {
 	Event annotation = CreateEvent("hide_annotation", true);
 	annotation.SetInt("id", entity);
-	annotation.Fire();
+	if (IsValidClient(client))
+	{
+		annotation.FireToClient(client);
+		delete annotation;
+	}
+	else
+	{
+		annotation.Fire();
+	}
 }
 
 bool IsStuckInAnyPlayer(int client)
