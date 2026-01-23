@@ -277,17 +277,31 @@ int HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverhe
 	{
 		amount = RoundFloat(float(amount) * 0.7);
 	}
-	
+
+	int amountHealed = amount;
+
+	Call_StartForward(g_fwOnHealingApplied);
+        Call_PushCell(client);
+        Call_PushCellRef(amountHealed);
+        Call_PushCellRef(allowOverheal);
+        Call_PushFloatRef(maxOverheal);
+		Call_PushCell(display);
+		Action healingResult;
+    Call_Finish(healingResult);
+	if (healingResult == Plugin_Handled || healingResult == Plugin_Stop)
+	{
+		return 0;
+	}
+
 	// we're already overhealed or at max health, don't do anything
 	if (!allowOverheal && health >= maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
 	{
 		return 0;
 	}
+
+	SetEntityHealth(client, health+amountHealed);
 	
-	int amountHealed = amount;
-	SetEntityHealth(client, health+amount);
-	
-	if (!allowOverheal && GetClientHealth(client) > maxHealth || allowOverheal && capOverheal && float(health) >= float(maxHealth)*maxOverheal)
+	if (!allowOverheal && GetClientHealth(client) > maxHealth || allowOverheal && capOverheal && float(GetClientHealth(client)) >= float(maxHealth)*maxOverheal)
 	{
 		SetEntityHealth(client, allowOverheal ? RoundToFloor(float(maxHealth)*maxOverheal) : maxHealth);
 		amountHealed = allowOverheal ? RoundToFloor(float(maxHealth)*maxOverheal) - health : maxHealth - health;
@@ -1619,17 +1633,46 @@ public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam
 {
 	if (!RF2_IsEnabled())
 		return MRES_Ignored;
-	
+
+	if (!IsValidEntity(entity))
+        return MRES_Ignored;
+
 	if (IsValidClient(entity))
 	{
 		float health = DHookGetParam(params, 1);
+
 		health *= GetPlayerHealthMult(entity);
 		if (IsCurseActive(Curse_Wounding) && GetClientTeam(entity) == TEAM_SURVIVOR)
 		{
 			health *= 0.7;
 		}
-		
+
+		int healingAmount = RoundToNearest(health);
+		bool allowOverheal = (DHookGetParam(params, 2) == DMG_BULLET) ? true : false;
+		float maxOverheal = 1.5;
+		bool display = true;
+
+		Call_StartForward(g_fwOnHealingApplied);
+			Call_PushCell(entity);
+			Call_PushCellRef(healingAmount);
+			Call_PushCellRef(allowOverheal);
+			Call_PushFloatRef(maxOverheal);
+			Call_PushCell(display);
+			Action healingResult2;
+		Call_Finish(healingResult2);
+		if (healingResult2 == Plugin_Handled || healingResult2 == Plugin_Stop)
+		{
+			params.Set(1, 0.0);
+			return MRES_ChangedHandled;
+		}
+
+		if (allowOverheal)
+			params.Set(2, DMG_BULLET);
+
+		health = float(healingAmount);
+
 		params.Set(1, health);
+
 		return MRES_ChangedHandled;
 	}
 	

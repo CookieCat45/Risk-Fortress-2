@@ -648,6 +648,18 @@ forward void RF2_OnPlayerItemUpdate(int client, int item);
  */
 forward Action RF2_OnActivateStrangeItem(int client, int item);
 
+/**
+ * Called when a player receives healing through the HealPlayer function
+ * 
+ * @param client			Player index.
+ * @param amount			Healing amount.
+ * @param allowOverheal		Allow overheal.
+ * @param maxOverheal		Maximum overheal allowed based on max HP.
+ * @param display			Allow healing display.
+ * @return Plugin_Handled/Plugin_Stop to prevent healing, Plugin_Changed if healing is modified, Plugin_Continue otherwise.
+ */
+forward Action RF2_OnHealingApplied(int client, int &amount, bool &allowOverheal, float &maxOverheal, bool display);
+
 // Called when the Teleporter event is started.
 forward void RF2_OnTeleporterEventStart();
 
@@ -750,3 +762,5 @@ public void __pl_rf2_SetNTVOptional()
 	MarkNativeAsOptional("RF2_RemoveObjectFromSpawnList");
 }
 #endif
+
+
