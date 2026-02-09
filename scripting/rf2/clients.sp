@@ -1648,7 +1648,7 @@ public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam
 		}
 
 		int healingAmount = RoundToNearest(health);
-		bool allowOverheal = (DHookGetParam(params, 2) == DMG_BULLET) ? true : false;
+		bool allowOverheal = (DHookGetParam(params, 2) & DMG_BULLET) ? true : false;
 		float maxOverheal = 1.5;
 		bool display = true;
 
