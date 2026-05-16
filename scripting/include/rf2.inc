@@ -1,7 +1,7 @@
-#if defined _RF2_included
- #endinput
+#if defined _RF2_INCLUDED
+  #endinput
 #endif
-#define _RF2_included
+#define _RF2_INCLUDED
 
 #include <morecolors>
 #pragma semicolon 1
@@ -13,7 +13,7 @@
 
 // Items -------------------------------------------------------------------------------------------------------------------------------------
 #define MAX_ITEMS 250
-#define MAX_ITEM_MODIFIERS 16
+#define MAX_ITEM_MODIFIERS 32
 
 enum
 {
@@ -531,6 +531,8 @@ native void RF2_TakeDamage(int entity, int inflictor, int attacker, float damage
  * @param item			Item type
  * @noreturn
  */
+
+
 native void RF2_SetEntItemProc(int entity, int item);
 
 /**
@@ -600,6 +602,30 @@ native void RF2_AddObjectToSpawnList(const char[] classname, int weight);
  */
 native bool RF2_RemoveObjectFromSpawnList(const char[] classname);
 
+native void RF2_AddPlayerCash(int client, float amount);
+
+native int RF2_HealPlayer(int client, int amount, bool allowOverheal=false, float maxOverheal=1.5, bool display=true);
+
+native void RF2_UpdatePlayerFireRate(int client);
+
+native void RF2_CalculatePlayerMaxSpeed(int client);
+
+native void RF2_DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=DMG_GENERIC, int critType=0, int assister=INVALID_ENT_REFERENCE, int damageCustom=0);
+
+native void Native_FireHomingRocket(int client, float damage, float speed);
+
+native int RF2_ToggleGlow(int entity, bool state, int color[4]={255, 255, 255, 255});
+
+native int RF2_IsPlayerNpc(int entity);
+
+native bool RF2_ActivateStrangeItem(int client);
+
+native void RF2_MakeSurvivor(int client, int index, bool resetPoints=true, bool loadInventory=true);
+
+native bool RF2_IsSurvivorIndexValid(int index);
+
+native void RF2_DoExplosionEffect(const float pos[3], bool sound=true, float delay=0.0);
+
 /** 
  * Called when an entity takes damage.
  * 
@@ -620,6 +646,55 @@ native bool RF2_RemoveObjectFromSpawnList(const char[] classname);
  */
 forward Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, 
 	float damageForce[3], float damagePosition[3], int damageCustom, int attackerItem, int inflictorItem, int &critType, float &procCoeff);
+	
+/** 
+ * Called at the end of RF2_OnTakeDamage
+ * 
+ * @param victim			Entity taking damage
+ * @param attacker 			Entity responsible for the damage
+ * @param inflictor 		Entity dealing the damage
+ * @param damage			Damage being dealt
+ * @param damageType		Damage flags
+ * @param weapon			Weapon entity index if present
+ * @param damageForce		Velocity of damage force
+ * @param damagePosition	Origin of damage
+ * @param damageCustom		Custom damage type
+ * @param attackerItem		Item associated with the attacker, usually set if the attacker is a client
+ * @param inflictorItem		Item associated with the inflictor, usually set if the inflictor is something like a projectile triggered by an item
+ * @param critType			Crit type. 0 = none, 1 = crit, 2 = mini-crit
+ * @param procCoeff			Proc coefficient
+ * @return Plugin_Stop/Plugin_Handled to prevent damage, Plugin_Changed if any parameters are changed, Plugin_Continue otherwise
+ */
+forward Action RF2_OnTakeDamage2(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, 
+	float damageForce[3], float damagePosition[3], int damageCustom);
+
+/** 
+ * Called at the end of RF2_OnTakeDamage
+ * 
+ * @param client			Client
+ * @param multiplier 		Fire rate multiplier
+ * @return Plugin_Changed if any parameters are changed, Plugin_Continue otherwise
+ */
+forward Action RF2_OnFireRateCalculation(int client, float &multiplier);
+
+/** 
+ * Called at the end of RF2_OnTakeDamage
+ * 
+ * @param client			Client
+ * @param multiplier 		Reload speed multiplier
+ * @return Plugin_Changed if any parameters are changed, Plugin_Continue otherwise
+ */
+forward Action RF2_OnReloadSpeedCalculation(int client, float &multiplier);
+
+forward Action RF2_OnMoveSpeedCalculation(int client, float &speed);
+
+forward Action RF2_OnMiscTextWriting(int client, char[] miscText);
+
+forward void RF2_OnDoItemKillEffects(int attacker, int inflictor, int victim, int &damageType, int &critType, int assister, int &damageCustom);
+
+forward Action RF2_OnEquipmentChargeGain(int client, int charges);
+
+forward Action RF2_OnPlayerEquipmentItemCooldownCalculation(int client, float &calculatedCooldown);
 
 /**
  * Called when an item is loaded from a custom items file in the `configs/rf2/custom_items/` directory.
@@ -659,6 +734,24 @@ forward Action RF2_OnActivateStrangeItem(int client, int item);
  * @return Plugin_Handled/Plugin_Stop to prevent healing, Plugin_Changed if healing is modified, Plugin_Continue otherwise.
  */
 forward Action RF2_OnHealingApplied(int client, int &amount, bool &allowOverheal, float &maxOverheal, bool display);
+
+/**
+ * Called when crit chance is calculated
+ * 
+ * @param client			Player index.
+ * @param critChance		Current crit chance.
+ * @return Plugin_Changed if crit chance is modified, Plugin_Continue otherwise.
+ */
+forward Action RF2_OnCritChanceCalculation(int client, float &critChance);
+
+/**
+ * Called when Cryptic Keepsake calculates the damage mult from crit chance items
+ * 
+ * @param client			Player index.
+ * @param mult		Current mult.
+ * @return Plugin_Changed if crit chance is modified, Plugin_Continue otherwise.
+ */
+forward Action RF2_OnCrypticCritDmgCalculation(int client, float &mult);
 
 // Called when the Teleporter event is started.
 forward void RF2_OnTeleporterEventStart();
@@ -760,7 +853,16 @@ public void __pl_rf2_SetNTVOptional()
 	MarkNativeAsOptional("RF2_IsTankDestructionMode");
 	MarkNativeAsOptional("RF2_AddObjectToSpawnList");
 	MarkNativeAsOptional("RF2_RemoveObjectFromSpawnList");
+	MarkNativeAsOptional("RF2_AddPlayerCash");
+	MarkNativeAsOptional("RF2_HealPlayer");
+	MarkNativeAsOptional("RF2_UpdatePlayerFireRate");
+	MarkNativeAsOptional("RF2_CalculatePlayerMaxSpeed");
+	MarkNativeAsOptional("RF2_DoItemKillEffects");
+	MarkNativeAsOptional("RF2_FireHomingProjectile");
+	MarkNativeAsOptional("RF2_ToggleGlow");
+	MarkNativeAsOptional("RF2_ActivateStrangeItem");
+	MarkNativeAsOptional("RF2_MakeSurvivor");
+	MarkNativeAsOptional("RF2_IsSurvivorIndexValid");
+	MarkNativeAsOptional("RF2_DoExplosionEffect");
 }
 #endif
-
-

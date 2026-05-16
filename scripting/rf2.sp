@@ -331,6 +331,17 @@ GlobalForward g_fwOnCustomItemLoaded;
 GlobalForward g_fwOnPlayerItemUpdate;
 GlobalForward g_fwOnActivateStrange;
 GlobalForward g_fwOnHealingApplied;
+GlobalForward g_fwOnTakeDamageAlivePost;
+GlobalForward g_fwOnCritChanceCalculation;
+GlobalForward g_fwOnCrypticCritDmgCalculation;
+GlobalForward g_fwOnTakeDamage2;
+GlobalForward g_fwOnFireRateCalculation;
+GlobalForward g_fwOnReloadSpeedCalculation;
+GlobalForward g_fwOnMoveSpeedCalculation;
+GlobalForward g_fwOnMiscTextWriting;
+GlobalForward g_fwOnDoItemKillEffects;
+GlobalForward g_fwOnEquipmentChargeGain;
+GlobalForward g_fwOnPlayerEquipmentItemCooldownCalculation;
 PrivateForward g_fwOnMapStart;
 
 // ConVars
@@ -4122,6 +4133,18 @@ public Action Timer_PlayerHud(Handle timer)
 		}
 		
 		miscText = "";
+		
+		Call_StartForward(g_fwOnMiscTextWriting);
+			Call_PushCell(i);
+			Call_PushStringEx(miscText, sizeof(miscText), SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
+		Action miscTextResult;
+		Call_Finish(miscTextResult);
+		if (miscTextResult == Plugin_Handled || miscTextResult == Plugin_Stop)
+		{
+			return miscTextResult;
+		}
+		
+		
 		int r, g, b;
 		r = 255;
 		g = 255;
@@ -6028,7 +6051,7 @@ void ForceRifleSound(int client, bool crit=false)
 	int weapon = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 	if (weapon == INVALID_ENT)
 		return;
-	
+
 	if (g_bPlayerRifleAutoFire[client])
 	{
 		EmitSoundToAll(SND_AUTOFIRE_SHOOT, client, _, _, _, fmax(0.35, GetPlayerReloadMod(client)));
@@ -6872,19 +6895,19 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 	int attackerProc = GetEntItemProc(attacker);
 	int inflictorProc = IsValidEntity2(inflictor) && inflictor < MAX_EDICTS ? GetEntItemProc(inflictor) : Item_Null;
 	Call_StartForward(g_fwOnTakeDamage);
-	Call_PushCell(victim);
-	Call_PushCellRef(attacker);
-	Call_PushCellRef(inflictor);
-	Call_PushFloatRef(damage);
-	Call_PushCellRef(damageType);
-	Call_PushCellRef(weapon);
-	Call_PushArray(damageForce, 3);
-	Call_PushArray(damagePosition, 3);
-	Call_PushCell(damageCustom);
-	Call_PushCell(attackerProc);
-	Call_PushCell(inflictorProc);
-	Call_PushCellRef(critType);
-	Call_PushFloatRef(proc);
+		Call_PushCell(victim);
+		Call_PushCellRef(attacker);
+		Call_PushCellRef(inflictor);
+		Call_PushFloatRef(damage);
+		Call_PushCellRef(damageType);
+		Call_PushCellRef(weapon);
+		Call_PushArray(damageForce, 3);
+		Call_PushArray(damagePosition, 3);
+		Call_PushCell(damageCustom);
+		Call_PushCell(attackerProc);
+		Call_PushCell(inflictorProc);
+		Call_PushCellRef(critType);
+		Call_PushFloatRef(proc);
 	Action result;
 	Call_Finish(result);
 	if (result == Plugin_Handled || result == Plugin_Stop)
@@ -7208,6 +7231,10 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				if (PlayerHasItem(attacker, Item_CrypticKeepsake))
 				{
 					float mult = 1.0 + CalcItemMod(attacker, Item_TombReaders, 0) + CalcItemMod(attacker, Item_Executioner, 5);
+					Call_StartForward(g_fwOnCrypticCritDmgCalculation);
+						Call_PushCell(attacker);
+						Call_PushFloatRef(mult);
+					Call_Finish();
 					if (PlayerHasItem(attacker, Item_SaxtonHat) && damageType & DMG_MELEE)
 					{
 						mult += CalcItemMod(attacker, Item_SaxtonHat, 1);
@@ -7375,8 +7402,9 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 			}
 		}
 	}
-
+	
 	g_flDamageProc = proc;
+	
 	return damage != originalDamage || originalDamageType != damageType || originalCritType != critType ? Plugin_Changed : Plugin_Continue;
 }
 
@@ -7533,6 +7561,22 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			damage *= 0.4;
 			damageType &= ~DMG_CRIT;
+			Call_StartForward(g_fwOnTakeDamage2);
+				Call_PushCell(victim);
+				Call_PushCellRef(attacker);
+				Call_PushCellRef(inflictor);
+				Call_PushFloatRef(damage);
+				Call_PushCellRef(damageType);
+				Call_PushCellRef(weapon);
+				Call_PushArray(damageForce, 3);
+				Call_PushArray(damagePosition, 3);
+				Call_PushCell(damageCustom);
+			Action result3;
+			Call_Finish(result3);
+			if (result3 == Plugin_Handled || result3 == Plugin_Stop)
+			{
+				return result3;
+			}
 			return Plugin_Changed;
 		}
 		else
@@ -7997,6 +8041,23 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*0.075);
 	}
+
+	Call_StartForward(g_fwOnTakeDamage2);
+		Call_PushCell(victim);
+		Call_PushCellRef(attacker);
+		Call_PushCellRef(inflictor);
+		Call_PushFloatRef(damage);
+		Call_PushCellRef(damageType);
+		Call_PushCellRef(weapon);
+		Call_PushArray(damageForce, 3);
+		Call_PushArray(damagePosition, 3);
+		Call_PushCell(damageCustom);
+	Action result3;
+	Call_Finish(result3);
+	if (result3 == Plugin_Handled || result3 == Plugin_Stop)
+	{
+		return result3;
+	}
 	
 	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;
 }
@@ -8359,6 +8420,19 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			}
 		}
 	}
+	
+	
+	Call_StartForward(g_fwOnTakeDamageAlivePost);
+        Call_PushCell(victim);
+		Call_PushCellRef(attacker);
+		Call_PushCellRef(inflictor);
+		Call_PushFloatRef(damage);
+		Call_PushCellRef(damageType);
+		Call_PushCellRef(weapon);
+		Call_PushArray(damageForce, 3);
+		Call_PushArray(damagePosition, 3);
+		Call_PushCell(damageCustom);
+    Call_Finish();
 }
 
 public void RF_RoBroDealDamage(DataPack pack)
@@ -9235,4 +9309,3 @@ public bool TraceFilter_OtherTeamPlayers(int entity, int mask, int self)
 
 	return false;
 }
-

@@ -1113,6 +1113,16 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 
 void DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=DMG_GENERIC, CritType critType=CritType_None, int assister=INVALID_ENT, int damageCustom=0)
 {
+	Call_StartForward(g_fwOnDoItemKillEffects);
+		Call_PushCell(attacker);
+		Call_PushCell(inflictor);
+		Call_PushCell(victim);
+		Call_PushCellRef(damageType);
+		Call_PushCellRef(critType);
+		Call_PushCell(assister);
+		Call_PushCellRef(damageCustom);
+	Call_Finish();
+	
 	if (damageType & DMG_MELEE)
 	{
 		if (PlayerHasItem(attacker, Item_SaxtonHat))
@@ -2632,7 +2642,12 @@ float GetPlayerEquipmentItemCooldown(int client)
 	if (!IsEquipmentItem(item))
 		return 0.0;
 	
-	float cooldown = fmax(g_flEquipmentItemMinCooldown[item], g_flEquipmentItemCooldown[item] * CalcItemMod_Reciprocal(client, Item_DeusSpecs, 0));
+	float calculatedCooldown = g_flEquipmentItemCooldown[item] * CalcItemMod_Reciprocal(client, Item_DeusSpecs, 0) * CalcItemMod_Reciprocal(client, Item_BatteryCanteens, 0);
+	Call_StartForward(g_fwOnPlayerEquipmentItemCooldownCalculation);
+		Call_PushCell(client);
+		Call_PushFloatRef(calculatedCooldown);
+	Call_Finish();
+	float cooldown = fmax(g_flEquipmentItemMinCooldown[item], calculatedCooldown);
 	bool cooldownActive = g_flPlayerEquipmentItemCooldown[client] > 0.0;
 	if (cooldownActive)
 	{
@@ -2658,6 +2673,17 @@ public Action Timer_EquipmentCooldown(Handle timer, int client)
 		if (g_iPlayerEquipmentItemCharges[client] < maxCharges)
 		{
 			g_iPlayerEquipmentItemCharges[client]++;
+			Call_StartForward(g_fwOnEquipmentChargeGain);
+				Call_PushCell(client);
+				Call_PushCell(g_iPlayerEquipmentItemCharges[client]);
+			Action equipmentResult;
+			Call_Finish(equipmentResult);
+			if (equipmentResult == Plugin_Handled || equipmentResult == Plugin_Stop)
+			{
+				g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
+				return equipmentResult;
+			}
+				
 			if (g_iPlayerEquipmentItemCharges[client] < maxCharges) // still lower? start cooldown again
 			{
 				g_flPlayerEquipmentItemCooldown[client] = GetPlayerEquipmentItemCooldown(client);
