@@ -612,7 +612,7 @@ native void RF2_CalculatePlayerMaxSpeed(int client);
 
 native void RF2_DoItemKillEffects(int attacker, int inflictor, int victim, int damageType=DMG_GENERIC, int critType=0, int assister=INVALID_ENT_REFERENCE, int damageCustom=0);
 
-native void Native_FireHomingRocket(int client, float damage, float speed);
+native void RF2_FireHomingProjectile(int client, float damage, float speed);
 
 native int RF2_ToggleGlow(int entity, bool state, int color[4]={255, 255, 255, 255});
 

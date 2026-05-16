@@ -307,7 +307,7 @@ public void OnClientDisconnect(int client)
 	{
 		if (g_hTimers[client][i] != INVALID_HANDLE)
 		{
-			CloseHandle(g_hTimers[client][i]);
+			delete (g_hTimers[client][i]);
 			g_hTimers[client][i] = INVALID_HANDLE;
 		}
 	}
@@ -340,7 +340,7 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 	{
 		if (g_hTimers[client][i] != INVALID_HANDLE && i != 13)
 		{
-			CloseHandle(g_hTimers[client][i]);
+			delete (g_hTimers[client][i]);
 			g_hTimers[client][i] = INVALID_HANDLE;
 		}
 	}
@@ -930,7 +930,7 @@ public Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float 
 			
 			if (g_hTimers[victim][BonkBoy] != INVALID_HANDLE)
 			{
-				CloseHandle(g_hTimers[victim][BonkBoy]);
+				delete (g_hTimers[victim][BonkBoy]);
 				g_hTimers[victim][BonkBoy] = INVALID_HANDLE;
 			}
 			
@@ -968,7 +968,7 @@ public Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float 
 				
 				if (g_hTimers[victim][BulletResist] != INVALID_HANDLE)
 				{
-					CloseHandle(g_hTimers[victim][BulletResist]);
+					delete (g_hTimers[victim][BulletResist]);
 					g_hTimers[victim][BulletResist] = INVALID_HANDLE;
 				}
 				
@@ -1006,7 +1006,7 @@ public Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float 
 				
 				if (g_hTimers[victim][BlastResist] != INVALID_HANDLE)
 				{
-					CloseHandle(g_hTimers[victim][BlastResist]);
+					delete (g_hTimers[victim][BlastResist]);
 					g_hTimers[victim][BlastResist] = INVALID_HANDLE;
 				}
 				
@@ -1044,7 +1044,7 @@ public Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float 
 				
 				if (g_hTimers[victim][MeleeResist] != INVALID_HANDLE)
 				{
-					CloseHandle(g_hTimers[victim][MeleeResist]);
+					delete (g_hTimers[victim][MeleeResist]);
 					g_hTimers[victim][MeleeResist] = INVALID_HANDLE;
 				}
 				
@@ -1082,7 +1082,7 @@ public Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float 
 				
 				if (g_hTimers[victim][CritResist] != INVALID_HANDLE)
 				{
-					CloseHandle(g_hTimers[victim][CritResist]);
+					delete (g_hTimers[victim][CritResist]);
 					g_hTimers[victim][CritResist] = INVALID_HANDLE;
 				}
 				
@@ -1721,7 +1721,7 @@ void ApplySlowEffect(int client, float slowPercent, float duration)
 {
 	if (g_hTimers[client][RemoveSlow] != INVALID_HANDLE)
 	{
-		CloseHandle(g_hTimers[client][RemoveSlow]);
+		delete (g_hTimers[client][RemoveSlow]);
 		g_hTimers[client][RemoveSlow] = INVALID_HANDLE;
 	}
 	
