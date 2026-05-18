@@ -65,6 +65,49 @@ public Action Timer_BuildingHealthRegen(Handle timer, int building)
 	return Plugin_Continue;
 }
 
+public Action Timer_SentryAmmoRegen(Handle timer, int buildingRef)
+{
+	int buildingIndex = EntRefToEntIndex(buildingRef);
+	if (buildingIndex == INVALID_ENT_REFERENCE)
+	{
+		return Plugin_Stop;
+	}
+	
+	int builder = GetEntPropEnt(buildingIndex, Prop_Send, "m_hBuilder");
+	if (IsValidClient(builder) && IsPlayerAlive(builder) && CanUseCollectorItem(builder, ItemEngi_Toadstool)
+		&& !GetEntProp(buildingIndex, Prop_Send, "m_bBuilding") && !GetEntProp(buildingIndex, Prop_Send, "m_bHasSapper") 
+		&& !GetEntProp(buildingIndex, Prop_Send, "m_bCarried") && !GetEntProp(buildingIndex, Prop_Send, "m_bPlacing"))
+	{
+		int currentSentryBullet = GetEntProp(buildingIndex, Prop_Send, "m_iAmmoShells");
+		int currentSentryRocket = GetEntProp(buildingIndex, Prop_Send, "m_iAmmoRockets");
+		int bulletRegen = RoundToNearest(CalcItemMod(builder, ItemEngi_Toadstool, 2));
+		int rocketRegen = RoundToNearest(CalcItemMod(builder, ItemEngi_Toadstool, 3));
+		switch (GetEntProp(buildingIndex, Prop_Send, "m_iUpgradeLevel"))
+		{
+			case 1:
+			{
+				SetEntProp(buildingIndex, Prop_Send, "m_iAmmoShells", iclamp(currentSentryBullet + bulletRegen, 0, 150));
+			}
+			case 2:
+			{
+				SetEntProp(buildingIndex, Prop_Send, "m_iAmmoShells", iclamp(currentSentryBullet + bulletRegen, 0, 200));
+			}
+			case 3:
+			{
+				SetEntProp(buildingIndex, Prop_Send, "m_iAmmoShells", iclamp(currentSentryBullet + bulletRegen, 0, 200));
+				if (g_bRocketRegenToggle[buildingIndex])
+				{
+					SetEntProp(buildingIndex, Prop_Send, "m_iAmmoRockets", iclamp(currentSentryRocket + rocketRegen, 0, 20));
+				}
+				
+				g_bRocketRegenToggle[buildingIndex] = !g_bRocketRegenToggle[buildingIndex];
+			}
+		}
+	}
+	
+	return Plugin_Continue;
+}
+
 bool CanTeamQuickBuild(int team)
 {
 	return team == TEAM_SURVIVOR && g_cvSurvivorQuickBuild.BoolValue || team == TEAM_ENEMY && g_cvEnemyQuickBuild.BoolValue;

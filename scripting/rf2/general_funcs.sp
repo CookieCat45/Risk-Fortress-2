@@ -933,6 +933,17 @@ stock int imax(int val1, int val2)
 	return val1 > val2 ? val1 : val2;
 }
 
+int iclamp(int val, int min, int max)
+{
+	if (val > max)
+		return max;
+		
+	if (val < min)
+		return min;
+		
+	return val;
+}
+
 stock float fmin(float val1, float val2)
 {
 	return val1 < val2 ? val1 : val2;

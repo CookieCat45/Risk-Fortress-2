@@ -264,6 +264,7 @@ bool g_bDontRemoveWearable[MAX_EDICTS];
 bool g_bItemWearable[MAX_EDICTS];
 bool g_bEntityGlowing[MAX_EDICTS];
 bool g_bReflectCheck[MAXPLAYERS][MAX_EDICTS];
+bool g_bRocketRegenToggle[MAX_EDICTS];
 float g_flBusterSpawnTime;
 float g_flProjectileForcedDamage[MAX_EDICTS];
 float g_flSentryNextLaserTime[MAX_EDICTS];
@@ -6285,6 +6286,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bItemWearable[entity] = false;
 	g_bCashBomb[entity] = false;
 	g_bEntityGlowing[entity] = false;
+	g_bRocketRegenToggle[entity] = false;
 	for (int i = 1; i < MAXPLAYERS; i++)
 	{
 		g_bReflectCheck[i][entity] = false;
@@ -6346,6 +6348,10 @@ public void OnEntityCreated(int entity, const char[] classname)
 		SDKHook(entity, SDKHook_OnTakeDamage, Hook_BuildingOnTakeDamage);
 		SDKHook(entity, SDKHook_OnTakeDamagePost, Hook_BuildingOnTakeDamagePost);
 		CreateTimer(0.5, Timer_BuildingHealthRegen, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		if (strcmp2(classname, "obj_sentrygun"))
+		{
+			CreateTimer(6.0, Timer_SentryAmmoRegen, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		}
 	}
 	else if (IsNPC(entity))
 	{
