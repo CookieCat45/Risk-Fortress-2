@@ -431,6 +431,7 @@ ConVar g_cvStage1StartingMap;
 ConVar g_cvAggressiveRestarting;
 ConVar g_cvGamePlayedCount;
 ConVar g_cvEnableGiantPainSounds;
+ConVar g_cvMaxBots;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;

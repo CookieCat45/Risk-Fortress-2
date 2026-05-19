@@ -2421,6 +2421,6 @@ void UpdateBotQuota()
 	{
 		// SourceTV will decrease the max player count in the server browser unless we decrease tf_bot_quota
 		bool sourceTv = FindConVar("tv_enable").BoolValue;
-		quota.SetInt(MaxClients-g_cvMaxHumanPlayers.IntValue - view_as<int>(sourceTv));
+		quota.SetInt(imin(MaxClients-g_cvMaxHumanPlayers.IntValue - view_as<int>(sourceTv), g_cvMaxBots.IntValue));
 	}
 }

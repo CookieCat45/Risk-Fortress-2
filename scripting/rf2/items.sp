@@ -50,15 +50,13 @@ int LoadItems(const char[] customPath="")
 	int count;
 	if (custom)
 	{
-		strcopy(config, sizeof(config), customPath);
 		// remove the file path, we just want the name of the file here
+		strcopy(config, sizeof(config), customPath);
 		file = config;
-		char temp[PLATFORM_MAX_PATH];
-		SplitString(file, "custom_items\\", temp, sizeof(temp));
-		StrCat(temp, sizeof(temp), "custom_items\\");
-		ReplaceStringEx(file, sizeof(file), temp, "");
+		char path[PLATFORM_MAX_PATH];
+		BuildPath(Path_SM, path, sizeof(path), "%s/custom_items/", ConfigPath);
+		ReplaceStringEx(file, sizeof(file), path, "", _, _, false);
 		ReplaceString(file, sizeof(file), "/", "");
-		ReplaceString(file, sizeof(file), "\\", "");
 	}
 	else
 	{

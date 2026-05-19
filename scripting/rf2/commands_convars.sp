@@ -146,7 +146,9 @@ void LoadCommandsAndCvars()
 	g_cvStage1StartingMap = CreateConVar("rf2_stage1_starting_map", "1", "Ensures that the server always boots on a random Stage 1 map.", _, true, 0.0);
 	g_cvAggressiveRestarting = CreateConVar("rf2_aggressive_server_restarting", "1", "If enabled, restarts the server more frequently to avoid memory leaks");
 	g_cvGamePlayedCount = CreateConVar("rf2_games_played", "0", _, FCVAR_HIDDEN|FCVAR_DONTRECORD);
-	g_cvEnableGiantPainSounds = CreateConVar("rf2_enable_giant_pain_sounds", "", "Enables giant robot pain voices", FCVAR_NOTIFY, true, 0.0);
+	g_cvEnableGiantPainSounds = CreateConVar("rf2_enable_giant_pain_sounds", "0", "Enables giant robot pain voices", FCVAR_NOTIFY, true, 0.0);
+	IntToString(MaxClients, buffer, sizeof(buffer));
+	g_cvMaxBots = CreateConVar("rf2_max_bots", buffer, "Max number of bots allowed in the server", FCVAR_NOTIFY, true, 0.0);
 	
 	// Debug
 	RegAdminCmd("rf2_hiddenslot_test", Command_TestHiddenSlot, ADMFLAG_ROOT);
