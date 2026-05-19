@@ -4158,6 +4158,7 @@ public Action Timer_PlayerHud(Handle timer)
 			if (!g_bGracePeriod)
 			{
 				bool tanksLeft = g_iTanksKilledObjective < g_iTankKillRequirement;
+				/*
 				if (IsValidEntity2(g_iPlayerLastAttackedTank[i]))
 				{
 					RF2_TankBoss tank = RF2_TankBoss(g_iPlayerLastAttackedTank[i]);
@@ -4178,7 +4179,8 @@ public Action Timer_PlayerHud(Handle timer)
 						}
 					}
 				}
-				else if (g_bTankBossMode)
+				*/
+				if (g_bTankBossMode)
 				{
 					g_iPlayerLastAttackedTank[i] = INVALID_ENT;
 					if (!tanksLeft)
@@ -4212,14 +4214,14 @@ public Action Timer_PlayerHud(Handle timer)
 						FloatAbs(g_flPlayerShieldRegenTime[i]-GetGameTime()));
 				}
 			}
-
+			
 			if (PlayerHasItem(i, Item_PointAndShoot) && g_iPlayerFireRateStacks[i] > 0)
 			{
 				Format(miscText, sizeof(miscText), "%t", "AttackBuffStacks", miscText,
 					g_iPlayerFireRateStacks[i], CalcItemModInt(i, Item_PointAndShoot, 0));
 			}
 
-			bool hardHat = PlayerHasItem(i, Item_ApertureHat);
+			bool hardHat = false;//PlayerHasItem(i, Item_ApertureHat);
 			bool horace = PlayerHasItem(i, Item_Horace);
 			if (hardHat || horace)
 			{
@@ -4243,7 +4245,7 @@ public Action Timer_PlayerHud(Handle timer)
 						}
 					}
 				}
-
+				
 				if (hardHat)
 				{
 					float time = fmax(0.0, g_flPlayerHardHatLastResistTime[i]+GetItemMod(Item_ApertureHat, 1)-GetTickedTime());
@@ -4259,6 +4261,7 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 			}
 			
+			/*
 			if (PlayerHasItem(i, Item_LilBitey))
 			{
 				float time = fmax(0.0, g_flPlayerLifestealTime[i]-GetTickedTime());
@@ -4267,13 +4270,16 @@ public Action Timer_PlayerHud(Handle timer)
 					Format(miscText, sizeof(miscText), "%t", "Lifesteal", miscText, time);
 				}
 			}
-
+			*/
+			
+			/*
 			if (GetTickedTime() < g_flPlayerHawkHasteCooldown[i]
 				&& PlayerHasItem(i, ItemSoldier_HawkWarrior) && CanUseCollectorItem(i, ItemSoldier_HawkWarrior))
 			{
 				float time = FloatAbs(GetTickedTime()-g_flPlayerHawkHasteCooldown[i]);
 				Format(miscText, sizeof(miscText), "%t", "HawkHasteCooldown", miscText, time);
 			}
+			*/
 			
 			TFClassType class = TF2_GetPlayerClass(i);
 			if (class == TFClass_Spy && g_flPlayerVampireSapperCooldown[i] > 0.0)
