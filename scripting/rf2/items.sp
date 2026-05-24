@@ -3138,7 +3138,7 @@ int GetTotalItems()
 
 void AddItemToLogbook(int client, int item)
 {
-	if (item <= Item_Null || item >= Item_MaxValid || GetItemLogSQL(client) == null || IsItemInLogbook(client, item))
+	if (item <= Item_Null || item >= Item_MaxValid || IsItemInLogbook(client, item))
 	{
 		return;
 	}
@@ -3166,17 +3166,6 @@ bool IsItemInLogbook(int client, int item)
 	}
 
 	return GetItemLogSQL(client).FindString(g_szItemSectionName[item]) != -1;
-}
-
-bool IsItemInLogbookCookie(int client, int item)
-{
-	if (item <= Item_Null || item >= Item_MaxValid || g_bItemExcludeFromLog[item] || !AreClientCookiesCached(client))
-		return false;
-	
-	char buffer[2048], itemId[16];
-	GetItemLogCookie(client, buffer, sizeof(buffer));
-	FormatEx(itemId, sizeof(itemId), ";%i;", item);
-	return StrContains(buffer, itemId, false) != -1;
 }
 
 #if defined _goomba_included_

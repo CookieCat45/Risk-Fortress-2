@@ -230,17 +230,3 @@ void SetCookieBool(int client, Cookie cookie, bool value)
 {
 	SetCookieInt(client, cookie, view_as<int>(value));
 }
-
-int GetItemLogCookie(int client, char[] buffer, int size)
-{
-	int total;
-	char buffers[4][100];
-	for (int i = 0; i < sizeof(g_coItemsCollected); i++)
-	{
-		GetClientCookie(client, g_coItemsCollected[i], buffers[i], sizeof(buffers[]));
-		total += strlen(buffers[i]);
-	}
-	
-	ImplodeStrings(buffers, sizeof(buffers), "", buffer, size);
-	return total;
-}
