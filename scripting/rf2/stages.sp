@@ -232,6 +232,7 @@ void ReadMapKeys(KeyValues mapKey)
 	g_bDisableEurekaTeleport = asBool(mapKey.GetNum("disable_eureka_teleport", false));
 	g_bDisableItemDropping = asBool(mapKey.GetNum("disable_item_dropping", false));
 	g_bDisableSentryBusters = asBool(mapKey.GetNum("disable_sentry_busters", false));
+	g_bDisableItemSharing = asBool(mapKey.GetNum("disable_item_sharing", false));
 }
 
 int FindMaxStages()

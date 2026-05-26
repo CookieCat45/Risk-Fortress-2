@@ -90,6 +90,7 @@ ArrayList g_hAvailableLanguages;
 bool g_bDisableEurekaTeleport;
 bool g_bDisableItemDropping;
 bool g_bDisableSentryBusters;
+bool g_bDisableItemSharing;
 float g_flGracePeriodTime = 30.0;
 float g_flStartMoneyMultiplier = 1.0;
 float g_flBossSpawnChanceBonus;
@@ -4776,7 +4777,7 @@ public Action Timer_PlayerTimer(Handle timer)
 						}
 						else if (RF2_GetDifficulty() == DIFFICULTY_SCRAP)
 						{
-							healAmount = RoundFloat(float(healAmount) * 2.0);
+							healAmount = RoundFloat(float(healAmount) * 3.0);
 						}
 					}
 
@@ -7596,7 +7597,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		if (g_iDifficultyLevel <= DIFFICULTY_SCRAP)
 		{
-			damage *= 0.6;
+			damage *= 0.5;
 		}
 		else
 		{
@@ -8162,7 +8163,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		if (g_flPlayerOSPTime[victim] >= GetTickedTime() && GetClientHealth(victim) <= 0)
 		{
 			// One-shot protection: prevent death if the player takes too much damage within a short enough time
-			SetEntityHealth(victim, RoundToCeil(float(RF2_GetCalculatedMaxHealth(victim))*0.2));
+			SetEntityHealth(victim, RoundToCeil(float(RF2_GetCalculatedMaxHealth(victim))*0.1));
 			TF2_AddCondition(victim, TFCond_UberchargedHidden, 2.5);
 			TF2_RemoveCondition(victim, TFCond_Bleeding);
 			TF2_RemoveCondition(victim, TFCond_OnFire);

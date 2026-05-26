@@ -908,7 +908,7 @@ int GetPlayerCrateBonus(int client)
 // live check means we are checking this during gameplay, not during initialization or when round is starting etc.
 bool IsItemSharingEnabled(bool liveCheck=true)
 {
-	if (!g_cvItemShareEnabled.BoolValue)
+	if (g_bDisableItemSharing || !g_cvItemShareEnabled.BoolValue)
 		return false;
 	
 	if (GetRF2GameRules().DisableItemSharing)
