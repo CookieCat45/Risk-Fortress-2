@@ -1158,12 +1158,13 @@ bool PingObjects(int client)
 			item.GetAbsOrigin(pos);
 			pos[2] += 50.0;
 			char name[128], text[128];
-			for (int i = 1; i <=MaxClients; i++)
+			ShowItemDesc(client, item.index);
+			for (int i = 1; i <= MaxClients; i++)
 			{
 				if (IsClientInGame(i) && !IsFakeClient(i))
 				{
 					GetItemName(item.Type, name, sizeof(name), false, i);
-					FormatEx(text, sizeof(text), "%T", "PingItem", i, i, name);
+					FormatEx(text, sizeof(text), "%T", "PingItem", i, client, name);
 					ShowAnnotation(i, pos, text, 8.0, INVALID_ENT, item.index);
 				}
 			}

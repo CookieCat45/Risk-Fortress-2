@@ -194,6 +194,7 @@ float g_flPlayerHeavyArmorPoints[MAXPLAYERS] = {100.0, ...};
 float g_flPlayerShieldRegenTime[MAXPLAYERS];
 float g_flPlayerLastTabPressTime[MAXPLAYERS];
 float g_flPlayerHardHatLastResistTime[MAXPLAYERS];
+float g_flPlayerHardHatResistLinger[MAXPLAYERS];
 float g_flPlayerLastBlockTime[MAXPLAYERS];
 float g_flPlayerDelayedHealTime[MAXPLAYERS];
 float g_flPlayerLifestealTime[MAXPLAYERS];
@@ -4159,28 +4160,6 @@ public Action Timer_PlayerHud(Handle timer)
 			if (!g_bGracePeriod)
 			{
 				bool tanksLeft = g_iTanksKilledObjective < g_iTankKillRequirement;
-				/*
-				if (IsValidEntity2(g_iPlayerLastAttackedTank[i]))
-				{
-					RF2_TankBoss tank = RF2_TankBoss(g_iPlayerLastAttackedTank[i]);
-					if (tank.IsValid())
-					{
-						static char name[32];
-						name = tank.Type != TankType_Normal ? tank.Type != TankType_Badass ? "SuperBadassTank" : "BadassTank" : "Tank";
-						Format(name, sizeof(name), "%t", name);
-						if (g_bTankBossMode && tanksLeft)
-						{
-							FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", 
-								"TankHud1", g_iTanksKilledObjective, g_iTankKillRequirement, name, tank.Health, tank.MaxHealth);
-						}
-						else
-						{
-							FormatEx(g_szObjectiveHud[i], sizeof(g_szObjectiveHud[]), "%t", 
-								"TankHud2", name, tank.Health, tank.MaxHealth);
-						}
-					}
-				}
-				*/
 				if (g_bTankBossMode)
 				{
 					g_iPlayerLastAttackedTank[i] = INVALID_ENT;
@@ -4222,7 +4201,7 @@ public Action Timer_PlayerHud(Handle timer)
 					g_iPlayerFireRateStacks[i], CalcItemModInt(i, Item_PointAndShoot, 0));
 			}
 
-			bool hardHat = false;//PlayerHasItem(i, Item_ApertureHat);
+			bool hardHat = PlayerHasItem(i, Item_ApertureHat);
 			bool horace = PlayerHasItem(i, Item_Horace);
 			if (hardHat || horace)
 			{
@@ -7323,12 +7302,16 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 		if (!selfDamage && PlayerHasItem(victim, Item_ApertureHat))
 		{
 			float time = GetItemMod(Item_ApertureHat, 1);
-			if (g_flPlayerHardHatLastResistTime[victim]+time <= GetTickedTime())
+			if (g_flPlayerHardHatLastResistTime[victim]+time <= GetTickedTime() || g_flPlayerHardHatResistLinger[victim] >= GetTickedTime())
 			{
 				damage *= CalcItemMod_Reciprocal(victim, Item_ApertureHat, 0);
-				g_flPlayerHardHatLastResistTime[victim] = GetTickedTime();
 				EmitGameSoundToAll("Player.ResistanceLight", victim);
 				EmitGameSoundToAll("Player.ResistanceLight", victim);
+				if (g_flPlayerHardHatLastResistTime[victim]+time <= GetTickedTime())
+				{
+					g_flPlayerHardHatLastResistTime[victim] = GetTickedTime();
+					g_flPlayerHardHatResistLinger[victim] = GetTickedTime() + GetItemMod(Item_ApertureHat, 2);
+				}
 			}
 		}
 	}
@@ -8982,6 +8965,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 						{
 							CreateMedigunShield(client);
 							g_flPlayerMedicShieldNextUseTime[client] = GetGameTime()+GetItemMod(ItemMedic_ProcedureMask, 2);
+							g_flPlayerTimeSinceLastPing[client] = GetTickedTime(); // prevent accidental pings
 						}
 					}
 				}
