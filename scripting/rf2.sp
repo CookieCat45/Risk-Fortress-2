@@ -8046,23 +8046,6 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			}
 		}
 		
-		if (PlayerHasItem(victim, Item_CheatersLament) && GetClientHealth(victim) <= 0 
-			&& !g_bGracePeriod && !GetRF2GameRules().DisableDeath)
-		{
-			SetEntityHealth(victim, RF2_GetCalculatedMaxHealth(victim));
-			TF2_AddCondition(victim, TFCond_UberchargedCanteen);
-			TF2_AddCondition(victim, TFCond_UberBulletResist);
-			TF2_AddCondition(victim, TFCond_UberBlastResist);
-			TF2_AddCondition(victim, TFCond_UberFireResist);
-			TF2_AddCondition(victim, TFCond_MegaHeal);
-			TF2_AddCondition(victim, TFCond_CritOnFirstBlood);
-			TF2_SetPlayerPowerPlay(victim, true);
-			g_bPlayerReviveActivated[victim] = true;
-			CreateTimer(GetItemMod(Item_CheatersLament, 0), Timer_PowerPlayExpire, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
-			GiveItem(victim, Item_CheatersLament, -1);
-			GiveItem(victim, Item_CheatersLament_Recharging, 1, true);
-		}
-		
 		if (!selfDamage && !invuln && proc > 0.0 
 			&& PlayerHasItem(victim, Item_Capacitor) && (!attackerIsClient || GetEntItemProc(attacker) != Item_Capacitor)
 			&& RandChanceFloatEx(victim, 0.001, 1.0, GetItemMod(Item_Capacitor, 3)))
@@ -8118,13 +8101,30 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		{
 			// One-shot protection: prevent death if the player takes too much damage within a short enough time
 			SetEntityHealth(victim, RoundToCeil(float(RF2_GetCalculatedMaxHealth(victim))*0.2));
-			TF2_AddCondition(victim, TFCond_UberchargedHidden, 2.0);
+			TF2_AddCondition(victim, TFCond_UberchargedHidden, 2.5);
 			TF2_RemoveCondition(victim, TFCond_Bleeding);
 			TF2_RemoveCondition(victim, TFCond_OnFire);
 			TF2_RemoveCondition(victim, TFCond_BurningPyro);
 			TF2_RemoveCondition(victim, TFCond_Gas);
-			g_flPlayerOSPCooldown[victim] = GetGameTime() + 5.0;
+			g_flPlayerOSPCooldown[victim] = GetGameTime() + 10.0;
 			PrintCenterText(victim, "%t", "OspTriggered");
+		}
+		
+		if (PlayerHasItem(victim, Item_CheatersLament) && GetClientHealth(victim) <= 0 
+			&& !g_bGracePeriod && !GetRF2GameRules().DisableDeath)
+		{
+			SetEntityHealth(victim, RF2_GetCalculatedMaxHealth(victim));
+			TF2_AddCondition(victim, TFCond_UberchargedCanteen);
+			TF2_AddCondition(victim, TFCond_UberBulletResist);
+			TF2_AddCondition(victim, TFCond_UberBlastResist);
+			TF2_AddCondition(victim, TFCond_UberFireResist);
+			TF2_AddCondition(victim, TFCond_MegaHeal);
+			TF2_AddCondition(victim, TFCond_CritOnFirstBlood);
+			TF2_SetPlayerPowerPlay(victim, true);
+			g_bPlayerReviveActivated[victim] = true;
+			CreateTimer(GetItemMod(Item_CheatersLament, 0), Timer_PowerPlayExpire, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
+			GiveItem(victim, Item_CheatersLament, -1);
+			GiveItem(victim, Item_CheatersLament_Recharging, 1, true);
 		}
 	}
 	else if (IsTank(victim))
