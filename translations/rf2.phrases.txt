@@ -510,6 +510,12 @@
 		"en"		"*** ONE-SHOT PROTECTION TRIGGERED! ***"
 	}
 	
+	"OspCooldown"
+	{
+		"#format"	"{1:.1f}"
+		"en"		"One-Shot Protection Cooldown: {1}"
+	}
+	
 	"PingObject"
 	{
 		"#format"	"{1:N},{2:t}"

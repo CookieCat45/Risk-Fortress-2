@@ -4175,6 +4175,11 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 			}
 			
+			if (g_flPlayerOSPCooldown[i] > GetTickedTime())
+			{
+				Format(miscText, sizeof(miscText), "%t", "OSPCooldown", miscText, FloatAbs(g_flPlayerOSPCooldown[i]-GetTickedTime()));
+			}
+			
 			if (HasJetpack(i))
 			{
 				Format(miscText, sizeof(miscText), "%t", "JetpackTime", miscText, FloatAbs(g_flPlayerJetpackEndTime[i]-GetTickedTime()));
@@ -8020,7 +8025,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	if (victimIsClient && DoesPlayerHaveOSP(victim))
 	{
 		// If the player is above 90% health when they take damage, they cannot die for 1 second
-		g_flPlayerOSPTime[victim] = GetGameTime() + 1.0;
+		g_flPlayerOSPTime[victim] = GetTickedTime() + 1.0;
 	}
 	
 	if (raidBossBackstab)
@@ -8154,7 +8159,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			g_flPlayerDelayedHealTime[victim] = GetTickedTime()+GetItemMod(Item_Hachimaki, 0);
 		}
 		
-		if (g_flPlayerOSPTime[victim] >= GetGameTime() && GetClientHealth(victim) <= 0)
+		if (g_flPlayerOSPTime[victim] >= GetTickedTime() && GetClientHealth(victim) <= 0)
 		{
 			// One-shot protection: prevent death if the player takes too much damage within a short enough time
 			SetEntityHealth(victim, RoundToCeil(float(RF2_GetCalculatedMaxHealth(victim))*0.2));
@@ -8163,7 +8168,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			TF2_RemoveCondition(victim, TFCond_OnFire);
 			TF2_RemoveCondition(victim, TFCond_BurningPyro);
 			TF2_RemoveCondition(victim, TFCond_Gas);
-			g_flPlayerOSPCooldown[victim] = GetGameTime() + 10.0;
+			g_flPlayerOSPCooldown[victim] = GetTickedTime() + 10.0;
 			PrintCenterText(victim, "%t", "OspTriggered");
 		}
 		
