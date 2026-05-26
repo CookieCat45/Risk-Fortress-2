@@ -207,6 +207,8 @@ float g_flPlayerJetpackEndTime[MAXPLAYERS];
 float g_flBlockMedicCall[MAXPLAYERS];
 float g_flBannerSwitchTime[MAXPLAYERS];
 float g_flPlayerHawkHasteCooldown[MAXPLAYERS];
+float g_flPlayerOSPTime[MAXPLAYERS];
+float g_flPlayerOSPCooldown[MAXPLAYERS];
 
 int g_iPlayerInventoryIndex[MAXPLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXPLAYERS] = {1, ...};
@@ -562,7 +564,7 @@ public void OnPluginStart()
 	LoadGameData();
 	LoadCommandsAndCvars();
 	BakeCookies();
-	CreateSQL();
+	//CreateSQL();
 	LoadTranslations("common.phrases");
 	LoadTranslations("core.phrases");
 	LoadTranslations("rf2.phrases");
@@ -7977,19 +7979,8 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	g_flDamageProc = proc; // carry over to other damage hooks
 	if (victimIsClient && !selfDamage && DoesPlayerHaveOSP(victim))
 	{
-		// One-shot protection: if a Survivor is above 90% HP, damage cannot deal more than 90% of max HP.
-		float maxDmg = float(RF2_GetCalculatedMaxHealth(victim))*0.9;
-		if (damage > maxDmg)
-		{
-			TF2_AddCondition(victim, TFCond_UberchargedHidden, 0.5);
-			TF2_RemoveCondition(victim, TFCond_Bleeding);
-			TF2_RemoveCondition(victim, TFCond_OnFire);
-			TF2_RemoveCondition(victim, TFCond_BurningPyro);
-			TF2_RemoveCondition(victim, TFCond_Gas);
-			g_flPlayerHealthRegenTime[victim] = 5.0; // since invuln blocks health regen timer
-		}
-		
-		damage = fmin(damage, maxDmg);
+		// If the player is at or above 90% health when they take damage, they cannot die for 1 second
+		g_flPlayerOSPTime[victim] = GetGameTime() + 1.0;
 	}
 	
 	if (raidBossBackstab)
@@ -8029,15 +8020,6 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			const float regenTimeMax = 5.0;
 			float seconds = fmax(5.0 * (damage / float(RF2_GetCalculatedMaxHealth(victim))), regenTimeMin);
 			g_flPlayerHealthRegenTime[victim] = fmin(g_flPlayerHealthRegenTime[victim]+seconds, regenTimeMax);
-		}
-		
-		if (!invuln && !g_bGracePeriod)
-		{
-			if (PlayerHasItem(victim, Item_PocketMedic) && !GetRF2GameRules().DisableDeath)
-			{
-				// check after the damage is dealt
-				RequestFrame(RF_CheckHealthForPocketMedic, victim);
-			}
 		}
 		
 		if (damage <= 0.0)
@@ -8121,6 +8103,28 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		if (PlayerHasItem(victim, Item_Hachimaki) && !IsInvuln(victim))
 		{
 			g_flPlayerDelayedHealTime[victim] = GetTickedTime()+GetItemMod(Item_Hachimaki, 0);
+		}
+		
+		if (g_flPlayerOSPTime[victim] >= GetGameTime() && GetClientHealth(victim) <= 0)
+		{
+			// One-shot protection: prevent death if the player takes too much damage within a short enough time
+			SetEntityHealth(victim, RoundToCeil(float(RF2_GetCalculatedMaxHealth(victim))*0.2));
+			TF2_AddCondition(victim, TFCond_UberchargedHidden, 2.0);
+			TF2_RemoveCondition(victim, TFCond_Bleeding);
+			TF2_RemoveCondition(victim, TFCond_OnFire);
+			TF2_RemoveCondition(victim, TFCond_BurningPyro);
+			TF2_RemoveCondition(victim, TFCond_Gas);
+			invuln = true;
+			g_flPlayerOSPCooldown[victim] = GetGameTime() + 5.0;
+		}
+		
+		if (!invuln && !g_bGracePeriod)
+		{
+			if (PlayerHasItem(victim, Item_PocketMedic) && !GetRF2GameRules().DisableDeath)
+			{
+				// check after the damage is dealt
+				RequestFrame(RF_CheckHealthForPocketMedic, victim);
+			}
 		}
 	}
 	else if (IsTank(victim))

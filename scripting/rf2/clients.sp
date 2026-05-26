@@ -1025,6 +1025,11 @@ bool DoesPlayerHaveOSP(int client)
 
 	if (GetRF2GameRules().DisableDeath)
 		return false;
+		
+	if (g_flPlayerOSPCooldown[client] > GetGameTime() || g_flPlayerOSPTime[client] >= GetGameTime())
+	{
+		return false;
+	}
 
 	return true;
 }

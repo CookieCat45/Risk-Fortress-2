@@ -301,7 +301,7 @@ void AddItemToSQL(int client, int item)
 	{
 		return;
 	}
-
+	
 	int id = GetSteamAccountID(client);
 	if (id == 0)
 	{

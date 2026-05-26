@@ -3164,7 +3164,7 @@ bool IsItemInLogbook(int client, int item)
 	{
 		return false;
 	}
-
+	
 	return GetItemLogSQL(client).FindString(g_szItemSectionName[item]) != -1;
 }
 
