@@ -8022,6 +8022,15 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			g_flPlayerHealthRegenTime[victim] = fmin(g_flPlayerHealthRegenTime[victim]+seconds, regenTimeMax);
 		}
 		
+		if (!invuln && !g_bGracePeriod)
+		{
+			if (PlayerHasItem(victim, Item_PocketMedic) && !GetRF2GameRules().DisableDeath)
+			{
+				// check after the damage is dealt
+				RequestFrame(RF_CheckHealthForPocketMedic, victim);
+			}
+		}
+		
 		if (damage <= 0.0)
 		{
 			RequestFrame(RF_ClearViewPunch, victim);
@@ -8114,17 +8123,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			TF2_RemoveCondition(victim, TFCond_OnFire);
 			TF2_RemoveCondition(victim, TFCond_BurningPyro);
 			TF2_RemoveCondition(victim, TFCond_Gas);
-			invuln = true;
 			g_flPlayerOSPCooldown[victim] = GetGameTime() + 5.0;
-		}
-		
-		if (!invuln && !g_bGracePeriod)
-		{
-			if (PlayerHasItem(victim, Item_PocketMedic) && !GetRF2GameRules().DisableDeath)
-			{
-				// check after the damage is dealt
-				RequestFrame(RF_CheckHealthForPocketMedic, victim);
-			}
 		}
 	}
 	else if (IsTank(victim))
