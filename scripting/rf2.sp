@@ -8,9 +8,9 @@
 #pragma newdecls required
 
 #if defined DEVONLY
-#define PLUGIN_VERSION "1.7.6-DEVONLY"
+#define PLUGIN_VERSION "1.8.0-DEVONLY"
 #else
-#define PLUGIN_VERSION "1.7.6"
+#define PLUGIN_VERSION "1.8.0"
 #endif
 
 #undef MAXPLAYERS
@@ -4137,7 +4137,6 @@ public Action Timer_PlayerHud(Handle timer)
 		}
 		
 		miscText = "";
-		
 		Call_StartForward(g_fwOnMiscTextWriting);
 			Call_PushCell(i);
 			Call_PushStringEx(miscText, sizeof(miscText), SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
