@@ -52,6 +52,18 @@ void LoadNatives()
 	CreateNative("RF2_IsTankDestructionMode", Native_IsTankDestructionMode);
 	CreateNative("RF2_AddObjectToSpawnList", Native_AddObjectToSpawnList);
 	CreateNative("RF2_RemoveObjectFromSpawnList", Native_RemoveObjectFromSpawnList);
+	CreateNative("RF2_AddPlayerCash", Native_AddPlayerCash);
+	CreateNative("RF2_HealPlayer", Native_HealPlayer);
+	CreateNative("RF2_UpdatePlayerFireRate", Native_UpdatePlayerFireRate);
+	CreateNative("RF2_CalculatePlayerMaxSpeed", Native_CalculatePlayerMaxSpeed);
+	CreateNative("RF2_DoItemKillEffects", Native_DoItemKillEffects);
+	CreateNative("RF2_FireHomingProjectile", Native_FireHomingProjectile);
+	CreateNative("RF2_ToggleGlow", Native_ToggleGlow);
+	CreateNative("RF2_IsPlayerNpc", Native_IsPlayerNpc);
+	CreateNative("RF2_ActivateStrangeItem", Native_ActivateStrangeItem);
+	CreateNative("RF2_MakeSurvivor", Native_MakeSurvivor);
+	CreateNative("RF2_IsSurvivorIndexValid", Native_IsSurvivorIndexValid);
+	CreateNative("RF2_DoExplosionEffect", Native_DoExplosionEffect);
 }
 
 void LoadForwards()
@@ -66,6 +78,19 @@ void LoadForwards()
 	g_fwOnCustomItemLoaded = new GlobalForward("RF2_OnCustomItemLoaded", ET_Ignore, Param_String, Param_String, Param_Cell, Param_Cell);
 	g_fwOnPlayerItemUpdate = new GlobalForward("RF2_OnPlayerItemUpdate", ET_Ignore, Param_Cell, Param_Cell);
 	g_fwOnActivateStrange = new GlobalForward("RF2_OnActivateStrangeItem", ET_Hook, Param_Cell, Param_Cell);
+	g_fwOnHealingApplied = new GlobalForward("RF2_OnHealingApplied", ET_Hook, Param_Cell, Param_CellByRef, Param_CellByRef, Param_FloatByRef, Param_Cell);
+	g_fwOnTakeDamageAlivePost = new GlobalForward("RF2_OnTakeDamageAlivePost", ET_Hook, Param_Cell, Param_CellByRef, Param_CellByRef, Param_FloatByRef, Param_CellByRef, Param_CellByRef, Param_Array, Param_Array, Param_Cell);
+	g_fwOnCritChanceCalculation = new GlobalForward("RF2_OnCritChanceCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
+	g_fwOnCrypticCritDmgCalculation = new GlobalForward("RF2_OnCrypticCritDmgCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
+	g_fwOnTakeDamage2 = new GlobalForward("RF2_OnTakeDamage2", ET_Hook, Param_Cell, Param_CellByRef, Param_CellByRef, Param_FloatByRef, Param_CellByRef, 
+		Param_CellByRef, Param_Array, Param_Array, Param_Cell);
+	g_fwOnFireRateCalculation = new GlobalForward("RF2_OnFireRateCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
+	g_fwOnReloadSpeedCalculation = new GlobalForward("RF2_OnReloadSpeedCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
+	g_fwOnMoveSpeedCalculation = new GlobalForward("RF2_OnMoveSpeedCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
+	g_fwOnMiscTextWriting = new GlobalForward("RF2_OnMiscTextWriting", ET_Hook, Param_Cell, Param_String);
+	g_fwOnDoItemKillEffects = new GlobalForward("RF2_OnDoItemKillEffects", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_CellByRef, Param_CellByRef, Param_Cell, Param_CellByRef);
+	g_fwOnEquipmentChargeGain = new GlobalForward("RF2_OnEquipmentChargeGain", ET_Hook, Param_Cell, Param_Cell);
+	g_fwOnPlayerEquipmentItemCooldownCalculation = new GlobalForward("RF2_OnPlayerEquipmentItemCooldownCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
 }
 
 public any Native_IsEnabled(Handle plugin, int numParams)
@@ -329,4 +354,101 @@ public any Native_RemoveObjectFromSpawnList(Handle plugin, int numParams)
 	char classname[128];
 	GetNativeString(1, classname, sizeof(classname));
 	return RF2_GameRules.RemoveObjectFromSpawnList(classname);
+}
+
+public any Native_AddPlayerCash(Handle plugin, int numParams)
+{
+	AddPlayerCash(GetNativeCell(1), GetNativeCell(2));
+	return 0;
+}
+
+public any Native_HealPlayer(Handle plugin, int numParams)
+{
+	HealPlayer(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4), GetNativeCell(5));
+	return 0;
+}
+
+public any Native_UpdatePlayerFireRate(Handle plugin, int numParams)
+{
+	UpdatePlayerFireRate(GetNativeCell(1));
+	return 0;
+}
+
+public any Native_CalculatePlayerMaxSpeed(Handle plugin, int numParams)
+{
+	CalculatePlayerMaxSpeed(GetNativeCell(1));
+	return 0;
+}
+
+public any Native_DoItemKillEffects(Handle plugin, int numParams)
+{
+	DoItemKillEffects(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4), GetNativeCell(5), GetNativeCell(6), GetNativeCell(7));
+	return 0;
+}
+
+public any Native_FireHomingProjectile(Handle plugin, int numParams)
+{
+	int client       = GetNativeCell(1);
+    float damage     = GetNativeCell(2);
+    float speed      = GetNativeCell(3);
+
+    if (!IsValidClient(client) || !IsPlayerAlive(client))
+        return 0;
+
+    float pos[3], ang[3];
+    GetClientEyePosition(client, pos);
+    GetClientEyeAngles(client, ang);
+	pos[2] += 20.0;
+
+
+    int ent = ShootProjectile(client, "tf_projectile_rocket", pos, ang, speed, damage);
+    if (ent == -1)
+		return 0;
+
+
+    RF2_Projectile_HomingRocket rocket = RF2_Projectile_HomingRocket(ent);
+    rocket.Owner = client;
+    rocket.Team  = GetClientTeam(client);
+	rocket.HomingSpeed = speed*2.0;
+
+
+    rocket.SelectHomingTarget();
+	
+	return 0;
+}
+
+public any Native_ToggleGlow(Handle plugin, int numParams)
+{
+	int color[4];
+	GetNativeArray(3, color, sizeof(color));
+	return ToggleGlow(GetNativeCell(1), GetNativeCell(2), color);
+}
+
+public any Native_IsPlayerNpc(Handle plugin, int numParams)
+{
+	return IsNPC(GetNativeCell(1));
+}
+
+public any Native_ActivateStrangeItem(Handle plugin, int numParams)
+{
+	return ActivateStrangeItem(GetNativeCell(1));
+}
+
+public any Native_MakeSurvivor(Handle plugin, int numParams)
+{
+	MakeSurvivor(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4));
+	return 0;
+}
+
+public any Native_IsSurvivorIndexValid(Handle plugin, int numParams)
+{
+	return IsSurvivorIndexValid(GetNativeCell(1));
+}
+
+public any Native_DoExplosionEffect(Handle plugin, int numParams)
+{
+	float pos[3];
+	GetNativeArray(1, pos, sizeof(pos));
+	DoExplosionEffect(pos, GetNativeCell(2), GetNativeCell(2));
+	return 0;
 }

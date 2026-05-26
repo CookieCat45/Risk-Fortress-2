@@ -266,6 +266,7 @@ bool g_bDontRemoveWearable[MAX_EDICTS];
 bool g_bItemWearable[MAX_EDICTS];
 bool g_bEntityGlowing[MAX_EDICTS];
 bool g_bReflectCheck[MAXPLAYERS][MAX_EDICTS];
+bool g_bRocketRegenToggle[MAX_EDICTS];
 float g_flBusterSpawnTime;
 float g_flProjectileForcedDamage[MAX_EDICTS];
 float g_flSentryNextLaserTime[MAX_EDICTS];
@@ -332,6 +333,18 @@ GlobalForward g_fwOnTakeDamage;
 GlobalForward g_fwOnCustomItemLoaded;
 GlobalForward g_fwOnPlayerItemUpdate;
 GlobalForward g_fwOnActivateStrange;
+GlobalForward g_fwOnHealingApplied;
+GlobalForward g_fwOnTakeDamageAlivePost;
+GlobalForward g_fwOnCritChanceCalculation;
+GlobalForward g_fwOnCrypticCritDmgCalculation;
+GlobalForward g_fwOnTakeDamage2;
+GlobalForward g_fwOnFireRateCalculation;
+GlobalForward g_fwOnReloadSpeedCalculation;
+GlobalForward g_fwOnMoveSpeedCalculation;
+GlobalForward g_fwOnMiscTextWriting;
+GlobalForward g_fwOnDoItemKillEffects;
+GlobalForward g_fwOnEquipmentChargeGain;
+GlobalForward g_fwOnPlayerEquipmentItemCooldownCalculation;
 PrivateForward g_fwOnMapStart;
 
 // ConVars
@@ -420,6 +433,7 @@ ConVar g_cvStage1StartingMap;
 ConVar g_cvAggressiveRestarting;
 ConVar g_cvGamePlayedCount;
 ConVar g_cvEnableGiantPainSounds;
+ConVar g_cvMaxBots;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -4123,6 +4137,18 @@ public Action Timer_PlayerHud(Handle timer)
 		}
 		
 		miscText = "";
+		
+		Call_StartForward(g_fwOnMiscTextWriting);
+			Call_PushCell(i);
+			Call_PushStringEx(miscText, sizeof(miscText), SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
+		Action miscTextResult;
+		Call_Finish(miscTextResult);
+		if (miscTextResult == Plugin_Handled || miscTextResult == Plugin_Stop)
+		{
+			return miscTextResult;
+		}
+		
+		
 		int r, g, b;
 		r = 255;
 		g = 255;
@@ -4134,6 +4160,7 @@ public Action Timer_PlayerHud(Handle timer)
 			if (!g_bGracePeriod)
 			{
 				bool tanksLeft = g_iTanksKilledObjective < g_iTankKillRequirement;
+				/*
 				if (IsValidEntity2(g_iPlayerLastAttackedTank[i]))
 				{
 					RF2_TankBoss tank = RF2_TankBoss(g_iPlayerLastAttackedTank[i]);
@@ -4154,7 +4181,8 @@ public Action Timer_PlayerHud(Handle timer)
 						}
 					}
 				}
-				else if (g_bTankBossMode)
+				*/
+				if (g_bTankBossMode)
 				{
 					g_iPlayerLastAttackedTank[i] = INVALID_ENT;
 					if (!tanksLeft)
@@ -4188,14 +4216,14 @@ public Action Timer_PlayerHud(Handle timer)
 						FloatAbs(g_flPlayerShieldRegenTime[i]-GetGameTime()));
 				}
 			}
-
+			
 			if (PlayerHasItem(i, Item_PointAndShoot) && g_iPlayerFireRateStacks[i] > 0)
 			{
 				Format(miscText, sizeof(miscText), "%t", "AttackBuffStacks", miscText,
 					g_iPlayerFireRateStacks[i], CalcItemModInt(i, Item_PointAndShoot, 0));
 			}
 
-			bool hardHat = PlayerHasItem(i, Item_ApertureHat);
+			bool hardHat = false;//PlayerHasItem(i, Item_ApertureHat);
 			bool horace = PlayerHasItem(i, Item_Horace);
 			if (hardHat || horace)
 			{
@@ -4219,7 +4247,7 @@ public Action Timer_PlayerHud(Handle timer)
 						}
 					}
 				}
-
+				
 				if (hardHat)
 				{
 					float time = fmax(0.0, g_flPlayerHardHatLastResistTime[i]+GetItemMod(Item_ApertureHat, 1)-GetTickedTime());
@@ -4235,6 +4263,7 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 			}
 			
+			/*
 			if (PlayerHasItem(i, Item_LilBitey))
 			{
 				float time = fmax(0.0, g_flPlayerLifestealTime[i]-GetTickedTime());
@@ -4243,13 +4272,16 @@ public Action Timer_PlayerHud(Handle timer)
 					Format(miscText, sizeof(miscText), "%t", "Lifesteal", miscText, time);
 				}
 			}
-
+			*/
+			
+			/*
 			if (GetTickedTime() < g_flPlayerHawkHasteCooldown[i]
 				&& PlayerHasItem(i, ItemSoldier_HawkWarrior) && CanUseCollectorItem(i, ItemSoldier_HawkWarrior))
 			{
 				float time = FloatAbs(GetTickedTime()-g_flPlayerHawkHasteCooldown[i]);
 				Format(miscText, sizeof(miscText), "%t", "HawkHasteCooldown", miscText, time);
 			}
+			*/
 			
 			TFClassType class = TF2_GetPlayerClass(i);
 			if (class == TFClass_Spy && g_flPlayerVampireSapperCooldown[i] > 0.0)
@@ -6029,7 +6061,7 @@ void ForceRifleSound(int client, bool crit=false)
 	int weapon = GetPlayerWeaponSlot(client, WeaponSlot_Primary);
 	if (weapon == INVALID_ENT)
 		return;
-	
+
 	if (g_bPlayerRifleAutoFire[client])
 	{
 		EmitSoundToAll(SND_AUTOFIRE_SHOOT, client, _, _, _, fmax(0.35, GetPlayerReloadMod(client)));
@@ -6263,6 +6295,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bItemWearable[entity] = false;
 	g_bCashBomb[entity] = false;
 	g_bEntityGlowing[entity] = false;
+	g_bRocketRegenToggle[entity] = false;
 	for (int i = 1; i < MAXPLAYERS; i++)
 	{
 		g_bReflectCheck[i][entity] = false;
@@ -6324,6 +6357,10 @@ public void OnEntityCreated(int entity, const char[] classname)
 		SDKHook(entity, SDKHook_OnTakeDamage, Hook_BuildingOnTakeDamage);
 		SDKHook(entity, SDKHook_OnTakeDamagePost, Hook_BuildingOnTakeDamagePost);
 		CreateTimer(0.5, Timer_BuildingHealthRegen, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		if (strcmp2(classname, "obj_sentrygun"))
+		{
+			CreateTimer(6.0, Timer_SentryAmmoRegen, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		}
 	}
 	else if (IsNPC(entity))
 	{
@@ -6873,19 +6910,19 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 	int attackerProc = GetEntItemProc(attacker);
 	int inflictorProc = IsValidEntity2(inflictor) && inflictor < MAX_EDICTS ? GetEntItemProc(inflictor) : Item_Null;
 	Call_StartForward(g_fwOnTakeDamage);
-	Call_PushCell(victim);
-	Call_PushCellRef(attacker);
-	Call_PushCellRef(inflictor);
-	Call_PushFloatRef(damage);
-	Call_PushCellRef(damageType);
-	Call_PushCellRef(weapon);
-	Call_PushArray(damageForce, 3);
-	Call_PushArray(damagePosition, 3);
-	Call_PushCell(damageCustom);
-	Call_PushCell(attackerProc);
-	Call_PushCell(inflictorProc);
-	Call_PushCellRef(critType);
-	Call_PushFloatRef(proc);
+		Call_PushCell(victim);
+		Call_PushCellRef(attacker);
+		Call_PushCellRef(inflictor);
+		Call_PushFloatRef(damage);
+		Call_PushCellRef(damageType);
+		Call_PushCellRef(weapon);
+		Call_PushArray(damageForce, 3);
+		Call_PushArray(damagePosition, 3);
+		Call_PushCell(damageCustom);
+		Call_PushCell(attackerProc);
+		Call_PushCell(inflictorProc);
+		Call_PushCellRef(critType);
+		Call_PushFloatRef(proc);
 	Action result;
 	Call_Finish(result);
 	if (result == Plugin_Handled || result == Plugin_Stop)
@@ -7209,6 +7246,10 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				if (PlayerHasItem(attacker, Item_CrypticKeepsake))
 				{
 					float mult = 1.0 + CalcItemMod(attacker, Item_TombReaders, 0) + CalcItemMod(attacker, Item_Executioner, 5);
+					Call_StartForward(g_fwOnCrypticCritDmgCalculation);
+						Call_PushCell(attacker);
+						Call_PushFloatRef(mult);
+					Call_Finish();
 					if (PlayerHasItem(attacker, Item_SaxtonHat) && damageType & DMG_MELEE)
 					{
 						mult += CalcItemMod(attacker, Item_SaxtonHat, 1);
@@ -7376,8 +7417,9 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 			}
 		}
 	}
-
+	
 	g_flDamageProc = proc;
+	
 	return damage != originalDamage || originalDamageType != damageType || originalCritType != critType ? Plugin_Changed : Plugin_Continue;
 }
 
@@ -7534,6 +7576,22 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		{
 			damage *= 0.4;
 			damageType &= ~DMG_CRIT;
+			Call_StartForward(g_fwOnTakeDamage2);
+				Call_PushCell(victim);
+				Call_PushCellRef(attacker);
+				Call_PushCellRef(inflictor);
+				Call_PushFloatRef(damage);
+				Call_PushCellRef(damageType);
+				Call_PushCellRef(weapon);
+				Call_PushArray(damageForce, 3);
+				Call_PushArray(damagePosition, 3);
+				Call_PushCell(damageCustom);
+			Action result3;
+			Call_Finish(result3);
+			if (result3 == Plugin_Handled || result3 == Plugin_Stop)
+			{
+				return result3;
+			}
 			return Plugin_Changed;
 		}
 		else
@@ -7987,6 +8045,23 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	{
 		damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*0.075);
 	}
+
+	Call_StartForward(g_fwOnTakeDamage2);
+		Call_PushCell(victim);
+		Call_PushCellRef(attacker);
+		Call_PushCellRef(inflictor);
+		Call_PushFloatRef(damage);
+		Call_PushCellRef(damageType);
+		Call_PushCellRef(weapon);
+		Call_PushArray(damageForce, 3);
+		Call_PushArray(damagePosition, 3);
+		Call_PushCell(damageCustom);
+	Action result3;
+	Call_Finish(result3);
+	if (result3 == Plugin_Handled || result3 == Plugin_Stop)
+	{
+		return result3;
+	}
 	
 	return damage != originalDamage || originalDamageType != damageType ? Plugin_Changed : Plugin_Continue;
 }
@@ -8362,6 +8437,19 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			}
 		}
 	}
+	
+	
+	Call_StartForward(g_fwOnTakeDamageAlivePost);
+        Call_PushCell(victim);
+		Call_PushCellRef(attacker);
+		Call_PushCellRef(inflictor);
+		Call_PushFloatRef(damage);
+		Call_PushCellRef(damageType);
+		Call_PushCellRef(weapon);
+		Call_PushArray(damageForce, 3);
+		Call_PushArray(damagePosition, 3);
+		Call_PushCell(damageCustom);
+    Call_Finish();
 }
 
 public void RF_RoBroDealDamage(DataPack pack)
