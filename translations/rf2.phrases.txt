@@ -505,6 +505,11 @@
 		"en"		"\nGet inside the Teleporter radius! ({1})\nBosses Left: {2}"
 	}
 	
+	"OspTriggered"
+	{
+		"en"		"*** ONE-SHOT PROTECTION TRIGGERED! ***"
+	}
+	
 	"PingObject"
 	{
 		"#format"	"{1:N},{2:t}"

@@ -7977,9 +7977,9 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	}
 
 	g_flDamageProc = proc; // carry over to other damage hooks
-	if (victimIsClient && !selfDamage && DoesPlayerHaveOSP(victim))
+	if (victimIsClient && DoesPlayerHaveOSP(victim))
 	{
-		// If the player is at or above 90% health when they take damage, they cannot die for 1 second
+		// If the player is above 90% health when they take damage, they cannot die for 1 second
 		g_flPlayerOSPTime[victim] = GetGameTime() + 1.0;
 	}
 	
@@ -8124,6 +8124,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			TF2_RemoveCondition(victim, TFCond_BurningPyro);
 			TF2_RemoveCondition(victim, TFCond_Gas);
 			g_flPlayerOSPCooldown[victim] = GetGameTime() + 5.0;
+			PrintCenterText(victim, "%t", "OspTriggered");
 		}
 	}
 	else if (IsTank(victim))
