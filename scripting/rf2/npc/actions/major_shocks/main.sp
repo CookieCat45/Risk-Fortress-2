@@ -99,7 +99,7 @@ static int Update(RF2_MajorShocksMainAction action, RF2_MajorShocks actor, float
 		maxSpeed = 300.0;
 	}
 	
-	if (RF2_GetLoopCount() > 0 || g_cvDebugUseAltMapSettings.BoolValue)
+	if (g_iLoopCount > 0 || g_cvDebugUseAltMapSettings.BoolValue)
 	{
 		if (speed < 250.0)
 		{
@@ -217,7 +217,7 @@ static void SelectTargetPoint(RF2_MajorShocksMainAction action, INextBot bot, in
 			delete trace;
 			return;
 		}
-
+		
 		delete trace;
 	}
 

@@ -177,22 +177,22 @@ bool IsSentryDisposable(int sentry)
 static bool g_bWasInSetup;
 public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookParam params)
 {
-	if (RF2_IsEnabled())
+	if (!g_bEnabled)
+		return MRES_Ignored;
+		
+	// skip upgrade anim
+	bool carryDeploy = asBool(GetEntProp(entity, Prop_Send, "m_bCarryDeploy"));
+	if (carryDeploy || g_bGracePeriod || GetRF2GameRules().AllowQuickBuild)
 	{
-		// skip upgrade anim
-		bool carryDeploy = asBool(GetEntProp(entity, Prop_Send, "m_bCarryDeploy"));
-		if (carryDeploy || g_bGracePeriod || GetRF2GameRules().AllowQuickBuild)
+		// Either m_bCarryDeploy or m_bInSetup need to be true for this to work
+		if (!carryDeploy)
 		{
-			// Either m_bCarryDeploy or m_bInSetup need to be true for this to work
-			if (!carryDeploy)
-			{
-				g_bWasInSetup = asBool(GameRules_GetProp("m_bInSetup"));
-				if (!g_bWasInSetup)
-					GameRules_SetProp("m_bInSetup", true);
-			}
-
-			GameRules_SetProp("m_bPlayingMannVsMachine", true);
+			g_bWasInSetup = asBool(GameRules_GetProp("m_bInSetup"));
+			if (!g_bWasInSetup)
+				GameRules_SetProp("m_bInSetup", true);
 		}
+		
+		GameRules_SetProp("m_bPlayingMannVsMachine", true);
 	}
 	
 	return MRES_Ignored;
@@ -200,7 +200,7 @@ public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookP
 
 public MRESReturn DHook_StartUpgradingPost(int entity, DHookReturn returnVal, DHookParam params)
 {
-	if (RF2_IsEnabled())
+	if (g_bEnabled)
 	{
 		if (!g_bWasInSetup && !GetEntProp(entity, Prop_Send, "m_bCarryDeploy"))
 		{

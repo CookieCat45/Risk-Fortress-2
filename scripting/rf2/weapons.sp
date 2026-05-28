@@ -853,6 +853,9 @@ void SDK_EquipWearable(int client, int entity)
 
 public MRESReturn Detour_GetOverhealBonus(int medigun, DHookReturn returnVal, DHookParam params)
 {
+	if (!g_bEnabled)
+		return MRES_Ignored;
+	
 	// if a player has a powerup, they cannot be overhealed normally
 	// so we need to recalculate what the overheal bonus would be and override it
 	int target = params.Get(1);
