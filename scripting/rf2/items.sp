@@ -694,6 +694,7 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 		{
 			float amount = 1.0 + CalcItemMod(client, Item_WhaleBoneCharm, 0);
 			int weapon, ammoType;
+			char classname[128];
 			
 			// Special case for certain effect bar items e.g. Jarate, Sandman, Wrap Assassin
 			TF2Attrib_SetByName(client, "maxammo grenades1 increased", 1.0+float(GetPlayerItemCount(client, item)/2));
@@ -702,17 +703,16 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 			
 			// hardcoding to 36 because this really only matters for scout
 			int max2 = TF2Attrib_HookValueInt(36, "mult_maxammo_secondary", client);
-			
 			for (int i = WeaponSlot_Primary; i <= WeaponSlot_InvisWatch; i++)
 			{
 				weapon = GetPlayerWeaponSlot(client, i);
 				if (weapon == INVALID_ENT)
 					continue;
 				
-				// heatmaker utilizes clip size for charge rate cap
-				bool heatmaker = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex") == 752;
+				GetEntityClassname(weapon, classname, sizeof(classname));
 				ammoType = GetEntProp(weapon, Prop_Data, "m_iPrimaryAmmoType"); // we may not need to waste an attribute slot here
-				if (heatmaker || ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetWeaponClipSize(weapon) > 0)
+				if (StrContains(classname, "tf_weapon_sniperrifle") == 0 
+				|| ammoType != TFAmmoType_None && ammoType < TFAmmoType_Metal && GetWeaponClipSize(weapon) > 0)
 				{
 					if (IsEnergyWeapon(weapon))
 					{

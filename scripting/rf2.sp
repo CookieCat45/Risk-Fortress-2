@@ -8029,11 +8029,23 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		g_flPlayerOSPTime[victim] = GetTickedTime() + 1.0;
 	}
 	
+	const float backstabCap = 0.075;
+	const float rifleCap = 0.04;
 	if (raidBossBackstab)
 	{
-		damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*0.075);
+		damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*backstabCap);
 	}
-
+	else if (validWeapon && RF2_NPC_Base(victim).IsValid())
+	{
+		// same applies to sniper rifles
+		static char classname[128];
+		GetEntityClassname(weapon, classname, sizeof(classname));
+		if (StrContains(classname, "tf_weapon_sniperrifle") == 0)
+		{
+			damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*rifleCap);
+		}
+	}
+	
 	Call_StartForward(g_fwOnTakeDamage2);
 		Call_PushCell(victim);
 		Call_PushCellRef(attacker);

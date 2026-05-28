@@ -1009,14 +1009,8 @@ public MRESReturn DHook_RiflePostFrame(int entity)
 				charge = fmax(0.0, charge-GetSniperRifleChargePerTick(owner, entity));
 			}
 			
-			if (GetEntProp(entity, Prop_Send, "m_iItemDefinitionIndex") == 752)
-			{
-				// Hitman's Heatmaker has the ability to overcharge
-				// max charge scales with clip size
-				maxCharge = 225.0;
-				maxCharge = TF2Attrib_HookValueFloat(maxCharge, "mult_clipsize", entity);
-				maxCharge = TF2Attrib_HookValueFloat(maxCharge, "mult_clipsize_upgrade", entity);
-			}
+			maxCharge = TF2Attrib_HookValueFloat(maxCharge, "mult_clipsize", entity);
+			maxCharge = TF2Attrib_HookValueFloat(maxCharge, "mult_clipsize_upgrade", entity);
 			
 			// the game will cap rifle charge at 150, so store it for us to override with later
 			g_flStoredCharge = fmin(charge, maxCharge);
