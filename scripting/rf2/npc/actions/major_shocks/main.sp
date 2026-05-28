@@ -194,17 +194,20 @@ static void SelectTargetPoint(RF2_MajorShocksMainAction action, INextBot bot, in
 	const float aboveTolerance = 30.0;
 	if (entAbsOrigin[2] - aboveTolerance > myPos[2])
 	{
+		/*
 		if (IsLOSClear(actor.index, entity.index))
 		{
 			pos = entAbsOrigin;
 			return;
 		}
+		*/
 
 		GetClientEyePosition(subject, pos);
 		return;
 	}
 
 	// Our target is on the ground, aim at the ground
+	/*
 	if (entity.GetPropEnt(Prop_Send, "m_hGroundEntity") != -1)
 	{
 		float checkPos[3];
@@ -220,6 +223,7 @@ static void SelectTargetPoint(RF2_MajorShocksMainAction action, INextBot bot, in
 		
 		delete trace;
 	}
+	*/
 
 	const float rocketSpeed = 1100.0;
 	float rangeBetween = bot.GetRangeToEx(entAbsOrigin);
@@ -238,12 +242,14 @@ static void SelectTargetPoint(RF2_MajorShocksMainAction action, INextBot bot, in
 		targetPos[0] *= entAbsVelocity[0];
 		targetPos[1] *= entAbsVelocity[1];
 		targetPos[2] *= entAbsVelocity[2];
-
+		
+		/*
 		if (IsLOSClear(actor.index, entity.index))
 		{
 			pos = targetPos;
 			return;
 		}
+		*/
 
 		float eyePos[3];
 		GetClientEyePosition(subject, eyePos);
