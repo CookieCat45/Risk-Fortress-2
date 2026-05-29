@@ -42,15 +42,13 @@ void CreateSQL()
 	}
 
 	base.Execute(action, Database_Success, Database_FailHandle, base);
-
 	RegAdminCmd("rf2_transfer_database", Command_TransferDatabase, ADMFLAG_ROOT);
 }
 
 static void Database_Success(Database db, any data, int numQueries, DBResultSet[] results, any[] queryData)
 {
 	g_hDataBase = data;
-	//CleanUselessSQLAchievements();
-	//CreateTimer(1.0, Timer_VacuumSQL, _, TIMER_FLAG_NO_MAPCHANGE);
+	CreateItemTables();
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (IsClientAuthorized(i))
@@ -148,18 +146,18 @@ static void Database_SetupItems(Database db, any data, int numQueries, DBResultS
 
 	for (int i = 1; i < GetTotalItems(); i++)
 	{
-		if (results[i - 1] == null || !results[i - 1].FetchRow())
+		if (results[i - 1] == null)
 		{
 			continue;
 		}
-
-		if (results[i - 1].FetchRow() && results[i - 1].FetchInt(0))
+		
+		if (results[i - 1].FetchRow())
 		{
 			if (g_hObtainedItems[client] == null)
 			{
 				g_hObtainedItems[client] = new ArrayList(ByteCountToCells(64));
 			}
-
+			
 			g_hObtainedItems[client].PushString(g_szItemSectionName[i]);
 		}
 	}
@@ -293,42 +291,7 @@ void AddItemToSQL(int client, int item)
 	g_hObtainedItems[client].PushString(g_szItemSectionName[item]);
 }
 
-/*void CleanUselessSQLAchievements()
-{
-	if (!g_hDataBase)
-	{
-		return;
-	}
-
-	Transaction action = new Transaction();
-	char formatter[1024], name[64];
-	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
-	{
-		GetAchievementInternalName(i, name, sizeof(name));
-		FormatEx(formatter, sizeof(formatter), "DELETE FROM %s WHERE progress = 0;", name);
-		action.AddQuery(formatter);
-	}
-	g_hDataBase.Execute(action, _, Database_Fail);
-}
-
-static Action Timer_VacuumSQL(Handle timer)
-{
-	if (!g_hDataBase)
-	{
-		return Plugin_Stop;
-	}
-
-	Transaction action = new Transaction();
-	action.AddQuery("PRAGMA auto_vacuum = 1;");
-	action.AddQuery("COMMIT;");
-	action.AddQuery("VACUUM;");
-	action.AddQuery("COMMIT;");
-	g_hDataBase.Execute(action, _, Database_Fail);
-
-	return Plugin_Stop;
-}*/
-
-Action Timer_CreateItemTables(Handle timer)
+void CreateItemTables()
 {
 	Transaction action = new Transaction();
 	char formatter[1024];
@@ -339,10 +302,8 @@ Action Timer_CreateItemTables(Handle timer)
 		... "obtained INTEGER NOT NULL);", g_szItemSectionName[i]);
 		action.AddQuery(formatter);
 	}
-
+	
 	g_hDataBase.Execute(action, _, Database_FailHandle);
-
-	return Plugin_Stop;
 }
 
 static Action Command_TransferDatabase(int client, int args)
@@ -361,7 +322,7 @@ static void DoDatabaseTransfer()
 		FormatEx(formatter, sizeof(formatter), "SELECT * FROM achievements WHERE name = '%s';", name);
 		action.AddQuery(formatter);
 	}
-
+	
 	g_hDataBase.Execute(action, Database_TransferAchievements, Database_Fail);
 }
 

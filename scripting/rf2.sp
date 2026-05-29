@@ -580,7 +580,6 @@ public void OnPluginStart()
 	LoadGameData();
 	LoadCommandsAndCvars();
 	BakeCookies();
-	//CreateSQL();
 	LoadTranslations("common.phrases");
 	LoadTranslations("core.phrases");
 	LoadTranslations("rf2.phrases");
@@ -1134,6 +1133,7 @@ public void OnMapStart()
 		if (GetTotalItems() <= 0)
 		{
 			LoadItems();
+			CreateSQL();
 		}
 		
 		g_iMaxStages = FindMaxStages();

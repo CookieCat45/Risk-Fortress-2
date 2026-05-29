@@ -896,8 +896,7 @@ public Action Command_ItemLog(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	RF2_ReplyToCommand(client, "This command is currently disabled.");
-	//ShowItemLogbook(client);
+	ShowItemLogbook(client);
 	return Plugin_Handled;
 }
 
@@ -1081,8 +1080,7 @@ public Action Command_Achievements(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	RF2_ReplyToCommand(client, "This command is currently disabled.");
-	//ShowAchievementsMenu(client);
+	ShowAchievementsMenu(client);
 	return Plugin_Handled;
 }
 
