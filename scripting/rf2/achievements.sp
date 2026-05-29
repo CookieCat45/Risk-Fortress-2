@@ -43,8 +43,14 @@ enum
 
 static int g_Achievement[MAXPLAYERS][MAX_ACHIEVEMENTS];
 
-void TriggerAchievement(int client, int achievement)
+stock void TriggerAchievement(int client, int achievement)
 {
+	// FIXME: SQL functionality is broken at the moment. Re-enable this once fixed.
+	if (client)
+	{
+		return;
+	}
+	
 	if (IsFakeClient(client) || IsAchievementUnlocked(client, achievement))
 		return;
 	

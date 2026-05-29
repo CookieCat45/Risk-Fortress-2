@@ -1022,6 +1022,7 @@ public MRESReturn DHook_RiflePostFrame(int entity)
 			g_bWasOffGround = true;
 			SetEntPropEnt(owner, Prop_Data, "m_hGroundEntity", 0);
 			SetEntPropEnt(owner, Prop_Send, "m_hGroundEntity", 0);
+			SetEntProp(owner, Prop_Send, "m_bJumping", false);
 		}
 	}
 	
