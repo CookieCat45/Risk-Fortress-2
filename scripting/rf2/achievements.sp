@@ -253,7 +253,7 @@ int GetAchievementInternalName(int achievement, char[] buffer, int size)
 	return 0;
 }
 
-int GetAchievementFromName(const char[] name)
+stock int GetAchievementFromName(const char[] name)
 {
 	if (strcmp(name, "ACHIEVEMENT_BIGDAMAGE") == 0)
 	{
