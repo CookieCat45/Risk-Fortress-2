@@ -1634,7 +1634,7 @@ void ForceSpeedUpdate(int client)
 
 public MRESReturn Detour_HandleRageGain(DHookParam params)
 {
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 	
 	// apparently this can be null
@@ -1659,7 +1659,7 @@ public MRESReturn Detour_HandleRageGain(DHookParam params)
 
 public MRESReturn DHook_TakeHealth(int entity, DHookReturn returnVal, DHookParam params)
 {
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 		
 	if (!IsValidEntity(entity))
@@ -1746,7 +1746,7 @@ public MRESReturn DHook_ForceRespawn(int client)
 
 public MRESReturn Detour_ApplyPunchImpulse(int client, DHookReturn returnVal, DHookParam params)
 {
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 	
 	if (TF2_GetPlayerClass(client) == TFClass_Sniper)

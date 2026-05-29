@@ -299,7 +299,14 @@ static void OnCreate(RF2_DispenserShield shield)
 	SetEntityCollisionGroup(shield.index, TFCOLLISION_GROUP_COMBATOBJECT);
 	SDKHook(shield.index, SDKHook_ShouldCollide, Hook_DispenserShieldShouldCollide);
 	SDKHook(shield.index, SDKHook_SpawnPost, Hook_DispenserShieldSpawnPost);
+	SDKHook(shield.index, SDKHook_TraceAttackPost, Hook_DispenserShieldTraceAttackPost);
 	g_hHookIsCombatItem.HookEntity(Hook_Pre, shield.index, DHook_IsCombatItem);
+}
+
+public void Hook_DispenserShieldTraceAttackPost(int victim, int attacker, int inflictor, float damage, int damagetype, 
+	int ammotype, int hitbox, int hitgroup)
+{
+	PrintToChatAll("Test TraceAttack");
 }
 
 public void Hook_DispenserShieldSpawnPost(int entity)

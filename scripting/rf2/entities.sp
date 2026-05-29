@@ -1124,7 +1124,7 @@ void CleanPathFollowers()
 
 public MRESReturn Detour_IsPotentiallyChaseablePost(Address addr, DHookReturn returnVal, DHookParam params)
 {
-	if (!g_bEnabled || params.IsNull(2))
+	if (!g_bPluginEnabled || params.IsNull(2))
 		return MRES_Ignored;
 	
 	int hhh = params.Get(1);
@@ -1138,7 +1138,7 @@ static bool g_bHidingFromMonoculus[MAXPLAYERS];
 static float g_flOldAbsOrigin[MAXPLAYERS][3];
 public MRESReturn Detour_EyeFindVictim(int monoculus, DHookReturn returnVal)
 {
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 	
 	float pos[3];
@@ -1160,7 +1160,7 @@ public MRESReturn Detour_EyeFindVictim(int monoculus, DHookReturn returnVal)
 
 public MRESReturn Detour_EyeFindVictimPost(int monoculus, DHookReturn returnVal)
 {
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 	
 	for (int i = 1; i <= MaxClients; i++)
@@ -1178,7 +1178,7 @@ public MRESReturn Detour_EyeFindVictimPost(int monoculus, DHookReturn returnVal)
 
 public MRESReturn Detour_EyePickSpot(int monoculus, DHookReturn returnVal)
 {
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 	
 	// When Monoculus picks a teleport spot, he will move up 75 units even if he doesn't find a spot, which gets him stuck in ceilings. 

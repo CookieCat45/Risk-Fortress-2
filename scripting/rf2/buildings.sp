@@ -177,7 +177,7 @@ bool IsSentryDisposable(int sentry)
 static bool g_bWasInSetup;
 public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookParam params)
 {
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 		
 	// skip upgrade anim
@@ -200,7 +200,7 @@ public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookP
 
 public MRESReturn DHook_StartUpgradingPost(int entity, DHookReturn returnVal, DHookParam params)
 {
-	if (g_bEnabled)
+	if (g_bPluginEnabled)
 	{
 		if (!g_bWasInSetup && !GetEntProp(entity, Prop_Send, "m_bCarryDeploy"))
 		{

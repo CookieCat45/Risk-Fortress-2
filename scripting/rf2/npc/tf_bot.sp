@@ -2283,7 +2283,7 @@ public Action Hook_TFBotWeaponCanSwitch(int client, int weapon)
 
 public MRESReturn Detour_OnWeaponFired(DHookParam params)
 {
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 	
 	int whoFired = params.Get(1);

@@ -723,7 +723,7 @@ static bool g_bPreventServerExit;
 public MRESReturn Detour_GCPreClientUpdate(Address gc)
 {
 	// Wait until we have a CVEngineServer pointer, or else the server will close if maxplayers <32
-	if (!g_bEnabled || !g_aEngineServer)
+	if (!g_bPluginEnabled || !g_aEngineServer)
 		return MRES_Ignored;
 	
 	// Hijack MvM's method of reporting max player count
@@ -734,7 +734,7 @@ public MRESReturn Detour_GCPreClientUpdate(Address gc)
 
 public MRESReturn Detour_GCPreClientUpdatePost(Address gc)
 {
-	if (!g_bEnabled || !g_aEngineServer)
+	if (!g_bPluginEnabled || !g_aEngineServer)
 		return MRES_Ignored;
 	
 	g_bPreventServerExit = false;
@@ -746,7 +746,7 @@ public MRESReturn Detour_FindMap(Address thisPtr, DHookReturn returnVal, DHookPa
 {
 	// This will be called on plugin start, just so we can get the CVEngineServer address (this is a native SM function)
 	g_aEngineServer = thisPtr;
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 	
 	static bool hook;
@@ -771,7 +771,7 @@ public MRESReturn Detour_FindMap(Address thisPtr, DHookReturn returnVal, DHookPa
 
 public MRESReturn DHook_CreateFakeClientEx(Address thisPtr, DHookReturn returnVal, DHookParam params)
 {
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 	
 	// Don't show bots in the server browser
@@ -798,7 +798,7 @@ public MRESReturn Detour_CreateEvent(Address eventManager, DHookReturn returnVal
 
 public MRESReturn BlockKillEaterEvent(DHookParam param)
 {
-	if (!g_bEnabled)
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 	
 	// fixes an odd server crash
