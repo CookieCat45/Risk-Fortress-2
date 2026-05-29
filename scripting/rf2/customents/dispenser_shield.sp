@@ -35,7 +35,7 @@ methodmap RF2_DispenserShield < CBaseEntity
 			.DefineIntField("m_iLevel")
 			.DefineIntField("m_iBattery")
 			.DefineFloatField("m_flNextModelUpdateTime")
-			.DefineFloatField("m_flNextBatteryDrainTime")
+			.DefineFloatField("m_flBatteryDrainStopTime")
 		.EndDataMapDesc();
 		g_Factory.Install();
 		HookMapStart(DispenserShield_OnMapStart);
@@ -80,16 +80,16 @@ methodmap RF2_DispenserShield < CBaseEntity
 		}
 	}
 	
-	property float NextBatteryDrainTime
+	property float BatteryDrainStopTime
 	{
 		public get()
 		{
-			return this.GetPropFloat(Prop_Data, "m_flNextBatteryDrainTime");
+			return this.GetPropFloat(Prop_Data, "m_flBatteryDrainStopTime");
 		}
 		
 		public set(float value)
 		{
-			this.SetPropFloat(Prop_Data, "m_flNextBatteryDrainTime", value);
+			this.SetPropFloat(Prop_Data, "m_flBatteryDrainStopTime", value);
 		}
 	}
 	
@@ -217,6 +217,11 @@ methodmap RF2_DispenserShield < CBaseEntity
 			AcceptEntityInput(this.BatteryText, "SetColor");
 		}
 	}
+	
+	public void TriggerBatteryDrain()
+	{
+		this.BatteryDrainStopTime = GetGameTime() + 0.6;
+	}
 }
 
 void DispenserShield_OnMapStart()
@@ -297,19 +302,49 @@ static void OnCreate(RF2_DispenserShield shield)
 	shield.SetProp(Prop_Send, "m_nSolidType", SOLID_VPHYSICS);
 	shield.SetProp(Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER|FSOLID_TRIGGER_TOUCH_DEBRIS);
 	SetEntityCollisionGroup(shield.index, TFCOLLISION_GROUP_COMBATOBJECT);
-	SDKHook(shield.index, SDKHook_ShouldCollide, Hook_DispenserShieldShouldCollide);
-	SDKHook(shield.index, SDKHook_SpawnPost, Hook_DispenserShieldSpawnPost);
-	SDKHook(shield.index, SDKHook_TraceAttackPost, Hook_DispenserShieldTraceAttackPost);
+	SDKHook(shield.index, SDKHook_ShouldCollide, Hook_ShouldCollide);
+	SDKHook(shield.index, SDKHook_SpawnPost, Hook_SpawnPost);
+	SDKHook(shield.index, SDKHook_TraceAttackPost, Hook_TraceAttackPost);
+	SDKHook(shield.index, SDKHook_StartTouchPost, Hook_StartTouchPost);
 	g_hHookIsCombatItem.HookEntity(Hook_Pre, shield.index, DHook_IsCombatItem);
+	g_hHookVPhysicsCollision.HookEntity(Hook_Pre, shield.index, DHook_VPhysicsCollision);
 }
 
-public void Hook_DispenserShieldTraceAttackPost(int victim, int attacker, int inflictor, float damage, int damagetype, 
+static MRESReturn DHook_VPhysicsCollision(int entity, DHookParam params)
+{
+	/*
+	int hitEntity = params.GetObjectVar(2, 108, ObjectValueType_CBaseEntityPtr);
+	if (IsValidEntity2(hitEntity))
+	{
+		static char classname[128];
+		GetEntityClassname(hitEntity, classname, sizeof(classname));
+		if (StrContains(classname, "projectile_") != -1)
+		{
+			RF2_DispenserShield(entity).TriggerBatteryDrain();
+		}
+	}
+	*/
+	
+	return MRES_Ignored;
+}
+
+static void Hook_TraceAttackPost(int victim, int attacker, int inflictor, float damage, int damagetype, 
 	int ammotype, int hitbox, int hitgroup)
 {
-	PrintToChatAll("Test TraceAttack");
+	RF2_DispenserShield(victim).TriggerBatteryDrain();
 }
 
-public void Hook_DispenserShieldSpawnPost(int entity)
+static void Hook_StartTouchPost(int entity, int other)
+{
+	static char classname[128];
+	GetEntityClassname(other, classname, sizeof(classname));
+	if (StrContains(classname, "tf_projectile") != -1 && GetEntTeam(entity) != GetEntTeam(other))
+	{
+		RF2_DispenserShield(entity).TriggerBatteryDrain();
+	}
+}
+
+static void Hook_SpawnPost(int entity)
 {
 	RF2_DispenserShield shield = RF2_DispenserShield(entity);
 	TFTeam team = view_as<TFTeam>(GetEntTeam(entity));
@@ -322,7 +357,7 @@ public void Hook_DispenserShieldSpawnPost(int entity)
 	//shield.SetNextThink(GetGameTime()+99999.0);
 }
 
-public bool Hook_DispenserShieldShouldCollide(int entity, int collisionGroup, int mask, bool originalResult)
+static bool Hook_ShouldCollide(int entity, int collisionGroup, int mask, bool originalResult)
 {
 	// mimic medigun shield collision rules
 	if ( collisionGroup == COLLISION_GROUP_PROJECTILE || 
@@ -348,7 +383,7 @@ public bool Hook_DispenserShieldShouldCollide(int entity, int collisionGroup, in
 	return originalResult;
 }
 
-public MRESReturn DHook_IsCombatItem(int entity, DHookReturn returnVal)
+static MRESReturn DHook_IsCombatItem(int entity, DHookReturn returnVal)
 {
 	// true to allow bullets/projectiles from my team to pass through the shield.
 	returnVal.Value = true;

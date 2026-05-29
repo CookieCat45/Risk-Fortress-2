@@ -3303,7 +3303,7 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 			shield.NextModelUpdateTime = GetGameTime()+0.25;
 		}
 		
-		if (!g_bGracePeriod && GetGameTime() > shield.NextBatteryDrainTime)
+		if (!g_bGracePeriod && GetGameTime() < shield.BatteryDrainStopTime)
 		{
 			if (!shield.UserDisabled)
 			{
@@ -3311,8 +3311,6 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 				shield.Battery = imax(0, battery-1);
 				shield.UpdateBatteryText();
 			}
-			
-			shield.NextBatteryDrainTime = GetGameTime()+0.25;
 		}
 		
 		bool carried = asBool(GetEntProp(shield.Dispenser, Prop_Send, "m_bCarried"));

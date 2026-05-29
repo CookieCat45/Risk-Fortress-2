@@ -779,3 +779,10 @@ static void Input_DoAction(int entity, int activator, int caller, const char[] v
 {
 	RF2_NPC_Base(entity).DoAction(value);
 }
+
+static MRESReturn DHook_IsCombatItem(int entity, DHookReturn returnVal)
+{
+	// true to allow bullets/projectiles from my team to pass through the shield.
+	returnVal.Value = true;
+	return MRES_Supercede;
+}
