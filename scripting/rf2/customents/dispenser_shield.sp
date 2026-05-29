@@ -220,7 +220,7 @@ methodmap RF2_DispenserShield < CBaseEntity
 	
 	public void TriggerBatteryDrain()
 	{
-		this.BatteryDrainStopTime = GetGameTime() + 0.6;
+		this.BatteryDrainStopTime = GetGameTime() + 0.2;
 	}
 }
 
@@ -307,12 +307,12 @@ static void OnCreate(RF2_DispenserShield shield)
 	SDKHook(shield.index, SDKHook_TraceAttackPost, Hook_TraceAttackPost);
 	SDKHook(shield.index, SDKHook_StartTouchPost, Hook_StartTouchPost);
 	g_hHookIsCombatItem.HookEntity(Hook_Pre, shield.index, DHook_IsCombatItem);
-	g_hHookVPhysicsCollision.HookEntity(Hook_Pre, shield.index, DHook_VPhysicsCollision);
+	//g_hHookVPhysicsCollision.HookEntity(Hook_Pre, shield.index, DHook_VPhysicsCollision);
 }
 
+/*
 static MRESReturn DHook_VPhysicsCollision(int entity, DHookParam params)
 {
-	/*
 	int hitEntity = params.GetObjectVar(2, 108, ObjectValueType_CBaseEntityPtr);
 	if (IsValidEntity2(hitEntity))
 	{
@@ -323,10 +323,10 @@ static MRESReturn DHook_VPhysicsCollision(int entity, DHookParam params)
 			RF2_DispenserShield(entity).TriggerBatteryDrain();
 		}
 	}
-	*/
 	
 	return MRES_Ignored;
 }
+*/
 
 static void Hook_TraceAttackPost(int victim, int attacker, int inflictor, float damage, int damagetype, 
 	int ammotype, int hitbox, int hitgroup)
