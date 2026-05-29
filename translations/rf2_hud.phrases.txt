@@ -86,13 +86,13 @@
     "DamageBlockDown"
     {
         "#format"   "{1:s},{2:.1f}"
-        "en"        "{1}***DAMAGE BLOCK DOWN*** {2}\n"
+        "en"        "{1}***DAMAGE BLOCK DOWN*** {2}"
     }
     
     "DamageBlockActive"
     {
         "#format"   "{1:s}"
-        "en"        "{1}Damage Block Active\n"
+        "en"        "{1}Damage Block Active"
     }
     
     "ResistDown"

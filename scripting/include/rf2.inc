@@ -669,7 +669,7 @@ forward Action RF2_OnTakeDamage2(int victim, int &attacker, int &inflictor, floa
 	float damageForce[3], float damagePosition[3], int damageCustom);
 
 /** 
- * Called at the end of RF2_OnTakeDamage
+ * Called when a player's fire rate is calculated
  * 
  * @param client			Client
  * @param multiplier 		Fire rate multiplier
@@ -678,7 +678,7 @@ forward Action RF2_OnTakeDamage2(int victim, int &attacker, int &inflictor, floa
 forward Action RF2_OnFireRateCalculation(int client, float &multiplier);
 
 /** 
- * Called at the end of RF2_OnTakeDamage
+ * Called when a player's reload speed is calculated
  * 
  * @param client			Client
  * @param multiplier 		Reload speed multiplier
@@ -686,6 +686,13 @@ forward Action RF2_OnFireRateCalculation(int client, float &multiplier);
  */
 forward Action RF2_OnReloadSpeedCalculation(int client, float &multiplier);
 
+/** 
+ * Called when a player's move speed is calculated
+ * 
+ * @param client			Client
+ * @param speed 			Move speed
+ * @return Plugin_Changed if any parameters are changed, Plugin_Continue otherwise
+ */
 forward Action RF2_OnMoveSpeedCalculation(int client, float &speed);
 
 forward Action RF2_OnMiscTextWriting(int client, char[] miscText);

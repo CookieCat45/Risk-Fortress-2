@@ -8099,8 +8099,19 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		{
 			if (PlayerHasItem(victim, Item_PocketMedic) && !GetRF2GameRules().DisableDeath)
 			{
-				// check after the damage is dealt
-				RequestFrame(RF_CheckHealthForPocketMedic, victim);
+				int health = GetClientHealth(victim);
+				int maxHealth = RF2_GetCalculatedMaxHealth(victim);
+				if (health < float(maxHealth) * GetItemMod(Item_PocketMedic, 0))
+				{
+					EmitSoundToAll(SND_SHIELD, victim);
+					TF2_AddCondition(victim, TFCond_UberchargedCanteen, GetItemMod(Item_PocketMedic, 2));
+					TF2_AddCondition(victim, TFCond_DefenseBuffNoCritBlock, GetItemMod(Item_PocketMedic, 3));
+					int heal = RoundToFloor(float(maxHealth) * GetItemMod(Item_PocketMedic, 1));
+					HealPlayer(victim, heal, false);
+					PrintHintText(victim, "%t", "PocketMedic");
+					GiveItem(victim, Item_PocketMedic, -1);
+					TriggerAchievement(victim, ACHIEVEMENT_POCKETMEDIC);
+				}
 			}
 		}
 		
@@ -8593,26 +8604,6 @@ public Action Hook_DisableTouch(int entity, int other)
 	return Plugin_Handled;
 }
 
-public void RF_CheckHealthForPocketMedic(int client)
-{
-	if (!IsClientInGame(client) || !IsPlayerAlive(client))
-		return;
-	
-	int health = GetClientHealth(client);
-	int maxHealth = RF2_GetCalculatedMaxHealth(client);
-	if (health < float(maxHealth) * GetItemMod(Item_PocketMedic, 0))
-	{
-		EmitSoundToAll(SND_SHIELD, client);
-		TF2_AddCondition(client, TFCond_UberchargedCanteen, GetItemMod(Item_PocketMedic, 2));
-		TF2_AddCondition(client, TFCond_DefenseBuffNoCritBlock, GetItemMod(Item_PocketMedic, 3));
-		int heal = RoundToFloor(float(maxHealth) * GetItemMod(Item_PocketMedic, 1));
-		HealPlayer(client, heal, false);
-		PrintHintText(client, "%t", "PocketMedic");
-		GiveItem(client, Item_PocketMedic, -1);
-		TriggerAchievement(client, ACHIEVEMENT_POCKETMEDIC);
-	}
-}
-
 public void RF_ClearViewPunch(int client)
 {
 	if (!IsClientInGame(client))
@@ -8925,7 +8916,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 						float eyePos[3], eyeAng[3];
 						GetClientEyePosition(client, eyePos);
 						GetClientEyeAngles(client, eyeAng);
-						TR_TraceRayFilter(eyePos, eyeAng, MASK_PLAYERSOLID, RayType_Infinite, TraceFilter_DontHitSelf, client);
+						TR_TraceRayFilter(eyePos, eyeAng, MASK_PLAYERSOLID, RayType_Infinite, TraceFilter_HitDispensers, client);
 						int dispenser = TR_GetEntityIndex();
 						if (IsBuilding(dispenser) && TF2_GetObjectType(dispenser) == TFObject_Dispenser && GetEntPropEnt(dispenser, Prop_Send, "m_hBuilder") == client)
 						{
@@ -9309,6 +9300,11 @@ public bool TraceFilter_WallsOnly(int entity, int mask)
 public bool TraceFilter_DontHitSelf(int self, int mask, int other)
 {
 	return !(self == other);
+}
+
+public bool TraceFilter_HitDispensers(int entity, int mask, int other)
+{
+	return IsBuilding(entity) && TF2_GetObjectType(entity) == TFObject_Dispenser;
 }
 
 public bool TraceFilter_DispenserShield(int entity, int mask, int team)

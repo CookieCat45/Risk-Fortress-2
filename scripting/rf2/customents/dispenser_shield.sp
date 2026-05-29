@@ -36,6 +36,7 @@ methodmap RF2_DispenserShield < CBaseEntity
 			.DefineIntField("m_iBattery")
 			.DefineFloatField("m_flNextModelUpdateTime")
 			.DefineFloatField("m_flBatteryDrainStopTime")
+			.DefineFloatField("m_flNextResistSoundTime")
 		.EndDataMapDesc();
 		g_Factory.Install();
 		HookMapStart(DispenserShield_OnMapStart);
@@ -90,6 +91,19 @@ methodmap RF2_DispenserShield < CBaseEntity
 		public set(float value)
 		{
 			this.SetPropFloat(Prop_Data, "m_flBatteryDrainStopTime", value);
+		}
+	}
+	
+	property float NextResistSoundTime
+	{
+		public get()
+		{
+			return this.GetPropFloat(Prop_Data, "m_flNextResistSoundTime");
+		}
+		
+		public set(float value)
+		{
+			this.SetPropFloat(Prop_Data, "m_flNextResistSoundTime", value);
 		}
 	}
 	
@@ -218,9 +232,15 @@ methodmap RF2_DispenserShield < CBaseEntity
 		}
 	}
 	
-	public void TriggerBatteryDrain()
+	public void OnShieldHit()
 	{
-		this.BatteryDrainStopTime = GetGameTime() + 0.2;
+		if (GetGameTime() >= this.NextResistSoundTime)
+		{
+			EmitGameSoundToAll("Player.ResistanceLight", this.index);
+			this.NextResistSoundTime = GetGameTime() + 0.5;
+		}
+		
+		this.BatteryDrainStopTime = GetGameTime() + 0.3;
 	}
 }
 
@@ -320,7 +340,7 @@ static MRESReturn DHook_VPhysicsCollision(int entity, DHookParam params)
 		GetEntityClassname(hitEntity, classname, sizeof(classname));
 		if (StrContains(classname, "projectile_") != -1)
 		{
-			RF2_DispenserShield(entity).TriggerBatteryDrain();
+			RF2_DispenserShield(entity).OnShieldHit();
 		}
 	}
 	
@@ -331,7 +351,7 @@ static MRESReturn DHook_VPhysicsCollision(int entity, DHookParam params)
 static void Hook_TraceAttackPost(int victim, int attacker, int inflictor, float damage, int damagetype, 
 	int ammotype, int hitbox, int hitgroup)
 {
-	RF2_DispenserShield(victim).TriggerBatteryDrain();
+	RF2_DispenserShield(victim).OnShieldHit();
 }
 
 static void Hook_StartTouchPost(int entity, int other)
@@ -340,7 +360,7 @@ static void Hook_StartTouchPost(int entity, int other)
 	GetEntityClassname(other, classname, sizeof(classname));
 	if (StrContains(classname, "tf_projectile") != -1 && GetEntTeam(entity) != GetEntTeam(other))
 	{
-		RF2_DispenserShield(entity).TriggerBatteryDrain();
+		RF2_DispenserShield(entity).OnShieldHit();
 	}
 }
 
