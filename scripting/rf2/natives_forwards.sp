@@ -399,21 +399,16 @@ public any Native_FireHomingProjectile(Handle plugin, int numParams)
     GetClientEyePosition(client, pos);
     GetClientEyeAngles(client, ang);
 	pos[2] += 20.0;
-
-
-    int ent = ShootProjectile(client, "tf_projectile_rocket", pos, ang, speed, damage);
+    
+    int ent = ShootProjectile(client, "rf2_projectile_homingrocket", pos, ang, speed, damage);
     if (ent == -1)
 		return 0;
-
-
+    
     RF2_Projectile_HomingRocket rocket = RF2_Projectile_HomingRocket(ent);
     rocket.Owner = client;
     rocket.Team  = GetClientTeam(client);
 	rocket.HomingSpeed = speed*2.0;
-
-
     rocket.SelectHomingTarget();
-	
 	return 0;
 }
 
