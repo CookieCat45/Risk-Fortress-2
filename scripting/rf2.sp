@@ -3145,7 +3145,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	if (!carryDeploy && (IsPlayerMinion(client) || GetPlayerBuildingCount(client, TFObject_Sentry, false) > 1))
 	{
 		SetEntPropFloat(building, Prop_Send, "m_flModelScale", 0.6);
-		if (type== TFObject_Sentry)
+		if (type == TFObject_Sentry)
 		{
 			if (!IsPlayerMinion(client))
 			{

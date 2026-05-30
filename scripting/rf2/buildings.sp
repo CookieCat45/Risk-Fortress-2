@@ -174,6 +174,22 @@ bool IsSentryDisposable(int sentry)
 	return g_bDisposableSentry[sentry];
 }
 
+bool IsBuildingCarried(int building, bool firstCarry=false)
+{
+	bool carried;
+	char model[PLATFORM_MAX_PATH];
+	GetEntPropString(building, Prop_Data, "m_ModelName", model, sizeof(model));
+	if (!StrEqual(model, "models/buildables/dispenser_blueprint.mdl")
+		&& !StrEqual(model, "models/buildables/sentry1_blueprint.mdl")
+		&& !StrContains(model, "models/buildables/teleporter_blueprint_") != 0)
+	{
+		return false;
+	}
+	
+	bool carried = GetEntProp(building, Prop_Send, "m_bCarried") != 0;
+	return firstCarry ? !carried : carried;
+}
+
 static bool g_bWasInSetup;
 public MRESReturn DHook_StartUpgrading(int entity, DHookReturn returnVal, DHookParam params)
 {

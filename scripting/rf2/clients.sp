@@ -1483,13 +1483,16 @@ int GetClassMenuIndex(TFClassType class)
 	return 0;
 }
 
-int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-1), bool allowDisposable=true)
+int GetPlayerBuildingCount(int client, TFObjectType type=view_as<TFObjectType>(-1), bool allowDisposable=true, bool allowFirstCarry=false)
 {
 	int count;
 	int entity = MaxClients+1;
 	while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 	{
 		if (!allowDisposable && IsSentryDisposable(entity))
+			continue;
+		
+		if (!allowFirstCarry && IsBuildingCarried(entity, true))
 			continue;
 		
 		if (view_as<int>(type) == -1 || TF2_GetObjectType2(entity) == type)
