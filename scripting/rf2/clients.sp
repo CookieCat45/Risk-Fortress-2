@@ -1158,7 +1158,7 @@ bool PingObjects(int client)
 			item.GetAbsOrigin(pos);
 			pos[2] += 50.0;
 			char name[128], text[128];
-			ShowItemDesc(client, item.index);
+			ShowItemDesc(client, item.Type);
 			for (int i = 1; i <= MaxClients; i++)
 			{
 				if (IsClientInGame(i) && !IsFakeClient(i))
