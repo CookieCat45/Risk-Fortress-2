@@ -78,6 +78,7 @@ float g_flNextAutoReloadCheckTime;
 float g_flAutoReloadTime;
 float g_flCurrentCostMult;
 float g_flHeadshotDamage;
+float g_flDamageProc;
 char g_szForcedMap[256];
 char g_szMapForcerName[MAX_NAME_LENGTH];
 char g_szCurrentEnemyGroup[64];
@@ -6869,7 +6870,6 @@ public Action Hook_OnTakeDamage(int victim, int &attacker, int &inflictor, float
 	return Plugin_Continue;
 }
 
-float g_flDamageProc;
 public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
 	float damageForce[3], float damagePosition[3], int damageCustom, CritType &critType)
 {
@@ -7572,12 +7572,16 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				Call_PushArray(damageForce, 3);
 				Call_PushArray(damagePosition, 3);
 				Call_PushCell(damageCustom);
+				Call_PushCell(Item_Null);
+				Call_PushCell(Item_Null);
+				Call_PushFloatRef(proc);
 			Action result3;
 			Call_Finish(result3);
 			if (result3 == Plugin_Handled || result3 == Plugin_Stop)
 			{
 				return result3;
 			}
+			
 			return Plugin_Changed;
 		}
 		else
@@ -8054,6 +8058,9 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		Call_PushArray(damageForce, 3);
 		Call_PushArray(damagePosition, 3);
 		Call_PushCell(damageCustom);
+		Call_PushCell(GetEntItemProc(attacker));
+		Call_PushCell(GetEntItemProc(inflictor));
+		Call_PushFloatRef(g_flDamageProc);
 	Action result3;
 	Call_Finish(result3);
 	if (result3 == Plugin_Handled || result3 == Plugin_Stop)

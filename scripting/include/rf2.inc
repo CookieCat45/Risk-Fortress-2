@@ -627,7 +627,7 @@ native bool RF2_IsSurvivorIndexValid(int index);
 native void RF2_DoExplosionEffect(const float pos[3], bool sound=true, float delay=0.0);
 
 /** 
- * Called when an entity takes damage.
+ * Called when an entity takes damage, BEFORE the main plugin does damage calculations
  * 
  * @param victim			Entity taking damage
  * @param attacker 			Entity responsible for the damage
@@ -648,7 +648,7 @@ forward Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float
 	float damageForce[3], float damagePosition[3], int damageCustom, int attackerItem, int inflictorItem, int &critType, float &procCoeff);
 	
 /** 
- * Called at the end of RF2_OnTakeDamage
+ * Called when an entity takes damage, AFTER the main plugin does damage calculations
  * 
  * @param victim			Entity taking damage
  * @param attacker 			Entity responsible for the damage
@@ -661,12 +661,26 @@ forward Action RF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float
  * @param damageCustom		Custom damage type
  * @param attackerItem		Item associated with the attacker, usually set if the attacker is a client
  * @param inflictorItem		Item associated with the inflictor, usually set if the inflictor is something like a projectile triggered by an item
- * @param critType			Crit type. 0 = none, 1 = crit, 2 = mini-crit
  * @param procCoeff			Proc coefficient
  * @return Plugin_Stop/Plugin_Handled to prevent damage, Plugin_Changed if any parameters are changed, Plugin_Continue otherwise
  */
 forward Action RF2_OnTakeDamage2(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon, 
-	float damageForce[3], float damagePosition[3], int damageCustom);
+	float damageForce[3], float damagePosition[3], int damageCustom, int attackerItem, int inflictorItem, float &procCoeff);
+
+/** 
+ * Returns the global proc coefficient value. For use in damage hooks.
+ * 
+ * @return Global proc coefficient
+ */
+native float RF2_GetGlobalProcCoeff();
+
+/** 
+ * Sets the global proc coefficient value. For use in damage hooks.
+ * 
+ * @param value		Value to use
+ * @noreturn
+ */
+native void RF2_SetGlobalProcCoeff(float value);
 
 /** 
  * Called when a player's fire rate is calculated

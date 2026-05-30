@@ -64,6 +64,8 @@ void LoadNatives()
 	CreateNative("RF2_MakeSurvivor", Native_MakeSurvivor);
 	CreateNative("RF2_IsSurvivorIndexValid", Native_IsSurvivorIndexValid);
 	CreateNative("RF2_DoExplosionEffect", Native_DoExplosionEffect);
+	CreateNative("RF2_GetGlobalProcCoeff", Native_GetGlobalProcCoeff);
+	CreateNative("RF2_SetGlobalProcCoeff", Native_SetGlobalProcCoeff);
 }
 
 void LoadForwards()
@@ -83,7 +85,7 @@ void LoadForwards()
 	g_fwOnCritChanceCalculation = new GlobalForward("RF2_OnCritChanceCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
 	g_fwOnCrypticCritDmgCalculation = new GlobalForward("RF2_OnCrypticCritDmgCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
 	g_fwOnTakeDamage2 = new GlobalForward("RF2_OnTakeDamage2", ET_Hook, Param_Cell, Param_CellByRef, Param_CellByRef, Param_FloatByRef, Param_CellByRef, 
-		Param_CellByRef, Param_Array, Param_Array, Param_Cell);
+		Param_CellByRef, Param_Array, Param_Array, Param_Cell, Param_Cell, Param_Cell, Param_FloatByRef);
 	g_fwOnFireRateCalculation = new GlobalForward("RF2_OnFireRateCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
 	g_fwOnReloadSpeedCalculation = new GlobalForward("RF2_OnReloadSpeedCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
 	g_fwOnMoveSpeedCalculation = new GlobalForward("RF2_OnMoveSpeedCalculation", ET_Hook, Param_Cell, Param_FloatByRef);
@@ -173,6 +175,17 @@ public any Native_GetPlayerEquipmentItem(Handle plugin, int numParams)
 public any Native_GetItemProcCoeff(Handle plugin, int numParams)
 {
 	return GetItemProcCoeff(GetNativeCell(1));
+}
+
+public any Native_GetGlobalProcCoeff(Handle plugin, int numParams)
+{
+	return g_flDamageProc;
+}
+
+public any Native_SetGlobalProcCoeff(Handle plugin, int numParams)
+{
+	g_flDamageProc = GetNativeCell(1);
+	return 0;
 }
 
 public any Native_GetItemQuality(Handle plugin, int numParams)
