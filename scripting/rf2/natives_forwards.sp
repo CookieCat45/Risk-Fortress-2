@@ -391,19 +391,11 @@ public any Native_FireHomingProjectile(Handle plugin, int numParams)
 	int client       = GetNativeCell(1);
     float damage     = GetNativeCell(2);
     float speed      = GetNativeCell(3);
-
-    if (!IsValidClient(client) || !IsPlayerAlive(client))
-        return 0;
-
     float pos[3], ang[3];
     GetClientEyePosition(client, pos);
     GetClientEyeAngles(client, ang);
 	pos[2] += 20.0;
-    
     int ent = ShootProjectile(client, "rf2_projectile_homingrocket", pos, ang, speed, damage);
-    if (ent == -1)
-		return 0;
-    
     RF2_Projectile_HomingRocket rocket = RF2_Projectile_HomingRocket(ent);
     rocket.Owner = client;
     rocket.Team  = GetClientTeam(client);
