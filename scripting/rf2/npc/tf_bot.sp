@@ -2389,12 +2389,14 @@ public MRESReturn DHook_IsAbleToSeePost(Address vision, DHookReturn returnVal, D
 }
 
 static int g_iPrevRoundState;
+static int g_iPrevWinningTeam;
 public MRESReturn Detour_NextBotUpdate(Address bot)
 {
 	if (g_bPluginEnabled)
 	{
 		// Force some MvM specific behavior (not standing still vs sentries)
 		g_iPrevRoundState = GameRules_GetRoundState();
+		g_iPrevWinningTeam = GameRules_GetProp("m_iWinningTeam");
 		GameRules_SetProp("m_iRoundState", RoundState_TeamWin);
 		GameRules_SetProp("m_iWinningTeam", TEAM_ENEMY);
 		GameRules_SetProp("m_bPlayingMannVsMachine", true);
@@ -2409,6 +2411,7 @@ public MRESReturn Detour_NextBotUpdatePost(Address bot)
 	{
 		GameRules_SetProp("m_bPlayingMannVsMachine", false);
 		GameRules_SetProp("m_iRoundState", g_iPrevRoundState);
+		GameRules_SetProp("m_iWinningTeam", g_iPrevWinningTeam);
 	}
 	
 	return MRES_Ignored;
