@@ -2388,6 +2388,32 @@ public MRESReturn DHook_IsAbleToSeePost(Address vision, DHookReturn returnVal, D
 	return MRES_Ignored;
 }
 
+static int g_iPrevRoundState;
+public MRESReturn Detour_NextBotUpdate(Address bot)
+{
+	if (g_bPluginEnabled)
+	{
+		// Force some MvM specific behavior (not standing still vs sentries)
+		g_iPrevRoundState = GameRules_GetRoundState();
+		GameRules_SetProp("m_iRoundState", RoundState_TeamWin);
+		GameRules_SetProp("m_iWinningTeam", TEAM_ENEMY);
+		GameRules_SetProp("m_bPlayingMannVsMachine", true);
+	}
+	
+	return MRES_Ignored;
+}
+
+public MRESReturn Detour_NextBotUpdatePost(Address bot)
+{
+	if (g_bPluginEnabled)
+	{
+		GameRules_SetProp("m_bPlayingMannVsMachine", false);
+		GameRules_SetProp("m_iRoundState", g_iPrevRoundState);
+	}
+	
+	return MRES_Ignored;
+}
+
 public Action Hook_TFBotTouch(int entity, int other)
 {
 	if (GetClientTeam(entity) == TEAM_ENEMY && IsValidClient(other) && TF2_GetPlayerClass(other) == TFClass_Spy)

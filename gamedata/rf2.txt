@@ -106,7 +106,12 @@
 		"Signatures"
 		{
 			// 64 BIT WINDOWS SIGNATURES ARE UNTESTED
-
+			
+			"INextBot::Update"
+			{
+				"linux"		"@_ZN8INextBot6UpdateEv"
+				"windows"	""
+			}
 			"CBaseEntity::Intersects"
 			{
 				"linux"		"@_ZN11CBaseEntity10IntersectsEPS_"
@@ -256,6 +261,14 @@
 		
 		"Functions"
         {
+			"INextBot::Update"
+			{
+				"signature"	"INextBot::Update"
+				"callconv"	"thiscall"
+				"return"	"void"
+				"this"		"address"
+			}
+			
 			"CGameEventManager::CreateEvent"
 			{
 				"signature" "CGameEventManager::CreateEvent"

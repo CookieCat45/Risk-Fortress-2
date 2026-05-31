@@ -277,6 +277,7 @@ float g_flCashBombAmount[MAX_EDICTS];
 float g_flCashValue[MAX_EDICTS];
 float g_flTeleporterNextSpawnTime[MAX_EDICTS];
 float g_flLastHalloweenBossAttackTime[MAX_EDICTS][MAXPLAYERS];
+float g_flBuildingInvulnTime[MAX_EDICTS];
 
 ArrayList g_hHHHTargets;
 ArrayList g_hMonoculusTargets;
@@ -313,6 +314,7 @@ DynamicDetour g_hDetourGCPreClientUpdate;
 DynamicDetour g_hDetourFindMap;
 DynamicDetour g_hDetourCreateEvent;
 DynamicDetour g_hDetourWeaponPickup;
+DynamicDetour g_hDetourNextBotUpdate;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookOnWrenchHit;
@@ -881,6 +883,14 @@ void LoadGameData()
 	if (!g_hDetourWeaponPickup || !g_hDetourWeaponPickup.Enable(Hook_Post, Detour_WeaponPickupPost))
 	{
 		LogError("[DHooks] Failed to create detour for CTFDroppedWeapon::InitPickedUpWeapon");
+	}
+	
+	
+	g_hDetourNextBotUpdate = DynamicDetour.FromConf(gamedata, "INextBot::Update");
+	if (!g_hDetourNextBotUpdate || !g_hDetourNextBotUpdate.Enable(Hook_Pre, Detour_NextBotUpdate)
+		|| !g_hDetourNextBotUpdate.Enable(Hook_Post, Detour_NextBotUpdatePost))
+	{
+		LogError("[DHooks] Failed to create detour for INextBot::Update");
 	}
 	
 	
@@ -3133,7 +3143,7 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 	int building = event.GetInt("index");
 	TFObjectType type = TF2_GetObjectType2(building);
 	bool carryDeploy = asBool(GetEntProp(building, Prop_Send, "m_bCarryDeploy"));
-
+	
 	if (IsFakeClient(client) && g_hTFBotEngineerBuildings[client])
 	{
 		if (g_hTFBotEngineerBuildings[client].FindValue(EntIndexToEntRef(building)) == -1)
@@ -3141,7 +3151,13 @@ public Action OnPlayerBuiltObject(Event event, const char[] name, bool dontBroad
 			g_hTFBotEngineerBuildings[client].Push(EntIndexToEntRef(building));
 		}
 	}
-
+	
+	if (!carryDeploy && GetClientTeam(client) == TEAM_SURVIVOR)
+	{
+		// if a building is placed for the first time, provide an invulnerability period
+		g_flBuildingInvulnTime[building] = GetTickedTime() + 10.0;
+	}
+	
 	if (!carryDeploy && (IsPlayerMinion(client) || GetPlayerBuildingCount(client, TFObject_Sentry, false) > 1))
 	{
 		SetEntPropFloat(building, Prop_Send, "m_flModelScale", 0.6);
@@ -8487,6 +8503,11 @@ public void RF_RoBroDealDamage(DataPack pack)
 public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
 		float damageForce[3], float damagePosition[3], int damageCustom)
 {
+	if (g_flBuildingInvulnTime[victim] > GetTickedTime() && GetEntProp(victim, Prop_Send, "m_bBuilding"))
+	{
+		return Plugin_Handled;
+	}
+	
 	Action result1 = Hook_OnTakeDamageAlive(victim, attacker, inflictor, damage, damageType, 
 		weapon, damageForce, damagePosition, damageCustom);
 		
