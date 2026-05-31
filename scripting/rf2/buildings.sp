@@ -176,12 +176,11 @@ bool IsSentryDisposable(int sentry)
 
 bool IsBuildingCarried(int building, bool firstCarry=false)
 {
-	bool carried;
 	char model[PLATFORM_MAX_PATH];
 	GetEntPropString(building, Prop_Data, "m_ModelName", model, sizeof(model));
 	if (!StrEqual(model, "models/buildables/dispenser_blueprint.mdl")
 		&& !StrEqual(model, "models/buildables/sentry1_blueprint.mdl")
-		&& !StrContains(model, "models/buildables/teleporter_blueprint_") != 0)
+		&& StrContains(model, "models/buildables/teleporter_blueprint_") != 0)
 	{
 		return false;
 	}
