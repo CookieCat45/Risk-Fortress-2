@@ -2395,6 +2395,7 @@ public MRESReturn Detour_NextBotUpdate(Address bot)
 	if (g_bPluginEnabled)
 	{
 		// Force some MvM specific behavior (not standing still vs sentries)
+		// Force Seek and Destroy behavior as well
 		g_iPrevRoundState = GameRules_GetRoundState();
 		g_iPrevWinningTeam = GameRules_GetProp("m_iWinningTeam");
 		GameRules_SetProp("m_iRoundState", RoundState_TeamWin);

@@ -6669,6 +6669,7 @@ public void RF_ProjectileSpawnPost(int entity)
 	if ((entity = EntRefToEntIndex(entity)) == INVALID_ENT)
 		return;
 	
+	/*
 	int launcher = GetEntPropEnt(entity, Prop_Send, "m_hLauncher");
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 	if (launcher > 0 && IsValidClient(owner))
@@ -6681,6 +6682,7 @@ public void RF_ProjectileSpawnPost(int entity)
 			SetEntityModel2(entity, buffer);
 		}
 	}
+	*/
 	
 	static char classname[128];
 	GetEntityClassname(entity, classname, sizeof(classname));
