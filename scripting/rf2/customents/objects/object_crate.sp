@@ -261,7 +261,7 @@ methodmap RF2_Object_Crate < RF2_Object_Base
 				TFClassType class = TF2_GetPlayerClass(client);
 				for (int i = this.Item+1; i < GetTotalItems(); i++)
 				{
-					if (i+1 >= GetTotalItems())
+					if (i >= GetTotalItems())
 						i = 0;
 						
 					if (g_bItemInDropPool[i] && i != this.Item && GetCollectorItemClass(i) == class)

@@ -885,13 +885,14 @@ void LoadGameData()
 		LogError("[DHooks] Failed to create detour for CTFDroppedWeapon::InitPickedUpWeapon");
 	}
 	
-	
+	/*
 	g_hDetourNextBotUpdate = DynamicDetour.FromConf(gamedata, "INextBot::Update");
 	if (!g_hDetourNextBotUpdate || !g_hDetourNextBotUpdate.Enable(Hook_Pre, Detour_NextBotUpdate)
 		|| !g_hDetourNextBotUpdate.Enable(Hook_Post, Detour_NextBotUpdatePost))
 	{
 		LogError("[DHooks] Failed to create detour for INextBot::Update");
 	}
+	*/
 	
 	
 	StartPrepSDKCall(SDKCall_Static);
@@ -7552,9 +7553,6 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				{
 					// cooldown for raid boss NPCs so spies don't shred them instantly
 					raidBossBackstab = true;
-					EmitSoundToClient(attacker, "player/spy_shield_break.wav", _, _, SNDLEVEL_TRAFFIC, SND_NOFLAGS, 0.7, 100);
-					SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", GetGameTime() + 2.0);
-					SetEntPropFloat(attacker, Prop_Send, "m_flNextAttack", GetGameTime() + 2.0);
 				}
 
 				int meleeIndex = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
@@ -7571,6 +7569,23 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 				}
 			}
 		}
+	}
+	
+	bool scavengerLord;
+	if (IsValidClient(victim))
+	{
+		Enemy enemyData = Enemy(victim);
+		if (enemyData != NULL_ENEMY && enemyData == Enemy.FindByInternalName("scavenger_lord"))
+		{
+			scavengerLord = true;
+		}
+	}
+	
+	if (raidBossBackstab || scavengerLord)
+	{
+		EmitSoundToClient(attacker, "player/spy_shield_break.wav", _, _, SNDLEVEL_TRAFFIC, SND_NOFLAGS, 0.7, 100);
+		SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", GetGameTime() + 2.0);
+		SetEntPropFloat(attacker, Prop_Send, "m_flNextAttack", GetGameTime() + 2.0);
 	}
 	
 	if (inflictorIsBuilding)
@@ -8051,9 +8066,16 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	const float backstabCap = 0.075;
 	const float rifleCap = 0.075;
-	if (raidBossBackstab)
+	if (raidBossBackstab || scavengerLord)
 	{
-		damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*backstabCap);
+		if (raidBossBackstab)
+		{
+			damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*backstabCap);
+		}
+		else
+		{
+			damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*backstabCap);
+		}
 	}
 	else if (validWeapon && RF2_NPC_Base(victim).IsValid())
 	{
@@ -8062,7 +8084,14 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 		GetEntityClassname(weapon, classname, sizeof(classname));
 		if (StrContains(classname, "tf_weapon_sniperrifle") == 0)
 		{
-			damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*rifleCap);
+			if (raidBossBackstab)
+			{
+				damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*rifleCap);
+			}
+			else
+			{
+				damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*rifleCap);
+			}
 		}
 	}
 	
