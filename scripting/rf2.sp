@@ -8066,9 +8066,9 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	
 	const float backstabCap = 0.075;
 	const float rifleCap = 0.05;
-	if (raidBossBackstab || scavengerLord)
+	if (raidBossBackstab || scavengerLord && damageCustom == TF_CUSTOM_BACKSTAB)
 	{
-		if (raidBossBackstab)
+		if (!scavengerLord)
 		{
 			damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*backstabCap);
 		}
@@ -8077,14 +8077,15 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 			damage = fmin(damage, float(RF2_GetCalculatedMaxHealth(victim))*backstabCap);
 		}
 	}
-	else if (validWeapon && RF2_NPC_Base(victim).IsValid())
+	
+	if (!raidBossBackstab && validWeapon && (scavengerLord || RF2_NPC_Base(victim).IsValid()))
 	{
 		// same applies to sniper rifles
 		static char classname[128];
 		GetEntityClassname(weapon, classname, sizeof(classname));
 		if (StrContains(classname, "tf_weapon_sniperrifle") == 0)
 		{
-			if (raidBossBackstab)
+			if (!scavengerLord)
 			{
 				damage = fmin(damage, float(RF2_NPC_Base(victim).MaxHealth)*rifleCap);
 			}
