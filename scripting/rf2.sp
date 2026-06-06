@@ -8065,7 +8065,7 @@ float damageForce[3], float damagePosition[3], int damageCustom)
 	}
 	
 	const float backstabCap = 0.075;
-	const float rifleCap = 0.075;
+	const float rifleCap = 0.05;
 	if (raidBossBackstab || scavengerLord)
 	{
 		if (raidBossBackstab)
