@@ -168,6 +168,7 @@ bool g_bPlayerYetiSmash[MAXPLAYERS];
 bool g_bPlayerHeadshotBleeding[MAXPLAYERS];
 bool g_bPlayerDoUnstuckChecks[MAXPLAYERS];
 bool g_bPlayerHawkHaste[MAXPLAYERS];
+bool g_bPlayerForcedLaughCheck[MAXPLAYERS];
 
 float g_flPlayerXP[MAXPLAYERS];
 float g_flPlayerNextLevelXP[MAXPLAYERS] = {100.0, ...};
@@ -5775,10 +5776,13 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 			enemy.DoSuicideBomb(client);
 		}
 		else if (IsFakeClient(client) && GetEntProp(client, Prop_Send, "m_iTauntIndex")
-			|| IsValidEntity2(g_iPlayerRollerMine[client]))
+			|| IsValidEntity2(g_iPlayerRollerMine[client]) 
+			|| g_bPlayerForcedLaughCheck[client] && IsBoss(client))
 		{
 			TF2_RemoveCondition(client, TFCond_Taunting);
 		}
+		
+		g_bPlayerForcedLaughCheck[client] = false;
 		/*
 		else if (!GetEntProp(client, Prop_Send, "m_iTauntIndex")) // Weapon taunts are always 0
 		{
@@ -6976,10 +6980,6 @@ public Action TF2_OnTakeDamageModifyRules(int victim, int &attacker, int &inflic
 				{
 					TF2_StunPlayer(victim, 3.0, 0.6, TF_STUNFLAG_SLOWDOWN, attacker);
 				}
-			}
-			else if (itemDef == 656) // Holiday Punch
-			{
-				TF2_AddCondition(victim, TFCond_Milked, 8.0);
 			}
 			else if (itemDef == 414) // Liberty Launcher
 			{
@@ -8221,7 +8221,7 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 		if (attackerIsClient && validWeapon)
 		{
 			int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-			if (index == 740)
+			if (index == 740 && IsBoss(victim))
 			{
 				// remove scorch shot knockback
 				if (!TF2_IsPlayerInCondition(victim, TFCond_ImmuneToPushback))
@@ -8264,6 +8264,16 @@ const float damageForce[3], const float damagePosition[3], int damageCustom)
 			CreateTimer(GetItemMod(Item_CheatersLament, 0), Timer_PowerPlayExpire, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
 			GiveItem(victim, Item_CheatersLament, -1);
 			GiveItem(victim, Item_CheatersLament_Recharging, 1, true);
+		}
+		
+		if (attackerIsClient && validWeapon && damageType & DMG_CRIT|DMG_MELEE)
+		{
+			int forcedLaugh = TF2Attrib_HookValueInt(0, "crit_forces_victim_to_laugh", weapon);
+			if (forcedLaugh > 0)
+			{
+				g_bPlayerForcedLaughCheck[victim] = true;
+				RequestFrame(RF_RemoveForcedLaughFlag, victim);
+			}
 		}
 	}
 	else if (IsTank(victim))
@@ -8530,6 +8540,11 @@ public void RF_RoBroDealDamage(DataPack pack)
 	float damage = pack.ReadFloat();
 	delete pack;
 	RF_TakeDamage(victim, attacker, attacker, damage, DMG_SHOCK|DMG_PREVENT_PHYSICS_FORCE, Item_RoBro);
+}
+
+public void RF_RemoveForcedLaughFlag(int client)
+{
+	g_bPlayerForcedLaughCheck[client] = false;
 }
 
 public Action Hook_BuildingOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damageType, int &weapon,
