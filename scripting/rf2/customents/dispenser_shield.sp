@@ -75,7 +75,7 @@ methodmap RF2_DispenserShield < CBaseEntity
 			return this.GetPropFloat(Prop_Data, "m_flBattery");
 		}
 
-		public set(int value)
+		public set(float value)
 		{
 			this.SetPropFloat(Prop_Data, "m_flBattery", value);
 		}
