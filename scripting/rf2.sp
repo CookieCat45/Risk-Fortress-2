@@ -6333,7 +6333,9 @@ public void OnEntityCreated(int entity, const char[] classname)
 	{
 		// Dragon's Fury is stupid and doesn't fire the calc is attack critical function
 		if (strcmp2(classname, "tf_projectile_balloffire"))
+		{
 			RequestFrame(RF_DragonFuryCritCheck, EntIndexToEntRef(entity));
+		}
 		
 		RequestFrame(RF_CollideWithShields, EntIndexToEntRef(entity));
 	}
