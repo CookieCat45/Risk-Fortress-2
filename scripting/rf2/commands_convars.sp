@@ -104,7 +104,7 @@ void LoadCommandsAndCvars()
 	g_cvPowerupStrengthLevel = CreateConVar("rf2_enemy_powerup_strength_level", "80");
 	g_cvBossStabDamageType = CreateConVar("rf2_boss_backstab_damage_type", "0", "Determines how bosses take backstab damage. 0 - raw damage. 1 - percentage.\nBoth benefit from any damage bonuses, excluding crits.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvBossStabDamagePercent = CreateConVar("rf2_boss_backstab_damage_percentage", "0.12", "If rf2_boss_backstab_damage_type is 1, how much health, in decimal percentage, is subtracted from the boss upon backstab.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_cvBossStabDamageAmount = CreateConVar("rf2_boss_backstab_damage_multiplier", "750.0", "If rf2_boss_backstab_damage_type is 0, the base damage that is dealt to a boss upon backstab.", FCVAR_NOTIFY, true, 0.0);
+	g_cvBossStabDamageAmount = CreateConVar("rf2_boss_backstab_damage_multiplier", "500.0", "If rf2_boss_backstab_damage_type is 0, the base damage that is dealt to a boss upon backstab.", FCVAR_NOTIFY, true, 0.0);
 	g_cvTeleporterRadiusMultiplier = CreateConVar("rf2_object_teleporter_radius_multiplier", "1.0", "How much to multiply the size of the Teleporter radius.", FCVAR_NOTIFY, true, 0.01);
 	g_cvAlwaysAllowTitaniumVoting = CreateConVar("rf2_always_allow_titanium_voting", "0", "If nonzero, Titanium will always appear as an option in the difficulty vote.", FCVAR_NOTIFY, true, 0.0);
 	g_cvMaxObjects = CreateConVar("rf2_object_max", "120", "The maximum number of objects allowed to spawn. Does not include Teleporters or Altars.", FCVAR_NOTIFY, true, 0.0);

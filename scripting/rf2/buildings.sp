@@ -239,25 +239,25 @@ public MRESReturn DHook_OnWrenchHitDispenser(int entity, DHookReturn returnVal, 
 	}
 	
 	RF2_DispenserShield shield = GetDispenserShield(entity);
-	if (shield.IsValid() && shield.Battery < 100)
+	if (shield.IsValid() && shield.Battery < 100.0)
 	{
 		int builder = params.Get(1);
 		int metal = GetEntProp(builder, Prop_Send, "m_iAmmo", _, TFAmmoType_Metal);
 		if (metal <= 0)
 			return MRES_Ignored;
 		
-		int batteryToAdd = imin(10, 100-shield.Battery);
-		int metalCost = batteryToAdd * 5;
+		float batteryToAdd = fmin(10.0, 100.0-shield.Battery);
+		int metalCost = RoundToFloor(batteryToAdd * 5.0);
 		if (metal < metalCost)
 		{
-			batteryToAdd -= (metalCost-metal) * 2;
-			if (batteryToAdd <= 0)
+			batteryToAdd -= float(metalCost-metal) * 2.0;
+			if (batteryToAdd <= 0.0)
 				return MRES_Ignored;
 		}
 		
 		SetEntProp(builder, Prop_Send, "m_iAmmo", imax(0, metal-metalCost), _, TFAmmoType_Metal);
 		shield.Battery += batteryToAdd;
-		shield.Battery = imin(shield.Battery, 100);
+		shield.Battery = fmin(shield.Battery, 100.0);
 		shield.UpdateBatteryText();
 		EmitGameSoundToAll("Weapon_Wrench.HitBuilding_Success", entity);
 		EmitGameSoundToAll("Weapon_Wrench.HitBuilding_Success", entity);

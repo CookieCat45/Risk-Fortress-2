@@ -314,7 +314,7 @@ DynamicDetour g_hDetourGCPreClientUpdate;
 DynamicDetour g_hDetourFindMap;
 DynamicDetour g_hDetourCreateEvent;
 DynamicDetour g_hDetourWeaponPickup;
-DynamicDetour g_hDetourNextBotUpdate;
+//DynamicDetour g_hDetourNextBotUpdate;
 DynamicHook g_hHookTakeHealth;
 DynamicHook g_hHookStartUpgrading;
 DynamicHook g_hHookOnWrenchHit;
@@ -3263,7 +3263,7 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 		return Plugin_Stop;
 	}
 	
-	bool active = (shield.Battery > 0 && !shield.UserDisabled
+	bool active = (shield.Battery > 0.0 && !shield.UserDisabled
 		&& !GetEntProp(shield.Dispenser, Prop_Send, "m_bBuilding")
 		&& !GetEntProp(shield.Dispenser, Prop_Send, "m_bCarried")
 		&& !GetEntProp(shield.Dispenser, Prop_Send, "m_bHasSapper"));
@@ -3325,8 +3325,8 @@ public Action Timer_DispenserShieldThink(Handle timer, int entity)
 		{
 			if (!shield.UserDisabled)
 			{
-				int battery = shield.Battery;
-				shield.Battery = imax(0, battery-1);
+				float battery = shield.Battery;
+				shield.Battery = fmax(0.0, battery-0.5);
 				shield.UpdateBatteryText();
 			}
 		}
@@ -4392,13 +4392,13 @@ public Action Timer_PlayerHud(Handle timer)
 				RF2_DispenserShield shield = dispenser != INVALID_ENT ? GetDispenserShield(dispenser) : RF2_DispenserShield(INVALID_ENT);
 				if (shield.IsValid())
 				{
-					if (shield.Battery <= 25)
+					if (shield.Battery <= 25.0)
 					{
 						r = 255;
 						g = 100;
 						b = 100;
 					}
-					else if (shield.Battery <= 50)
+					else if (shield.Battery <= 50.0)
 					{
 						r = 255;
 						g = 255;
@@ -8991,7 +8991,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 								}
 								else if (shield.UserDisabled)
 								{
-									if (shield.Battery > 0 
+									if (shield.Battery > 0.0 
 										&& !GetEntProp(dispenser, Prop_Send, "m_bHasSapper") 
 										&& !GetEntProp(dispenser, Prop_Send, "m_bCarried")
 										&& !GetEntProp(dispenser, Prop_Send, "m_bBuilding"))

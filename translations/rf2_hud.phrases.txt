@@ -187,13 +187,13 @@
     
     "DispShieldOff"
     {
-        "#format"   "{1:s},{2:d}"
+        "#format"   "{1:s},{2:.0f}"
         "en"        "{1}***SHIELD DISABLED***\nSHIELD BATTERY: {2}\n"
     }
     
     "DispShieldBattery"
     {
-        "#format"   "{1:s},{2:d}"
+        "#format"   "{1:s},{2:.0f}"
         "en"        "{1}SHIELD BATTERY: {2}\n"
     }
     

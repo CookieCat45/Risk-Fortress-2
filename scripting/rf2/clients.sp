@@ -529,15 +529,15 @@ int CalculateBuildingMaxHealth(int client, int entity)
 	int maxHealth;
 	if (GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
 	{
-		maxHealth = 100;
+		maxHealth = 200;
 	}
 	else
 	{
 		switch (GetEntProp(entity, Prop_Send, "m_iHighestUpgradeLevel"))
 		{
-			case 1: maxHealth = 150;
-			case 2: maxHealth = 180;
-			case 3: maxHealth = 216;
+			case 1: maxHealth = 300;
+			case 2: maxHealth = 360;
+			case 3: maxHealth = 432;
 		}
 	}
 	

@@ -33,7 +33,7 @@ methodmap RF2_DispenserShield < CBaseEntity
 			.DefineBoolField("m_bEnabled")
 			.DefineBoolField("m_bUserDisabled")
 			.DefineIntField("m_iLevel")
-			.DefineIntField("m_iBattery")
+			.DefineFloatField("m_flBattery")
 			.DefineFloatField("m_flNextModelUpdateTime")
 			.DefineFloatField("m_flBatteryDrainStopTime")
 			.DefineFloatField("m_flNextResistSoundTime")
@@ -68,16 +68,16 @@ methodmap RF2_DispenserShield < CBaseEntity
 		}
 	}
 
-	property int Battery
+	property float Battery
 	{
 		public get()
 		{
-			return this.GetProp(Prop_Data, "m_iBattery");
+			return this.GetPropFloat(Prop_Data, "m_flBattery");
 		}
 
 		public set(int value)
 		{
-			this.SetProp(Prop_Data, "m_iBattery", value);
+			this.SetPropFloat(Prop_Data, "m_flBattery", value);
 		}
 	}
 	
@@ -197,12 +197,12 @@ methodmap RF2_DispenserShield < CBaseEntity
 			}
 			else if (this.UserDisabled)
 			{
-				FormatEx(text, sizeof(text), "***SHIELD DISABLED***\nSHIELD BATTERY: %i\nATTACK3 TO TOGGLE SHIELD", this.Battery);
+				FormatEx(text, sizeof(text), "***SHIELD DISABLED***\nSHIELD BATTERY: %.0f\nATTACK3 TO TOGGLE SHIELD", this.Battery);
 				SetVariantString(text);
 			}
 			else if (this.Enabled)
 			{
-				FormatEx(text, sizeof(text), "SHIELD BATTERY: %i\nATTACK3 TO TOGGLE SHIELD", this.Battery);
+				FormatEx(text, sizeof(text), "SHIELD BATTERY: %.0f\nATTACK3 TO TOGGLE SHIELD", this.Battery);
 				SetVariantString(text);
 			}
 			else
@@ -215,11 +215,11 @@ methodmap RF2_DispenserShield < CBaseEntity
 			{
 				SetVariantColor({80, 80, 80, 255});
 			}
-			else if (this.Battery <= 25)
+			else if (this.Battery <= 25.0)
 			{
 				SetVariantColor({200, 100, 0, 255});
 			}
-			else if (this.Battery <= 50)
+			else if (this.Battery <= 50.0)
 			{
 				SetVariantColor({255, 255, 50, 255});
 			}
@@ -313,7 +313,7 @@ RF2_DispenserShield GetDispenserShield(int dispenser)
 static void OnCreate(RF2_DispenserShield shield)
 {
 	shield.Enabled = true;
-	shield.Battery = 100;
+	shield.Battery = 100.0;
 	shield.SetModel(MODEL_DISPENSER_SHIELD);
 	shield.SetProp(Prop_Data, "m_takedamage", DAMAGE_EVENTS_ONLY);
 	shield.SetProp(Prop_Data, "m_bloodColor", -1);
