@@ -169,6 +169,116 @@ void SetSentryBuildState(int client, bool state)
 	}
 }
 
+bool DoBuildingTeleport(int client)
+{
+	float pos[3], center[3], angles[3], vecFwd[3], vecRight[3], sentryPos[3], dispPos[3], sentryCenter[3], dispCenter[3];
+	GetEntPos(client, center, true);
+	GetClientAbsOrigin(client, pos);
+	GetClientEyeAngles(client, angles);
+	angles[0] = 0.0;
+	GetAngleVectors(angles, vecFwd, NULL_VECTOR, NULL_VECTOR);
+	GetAngleVectors(angles, NULL_VECTOR, vecRight, NULL_VECTOR);
+	NormalizeVector(vecFwd, vecFwd);
+	NormalizeVector(vecRight, vecRight);
+	
+	// try to place the sentry and dispenser directly in the front and to the side of the player
+	const float dist = 100.0;
+	int sentry = GetBuiltObject(client, TFObject_Sentry);
+	if (sentry != INVALID_ENT && !IsBuildingCarried(sentry))
+	{
+		CopyVectors(pos, sentryPos);
+		sentryPos[0] += vecFwd[0] * dist;
+		sentryPos[1] += vecFwd[1] * dist;
+		sentryPos[2] += vecFwd[2] * dist;
+		
+		// check if the top half of the bounding box is in a wall
+		float mins[3], maxs[3];
+		GetEntPropVector(sentry, Prop_Send, "m_vecMins", mins);
+		GetEntPropVector(sentry, Prop_Send, "m_vecMaxs", maxs);
+		mins[2] += maxs[2] * 0.5;
+		TR_TraceHullFilter(sentryPos, sentryPos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_OtherTeamPlayers, client);
+		TE_DrawBoxAll(sentryPos, sentryPos, mins, maxs, 5.0, g_iBeamModel, {0, 255, 255, 255});
+		if (TR_DidHit())
+		{
+			return false;
+		}
+		
+		// make sure we have LOS to the teleport spot too
+		CopyVectors(sentryPos, sentryCenter);
+		sentryCenter[2] += 40.0;
+		TR_TraceRayFilter(center, sentryCenter, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
+		if (TR_DidHit())
+		{
+			return false;
+		}
+	}
+	
+	int dispenser = GetBuiltObject(client, TFObject_Dispenser);
+	if (dispenser != INVALID_ENT && !IsBuildingCarried(dispenser))
+	{
+		CopyVectors(pos, dispPos);
+		dispPos[0] += vecRight[0] * dist;
+		dispPos[1] += vecRight[1] * dist;
+		dispPos[2] += vecRight[2] * dist;
+		float mins[3], maxs[3];
+		GetEntPropVector(dispenser, Prop_Send, "m_vecMins", mins);
+		GetEntPropVector(dispenser, Prop_Send, "m_vecMaxs", maxs);
+		mins[2] += maxs[2] * 0.5;
+		TR_TraceHullFilter(dispPos, dispPos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_OtherTeamPlayers, client);
+		TE_DrawBoxAll(dispPos, dispPos, mins, maxs, 5.0, g_iBeamModel, {0, 255, 255, 255});
+		if (TR_DidHit())
+		{
+			return false;
+		}
+		
+		CopyVectors(dispPos, dispCenter);
+		dispCenter[2] += 40.0;
+		TR_TraceRayFilter(center, dispCenter, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
+		if (TR_DidHit())
+		{
+			return false;
+		}
+	}
+	
+	// snap to ground, fail if the distance is too big
+	if (sentry != INVALID_ENT)
+	{
+		TR_TraceRayFilter(sentryCenter, {90.0, 0.0, 0.0}, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
+		TR_GetEndPosition(sentryPos);
+		if (GetVectorDistance(sentryCenter, sentryPos) >= 120.0)
+		{
+			return false;
+		}
+	}
+	
+	if (dispenser != INVALID_ENT)
+	{
+		TR_TraceRayFilter(dispCenter, {90.0, 0.0, 0.0}, MASK_PLAYERSOLID_BRUSHONLY, RayType_Infinite, TraceFilter_WallsOnly);
+		TR_GetEndPosition(dispPos);
+		if (GetVectorDistance(dispCenter, dispPos) >= 120.0)
+		{
+			return false;
+		}
+	}
+	
+	// finally, teleport
+	if (sentry != INVALID_ENT)
+	{
+		TeleportEntity(sentry, sentryPos, angles);
+		TE_TFParticle("eyeboss_tp_player", sentryPos);
+		EmitAmbientGameSound("Building_Teleporter.Send", sentryPos);
+	}
+	
+	if (dispenser != INVALID_ENT)
+	{
+		TeleportEntity(dispenser, dispPos, angles);
+		TE_TFParticle("eyeboss_tp_player", dispPos);
+		EmitAmbientGameSound("Building_Teleporter.Send", dispPos);
+	}
+	
+	return true;
+}
+
 bool IsSentryDisposable(int sentry)
 {
 	return g_bDisposableSentry[sentry];
@@ -247,7 +357,7 @@ public MRESReturn DHook_OnWrenchHitDispenser(int entity, DHookReturn returnVal, 
 			return MRES_Ignored;
 		
 		float batteryToAdd = fmin(10.0, 100.0-shield.Battery);
-		int metalCost = RoundToFloor(batteryToAdd * 5.0);
+		int metalCost = RoundToFloor(fmin(40.0, batteryToAdd * 5.0));
 		if (metal < metalCost)
 		{
 			batteryToAdd -= float(metalCost-metal) * 2.0;

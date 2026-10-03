@@ -42,10 +42,13 @@ static int Update(RF2_MajorShocksChaseLayerAction action, RF2_MajorShocks actor,
 		if (IsLOSClear(actor.index, actor.Target))
 		{
 			float pos[3];
-			CBaseEntity(actor.Target).GetAbsOrigin(pos);
+			CBaseEntity(actor.Target).WorldSpaceCenter(pos);
 			loco.FaceTowards(pos);
 			float dist = DistBetween(actor.index, actor.Target);
-			if (dist > 350.0 || actor.WeaponState == MajorShocks_WeaponState_Melee)
+			float myPos[3];
+			actor.WorldSpaceCenter(myPos);
+			TR_TraceRayFilter(myPos, pos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, actor.Team, TRACE_ENTITIES_ONLY);
+			if (dist > 350.0 || actor.WeaponState == MajorShocks_WeaponState_Melee || TR_DidHit())
 			{
 				path.ComputeToTarget(bot, actor.Target);
 				actor.ShouldSlowDown = false;

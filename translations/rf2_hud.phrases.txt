@@ -197,6 +197,35 @@
         "en"        "{1}SHIELD BATTERY: {2}\n"
     }
     
+    "WrenchCharge"
+    {
+        "#format"   "{1:s},{2:.0f}"
+        "en"        "{1}Building Teleport Charge: {2}\n"
+    }
+    
+    "WrenchChargeFull"
+    {
+        "#format"   "{1:s},{2:.0f}"
+        "en"        "{1}Building Teleport Charge: {2} [RELEASE TO ACTIVATE]\n"
+    }
+    
+    "WrenchChargeCooldown"
+    {
+        "#format"   "{1:s},{2:.1f}"
+        "en"        "{1}Building Teleport COOLDOWN: {2}\n"
+    }
+    
+    "WrenchChargeError"
+    {
+        "en"        "Teleport failed! Stand somewhere with more space."
+    }
+    
+    "WrenchChargeHint"
+    {
+        "#format"   "{1:s}"
+        "en"        "{1}Hold Secondary Attack: Building Teleport\n"
+    }
+    
     "BuildCans1"
     {
         "#format"   "{1:s},{2:d}"

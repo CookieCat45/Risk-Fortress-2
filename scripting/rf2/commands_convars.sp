@@ -1875,7 +1875,7 @@ public Action Command_SetDifficulty(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	char name[32];
+	char name[64];
 	int level = GetCmdArgInt(1);
 	if (level < DIFFICULTY_SCRAP || level >= DIFFICULTY_MAX)
 	{
@@ -2171,7 +2171,7 @@ public Action Command_ForfeitItems(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	if (g_bDisableItemDropping || !IsPlayerSurvivor(client, false) || IsSingleplayer(false))
+	if (g_bDisableItemDropping || !IsPlayerSurvivor(client, false) || IsSingleplayer(false) || GetPlayersOnTeam(TEAM_SURVIVOR) <= 1)
 	{
 		RF2_ReplyToCommand(client, "%t", "CannotBeUsed");
 		return Plugin_Handled;

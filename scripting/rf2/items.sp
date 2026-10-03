@@ -748,6 +748,8 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 					}
 				}
 			}
+			
+			UpdatePlayerItem(client, ItemEngi_Teddy);
 		}
 		case Item_RobinWalkers, Item_TripleA, Item_DarkHelm:
 		{
@@ -810,19 +812,18 @@ void UpdatePlayerItem(int client, int item, bool updateStats=true)
 		}
 		case ItemEngi_Teddy:
 		{
-			if (CanUseCollectorItem(client, ItemEngi_Teddy))
+			int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
+			float maxMetal = 1.0 + CalcItemMod(client, Item_WhaleBoneCharm, 1);
+			if (wrench != INVALID_ENT && CanUseCollectorItem(client, ItemEngi_Teddy) && PlayerHasItem(client, ItemEngi_Teddy))
 			{
-				int wrench = GetPlayerWeaponSlot(client, WeaponSlot_Melee);
-				if (wrench != INVALID_ENT)
-				{
-					if (PlayerHasItem(client, ItemEngi_Teddy))
-					{
-						float maxMetal = 1.0 + CalcItemMod(client, item, 0);
-						float constructRate = 1.0 + CalcItemMod(client, item, 1);
-						TF2Attrib_SetByName(wrench, "maxammo metal increased", maxMetal);
-						TF2Attrib_SetByName(wrench, "Construction rate increased", constructRate);
-					}
-				}
+				maxMetal += CalcItemMod(client, item, 0);
+				float constructRate = 1.0 + CalcItemMod(client, item, 1);
+				TF2Attrib_SetByName(wrench, "Construction rate increased", constructRate);
+			}
+			
+			if (wrench != INVALID_ENT)
+			{
+				TF2Attrib_SetByName(wrench, "maxammo metal increased", maxMetal);
 			}
 		}
 		case ItemMedic_BlightedBeak, ItemMedic_ProcedureMask:

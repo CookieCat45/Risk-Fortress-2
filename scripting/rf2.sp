@@ -213,6 +213,8 @@ float g_flBannerSwitchTime[MAXPLAYERS];
 float g_flPlayerHawkHasteCooldown[MAXPLAYERS];
 float g_flPlayerOSPTime[MAXPLAYERS];
 float g_flPlayerOSPCooldown[MAXPLAYERS];
+float g_flPlayerWrenchCharge[MAXPLAYERS];
+float g_flPlayerNextWrenchChargeTime[MAXPLAYERS];
 
 int g_iPlayerInventoryIndex[MAXPLAYERS] = {-1, ...};
 int g_iPlayerLevel[MAXPLAYERS] = {1, ...};
@@ -4389,6 +4391,33 @@ public Action Timer_PlayerHud(Handle timer)
 			}
 			else if (class == TFClass_Engineer)
 			{
+				if (g_flPlayerNextWrenchChargeTime[i] > GetTickedTime())
+				{
+					Format(miscText, sizeof(miscText), "%t", "WrenchChargeCooldown", miscText, FloatAbs(GetTickedTime()-g_flPlayerNextWrenchChargeTime[i]));
+				}
+				else if (IsPlayerSurvivor(i) && (GetBuiltObject(i, TFObject_Sentry) != INVALID_ENT || GetBuiltObject(i, TFObject_Dispenser) != INVALID_ENT))
+				{
+					if (g_flPlayerWrenchCharge[i] > 0.0)
+					{
+						if (g_flPlayerWrenchCharge[i] >= 100.0)
+						{
+							Format(miscText, sizeof(miscText), "%t", "WrenchChargeFull", miscText, g_flPlayerWrenchCharge[i]);
+						}
+						else
+						{
+							Format(miscText, sizeof(miscText), "%t", "WrenchCharge", miscText, g_flPlayerWrenchCharge[i]);
+						}
+					}
+					else
+					{
+						int activeWep = GetActiveWeapon(i);
+						if (activeWep != INVALID_ENT && activeWep == GetPlayerWeaponSlot(i, WeaponSlot_Melee))
+						{
+							Format(miscText, sizeof(miscText), "%t", "WrenchChargeHint", miscText);
+						}
+					}
+				}
+				
 				int dispenser = GetBuiltObject(i, TFObject_Dispenser);
 				RF2_DispenserShield shield = dispenser != INVALID_ENT ? GetDispenserShield(dispenser) : RF2_DispenserShield(INVALID_ENT);
 				if (shield.IsValid())
@@ -5200,7 +5229,9 @@ public Action OnVoiceCommand(int client, const char[] command, int args)
 	if (num1 == 0 && num2 == 0)
 	{
 		if(g_flBlockMedicCall[client] < GetTickedTime())
+		{
 			return OnCallForMedic(client);
+		}
 	}
 
 	return Plugin_Continue;
@@ -5210,7 +5241,7 @@ public Action OnClientCommandKeyValues(int client, KeyValues kv)
 {
 	if (!RF2_IsEnabled() || !IsClientInGame(client))
 		return Plugin_Continue;
-
+	
 	char buffer[64];
 	KvGetSectionName(kv, buffer, sizeof(buffer));
 	//Medic E call, its really really delayed it is NOT the same as voicemenu 0 0, this is way faster.
@@ -6561,9 +6592,36 @@ public void OnEntityDestroyed(int entity)
 	{
 		int index;
 		int builder = GetEntPropEnt(entity, Prop_Send, "m_hBuilder");
-		if (builder > 0 && g_hPlayerExtraSentryList[builder] && (index = g_hPlayerExtraSentryList[builder].FindValue(entity)) != INVALID_ENT)
+		if (IsValidClient(builder))
 		{
-			g_hPlayerExtraSentryList[builder].Erase(index);
+			if (g_hPlayerExtraSentryList[builder] && (index = g_hPlayerExtraSentryList[builder].FindValue(entity)) != INVALID_ENT)
+			{
+				g_hPlayerExtraSentryList[builder].Erase(index);
+			}
+			
+			if (!IsSentryDisposable(entity) && !IsBuildingCarried(entity, true))
+			{
+				int activeWep = GetActiveWeapon(builder);
+				if (activeWep != INVALID_ENT)
+				{
+					char classname[64];
+					GetEntityClassname(activeWep, classname, sizeof(classname));
+					if (strcmp2(classname, "tf_weapon_builder"))
+					{
+						// make sure we don't build a disposable in place of our main sentry
+						ForceWeaponSwitch(builder, WeaponSlot_PDA, true);
+						int wrench = GetPlayerWeaponSlot(builder, WeaponSlot_Melee);
+						if (wrench != INVALID_ENT)
+						{
+							GetEntityClassname(wrench, classname, sizeof(classname));
+							if (!strcmp2(classname, "tf_weapon_robot_arm"))
+							{
+								TF2Attrib_RemoveByName(wrench, "mod wrench builds minisentry");
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	else if (RF2_Item(entity).IsValid())
@@ -8635,16 +8693,23 @@ public void Hook_WeaponSwitchPost(int client, int weapon)
 			g_bPlayerExtraSentryHint[client] = true;
 		}
 		
-		int builderWep = GetPlayerWeaponSlot(client, WeaponSlot_Builder);
-		if (builderWep != weapon && GetPlayerBuildingCount(client, TFObject_Sentry) >= CalcItemModInt(client, ItemEngi_HeadOfDefense, 0) + 1)
+		if (GetBuiltObject(client, TFObject_Sentry) != INVALID_ENT)
 		{
-			SetSentryBuildState(client, false);
+			int builderWep = GetPlayerWeaponSlot(client, WeaponSlot_Builder);
+			if (builderWep != weapon && GetPlayerBuildingCount(client, TFObject_Sentry) >= CalcItemModInt(client, ItemEngi_HeadOfDefense, 0) + 1)
+			{
+				SetSentryBuildState(client, false);
+			}
+			else if (GetPlayerWeaponSlot(client, WeaponSlot_PDA) == weapon)
+			{
+				SetSentryBuildState(client, true);
+			}
+			else if (builderWep != weapon)
+			{
+				SetSentryBuildState(client, false);
+			}
 		}
-		else if (GetPlayerWeaponSlot(client, WeaponSlot_PDA) == weapon)
-		{
-			SetSentryBuildState(client, true);
-		}
-		else if (builderWep != weapon)
+		else
 		{
 			SetSentryBuildState(client, false);
 		}
@@ -8724,6 +8789,40 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float veloc
 	if (bot)
 	{
 		action = TFBot_OnPlayerRunCmd(client, buttons, impulse);
+	}
+	
+	if (!bot && buttons & IN_ATTACK2 && g_flPlayerNextWrenchChargeTime[client] <= GetTickedTime()
+		&& (GetBuiltObject(client, TFObject_Sentry) != INVALID_ENT || GetBuiltObject(client, TFObject_Dispenser) != INVALID_ENT))
+	{
+		if (TF2_GetPlayerClass(client) == TFClass_Engineer)
+		{
+			int activeWep = GetActiveWeapon(client);
+			if (activeWep != INVALID_ENT && activeWep == GetPlayerWeaponSlot(client, WeaponSlot_Melee))
+			{
+				g_flPlayerWrenchCharge[client] = fmin(100.0, g_flPlayerWrenchCharge[client]+1.0);
+			}
+			else
+			{
+				g_flPlayerWrenchCharge[client] = 0.0;
+			}
+		}
+	}
+	else
+	{
+		if (g_flPlayerWrenchCharge[client] >= 100.0 && TF2_GetPlayerClass(client) == TFClass_Engineer)
+		{
+			if (DoBuildingTeleport(client))
+			{
+				g_flPlayerNextWrenchChargeTime[client] = GetTickedTime() + 18.0;
+			}
+			else
+			{
+				PrintCenterText(client, "%t", "WrenchChargeError");
+				EmitSoundToClient(client, SND_NOPE);
+			}
+		}
+		
+		g_flPlayerWrenchCharge[client] = 0.0;
 	}
 
 	if (IsRollermine(client))
