@@ -314,7 +314,7 @@ RF2_Item SpawnItem(int type, const float pos[3], int spawner=INVALID_ENT, float 
 // this timer had to be optimized severely because massive amounts of dropped items at once were causing huge lag
 public Action Timer_UpdateItems(Handle timer)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		g_hItemTimer = null;
 		return Plugin_Stop;

@@ -86,13 +86,13 @@
     "DamageBlockDown"
     {
         "#format"   "{1:s},{2:.1f}"
-        "en"        "{1}***DAMAGE BLOCK DOWN*** {2}"
+        "en"        "{1}***DAMAGE BLOCK DOWN*** {2}\n"
     }
     
     "DamageBlockActive"
     {
         "#format"   "{1:s}"
-        "en"        "{1}Damage Block Active"
+        "en"        "{1}Damage Block Active\n"
     }
     
     "ResistDown"
@@ -218,6 +218,11 @@
     "WrenchChargeError"
     {
         "en"        "Teleport failed! Stand somewhere with more space."
+    }
+    
+    "WrenchChargeErrorSapper"
+    {
+        "en"        "Teleport failed! One of your buildings is being sapped!"
     }
     
     "WrenchChargeHint"

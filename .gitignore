@@ -133,3 +133,8 @@ scripting/damagetest.sp
 scripting/damagetest.smx
 TODO.txt
 Scavenger.txt
+scripting/include/cfgmap.inc
+scripting/include/ff2r.inc
+scripting/include/freak_fortress_2.inc
+scripting/include/freak_fortress_2_subplugin.inc
+scripting/include/tfcondex.inc

@@ -129,6 +129,57 @@ int LoadItems(const char[] customPath="")
 		ThrowError("Keyvalues section \"items\" does not exist in %s", config);
 	}
 	
+	char buffer2[256];
+	if (custom)
+	{
+		// if this is a custom items file, make sure the required plugin is loaded
+		char requiredPlugin[256], pluginName[256];
+		itemKey.GetString("required_plugin", requiredPlugin, sizeof(requiredPlugin));
+		if (!requiredPlugin[0])
+		{
+			delete itemKey;
+			ThrowError("Custom items file \"%s\" does not specify key \"required_plugin\"", config);
+		}
+		
+		Handle iter = GetPluginIterator();
+		bool found;
+		while (MorePlugins(iter))
+		{
+			Handle plugin = ReadPlugin(iter);
+			GetPluginFilename(plugin, pluginName, sizeof(pluginName));
+			if (strcmp2(requiredPlugin, pluginName, false))
+			{
+				found = true;
+				break;
+			}
+			else
+			{
+				// In case the plugin is in a directory
+				FormatEx(buffer2, sizeof(buffer2), "/%s", requiredPlugin);
+				if (StrContains(pluginName, buffer2) != -1)
+				{
+					found = true;
+					break;
+				}
+			}
+		}
+		
+		delete iter;
+		if (!found)
+		{
+			if (!strcmp2(requiredPlugin, "my_plugin_name.smx"))
+			{
+				LogError("[LoadItems] Required plugin \"%s\" for custom items file \"%s\" not found. Skipping.", requiredPlugin, config);
+			}
+			
+			return 0;
+		}
+		else
+		{
+			LogMessage("[LoadItems] Found required plugin: \"%s\"", requiredPlugin);
+		}
+	}
+	
 	for (int i = 0; i < MAX_ITEMS; i++)
 	{
 		if (i == 0 && itemKey.GotoFirstSubKey() || itemKey.GotoNextKey())
@@ -3196,7 +3247,7 @@ bool IsItemInLogbook(int client, int item)
 #if defined _goomba_included_
 public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &damageBonus, float &jumpPower)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 		return Plugin_Continue;
 	
 	bool canGoomba = PlayerHasItem(attacker, ItemScout_LongFallBoots) && CanUseCollectorItem(attacker, ItemScout_LongFallBoots);
@@ -3234,7 +3285,7 @@ public Action OnStomp(int attacker, int victim, float &damageMultiplier, float &
 
 public int OnStompPost(int attacker, int victim, float damageMultiplier, float damageBonus, float jumpPower)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 		return 0;
 	
 	SetEntItemProc(attacker, Item_Null);

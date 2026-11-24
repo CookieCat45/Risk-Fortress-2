@@ -170,7 +170,7 @@ void LoadCommandsAndCvars()
 
 public Action Command_ReloadRF2(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -182,7 +182,7 @@ public Action Command_ReloadRF2(int client, int args)
 
 public Action Command_FullyReloadRF2(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -194,7 +194,7 @@ public Action Command_FullyReloadRF2(int client, int args)
 
 public Action Command_ReloadItems(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -213,7 +213,7 @@ public Action Command_EntityCount(int client, int args)
 
 public Action Command_GiveItem(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -305,7 +305,7 @@ public Action Command_GiveItem(int client, int args)
 
 public Action Command_GiveAllItems(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -366,7 +366,7 @@ public Action Command_GiveAllItems(int client, int args)
 
 public Action Command_GiveCash(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -418,7 +418,7 @@ public Action Command_GiveCash(int client, int args)
 
 public Action Command_GiveXP(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -481,7 +481,7 @@ public Action Command_GiveXP(int client, int args)
 
 public Action Command_ForceMap(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -519,7 +519,7 @@ public Action Command_ForceMap(int client, int args)
 
 public Action Command_ForceWin(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -568,7 +568,7 @@ public Action Command_ForceWin(int client, int args)
 
 public Action Command_SkipWait(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -594,7 +594,7 @@ public Action Command_SkipWait(int client, int args)
 
 public Action Command_VoteSkipWait(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -694,7 +694,7 @@ public int Menu_SkipWaitVote(Menu menu, MenuAction action, int param1, int param
 
 public Action Command_ExtendWait(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -797,7 +797,7 @@ public Action Command_Discord(int client, int args)
 
 public Action Command_SurvivorQueue(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -884,7 +884,7 @@ public int Menu_SurvivorQueue(Menu menu, MenuAction action, int param1, int para
 
 public Action Command_ItemLog(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -998,7 +998,7 @@ public int Menu_ItemInfo(Menu menu, MenuAction action, int param1, int param2)
 
 public Action Command_UseStrange(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1025,7 +1025,7 @@ public Action Command_UseStrange(int client, int args)
 
 public Action Command_Interact(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1043,7 +1043,7 @@ public Action Command_Interact(int client, int args)
 
 public Action Command_Ping(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1068,7 +1068,7 @@ public Action Command_Ping(int client, int args)
 
 public Action Command_Achievements(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1177,7 +1177,7 @@ public int Menu_AchievementsDesc(Menu menu, MenuAction action, int param1, int p
 
 public Action Command_SkipGracePeriod(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1203,7 +1203,7 @@ public Action Command_SkipGracePeriod(int client, int args)
 
 public Action Command_AddPoints(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1244,7 +1244,7 @@ public Action Command_AddPoints(int client, int args)
 
 public Action Command_StartTeleporterEvent(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1274,7 +1274,7 @@ public Action Command_StartTeleporterEvent(int client, int args)
 
 public Action Command_ForceBoss(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1292,7 +1292,7 @@ public Action Command_ForceBoss(int client, int args)
 
 public Action Command_ForceEnemy(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1464,7 +1464,7 @@ public int Menu_SpawnEnemy(Menu menu, MenuAction action, int param1, int param2)
 
 public Action Command_AddSeconds(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1484,7 +1484,7 @@ public Action Command_AddSeconds(int client, int args)
 
 public Action Command_AFK(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1539,7 +1539,7 @@ public Action Command_AFK(int client, int args)
 
 public Action Command_ClientSettings(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1574,15 +1574,15 @@ void ShowClientSettingsMenu(int client)
 		menu.AddItem("rf2_become_boss", buffer);
 	}
 	
+	FormatEx(buffer, sizeof(buffer), "%t", "ToggleTeleporterType", GetCookieBool(client, g_coTeleporterType) ? on : off);
+	menu.AddItem("rf2_teleporter_type", buffer);
+	
 	FormatEx(buffer, sizeof(buffer), "%t", "AltItemMenuButton", GetCookieBool(client, g_coAltItemMenuButton) ? on : off);
 	menu.AddItem("rf2_alt_item_menu_button", buffer);
 	
 	FormatEx(buffer, sizeof(buffer), "%t", "SpecOnDeath", GetCookieBool(client, g_coSpecOnDeath) ? on : off);
 	menu.AddItem("rf2_spec_on_death", buffer);
-	
-	//FormatEx(buffer, sizeof(buffer), "%t", "StayInSpec", GetCookieBool(client, g_coStayInSpecOnJoin) ? on : off);
-	//menu.AddItem("rf2_stay_in_spec", buffer);
-	
+
 	FormatEx(buffer, sizeof(buffer), "%t", "ToggleMusic", GetCookieBool(client, g_coMusicEnabled) ? on : off);
 	menu.AddItem("rf2_music_enabled", buffer);
 	
@@ -1628,7 +1628,7 @@ public int Menu_ClientSettings(Menu menu, MenuAction action, int param1, int par
 
 public Action Command_Items(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1869,7 +1869,7 @@ public int Menu_ItemDrop(Menu menu, MenuAction action, int param1, int param2)
 
 public Action Command_SetDifficulty(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -1898,7 +1898,7 @@ public Action Command_SetDifficulty(int client, int args)
 
 public Action Command_MakeSurvivor(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2153,7 +2153,7 @@ public int Menu_Tutorial(Menu menu, MenuAction action, int param1, int param2)
 
 public Action Command_ForfeitItems(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2182,6 +2182,8 @@ public Action Command_ForfeitItems(int client, int args)
 	{
 		RF2_ReplyToCommand(client, "%t", "ForfeitDisallowed", 
 			g_cvMinStagesClearedToForfeit.IntValue-g_iSaveDataCompletedStages[invIndex]);
+			
+		return Plugin_Handled;
 	}
 	
 	Menu confirm = new Menu(Menu_ForfeitConfirm);
@@ -2217,7 +2219,7 @@ public int Menu_ForfeitConfirm(Menu menu, MenuAction action, int param1, int par
 
 public Action Command_AltarTeleport(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2248,7 +2250,7 @@ public Action Command_AltarTeleport(int client, int args)
 
 public Action Command_ViewAFKTimes(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2267,7 +2269,7 @@ public Action Command_ViewAFKTimes(int client, int args)
 
 public Action Command_TriggerAchievement(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2306,7 +2308,7 @@ public Action Command_TriggerAchievement(int client, int args)
 
 public Action Command_LoadEnemies(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2339,7 +2341,7 @@ public Action Command_LoadEnemies(int client, int args)
 
 public Action Command_LoadBosses(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2421,7 +2423,7 @@ public Action Command_ParticleTest(int client, int args)
 
 public Action Command_UnlockAllAchievements(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2443,7 +2445,7 @@ public Action Command_UnlockAllAchievements(int client, int args)
 
 public Action Command_TestHiddenSlot(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2456,7 +2458,7 @@ public Action Command_TestHiddenSlot(int client, int args)
 
 public Action Command_DroppedWeaponTest(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2477,7 +2479,7 @@ public Action Command_DroppedWeaponTest(int client, int args)
 
 public Action Command_SpawnScavengerLord(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2500,7 +2502,7 @@ public Action Command_SpawnScavengerLord(int client, int args)
 
 public Action Command_ChangeTeam(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 	{
 		RF2_ReplyToCommand(client, "%t", "PluginDisabled");
 		return Plugin_Handled;
@@ -2530,7 +2532,7 @@ public Action Command_ChangeTeam(int client, int args)
 
 public Action Command_TestVote(int client, int args)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 		return Plugin_Handled;
 		
 	StartDifficultyVote();

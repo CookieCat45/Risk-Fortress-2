@@ -8,6 +8,8 @@ char g_szWeaponIndexIdentifier[TF_CLASSES][64][512];
 char g_szWeaponAttributes[TF_CLASSES][64][MAX_ATTRIBUTE_STRING_LENGTH];
 char g_szWeaponClassnameReplacement[TF_CLASSES][64][64];
 bool g_bWeaponStripAttributes[TF_CLASSES][64];
+char g_szWeaponName[TF_CLASSES][64][64];
+char g_szWeaponDesc[TF_CLASSES][64][512];
 bool g_bWeaponHasStringAttributes[TF_CLASSES][64];
 char g_szWeaponStringAttributeName[TF_CLASSES][64][MAX_STRING_ATTRIBUTES][128];
 char g_szWeaponStringAttributeValue[TF_CLASSES][64][MAX_STRING_ATTRIBUTES][PLATFORM_MAX_PATH];
@@ -40,6 +42,8 @@ void LoadWeapons()
 			while (firstKey ? weaponKey.GotoFirstSubKey(false) : weaponKey.GotoNextKey(false))
 			{
 				weaponKey.GetSectionName(g_szWeaponIndexIdentifier[i][count], sizeof(g_szWeaponIndexIdentifier[][]));
+				weaponKey.GetString("name", g_szWeaponName[i][count], sizeof(g_szWeaponName[][]));
+				weaponKey.GetString("desc", g_szWeaponDesc[i][count], sizeof(g_szWeaponDesc[][]));
 				if (weaponKey.JumpToKey("attributes"))
 				{
 					char key[128], val[128];
@@ -241,7 +245,7 @@ static TFClassType g_StringAttributeClass;
 static int g_iStringAttributeWeapon;
 public Action TF2Items_OnGiveNamedItem(int client, char[] classname, int index, Handle &item)
 {
-	if (!RF2_IsEnabled() || !g_bRoundActive)
+	if (!g_bPluginEnabled || !g_bRoundActive)
 		return Plugin_Continue;
 
 	if (g_bDisableGiveItemForward || !IsPlayerSurvivor(client) || IsPlayerMinion(client))
@@ -418,7 +422,7 @@ public void RF_ResetGiveItemBool()
 
 public int TF2Items_OnGiveNamedItem_Post(int client, char[] classname, int index, int level, int quality, int entity)
 {
-	if (!RF2_IsEnabled() || !IsValidEntity2(entity))
+	if (!g_bPluginEnabled || !IsValidEntity2(entity))
 		return 0;
 	
 	if (index == 812 || index == 222 || index == 1121) // Make the Cleaver/Milk work with Whale Bone Charm
@@ -512,10 +516,8 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 		ReplaceString(buffer, MAX_ATTRIBUTE_STRING_LENGTH, " ; ", " = ");
 		char attrs[32][32];
 		int count = ExplodeString(buffer, " = ", attrs, 32, 32, true);
-		
 		int attribCount, attribSlot, staticAttribCount;
 		bool maxAttribs;
-		
 		attribCount = imin(count/2, MAX_STATIC_ATTRIBUTES);
 		TF2Items_SetNumAttributes(weapon, attribCount+1);
 		
@@ -581,7 +583,6 @@ int CreateWeapon(int client, char[] classname, int index, const char[] attribute
 	
 	TF2Items_SetLevel(weapon, 69);
 	TF2Items_SetQuality(weapon, quality);
-	
 	int wepEnt = TF2Items_GiveNamedItem(client, weapon);
 	EquipPlayerWeapon(client, wepEnt);
 	UpdateWeaponMeters(client);
@@ -629,10 +630,8 @@ bool visible = true, const char[] model="", int quality=0, int level=0)
 	
 	SetEntProp(wearable, Prop_Send, "m_iItemDefinitionIndex", index);
 	SetEntProp(wearable, Prop_Send, "m_bInitialized", true);
-	
 	SetEntProp(wearable, Prop_Send, "m_iEntityQuality", quality);
 	SetEntProp(wearable, Prop_Send, "m_iEntityLevel", level);
-	
 	int totalAttribs;
 	if (attributes[0])
 	{
@@ -848,6 +847,68 @@ void SDK_EquipWearable(int client, int entity)
 	if (g_hSDKEquipWearable)
 	{
 		SDKCall(g_hSDKEquipWearable, client, entity);
+	}
+}
+
+int GetWeaponName(int weapon, TFClassType class, char[] buffer, int size)
+{
+	char str[512];
+	IntToString(GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex"), str, sizeof(str));
+	for (int i = 0; i < g_iWeaponCount[class]; i++)
+	{
+		if (StrContainsEx(g_szWeaponIndexIdentifier[class][i], str) != -1)
+		{
+			return strcopy(buffer, size, g_szWeaponName[class][i]);
+		}
+	}
+	
+	return 0;
+}
+
+int GetWeaponDesc(int weapon, TFClassType class, char[] buffer, int size)
+{
+	char str[512];
+	IntToString(GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex"), str, sizeof(str));
+	for (int i = 0; i < g_iWeaponCount[class]; i++)
+	{
+		if (StrContainsEx(g_szWeaponIndexIdentifier[class][i], str) != -1)
+		{
+			return strcopy(buffer, size, g_szWeaponDesc[class][i]);
+		}
+	}
+	
+	return 0;
+}
+
+void ShowWeaponInfo(int client)
+{
+	TFClassType class = TF2_GetPlayerClass(client);
+	char desc[512], name[64];
+	int weapon;
+	bool headerShown;
+	for (int i = 0; i <= WeaponSlot_PDA2; i++)
+	{
+		weapon = GetPlayerWeaponSlot(client, i);
+		if (weapon == INVALID_ENT)
+			continue;
+			
+		if (!GetWeaponDesc(weapon, class, desc, sizeof(desc)) || !GetWeaponName(weapon, class, name, sizeof(name)))
+		{
+			continue;
+		}
+		
+		if (!headerShown)
+		{
+			CPrintToChat(client, "\n{red}------ {hotpink}[WEAPON STATS] {red}------");
+			headerShown = true;
+		}
+		
+		CPrintToChat(client, "{yellow}%s{default}: %s", name, desc);
+	}
+	
+	if (headerShown)
+	{
+		CPrintToChat(client, "{red}------------------------------------------------------------------------------------------------");
 	}
 }
 
@@ -1351,7 +1412,7 @@ StringMap FindCustomWeaponByKey(const char[] key)
 
 public MRESReturn Detour_WeaponPickupPost(int entity, DHookParam params)
 {
-	if (!RF2_IsEnabled())
+	if (!g_bPluginEnabled)
 		return MRES_Ignored;
 	
 	int client = params.Get(1);

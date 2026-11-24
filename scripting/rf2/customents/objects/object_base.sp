@@ -473,6 +473,7 @@ static void OnCreate(RF2_Object_Base obj)
 	obj.TextDist = 500.0;
 	obj.SetTextColor(255, 255, 100, 255);
 	obj.SetGlowColor(255, 255, 255, 255);
+	obj.SetProp(Prop_Data, "m_iEFlags", obj.GetProp(Prop_Data, "m_iEFlags")|EFL_DONTBLOCKLOS);
 	if (!RF2_Object_Teleporter(obj.index).IsValid())
 	{
 		obj.SetProp(Prop_Send, "m_usSolidFlags", FSOLID_TRIGGER_TOUCH_DEBRIS|FSOLID_TRIGGER|FSOLID_NOT_SOLID|FSOLID_CUSTOMBOXTEST);

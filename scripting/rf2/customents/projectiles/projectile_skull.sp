@@ -131,10 +131,19 @@ static Action Timer_InstantDeath(Handle timer, int client)
 	FormatEx(str, sizeof(str), "%.0f", g_flDeathSecsLeft[client]);
 	SetVariantString(str);
 	int text = EntRefToEntIndex(g_iDeathWorldText[client]);
-	AcceptEntityInput(text, "SetText");
+	bool textExists = IsValidEntity(text);
+	if (textExists)
+	{
+		AcceptEntityInput(text, "SetText");
+	}
+	
 	if (g_flDeathSecsLeft[client] <= 0.0)
 	{
-		RemoveEntity(text);
+		if (textExists)
+		{
+			RemoveEntity(text);
+		}
+		
 		ForcePlayerSuicide(client);
 		// manually trigger on kill items, we don't want to have the player dealing damage here
 		if (IsValidClient(inflictor) && IsPlayerAlive(inflictor))

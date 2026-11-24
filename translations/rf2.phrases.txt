@@ -513,7 +513,7 @@
 	"OSPCooldown"
 	{
 		"#format"	"{1:s},{2:.1f}"
-		"en"		"{1}One-Shot Protection Cooldown: {1}"
+		"en"		"{1}One-Shot Protection Cooldown: {2}"
 	}
 	
 	"PingObject"
@@ -1213,6 +1213,12 @@
 	{
 		"#format"	"{1:s}"
 		"en"		"Disable items being equipped as cosmetics ({1})"
+	}
+	
+	"ToggleTeleporterType"
+	{
+		"#format"	"{1:s}"
+		"en"		"Enable teleporter pads ({1})"
 	}
 
 	"StayInSpec"

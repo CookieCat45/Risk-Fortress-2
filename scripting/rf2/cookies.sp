@@ -29,6 +29,7 @@ void BakeCookies()
 	g_coAlwaysShowItemCounts = RegClientCookie("rf2_always_show_item_counts", "Always show player item counts", CookieAccess_Protected);
 	g_coItemShareKarma = RegClientCookie("rf2_item_share_karma", "Item Share Karma", CookieAccess_Protected);
 	g_coAltItemMenuButton = RegClientCookie("rf2_alt_item_menu_button", "Alt Item Menu Button", CookieAccess_Protected);
+	g_coTeleporterType = RegClientCookie("rf2_teleporter_type", "Teleporter Type", CookieAccess_Protected);
 	
 	char name[64];
 	for (int i = 0; i < MAX_ACHIEVEMENTS; i++)
@@ -40,7 +41,7 @@ void BakeCookies()
 
 public void OnClientCookiesCached(int client)
 {
-	if (!RF2_IsEnabled() || IsFakeClient(client))
+	if (!g_bPluginEnabled || IsFakeClient(client))
 		return;
 	
 	char buffer[MAX_COOKIE_LENGTH];
@@ -139,6 +140,13 @@ public void OnClientCookiesCached(int client)
 	if (!buffer[0])
 	{
 		SetCookieInt(client, g_coSurvivorPoints, 0);
+	}
+	
+	// Teleporter Pad Preference
+	GetClientCookie(client, g_coTeleporterType, buffer, sizeof(buffer));
+	if (!buffer[0])
+	{
+		SetCookieInt(client, g_coTeleporterType, 1);
 	}
 	
 	GetClientCookie(client, g_coNewPlayer, buffer, sizeof(buffer));

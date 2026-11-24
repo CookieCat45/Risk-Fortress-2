@@ -409,3 +409,29 @@ static MRESReturn DHook_IsCombatItem(int entity, DHookReturn returnVal)
 	returnVal.Value = true;
 	return MRES_Supercede;
 }
+
+bool IsEntityInsideShield(int entity, int team, int &resultShield=INVALID_ENT)
+{
+	int shield = MaxClients+1;
+	float pos1[3], pos2[3];
+	GetEntPos(entity, pos1, true);
+	while ((shield = FindEntityByClassname(shield, "rf2_dispenser_shield")) != -1)
+	{
+		if (!GetEntProp(shield, Prop_Data, "m_bEnabled") || !IsLOSClear(entity, shield))
+		{
+			continue;
+		}
+		
+		CopyVectors(pos1, pos2);
+		pos2[2] += 300.0;
+		// trace directly up and hit shields - if we hit something, it definitely means we're in one
+		TR_TraceRayFilter(pos1, pos2, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, team == 2 ? 3 : 2, TRACE_ENTITIES_ONLY);
+		if (TR_GetEntityIndex() != INVALID_ENT)
+		{
+			resultShield = shield;
+			break;
+		}
+	}
+	
+	return resultShield != INVALID_ENT;
+}

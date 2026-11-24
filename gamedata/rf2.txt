@@ -21,9 +21,9 @@
 			"CBaseObject::OnWrenchHit"
 			{
 				"linux"		"367"
-				"windows"	"366"
+				"windows"	"365"
 				"linux64"	"367"
-				"windows64"	"366"
+				"windows64"	"365"
 			}
 			"CBaseEntity::TakeHealth"
 			{
@@ -102,6 +102,13 @@
 				"linux64"	"175"
 				"windows64"	"174"
 			}
+			"ILocomotion::IsEntityTraversable"
+			{
+				"linux"		"96"
+				"windows"	"95"
+				"linux64"	"96"
+				"windows64"	"95"
+			}
 		}
 		"Signatures"
 		{
@@ -110,7 +117,9 @@
 			"INextBot::Update"
 			{
 				"linux"		"@_ZN8INextBot6UpdateEv"
-				"windows"	""
+				"windows"	"\x55\x8B\xEC\x81\xEC\x30\x01\x00\x00\x53\x57"
+				"linux64"	"@_ZN8INextBot6UpdateEv"
+				"windows64"	""
 			}
 			"CBaseEntity::Intersects"
 			{
@@ -124,7 +133,7 @@
 				"linux"		"@_ZN9CTFPlayer18ApplyPunchImpulseXEf"
 				"windows"	"\x55\x8B\xEC\x83\xEC\x08\x53\x56\x8B\xF1\xB3\x01"
 				"linux64"	"@_ZN9CTFPlayer18ApplyPunchImpulseXEf"
-				"windows64"	"\x48\x89\x5C\x24\x08\x57\x48\x83\xEC\x40\x48\x8D\x81\x20\x27\x00\x00"
+				"windows64"	"\x48\x89\x5C\x24\x10\x57\x48\x83\xEC\x40\x48\x8D\x81\x30\x27\x00\x00"
 			}
 			// Look for string "mult_medigun_overheal_amount"
 			// The correct subroutine will NOT contain "set_weapon_mode"
@@ -162,9 +171,9 @@
 			"CTFBot::OnWeaponFired" // Look for string "CTFBot::OnWeaponFired"
 			{
 				"linux"		"@_ZN6CTFBot13OnWeaponFiredEP20CBaseCombatCharacterP17CBaseCombatWeapon"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x18\x53\x56\x57\x33\xD2\x8B\xF9\x8B\x0D\xBC\x22\x74\x10\x89\x55\xE8\x89\x55\xEC\x89\x55\xF8\x8B\x41\x08\x89\x55\xFC\x85\xC0\x74\x41\x68\xC8\x14\x89\x10"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x18\x53\x56\x57\x33\xD2\x8B\xF9\x8B\x0D\x2A\x2A\x2A\x2A\x89\x55\xE8\x89\x55\xEC\x89\x55\xF8\x8B\x41\x08\x89\x55\xFC\x85\xC0\x74\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\x68\xAC\x0A\x00\x00"
 				"linux64"	"@_ZN6CTFBot13OnWeaponFiredEP20CBaseCombatCharacterP17CBaseCombatWeapon"
-				"windows64"	"\x4C\x8B\xDC\x49\x89\x5B\x10\x49\x89\x6B\x18\x49\x89\x73\x20\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x83\xEC\x60\x48\x8B\x05\xED\x10\x24\x00"
+				"windows64"	"\x4C\x8B\xDC\x49\x89\x5B\x10\x49\x89\x6B\x18\x49\x89\x73\x20\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x83\xEC\x60\x48\x8B\x05"
 			}
 			"CZombie::SpawnAtPos" // Look for string "tf_zombie" (seems to be missing/inlined on win64?)
 			{

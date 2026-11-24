@@ -529,15 +529,15 @@ int CalculateBuildingMaxHealth(int client, int entity)
 	int maxHealth;
 	if (GetEntProp(entity, Prop_Send, "m_bMiniBuilding"))
 	{
-		maxHealth = 200;
+		maxHealth = 100;
 	}
 	else
 	{
 		switch (GetEntProp(entity, Prop_Send, "m_iHighestUpgradeLevel"))
 		{
-			case 1: maxHealth = 300;
-			case 2: maxHealth = 360;
-			case 3: maxHealth = 432;
+			case 1: maxHealth = 150;
+			case 2: maxHealth = 180;
+			case 3: maxHealth = 216;
 		}
 	}
 	
@@ -1340,7 +1340,7 @@ public Action Timer_VampireSapper(Handle timer, int client)
 		}
 		
 		// notify about the spy if we can see our buddy getting sapped
-		if (IsFakeClient(i) && IsLOSClear(attacker, i, MASK_OPAQUE|CONTENTS_IGNORE_NODRAW_OPAQUE))
+		if (IsFakeClient(i) && IsValidClient(attacker) && IsLOSClear(attacker, i, MASK_OPAQUE|CONTENTS_IGNORE_NODRAW_OPAQUE))
 		{
 			TFBot(i).RealizeSpy(attacker);
 		}

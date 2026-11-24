@@ -169,7 +169,7 @@ void SetSentryBuildState(int client, bool state)
 	}
 }
 
-bool DoBuildingTeleport(int client)
+int DoBuildingTeleport(int client)
 {
 	float pos[3], center[3], angles[3], vecFwd[3], vecRight[3], sentryPos[3], dispPos[3], sentryCenter[3], dispCenter[3];
 	GetEntPos(client, center, true);
@@ -186,6 +186,11 @@ bool DoBuildingTeleport(int client)
 	int sentry = GetBuiltObject(client, TFObject_Sentry);
 	if (sentry != INVALID_ENT && !IsBuildingCarried(sentry))
 	{
+		if (GetEntProp(sentry, Prop_Send, "m_bHasSapper"))
+		{
+			return BUILDING_TELE_FAIL_SAPPER;
+		}
+		
 		CopyVectors(pos, sentryPos);
 		sentryPos[0] += vecFwd[0] * dist;
 		sentryPos[1] += vecFwd[1] * dist;
@@ -197,10 +202,12 @@ bool DoBuildingTeleport(int client)
 		GetEntPropVector(sentry, Prop_Send, "m_vecMaxs", maxs);
 		mins[2] += maxs[2] * 0.5;
 		TR_TraceHullFilter(sentryPos, sentryPos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_OtherTeamPlayers, client);
+		#if defined DEVONLY
 		TE_DrawBoxAll(sentryPos, sentryPos, mins, maxs, 5.0, g_iBeamModel, {0, 255, 255, 255});
+		#endif
 		if (TR_DidHit())
 		{
-			return false;
+			return BUILDING_TELE_FAIL_TRACE;
 		}
 		
 		// make sure we have LOS to the teleport spot too
@@ -209,13 +216,18 @@ bool DoBuildingTeleport(int client)
 		TR_TraceRayFilter(center, sentryCenter, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
 		if (TR_DidHit())
 		{
-			return false;
+			return BUILDING_TELE_FAIL_TRACE;
 		}
 	}
 	
 	int dispenser = GetBuiltObject(client, TFObject_Dispenser);
 	if (dispenser != INVALID_ENT && !IsBuildingCarried(dispenser))
 	{
+		if (GetEntProp(dispenser, Prop_Send, "m_bHasSapper"))
+		{
+			return BUILDING_TELE_FAIL_SAPPER;
+		}
+		
 		CopyVectors(pos, dispPos);
 		dispPos[0] += vecRight[0] * dist;
 		dispPos[1] += vecRight[1] * dist;
@@ -225,10 +237,12 @@ bool DoBuildingTeleport(int client)
 		GetEntPropVector(dispenser, Prop_Send, "m_vecMaxs", maxs);
 		mins[2] += maxs[2] * 0.5;
 		TR_TraceHullFilter(dispPos, dispPos, mins, maxs, MASK_PLAYERSOLID, TraceFilter_OtherTeamPlayers, client);
+		#if defined DEVONLY
 		TE_DrawBoxAll(dispPos, dispPos, mins, maxs, 5.0, g_iBeamModel, {0, 255, 255, 255});
+		#endif
 		if (TR_DidHit())
 		{
-			return false;
+			return BUILDING_TELE_FAIL_TRACE;
 		}
 		
 		CopyVectors(dispPos, dispCenter);
@@ -236,7 +250,7 @@ bool DoBuildingTeleport(int client)
 		TR_TraceRayFilter(center, dispCenter, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
 		if (TR_DidHit())
 		{
-			return false;
+			return BUILDING_TELE_FAIL_TRACE;
 		}
 	}
 	
@@ -247,7 +261,7 @@ bool DoBuildingTeleport(int client)
 		TR_GetEndPosition(sentryPos);
 		if (GetVectorDistance(sentryCenter, sentryPos) >= 120.0)
 		{
-			return false;
+			return BUILDING_TELE_FAIL_TRACE;
 		}
 	}
 	
@@ -257,7 +271,7 @@ bool DoBuildingTeleport(int client)
 		TR_GetEndPosition(dispPos);
 		if (GetVectorDistance(dispCenter, dispPos) >= 120.0)
 		{
-			return false;
+			return BUILDING_TELE_FAIL_TRACE;
 		}
 	}
 	
@@ -276,7 +290,7 @@ bool DoBuildingTeleport(int client)
 		EmitAmbientGameSound("Building_Teleporter.Send", dispPos);
 	}
 	
-	return true;
+	return BUILDING_TELE_SUCCESS;
 }
 
 bool IsSentryDisposable(int sentry)

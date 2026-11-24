@@ -61,7 +61,6 @@ static int g_iTFBotBehaviorAttributes[MAXPLAYERS];
 enum TFBotMission
 {
 	MISSION_NONE, // No mission, behave normally
-	MISSION_TELEPORTER, // Not to be confused with the building
 	MISSION_WANDER, // Wander the map
 	MISSION_CHASE, // Chase an enemy
 	MISSION_BUILD, // An Engineer trying to build
@@ -787,7 +786,7 @@ void TFBot_Think(TFBot bot)
 			isScavenging = false;
 		}
 	}
-	else if (threat > 0 && bot.Mission != MISSION_TELEPORTER && class != TFClass_Engineer && !IsValidEntity2(bot.BuildingTarget))
+	else if (threat > 0 && class != TFClass_Engineer && class != TFClass_Spy && !IsValidEntity2(bot.BuildingTarget))
 	{
 		aggressiveMode = rollerMine || bot.HasFlag(TFBOTFLAG_AGGRESSIVE) || bot.HasFlag(TFBOTFLAG_SUICIDEBOMBER)
 			|| GetActiveWeapon(bot.Client) == GetPlayerWeaponSlot(bot.Client, WeaponSlot_Melee);
@@ -795,20 +794,36 @@ void TFBot_Think(TFBot bot)
 		if (!aggressiveMode && threat > 0)
 		{
 			static float nextShieldCheckTime[MAXPLAYERS];
+			static bool traceSuccess[MAXPLAYERS];
 			if (nextShieldCheckTime[bot.Client] <= GetTickedTime())
 			{
-				float eyePos[3], targetPos[3];
-				GetClientEyePosition(bot.Client, eyePos);
-				CBaseEntity(threat).WorldSpaceCenter(targetPos);
-				TR_TraceRayFilter(eyePos, targetPos, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(bot.Client));
-				if (RF2_DispenserShield(TR_GetEntityIndex()).IsValid() && IsLOSClear(bot.Client, TR_GetEntityIndex()))
+				traceSuccess[bot.Client] = false;
+				if (IsEntityInsideShield(threat, TEAM_SURVIVOR) || IsEntityInsideShield(bot.Client, TEAM_SURVIVOR))
 				{
 					// If our target is behind a bubble shield, approach the shield
-					aggressiveMode = true;
+					traceSuccess[bot.Client] = true;
+				}
+				else
+				{
+					// alternatively, see if we have LOS to shield
+					// this is in the case that a player is standing on the opposite side of the shield to us without being inside it
+					float pos1[3], pos2[3];
+					GetClientEyePosition(bot.Client, pos1);
+					GetEntPos(threat, pos2, true);
+					TR_TraceRayFilter(pos1, pos2, MASK_SOLID, RayType_EndPoint, TraceFilter_DispenserShield, GetEntTeam(bot.Client));
+					if (TR_GetEntityIndex() != INVALID_ENT)
+					{
+						traceSuccess[bot.Client] = true;
+					}
 				}
 				
 				// avoid doing too many traces for performance
 				nextShieldCheckTime[bot.Client] = GetTickedTime()+0.5;
+			}
+			
+			if (traceSuccess[bot.Client])
+			{
+				aggressiveMode = true;
 			}
 		}
 		
@@ -831,7 +846,7 @@ void TFBot_Think(TFBot bot)
 			if (threat > MaxClients || (stuckBoss || g_bPlayerYetiSmash[threat] || !IsInvuln(threat)) && class != TFClass_Spy)
 			{
 				bot.Mission = MISSION_CHASE;
-				TFBot_PathToEntity(bot, threat, 5000.0, true);
+				TFBot_PathToEntity(bot, threat, 0.0, true);
 			}
 		}
 	}
@@ -842,6 +857,14 @@ void TFBot_Think(TFBot bot)
 		{
 			// Shoot at enemies if we're not doing anything else
 			bot.DesiredWeaponSlot = WeaponSlot_Primary;
+			if (bot.BehaviorAttributes & IGNORE_ENEMIES)
+			{
+				bot.BehaviorAttributes &= ~IGNORE_ENEMIES;
+			}
+		}
+		else if (!(bot.BehaviorAttributes & IGNORE_ENEMIES))
+		{
+			bot.BehaviorAttributes |= IGNORE_ENEMIES;
 		}
 		
 		if (!bot.HasBuilt && tickedTime >= bot.EngiSearchRetryTime && !bot.SentryArea) // Do we have an area to build in?
@@ -1080,8 +1103,7 @@ void TFBot_Think(TFBot bot)
 	}
 	
 	// If we aren't doing anything else, wander the map looking for enemies to attack.
-	if (!isScavenging && bot.Mission != MISSION_TELEPORTER && !isHealing && !isSniping
-		&& (class == TFClass_Spy || threat <= 0)
+	if (!isScavenging && !isHealing && !isSniping && threat <= 0
 		&& (class != TFClass_Engineer || bot.EngiSearchRetryTime > 0.0) 
 		&& bot.Mission != MISSION_BUILD && !bot.HasBuilt)
 	{
@@ -1324,8 +1346,10 @@ void TFBot_PathToEntity(TFBot bot, int entity, float distance=1000.0, bool ignor
 {
 	ILocomotion locomotion = bot.GetLocomotion();
 	INextBot nextBot = bot.GetNextBot();
-	bool goalReached = bot.Path.ComputeToTarget(nextBot, entity, distance);
-	
+	float pos[3];
+	GetEntPos(entity, pos);
+	pos[2] += 5.0;
+	bool goalReached = bot.Path.ComputeToPos(nextBot, pos, distance);
 	if ((goalReached || ignoreGoal) && bot.Path.IsValid())
 	{
 		bot.Path.Update(nextBot);
@@ -1625,7 +1649,6 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		bool inFov;
 		float myPos[3], threatPos[3];
 		GetEntPos(client, myPos);
-		
 		bool sentry, usingSapper, foundBuilding;
 		float distance;
 		const float maxDistance = 1500.0;
@@ -1640,20 +1663,30 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		
 		// If there are nearby buildings, sap them
 		ArrayList sentryList = new ArrayList();
+		static float nextSapTime[MAXPLAYERS];
 		while ((entity = FindEntityByClassname(entity, "obj_*")) != INVALID_ENT)
 		{
+			if (GetTickedTime() < nextSapTime[client])
+				break;
+			
 			if (GetEntTeam(entity) == team)
 				continue;
 			
 			if (GetEntProp(entity, Prop_Send, "m_bCarried"))
 				continue;
+				
+			TFObjectType type = TF2_GetObjectType2(entity);
+			if (type != TFObject_Sentry && type != TFObject_Dispenser)
+			{
+				continue;
+			}
 			
 			if (!bot.GetVision().IsLineOfSightClearToEntity(entity))
 				continue;
 			
 			if (sentry) // Stop searching for sap targets once we find a sentry, but keep adding sentries to our list
 			{
-				if (TF2_GetObjectType2(entity) == TFObject_Sentry)
+				if (type == TFObject_Sentry)
 				{
 					sentryList.Push(entity);
 					
@@ -1680,6 +1713,8 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 				bool hasSapper = asBool(GetEntProp(entity, Prop_Send, "m_bHasSapper"));
 				if (hasSapper && entity == bot.BuildingTarget)
 				{
+					// short cooldown before we can sap a building again
+					nextSapTime[client] = GetTickedTime() + 3.0;
 					bot.BuildingTarget = INVALID_ENT;
 				}
 				
@@ -1720,7 +1755,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			}
 		}
 		
-		bool shouldDecloak = sentry;
+		bool shouldDecloak = sentry || GetActiveWeapon(client) == sapper;
 		if (IsValidEntity2(bot.BuildingTarget))
 		{
 			float pos[3];
@@ -1738,6 +1773,7 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 		{
 			if (cloaked)
 			{
+				TF2_RemoveCondition(client, TFCond_Cloaked);
 				buttons |= IN_ATTACK2;
 			}
 			else
@@ -1752,7 +1788,6 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 			const float sentryRange = 1100.0;
 			float sentryPos[3];
 			bool visible;
-			
 			for (int i = 0; i < sentryList.Length; i++)
 			{
 				entity = sentryList.Get(i);
@@ -1872,8 +1907,13 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 					}
 					
 					const float range = 100.0;
-					if (!cloaked && dist <= Pow(range, 2.0))
+					if (dist <= Pow(range, 2.0))
 					{
+						if (cloaked)
+						{
+							buttons |= IN_ATTACK2;
+						}
+						
 						buttons |= IN_ATTACK;
 					}
 					
@@ -2001,7 +2041,6 @@ public Action TFBot_OnPlayerRunCmd(int client, int &buttons, int &impulse)
 	
 	// apply our forced button inputs (overrides below)
 	buttons |= bot.ForcedButtons;
-	
 	if (class == TFClass_DemoMan)
 	{
 		if (activeWep != INVALID_ENT)
@@ -2303,24 +2342,12 @@ public MRESReturn Detour_OnWeaponFired(DHookParam params)
 
 public MRESReturn DHook_IsAbleToSee(Address vision, DHookReturn returnVal, DHookParam params)
 {
-	// find the bot
-	int bot = INVALID_ENT;
-	for (int i = 1; i <= MaxClients; i++)
+	int bot = view_as<IVision>(vision).GetBot().GetEntity();
+	if (!IsValidClient(bot))
 	{
-		if (IsClientInGame(i) && IsFakeClient(i) && !IsSpecBot(i))
-		{
-			IVision botVision = TFBot(i).GetVision();
-			if (view_as<Address>(botVision) == vision)
-			{
-				bot = i;
-				break;
-			}
-		}
-	}
-	
-	if (bot == INVALID_ENT || !IsPlayerAlive(bot))
 		return MRES_Ignored;
-		
+	}
+
 	int subject = params.Get(1);
 	if (!IsValidClient(subject))
 		return MRES_Ignored;
@@ -2341,8 +2368,9 @@ public MRESReturn DHook_IsAbleToSee(Address vision, DHookReturn returnVal, DHook
 		// this fixes "godspots"
 		float eyePos[3];
 		GetClientEyePosition(bot, eyePos);
-		TR_TraceRayFilter(eyePos, pos, MASK_PLAYERSOLID_BRUSHONLY, RayType_EndPoint, TraceFilter_WallsOnly);
-		returnVal.Value = !TR_DidHit() && view_as<IVision>(vision).IsVisibleEntityNoticed(subject);
+		Handle trace = TR_TraceRayFilterEx(eyePos, pos, CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_MIST|CONTENTS_IGNORE_NODRAW_OPAQUE, RayType_EndPoint, TraceFilter_BotSightFix);
+		returnVal.Value = !TR_DidHit(trace) && view_as<IVision>(vision).IsVisibleEntityNoticed(subject);
+		delete trace;
 		GameRules_SetProp("m_bPlayingMannVsMachine", false);
 		return MRES_Supercede;
 	}
@@ -2353,26 +2381,14 @@ public MRESReturn DHook_IsAbleToSee(Address vision, DHookReturn returnVal, DHook
 public MRESReturn DHook_IsAbleToSeePost(Address vision, DHookReturn returnVal, DHookParam params)
 {
 	GameRules_SetProp("m_bPlayingMannVsMachine", false);
+	int bot = view_as<IVision>(vision).GetBot().GetEntity();
+	if (!IsValidClient(bot))
+	{
+		return MRES_Ignored;
+	}
+	
 	if (returnVal.Value)
 	{
-		// find the bot
-		int bot = INVALID_ENT;
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (IsClientInGame(i) && IsFakeClient(i) && !IsSpecBot(i))
-			{
-				IVision botVision = TFBot(i).GetVision();
-				if (view_as<Address>(botVision) == vision)
-				{
-					bot = i;
-					break;
-				}
-			}
-		}
-		
-		if (bot == INVALID_ENT || !IsPlayerAlive(bot))
-			return MRES_Ignored;
-			
 		int subject = params.Get(1);
 		if (!IsValidClient(subject))
 			return MRES_Ignored;
@@ -2384,6 +2400,45 @@ public MRESReturn DHook_IsAbleToSeePost(Address vision, DHookReturn returnVal, D
 															GetTickedTime()+SPY_REMEMBER_TIME));
 		}
 	}
+	else
+	{
+		// if the trace failed, make sure it isn't because of an object i.e. a crate
+		int subject = params.Get(1);
+		float eyePos[3], pos[3];
+		GetClientEyePosition(bot, eyePos);
+		GetEntPos(subject, pos, true);
+		Handle trace = TR_TraceRayFilterEx(eyePos, pos, CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_MIST|CONTENTS_IGNORE_NODRAW_OPAQUE, RayType_EndPoint, TraceFilter_BotSightFix);
+		if (!TR_DidHit(trace))
+		{
+			delete trace;
+			returnVal.Value = true;
+			return MRES_Supercede;
+		}
+		
+		delete trace;
+	}
+	
+	return MRES_Ignored;
+}
+
+public bool TraceFilter_BotSightFix(int entity, int mask, int other)
+{
+	if (IsCombatChar(entity) || RF2_DispenserShield(entity).IsValid() || RF2_Object_Base(entity).IsValid())
+	{
+		return false;
+	}
+	
+	return true;
+}
+
+public MRESReturn DHook_IsEntityTraversable(Address addr, DHookReturn returnVal, DHookParam params)
+{
+	int entity = params.Get(1);
+	if (RF2_DispenserShield(entity).IsValid() || RF2_Object_Base(entity).IsValid())
+	{
+		returnVal.Value = true;
+		return MRES_Supercede;
+	}
 	
 	return MRES_Ignored;
 }
@@ -2393,14 +2448,30 @@ static int g_iPrevWinningTeam;
 public MRESReturn Detour_NextBotUpdate(Address bot)
 {
 	if (g_bPluginEnabled)
-	{
+	{		
 		// Force some MvM specific behavior (not standing still vs sentries)
 		// Force Seek and Destroy behavior as well
-		g_iPrevRoundState = GameRules_GetRoundState();
-		g_iPrevWinningTeam = GameRules_GetProp("m_iWinningTeam");
-		GameRules_SetProp("m_iRoundState", RoundState_TeamWin);
-		GameRules_SetProp("m_iWinningTeam", TEAM_ENEMY);
-		GameRules_SetProp("m_bPlayingMannVsMachine", true);
+		int client = view_as<INextBot>(bot).GetEntity();
+		if (!IsValidClient(client))
+		{
+			return MRES_Ignored;
+		}
+		
+		TFClassType class = TF2_GetPlayerClass(client);
+		bool isSupport = class == TFClass_Spy || class == TFClass_Medic || class == TFClass_Engineer;
+		if (!isSupport)
+		{
+			// force SeekAndDestroy behavior for combat classes
+			g_iPrevRoundState = GameRules_GetRoundState();
+			g_iPrevWinningTeam = GameRules_GetProp("m_iWinningTeam");
+			GameRules_SetProp("m_iRoundState", RoundState_TeamWin);
+			GameRules_SetProp("m_iWinningTeam", TEAM_ENEMY);
+		}
+		
+		if (!isSupport)
+		{
+			GameRules_SetProp("m_bPlayingMannVsMachine", true);
+		}
 	}
 	
 	return MRES_Ignored;
@@ -2410,9 +2481,21 @@ public MRESReturn Detour_NextBotUpdatePost(Address bot)
 {
 	if (g_bPluginEnabled)
 	{
+		int client = view_as<INextBot>(bot).GetEntity();
+		if (!IsValidClient(client))
+		{
+			return MRES_Ignored;
+		}
+		
+		TFClassType class = TF2_GetPlayerClass(client);
+		bool isSupport = class == TFClass_Spy || class == TFClass_Medic || class == TFClass_Engineer;
+		if (!isSupport)
+		{
+			GameRules_SetProp("m_iRoundState", g_iPrevRoundState);
+			GameRules_SetProp("m_iWinningTeam", g_iPrevWinningTeam);
+		}
+		
 		GameRules_SetProp("m_bPlayingMannVsMachine", false);
-		GameRules_SetProp("m_iRoundState", g_iPrevRoundState);
-		GameRules_SetProp("m_iWinningTeam", g_iPrevWinningTeam);
 	}
 	
 	return MRES_Ignored;

@@ -267,6 +267,8 @@ enum
 #define SND_MEDISHIELD "weapons/medi_shield_deploy.wav"
 #define SND_THUNDER "ambient/halloween/thunder_08.wav"
 #define SND_WEAPON_CRIT "rf2/sfx/crit_clean.mp3"
+#define SND_BOW_SHOOT "weapons/bow_shoot.wav"
+#define SND_BOW_SHOOT_CRIT "weapons/bow_shoot_crit.wav"
 #define SND_BLEED_EXPLOSION "physics/body/body_medium_impact_soft6.wav"
 #define SND_SAPPER_PLANT "weapons/sapper_plant.wav"
 #define SND_SAPPER_DRAIN "weapons/sapper_timer.wav"
@@ -377,4 +379,23 @@ enum
 	FootstepType_GiantRobot,
 	FootstepType_Normal,
 	FootstepType_Silent,
+};
+
+enum
+{
+	BUILDING_TELE_SUCCESS,
+	BUILDING_TELE_FAIL_SAPPER,
+	BUILDING_TELE_FAIL_TRACE,
+};
+
+enum
+{
+	TELEPORTER_STATE_BUILDING = 0,				// Building, not active yet
+	TELEPORTER_STATE_IDLE,						// Does not have a matching teleporter yet
+	TELEPORTER_STATE_READY,						// Found match, charged and ready
+	TELEPORTER_STATE_SENDING,					// Teleporting a player away
+	TELEPORTER_STATE_RECEIVING,					
+	TELEPORTER_STATE_RECEIVING_RELEASE,
+	TELEPORTER_STATE_RECHARGING,				// Waiting for recharge
+	TELEPORTER_STATE_UPGRADING,
 };

@@ -201,15 +201,16 @@ public bool TraceFilter_SpawnCheck(int entity, int mask, int team)
 
 public bool FilterIgnoreActors(int entity, int contentsMask, int desiredcollisiongroup)
 {
-	if ((entity > 0 && entity <= MaxClients) || IsCombatChar(entity) || RF2_Object_Base(entity).IsValid() || RF2_DispenserShield(entity).IsValid())
-	{
-		return true;
-	}
+	if ((entity > 0 && entity <= MaxClients))
+		return false;
 	
-	return false;
+	if (RF2_Object_Base(entity).IsValid() || RF2_DispenserShield(entity).IsValid())
+		return true;
+	
+	return !!CBaseEntity(entity).MyNextBotPointer();
 }
 
 public bool FilterOnlyActors(int entity, int contentsMask, int desiredcollisiongroup)
 {
-	return !FilterIgnoreActors(entity, contentsMask, desiredcollisiongroup);
+	return ((entity > 0 && entity <= MaxClients) || !!CBaseEntity(entity).MyNextBotPointer());
 }
