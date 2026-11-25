@@ -21,9 +21,9 @@
 			"CBaseObject::OnWrenchHit"
 			{
 				"linux"		"367"
-				"windows"	"365"
+				"windows"	"366"
 				"linux64"	"367"
-				"windows64"	"365"
+				"windows64"	"366"
 			}
 			"CBaseEntity::TakeHealth"
 			{
